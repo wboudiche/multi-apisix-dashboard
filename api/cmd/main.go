@@ -35,7 +35,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	instanceHandler := handlers.NewInstanceHandler(instanceService, authService)
+	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService)
 	teamHandler := handlers.NewTeamHandler(teamService, ownershipService, authService)
 	overviewHandler := handlers.NewOverviewHandler(overviewService)
 	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService)
