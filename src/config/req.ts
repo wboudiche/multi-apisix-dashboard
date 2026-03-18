@@ -26,6 +26,7 @@ import {
   SKIP_INTERCEPTOR_HEADER,
 } from '@/config/constant';
 import { adminKeyAtom, isSettingsOpenAtom } from '@/stores/global';
+import { currentInstanceIdAtom } from '@/stores/instance';
 
 export const req = axios.create();
 
@@ -40,9 +41,38 @@ req.interceptors.request.use((conf) => {
       arrayFormat: 'repeat',
     });
   };
-  conf.baseURL = API_PREFIX;
+  if (!conf.baseURL) {
+    conf.baseURL = API_PREFIX;
+  }
+
+  // Get JWT token and add Authorization header for backend auth
+  const token = localStorage.getItem('auth:access_token');
+  if (token) {
+    conf.headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  // Get admin key from global store (for direct APISIX access)
   const adminKey = getDefaultStore().get(adminKeyAtom);
-  conf.headers.set(API_HEADER_KEY, adminKey);
+  if (adminKey) {
+    conf.headers.set(API_HEADER_KEY, adminKey);
+  }
+
+  // Get current instance ID and add it as header for proxy requests
+  // Fall back to localStorage directly in case the atom hasn't been hydrated yet
+  // (e.g. when TanStack Router loaders fire before the Header component mounts)
+  const instanceId = getDefaultStore().get(currentInstanceIdAtom)
+    || localStorage.getItem('instance:current_id')
+    || '';
+  if (instanceId) {
+    conf.headers.set('X-Instance-ID', instanceId);
+  }
+
+  // Get current team ID for admin team switching
+  const teamId = localStorage.getItem(`team:current_id:${instanceId}`) || '';
+  if (teamId) {
+    conf.headers.set('X-Team-ID', teamId);
+  }
+
   return conf;
 });
 
