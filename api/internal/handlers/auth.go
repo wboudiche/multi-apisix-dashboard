@@ -1,0 +1,274 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/apache/apisix-dashboard/api/internal/middleware"
+	"github.com/apache/apisix-dashboard/api/internal/models"
+	"github.com/apache/apisix-dashboard/api/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+type AuthHandler struct {
+	authService *services.AuthService
+	teamService *services.TeamService
+}
+
+func NewAuthHandler(authService *services.AuthService, teamService *services.TeamService) *AuthHandler {
+	return &AuthHandler{authService: authService, teamService: teamService}
+}
+
+type LoginRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type CreateUserRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+}
+
+type UpdateUserRequest struct {
+	Email string `json:"email"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required"`
+}
+
+// Login handles user login
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	tokens, err := h.authService.Login(c.Request.Context(), req.Username, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	c.JSON(http.StatusOK, tokens)
+}
+
+// Refresh handles token refresh
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	var req RefreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	tokens, err := h.authService.RefreshTokens(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, tokens)
+}
+
+// Logout handles user logout (client-side token discard)
+func (h *AuthHandler) Logout(c *gin.Context) {
+	// With JWT, logout is handled client-side
+	// This endpoint can be used for logging or invalidation if needed
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+// GetCurrentUser returns the current user's info
+func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	user, err := h.authService.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	user.PasswordHash = ""
+
+	resp := gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"email":    user.Email,
+		"role":     user.Role,
+	}
+
+	instanceID := c.GetHeader("X-Instance-ID")
+	if instanceID != "" {
+		ui, err := h.authService.GetUserInstance(c.Request.Context(), userID, instanceID)
+		if err == nil && ui != nil && ui.TeamID != "" {
+			resp["team_id"] = ui.TeamID
+			team, err := h.teamService.GetTeam(c.Request.Context(), ui.TeamID)
+			if err == nil && team != nil {
+				resp["team_name"] = team.Name
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// CreateUser creates a new user (super_admin only)
+func (h *AuthHandler) CreateUser(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	var req CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Hash password
+	hash, err := h.authService.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	user := &models.User{
+		ID:           uuid.New().String(),
+		Username:     req.Username,
+		PasswordHash: hash,
+		Email:        req.Email,
+		Role:         req.Role,
+	}
+
+	if err := h.authService.CreateUser(c.Request.Context(), user); err != nil {
+		if err == services.ErrUserExists {
+			c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	user.PasswordHash = ""
+	c.JSON(http.StatusCreated, user)
+}
+
+// ListUsers lists all users (super_admin only)
+func (h *AuthHandler) ListUsers(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	users, err := h.authService.ListUsers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Remove password hashes
+	for _, u := range users {
+		u.PasswordHash = ""
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+// UpdateUser updates a user
+func (h *AuthHandler) UpdateUser(c *gin.Context) {
+	userID := c.Param("id")
+	currentUserID := middleware.GetUserID(c)
+	role := middleware.GetRole(c)
+
+	// Users can only update themselves unless they're super_admin
+	if userID != currentUserID && role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	var req UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.authService.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	user.Email = req.Email
+
+	if err := h.authService.UpdateUser(c.Request.Context(), user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	user.PasswordHash = ""
+	c.JSON(http.StatusOK, user)
+}
+
+// DeleteUser deletes a user (super_admin only)
+func (h *AuthHandler) DeleteUser(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	userID := c.Param("id")
+
+	if err := h.authService.DeleteUser(c.Request.Context(), userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
+}
+
+// ChangePassword allows users to change their password
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.authService.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Verify old password
+	if !h.authService.CheckPassword(req.OldPassword, user.PasswordHash) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid old password"})
+		return
+	}
+
+	// Hash new password
+	hash, err := h.authService.HashPassword(req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	user.PasswordHash = hash
+	if err := h.authService.UpdateUser(c.Request.Context(), user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+}

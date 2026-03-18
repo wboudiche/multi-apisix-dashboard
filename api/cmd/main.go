@@ -34,7 +34,7 @@ func main() {
 	overviewService := services.NewOverviewService(instanceService, ownershipService)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handlers.NewAuthHandler(authService, teamService)
 	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService)
 	teamHandler := handlers.NewTeamHandler(teamService, ownershipService, authService)
 	overviewHandler := handlers.NewOverviewHandler(overviewService)
