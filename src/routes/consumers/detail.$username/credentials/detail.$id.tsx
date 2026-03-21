@@ -29,10 +29,10 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { putCredentialReq } from '@/apis/credentials';
+import { usePermission } from '@/hooks/usePermission';
 import { getCredentialQueryOptions } from '@/apis/hooks';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartCredential } from '@/components/form-slice/FormPartCredential';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
@@ -111,6 +111,7 @@ const CredentialDetailForm = (props: CredentialFormProps) => {
 function RouteComponent() {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const { username, id } = useParams({
     from: '/consumers/detail/$username/credentials/detail/$id',
   });
@@ -124,13 +125,15 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('credentials.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 key="delete"
@@ -145,9 +148,7 @@ function RouteComponent() {
           ),
         })}
       />
-      <FormTOCBox>
-        <CredentialDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
-      </FormTOCBox>
+      <CredentialDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
   );
 }

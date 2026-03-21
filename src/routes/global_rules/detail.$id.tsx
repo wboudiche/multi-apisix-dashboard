@@ -29,10 +29,10 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { putGlobalRuleReq } from '@/apis/global_rules';
+import { usePermission } from '@/hooks/usePermission';
 import { getGlobalRuleQueryOptions } from '@/apis/hooks';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartGlobalRules } from '@/components/form-slice/FormPartGlobalRules';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
@@ -99,6 +99,7 @@ function RouteComponent() {
   const { id } = useParams({ from: '/global_rules/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const navigate = useNavigate();
 
   return (
@@ -109,13 +110,15 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('globalRules.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('globalRules.singular')}
@@ -127,9 +130,7 @@ function RouteComponent() {
           ),
         })}
       />
-      <FormTOCBox>
-        <GlobalRuleDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
-      </FormTOCBox>
+      <GlobalRuleDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
   );
 }

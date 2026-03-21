@@ -29,13 +29,12 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { putConsumerReq } from '@/apis/consumers';
+import { usePermission } from '@/hooks/usePermission';
 import { getConsumerQueryOptions } from '@/apis/hooks';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartConsumer } from '@/components/form-slice/FormPartConsumer';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
-import PageHeader from '@/components/page/PageHeader';
 import { API_CONSUMERS } from '@/config/constant';
 import { req } from '@/config/req';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
@@ -109,38 +108,33 @@ const ConsumerDetailForm = (props: Props) => {
 const ConsumerDetailTab = () => {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const { username } = useParams({ from: '/consumers/detail/$username' });
   const navigate = useNavigate();
 
   return (
     <>
-      <PageHeader
-        title={t('info.edit.title', { name: t('consumers.singular') })}
-        {...(readOnly && {
-          title: t('info.detail.title', { name: t('consumers.singular') }),
-          extra: (
-            <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
-              <DeleteResourceBtn
-                mode="detail"
-                name={t('consumers.singular')}
-                target={username}
-                api={`${API_CONSUMERS}/${username}`}
-                onSuccess={() => navigate({ to: '/consumer_groups' })}
-              />
-            </Group>
-          ),
-        })}
-      />
-      <FormTOCBox>
-        <ConsumerDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
-      </FormTOCBox>
+      {readOnly && (
+        <Group justify="flex-end" mb="md">
+          {canEdit && (
+            <Button
+              onClick={() => setReadOnly(false)}
+              size="compact-sm"
+              variant="gradient"
+            >
+              {t('form.btn.edit')}
+            </Button>
+          )}
+          <DeleteResourceBtn
+            mode="detail"
+            name={t('consumers.singular')}
+            target={username}
+            api={`${API_CONSUMERS}/${username}`}
+            onSuccess={() => navigate({ to: '/consumers' })}
+          />
+        </Group>
+      )}
+      <ConsumerDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
   );
 };

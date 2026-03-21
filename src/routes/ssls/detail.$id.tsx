@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getSSLQueryOptions } from '@/apis/hooks';
+import { usePermission } from '@/hooks/usePermission';
 import { putSSLReq } from '@/apis/ssls';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartSSL } from '@/components/form-slice/FormPartSSL';
@@ -37,7 +38,6 @@ import {
   SSLPutSchema,
   type SSLPutType,
 } from '@/components/form-slice/FormPartSSL/schema';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
@@ -89,26 +89,24 @@ const SSLDetailForm = (props: Props & { id: string }) => {
   }
 
   return (
-    <FormTOCBox>
-      <FormProvider {...form}>
-        <form
-          onSubmit={form.handleSubmit((d) =>
-            putSSL.mutateAsync(pipeProduce()(d))
-          )}
-        >
-          <FormSectionGeneral readOnly />
-          <FormPartSSL />
-          {!readOnly && (
-            <Group>
-              <FormSubmitBtn>{t('form.btn.save')}</FormSubmitBtn>
-              <Button variant="outline" onClick={() => setReadOnly(true)}>
-                {t('form.btn.cancel')}
-              </Button>
-            </Group>
-          )}
-        </form>
-      </FormProvider>
-    </FormTOCBox>
+    <FormProvider {...form}>
+      <form
+        onSubmit={form.handleSubmit((d) =>
+          putSSL.mutateAsync(pipeProduce()(d))
+        )}
+      >
+        <FormSectionGeneral readOnly />
+        <FormPartSSL />
+        {!readOnly && (
+          <Group>
+            <FormSubmitBtn>{t('form.btn.save')}</FormSubmitBtn>
+            <Button variant="outline" onClick={() => setReadOnly(true)}>
+              {t('form.btn.cancel')}
+            </Button>
+          </Group>
+        )}
+      </form>
+    </FormProvider>
   );
 };
 
@@ -116,6 +114,7 @@ function RouteComponent() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/ssls/detail/$id' });
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const navigate = useNavigate();
 
   return (
@@ -126,13 +125,15 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('ssls.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('ssls.singular')}

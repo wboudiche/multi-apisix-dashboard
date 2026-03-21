@@ -23,15 +23,21 @@ import {
   useNavigate,
   useParams,
 } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getRouteQueryOptions } from '@/apis/hooks';
 import { putRouteReq } from '@/apis/routes';
-import { FormSubmitBtn } from '@/components/form/Btn';
-import { FormPartRoute } from '@/components/form-slice/FormPartRoute';
+import {
+  FormPartBasicWithPriority,
+  FormSectionMatchRules,
+  FormSectionPlugins,
+  FormSectionService,
+  FormSectionUpstream,
+} from '@/components/form-slice/FormPartRoute';
+import { RoutePreviewSummary } from '@/components/form-slice/FormPartRoute/RoutePreviewSummary';
 import {
   RoutePutSchema,
   type RoutePutType,
@@ -41,13 +47,18 @@ import {
   produceVarsToForm,
 } from '@/components/form-slice/FormPartRoute/util';
 import { produceToUpstreamForm } from '@/components/form-slice/FormPartUpstream/util';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
+import { FormWizard } from '@/components/form-slice/FormWizard';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
+import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
+import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
 import { API_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
 import { type APISIXType } from '@/types/schema/apisix';
+import { usePermission } from '@/hooks/usePermission';
+import IconCode from '~icons/material-symbols/code';
+import IconPlayArrow from '~icons/material-symbols/play-arrow';
 
 type Props = {
   readOnly: boolean;
@@ -58,13 +69,15 @@ type Props = {
 const RouteDetailForm = (props: Props) => {
   const { readOnly, setReadOnly, id } = props;
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const routeQuery = useQuery(getRouteQueryOptions(id));
   const { data: routeData, isLoading, refetch } = routeQuery;
 
   const form = useForm({
     resolver: zodResolver(RoutePutSchema),
-    shouldUnregister: true,
+    shouldUnregister: false,
     shouldFocusError: true,
     mode: 'all',
     disabled: readOnly,
@@ -91,7 +104,49 @@ const RouteDetailForm = (props: Props) => {
       await refetch();
       setReadOnly(true);
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError(err: any) {
+      const msg = err?.response?.data?.error_msg || err?.message || 'Failed to update route';
+      setSubmitError(msg);
+    },
   });
+
+  const steps = [
+    {
+      label: 'Define API Information',
+      description: 'Protocol, Host, Path, etc.',
+      content: (
+        <>
+          <FormSectionGeneral readOnly />
+          <FormPartBasicWithPriority />
+          <FormSectionMatchRules />
+        </>
+      ),
+      fields: ['name', 'uri', 'uris', 'methods', 'priority', 'vars'],
+    },
+    {
+      label: 'Define Upstream',
+      description: 'Target gateway configuration',
+      content: (
+        <>
+          <FormSectionService />
+          <FormSectionUpstream />
+        </>
+      ),
+      fields: ['upstream', 'upstream_id', 'service_id'],
+    },
+    {
+      label: 'Plugins Config',
+      description: 'Add and configure plugins',
+      content: <FormSectionPlugins />,
+      fields: ['plugins', 'plugin_config_id'],
+    },
+    {
+      label: 'Preview',
+      description: 'Review and finish',
+      content: <RoutePreviewSummary data={readOnly ? routeData?.value : undefined} />,
+    },
+  ];
 
   if (isLoading) {
     return <Skeleton height={400} />;
@@ -99,18 +154,18 @@ const RouteDetailForm = (props: Props) => {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit((d) => putRoute.mutateAsync(d))}>
-        <FormSectionGeneral readOnly />
-        <FormPartRoute />
-        {!readOnly && (
-          <Group>
-            <FormSubmitBtn>{t('form.btn.save')}</FormSubmitBtn>
-            <Button variant="outline" onClick={() => setReadOnly(true)}>
-              {t('form.btn.cancel')}
-            </Button>
-          </Group>
-        )}
-      </form>
+      <FormWizard
+        steps={steps}
+        onComplete={form.handleSubmit((d) => {
+          setSubmitError(null);
+          return putRoute.mutateAsync(d);
+        })}
+        loading={putRoute.isPending}
+        onCancel={() => setReadOnly(true)}
+        onBackToList={() => navigate({ to: '/routes' })}
+        readOnly={readOnly}
+        error={submitError}
+      />
     </FormProvider>
   );
 };
@@ -122,6 +177,35 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const { id, onDeleteSuccess } = props;
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
+  const [jsonDrawerOpen, setJsonDrawerOpen] = useBoolean(false);
+  const [testDrawerOpen, setTestDrawerOpen] = useBoolean(false);
+  const [jsonSaving, setJsonSaving] = useState(false);
+
+  const routeQuery = useQuery(getRouteQueryOptions(id));
+  const rawJson = routeQuery.data?.value ?? null;
+  const routeUri = rawJson?.uri as string || (rawJson?.uris as string[])?.[0] || '/';
+  const routeMethod = (rawJson?.methods as string[])?.[0] || 'GET';
+  const routeHost = rawJson?.host as string || (rawJson?.hosts as string[])?.[0] || undefined;
+
+  const handleJsonSave = useCallback(async (data: Record<string, unknown>) => {
+    setJsonSaving(true);
+    try {
+      const body = { ...data };
+      delete body.id;
+      delete body.create_time;
+      delete body.update_time;
+      await req.put(`${API_ROUTES}/${id}`, body);
+      notifications.show({
+        message: t('form.json.saveSuccess'),
+        color: 'green',
+      });
+      await routeQuery.refetch();
+      setJsonDrawerOpen(false);
+    } finally {
+      setJsonSaving(false);
+    }
+  }, [id, t, routeQuery, setJsonDrawerOpen]);
 
   return (
     <>
@@ -132,12 +216,32 @@ export const RouteDetail = (props: RouteDetailProps) => {
           extra: (
             <Group>
               <Button
-                onClick={() => setReadOnly(false)}
+                onClick={() => setTestDrawerOpen(true)}
                 size="compact-sm"
-                variant="gradient"
+                variant="light"
+                color="blue"
+                leftSection={<IconPlayArrow width="16" height="16" />}
               >
-                {t('form.btn.edit')}
+                {t('form.routeTest.title')}
               </Button>
+              <Button
+                onClick={() => setJsonDrawerOpen(true)}
+                size="compact-sm"
+                variant="light"
+                color="gray"
+                leftSection={<IconCode width="16" height="16" />}
+              >
+                {t('form.json.viewRaw')}
+              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('routes.singular')}
@@ -149,13 +253,22 @@ export const RouteDetail = (props: RouteDetailProps) => {
           ),
         })}
       />
-      <FormTOCBox>
-        <RouteDetailForm
-          readOnly={readOnly}
-          setReadOnly={setReadOnly}
-          id={id}
-        />
-      </FormTOCBox>
+      <RouteDetailForm readOnly={readOnly} setReadOnly={setReadOnly} id={id} />
+      <RawJsonDrawer
+        opened={jsonDrawerOpen}
+        onClose={() => setJsonDrawerOpen(false)}
+        title={canEdit ? t('form.json.editRaw') : t('form.json.viewRaw')}
+        json={rawJson}
+        onSave={canEdit ? handleJsonSave : undefined}
+        loading={jsonSaving}
+      />
+      <RouteTestDrawer
+        opened={testDrawerOpen}
+        onClose={() => setTestDrawerOpen(false)}
+        defaultPath={routeUri}
+        defaultMethod={routeMethod}
+        defaultHost={routeHost}
+      />
     </>
   );
 };

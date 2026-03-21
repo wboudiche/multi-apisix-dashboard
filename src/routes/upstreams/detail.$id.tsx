@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Group,Skeleton } from '@mantine/core';
+import { Button, Group, Skeleton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   queryOptions,
@@ -33,12 +33,18 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getUpstreamReq, putUpstreamReq } from '@/apis/upstreams';
-import { FormSubmitBtn } from '@/components/form/Btn';
-import { FormPartUpstream } from '@/components/form-slice/FormPartUpstream';
+import { usePermission } from '@/hooks/usePermission';
+import { FormPartBasic } from '@/components/form-slice/FormPartBasic';
+import {
+  FormSectionChecks,
+  FormSectionConnection,
+  FormSectionNodesAndDiscovery,
+} from '@/components/form-slice/FormPartUpstream';
 import { FormPartUpstreamSchema } from '@/components/form-slice/FormPartUpstream/schema';
+import { UpstreamPreviewSummary } from '@/components/form-slice/FormPartUpstream/UpstreamPreviewSummary';
 import { produceToUpstreamForm } from '@/components/form-slice/FormPartUpstream/util';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
+import { FormWizard } from '@/components/form-slice/FormWizard';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { API_UPSTREAMS } from '@/config/constant';
@@ -62,6 +68,7 @@ const UpstreamDetailForm = (
 ) => {
   const { id, readOnly, setReadOnly } = props;
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     data: { value: upstreamData },
     isLoading,
@@ -70,7 +77,7 @@ const UpstreamDetailForm = (
 
   const form = useForm({
     resolver: zodResolver(FormPartUpstreamSchema),
-    shouldUnregister: true,
+    shouldUnregister: false,
     mode: 'all',
     disabled: readOnly,
   });
@@ -93,31 +100,59 @@ const UpstreamDetailForm = (
     }
   }, [upstreamData, form, isLoading]);
 
+  const steps = [
+    {
+      label: t('form.upstreams.steps.basic'),
+      description: t('form.upstreams.steps.basicDesc'),
+      content: (
+        <>
+          <FormSectionGeneral readOnly />
+          <FormPartBasic />
+        </>
+      ),
+      fields: ['name', 'desc', 'labels'],
+    },
+    {
+      label: t('form.upstreams.steps.nodes'),
+      description: t('form.upstreams.steps.nodesDesc'),
+      content: <FormSectionNodesAndDiscovery />,
+      fields: ['nodes', 'service_name', 'discovery_type'],
+    },
+    {
+      label: t('form.upstreams.steps.connection'),
+      description: t('form.upstreams.steps.connectionDesc'),
+      content: (
+        <>
+          <FormSectionConnection />
+          <FormSectionChecks />
+        </>
+      ),
+      fields: ['scheme', 'type', 'timeout', 'retries'],
+    },
+    {
+      label: t('form.upstreams.steps.preview'),
+      description: t('form.upstreams.steps.previewDesc'),
+      content: <UpstreamPreviewSummary data={readOnly ? upstreamData : undefined} />,
+    },
+  ];
+
   if (isLoading) {
     return <Skeleton height={400} />;
   }
 
   return (
-    <FormTOCBox>
-      <FormProvider {...form}>
-        <form
-          onSubmit={form.handleSubmit((d) => {
-            putUpstream.mutateAsync(pipeProduce()(d));
-          })}
-        >
-          <FormSectionGeneral readOnly />
-          <FormPartUpstream />
-          {!readOnly && (
-            <Group>
-              <FormSubmitBtn>{t('form.btn.save')}</FormSubmitBtn>
-              <Button variant="outline" onClick={() => setReadOnly(true)}>
-                {t('form.btn.cancel')}
-              </Button>
-            </Group>
-          )}
-        </form>
-      </FormProvider>
-    </FormTOCBox>
+    <FormProvider {...form}>
+      <FormWizard
+        steps={steps}
+        onComplete={form.handleSubmit((d) => {
+          putUpstream.mutateAsync(pipeProduce()(d));
+        })}
+        loading={putUpstream.isPending}
+        onCancel={() => setReadOnly(true)}
+        onBackToList={() => navigate({ to: '/upstreams' })}
+        readOnly={readOnly}
+      />
+    </FormProvider>
   );
 };
 
@@ -125,6 +160,7 @@ function RouteComponent() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/upstreams/detail/$id' });
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const navigate = useNavigate();
 
   return (
@@ -135,13 +171,15 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('upstreams.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('upstreams.singular')}

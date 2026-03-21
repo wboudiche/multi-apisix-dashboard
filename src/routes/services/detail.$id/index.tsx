@@ -29,11 +29,16 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getServiceQueryOptions } from '@/apis/hooks';
+import { usePermission } from '@/hooks/usePermission';
 import { putServiceReq } from '@/apis/services';
-import { FormSubmitBtn } from '@/components/form/Btn';
-import { FormPartService } from '@/components/form-slice/FormPartService';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
-import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
+import { FormPartBasic } from '@/components/form-slice/FormPartBasic';
+import { FormSectionUpstream } from '@/components/form-slice/FormPartRoute';
+import {
+  FormItemHostsList,
+  FormSectionPlugins,
+} from '@/components/form-slice/FormPartService';
+import { ServicePreviewSummary } from '@/components/form-slice/FormPartService/ServicePreviewSummary';
+import { FormWizard } from '@/components/form-slice/FormWizard';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { API_SERVICES } from '@/config/constant';
@@ -51,13 +56,14 @@ const ServiceDetailForm = (props: Props) => {
   const { readOnly, setReadOnly } = props;
   const { t } = useTranslation();
   const { id } = useParams({ from: '/services/detail/$id' });
+  const navigate = useNavigate();
 
   const serviceQuery = useSuspenseQuery(getServiceQueryOptions(id));
   const { data: serviceData, isLoading, refetch } = serviceQuery;
 
   const form = useForm({
     resolver: zodResolver(APISIX.Service),
-    shouldUnregister: true,
+    shouldUnregister: false,
     shouldFocusError: true,
     mode: 'all',
     disabled: readOnly,
@@ -85,24 +91,70 @@ const ServiceDetailForm = (props: Props) => {
     },
   });
 
+  // Match legacy dashboard: Basic (with upstream) -> Plugin -> Preview
+  const steps = [
+    {
+      label: t('form.basic.title'),
+      description: 'Service basic configuration',
+      content: (
+        <>
+          <FormPartBasic
+            showGeneral={false}
+            showLabels={false}
+            showStatus={false}
+            legend=""
+            withBorder={false}
+            shadow="none"
+            p={0}
+            mb={0}
+          />
+          <FormItemHostsList />
+        </>
+      ),
+      fields: ['name', 'desc'],
+    },
+    {
+      label: 'Upstream',
+      description: 'Configure upstream',
+      content: (
+        <FormSectionUpstream
+          simplified
+          legend=""
+          withBorder={false}
+          shadow="none"
+          p={0}
+          mb={0}
+        />
+      ),
+      fields: ['upstream', 'upstream_id'],
+    },
+    {
+      label: 'Plugin',
+      description: 'Configure plugins',
+      content: <FormSectionPlugins />,
+      fields: ['plugins'],
+    },
+    {
+      label: 'Preview',
+      description: 'Review and finish',
+      content: <ServicePreviewSummary data={readOnly ? serviceData?.value : undefined} />,
+    },
+  ];
+
   if (isLoading) {
     return <Skeleton height={400} />;
   }
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit((d) => putService.mutateAsync(d))}>
-        <FormSectionGeneral />
-        <FormPartService />
-        {!readOnly && (
-          <Group>
-            <FormSubmitBtn>{t('form.btn.save')}</FormSubmitBtn>
-            <Button variant="outline" onClick={() => setReadOnly(true)}>
-              {t('form.btn.cancel')}
-            </Button>
-          </Group>
-        )}
-      </form>
+      <FormWizard
+        steps={steps}
+        onComplete={form.handleSubmit((d) => putService.mutateAsync(d))}
+        loading={putService.isPending}
+        onCancel={() => setReadOnly(true)}
+        onBackToList={() => navigate({ to: '/services' })}
+        readOnly={readOnly}
+      />
     </FormProvider>
   );
 };
@@ -110,6 +162,7 @@ const ServiceDetailForm = (props: Props) => {
 function RouteComponent() {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const { id } = useParams({ from: '/services/detail/$id' });
   const navigate = useNavigate();
 
@@ -121,13 +174,15 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('services.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('services.singular')}
@@ -139,9 +194,7 @@ function RouteComponent() {
           ),
         })}
       />
-      <FormTOCBox>
-        <ServiceDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
-      </FormTOCBox>
+      <ServiceDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
   );
 }

@@ -29,10 +29,10 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getPluginConfigQueryOptions } from '@/apis/hooks';
+import { usePermission } from '@/hooks/usePermission';
 import { putPluginConfigReq } from '@/apis/plugin_configs';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartPluginConfig } from '@/components/form-slice/FormPartPluginConfig';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
@@ -105,6 +105,7 @@ function RouteComponent() {
   const { id } = useParams({ from: '/plugin_configs/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const navigate = useNavigate();
 
   return (
@@ -115,13 +116,15 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('pluginConfigs.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('pluginConfigs.singular')}
@@ -133,13 +136,11 @@ function RouteComponent() {
           ),
         })}
       />
-      <FormTOCBox>
-        <PluginConfigDetailForm
-          id={id}
-          readOnly={readOnly}
-          setReadOnly={setReadOnly}
-        />
-      </FormTOCBox>
+      <PluginConfigDetailForm
+        id={id}
+        readOnly={readOnly}
+        setReadOnly={setReadOnly}
+      />
     </>
   );
 }

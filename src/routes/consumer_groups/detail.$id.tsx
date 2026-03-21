@@ -29,10 +29,10 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { putConsumerGroupReq } from '@/apis/consumer_groups';
+import { usePermission } from '@/hooks/usePermission';
 import { getConsumerGroupQueryOptions } from '@/apis/hooks';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartPluginConfig } from '@/components/form-slice/FormPartPluginConfig';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
@@ -89,7 +89,7 @@ const ConsumerGroupDetailForm = (props: Props) => {
         )}
       >
         <FormSectionGeneral readOnly />
-        <FormPartPluginConfig basicProps={{ showName: false }} />
+        <FormPartPluginConfig />
         {!readOnly && (
           <Group>
             <FormSubmitBtn>{t('form.btn.save')}</FormSubmitBtn>
@@ -107,6 +107,7 @@ function RouteComponent() {
   const { id } = useParams({ from: '/consumer_groups/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
   const navigate = useNavigate();
 
   return (
@@ -117,13 +118,15 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('consumerGroups.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('consumerGroups.singular')}
@@ -135,13 +138,11 @@ function RouteComponent() {
           ),
         })}
       />
-      <FormTOCBox>
-        <ConsumerGroupDetailForm
-          id={id}
-          readOnly={readOnly}
-          setReadOnly={setReadOnly}
-        />
-      </FormTOCBox>
+      <ConsumerGroupDetailForm
+        id={id}
+        readOnly={readOnly}
+        setReadOnly={setReadOnly}
+      />
     </>
   );
 }

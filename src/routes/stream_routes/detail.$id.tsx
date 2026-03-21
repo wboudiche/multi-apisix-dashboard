@@ -29,11 +29,11 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getStreamRouteQueryOptions } from '@/apis/hooks';
+import { usePermission } from '@/hooks/usePermission';
 import { putStreamRouteReq } from '@/apis/stream_routes';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
 import { FormPartStreamRoute } from '@/components/form-slice/FormPartStreamRoute';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
@@ -112,6 +112,7 @@ export const StreamRouteDetail = (props: StreamRouteDetailProps) => {
   const { id, onDeleteSuccess } = props;
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
+  const { canEdit } = usePermission();
 
   return (
     <>
@@ -121,13 +122,15 @@ export const StreamRouteDetail = (props: StreamRouteDetailProps) => {
           title: t('info.detail.title', { name: t('streamRoutes.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setReadOnly(false)}
-                size="compact-sm"
-                variant="gradient"
-              >
-                {t('form.btn.edit')}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setReadOnly(false)}
+                  size="compact-sm"
+                  variant="gradient"
+                >
+                  {t('form.btn.edit')}
+                </Button>
+              )}
               <DeleteResourceBtn
                 mode="detail"
                 name={t('streamRoutes.singular')}
@@ -139,13 +142,11 @@ export const StreamRouteDetail = (props: StreamRouteDetailProps) => {
           ),
         })}
       />
-      <FormTOCBox>
-        <StreamRouteDetailForm
-          readOnly={readOnly}
-          setReadOnly={setReadOnly}
-          id={id}
-        />
-      </FormTOCBox>
+      <StreamRouteDetailForm
+        readOnly={readOnly}
+        setReadOnly={setReadOnly}
+        id={id}
+      />
     </>
   );
 };
