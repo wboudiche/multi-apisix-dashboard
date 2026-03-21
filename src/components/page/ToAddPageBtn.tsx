@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { ActionIcon, Tooltip, type ButtonProps } from '@mantine/core';
+import { ActionIcon, type ButtonProps,Tooltip } from '@mantine/core';
 import type { LinkProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 

@@ -49,7 +49,6 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
     ...btnProps
   } = props;
   const { canDelete } = usePermission();
-  if (!canDelete) return null;
   const { t } = useTranslation();
   const openModal = useCallbackRef(() =>
     modals.openConfirmModal({
@@ -92,6 +91,9 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
           }),
     })
   );
+
+  if (!canDelete) return null;
+
   if (DeleteBtn) {
     return <DeleteBtn onClick={openModal} />;
   }
