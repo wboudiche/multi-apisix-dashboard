@@ -14,26 +14,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { ActionIcon, Tooltip, type ButtonProps } from '@mantine/core';
 import type { LinkProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
-import { RouteLinkBtn } from '@/components/Btn';
+import { RouteLink, RouteLinkBtn } from '@/components/Btn';
+import { usePermission } from '@/hooks/usePermission';
 import type { FileRoutesByTo } from '@/routeTree.gen';
 import IconPlus from '~icons/material-symbols/add';
+import IconVisibility from '~icons/material-symbols/visibility-outline';
 
 export type ToAddPageBtnProps = {
   to: keyof FilterKeys<FileRoutesByTo, 'add'>;
   label: string;
 } & Pick<LinkProps, 'params'>;
 
-export const ToAddPageBtn = ({ to, params, label }: ToAddPageBtnProps) => {
+export const ToAddPageBtn = ({ to, params, label, ...props }: ToAddPageBtnProps & ButtonProps) => {
+  const { canCreate } = usePermission();
+  if (!canCreate) return null;
+
   return (
     <RouteLinkBtn
-      leftSection={<IconPlus />}
-      size="compact-sm"
-      variant="gradient"
+      leftSection={<IconPlus width="18" height="18" />}
+      size="sm"
       to={to}
       params={params}
+      variant="filled"
+      {...props}
     >
       {label}
     </RouteLinkBtn>
@@ -42,16 +49,35 @@ export const ToAddPageBtn = ({ to, params, label }: ToAddPageBtnProps) => {
 
 export type ToDetailPageBtnProps = {
   to:
-    | keyof FilterKeys<FileRoutesByTo, '$id'>
-    | keyof FilterKeys<FileRoutesByTo, '$routeId'>
-    | keyof FilterKeys<FileRoutesByTo, '$username'>;
+  | keyof FilterKeys<FileRoutesByTo, '$id'>
+  | keyof FilterKeys<FileRoutesByTo, '$routeId'>
+  | keyof FilterKeys<FileRoutesByTo, '$username'>;
+  mode?: 'button' | 'icon';
 } & Pick<LinkProps, 'params'>;
+
 export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
-  const { params, to } = props;
+  const { params, to, mode = 'icon' } = props;
   const { t } = useTranslation();
+
+  if (mode === 'button') {
+    return (
+      <RouteLinkBtn size="compact-xs" variant="light" to={to} params={params}>
+        {t('form.btn.view')}
+      </RouteLinkBtn>
+    );
+  }
+
   return (
-    <RouteLinkBtn size="compact-xs" variant="light" to={to} params={params}>
-      {t('form.btn.view')}
-    </RouteLinkBtn>
+    <Tooltip label={t('form.btn.view')}>
+      <ActionIcon
+        variant="light"
+        color="blue"
+        component={RouteLink as any}
+        to={to}
+        params={params}
+      >
+        <IconVisibility width="18" height="18" />
+      </ActionIcon>
+    </Tooltip>
   );
 };

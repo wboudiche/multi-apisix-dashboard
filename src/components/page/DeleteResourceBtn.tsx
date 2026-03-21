@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Button, type ButtonProps, Text } from '@mantine/core';
+import { ActionIcon, Button, type ButtonProps, Text, Tooltip } from '@mantine/core';
 import { useCallbackRef } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -23,18 +23,20 @@ import { useTranslation } from 'react-i18next';
 
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
+import IconDelete from '~icons/material-symbols/delete-forever-outline';
 
 type DeleteResourceProps = {
   name: string;
   api: string;
   target?: string;
   onSuccess?:
-    | ((res: AxiosResponse<unknown, unknown>) => void)
-    | ((res: AxiosResponse<unknown, unknown>) => Promise<void>)
-    | (() => void)
-    | (() => Promise<void>);
+  | ((res: AxiosResponse<unknown, unknown>) => void)
+  | ((res: AxiosResponse<unknown, unknown>) => Promise<void>)
+  | (() => void)
+  | (() => Promise<void>);
   DeleteBtn?: typeof Button;
-  mode?: 'detail' | 'list';
+  mode?: 'detail' | 'list' | 'icon';
 } & ButtonProps;
 export const DeleteResourceBtn = (props: DeleteResourceProps) => {
   const {
@@ -46,6 +48,8 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
     mode = 'list',
     ...btnProps
   } = props;
+  const { canDelete } = usePermission();
+  if (!canDelete) return null;
   const { t } = useTranslation();
   const openModal = useCallbackRef(() =>
     modals.openConfirmModal({
@@ -91,6 +95,17 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
   if (DeleteBtn) {
     return <DeleteBtn onClick={openModal} />;
   }
+
+  if (mode === 'icon') {
+    return (
+      <Tooltip label={t('form.btn.delete')}>
+        <ActionIcon variant="light" color="red" onClick={openModal}>
+          <IconDelete width="18" height="18" />
+        </ActionIcon>
+      </Tooltip>
+    );
+  }
+
   return (
     <Button
       onClick={openModal}
@@ -103,7 +118,7 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
       color="red"
       {...btnProps}
     >
-      {t('form.btn.delete')}
+      {props.children || t('form.btn.delete')}
     </Button>
   );
 };
