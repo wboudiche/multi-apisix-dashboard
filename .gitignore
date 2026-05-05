@@ -32,3 +32,27 @@ dist-ssr
 /playwright/.cache/
 
 .eslintcache
+
+# Local env files (do not commit; may differ per dev)
+.env
+.env.local
+
+# Vite/TanStack caches
+.tanstack/
+
+# Go build artifacts (never commit binaries)
+api/api-server
+api/debug_server
+api/final_server
+api/main
+api/manager-api
+api/my_server
+api/premium_server
+api/premium_server_v6
+api/server
+api/server_v[0-9]*
+api/test_etcd
+
+# Runtime/process logs
+nohup.out
+api/nohup.out
