@@ -62,17 +62,19 @@ export const PluginCardListSearch = (props: PluginCardListSearchProps) => {
 
 type OptionProps = Pick<
   PluginCardProps,
-  'onAdd' | 'onEdit' | 'onDelete' | 'onView' | 'mode'
+  'onAdd' | 'onEdit' | 'onDelete' | 'onView' | 'mode' | 'description' | 'config'
 > & {
   name: string;
 };
 const Option = (props: OptionProps) => {
-  const { mode, name, onAdd, onEdit, onDelete, onView } = props;
+  const { mode, name, description, config, onAdd, onEdit, onDelete, onView } = props;
   return (
     <Combobox.Option key={name} value={name} p={0}>
       <PluginCard
         mode={mode}
         name={name}
+        description={description}
+        config={config}
         onAdd={() => onAdd?.(name)}
         onEdit={() => onEdit?.(name)}
         onDelete={() => onDelete?.(name)}
@@ -93,17 +95,19 @@ const Options = (props: { list: OptionProps[] }) => {
   );
 };
 
-export type PluginCardListProps = Omit<OptionProps, 'name'> &
+export type PluginCardListProps = Omit<OptionProps, 'name' | 'description' | 'config'> &
   Pick<TextInputProps, 'placeholder'> & {
     cols?: number;
     h?: number | string;
     mah?: number | string;
     search: string;
     plugins: string[];
+    descriptions?: Record<string, string>;
+    configs?: Record<string, object>;
   };
 
 export const PluginCardList = (props: PluginCardListProps) => {
-  const { search = '', cols = 3, h, mah, plugins } = props;
+  const { search = '', cols = 3, h, mah, plugins, descriptions, configs } = props;
   const { mode, onAdd, onEdit, onDelete, onView } = props;
   const { t } = useTranslation();
   const combobox = useVirtualizedCombobox();
@@ -127,6 +131,8 @@ export const PluginCardList = (props: PluginCardListProps) => {
       return arr.map((name) => ({
         name,
         mode: this.mode,
+        description: descriptions?.[name],
+        config: configs?.[name],
         onAdd,
         onEdit,
         onDelete,

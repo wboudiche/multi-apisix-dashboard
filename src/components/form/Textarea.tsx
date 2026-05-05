@@ -45,7 +45,9 @@ export const FormItemTextarea = <T extends FieldValues>(
         fOnChange(e);
         restProps.onChange?.(e);
       }}
-      resize="vertical"
+      autosize
+      minRows={2}
+      maxRows={12}
       {...restField}
       {...restProps}
     />

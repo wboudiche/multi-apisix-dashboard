@@ -174,8 +174,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 	}
 
-	// 4. GET Filtering: Hide resources owned by other teams
-	if role != models.RoleSuperAdmin && role != models.RoleInstanceAdmin && c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK {
+	// 4. GET: Enrich list responses with __team_id and filter for non-admins
+	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK {
+		isAdmin := role == models.RoleSuperAdmin || role == models.RoleInstanceAdmin
 		isList := strings.HasSuffix(path, "/routes") || strings.HasSuffix(path, "/services") || strings.HasSuffix(path, "/upstreams")
 		isSingle := resourceID != "" && (strings.Contains(path, "/routes/") || strings.Contains(path, "/services/") || strings.Contains(path, "/upstreams/"))
 
@@ -185,28 +186,35 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				Total int                      `json:"total"`
 			}
 			if err := json.Unmarshal(respBody, &resources); err == nil {
-				filtered := make([]map[string]interface{}, 0)
+				// Batch fetch all ownerships for this resource type
+				ownerMap, _ := h.ownershipService.ListOwnersByResourceType(c.Request.Context(), instanceID, resourceType)
+
+				filtered := make([]map[string]interface{}, 0, len(resources.List))
 				for _, r := range resources.List {
-					allowed := true
 					val, ok := r["value"].(map[string]interface{})
 					if ok {
 						id, _ := val["id"].(string)
-						owner, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, id)
-						if owner != "" && owner != effectiveTeamID {
-							allowed = false
+						ownerTeamID := ownerMap[id]
+
+						// Inject __team_id for all users
+						val["__team_id"] = ownerTeamID
+
+						// Filter for non-admin users
+						if !isAdmin && effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
+							continue
 						}
 					}
-					if allowed {
-						filtered = append(filtered, r)
-					}
+					filtered = append(filtered, r)
+				}
+				if !isAdmin {
+					resources.Total = len(filtered)
 				}
 				resources.List = filtered
-				resources.Total = len(filtered)
 				respBody, _ = json.Marshal(resources)
 			}
-		} else if isSingle {
+		} else if isSingle && !isAdmin {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
-			if ownerTeamID != "" && ownerTeamID != effectiveTeamID {
+			if effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
 				log.Printf("[DEBUG Proxy] Blocked access to single resource: Owner=%s, UserTeam=%s", ownerTeamID, effectiveTeamID)
 				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this resource"})
 				return
@@ -225,3 +233,47 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 func (h *ProxyHandler) ListRoutes(c *gin.Context)    { h.ProxyRequest(c) }
 func (h *ProxyHandler) ListServices(c *gin.Context)  { h.ProxyRequest(c) }
 func (h *ProxyHandler) ListUpstreams(c *gin.Context) { h.ProxyRequest(c) }
+
+// ReassignOwnership changes the team owner of a resource (admin only)
+func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin && role != models.RoleInstanceAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can reassign ownership"})
+		return
+	}
+
+	instanceID := c.GetHeader("X-Instance-ID")
+	if instanceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Instance ID required"})
+		return
+	}
+
+	resourceType := c.Param("resource_type")
+	resourceID := c.Param("resource_id")
+
+	var body struct {
+		TeamID string `json:"team_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required"})
+		return
+	}
+
+	err := h.ownershipService.SetOwner(c.Request.Context(), &models.Ownership{
+		InstanceID:   instanceID,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		TeamID:       body.TeamID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reassign: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Ownership reassigned",
+		"resource_type": resourceType,
+		"resource_id":   resourceID,
+		"team_id":       body.TeamID,
+	})
+}

@@ -111,7 +111,7 @@ export const FormItemTextareaWithUpload = <T extends FieldValues>(
         <Group mb="xs" mt={4}>
           <Button
             leftSection={<IconUpload />}
-            size="compact-xs"
+            size="sm"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
           >

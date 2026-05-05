@@ -14,23 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { EditableProTable, type ProColumns } from '@ant-design/pro-components';
-import { Button, InputWrapper, type InputWrapperProps } from '@mantine/core';
+import { ActionIcon, Button, Flex, InputWrapper, NumberInput, Stack,Text, TextInput } from '@mantine/core';
 import { useClickOutside } from '@mantine/hooks';
 import { toJS } from 'mobx';
-import { useLocalObservable } from 'mobx-react-lite';
+import { observer, useLocalObservable } from 'mobx-react-lite';
 import { nanoid } from 'nanoid';
 import { equals, isNil } from 'rambdax';
 import { useEffect, useMemo } from 'react';
-import {
-  type FieldValues,
-  useController,
-  type UseControllerProps,
-} from 'react-hook-form';
+import { type FieldValues, useController, type UseControllerProps } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import type { ZodObject, ZodRawShape } from 'zod';
 
-import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { zGetDefault } from '@/utils/zod';
 
@@ -56,6 +50,7 @@ const genRecord = (data?: DataSource | APISIXType['UpstreamNode']) => {
   const d = data || zGetDefault(APISIX.UpstreamNode);
   return {
     id: nanoid(),
+    weight: 1,
     ...d,
   } as DataSource;
 };
@@ -94,86 +89,24 @@ const parseToUpstreamNodes = (data: DataSource[] | undefined) => {
   });
 };
 
-const genProps = (field: keyof APISIXType['UpstreamNode']) => {
-  return {
-    rules: [
-      {
-        validator: (_: unknown, value: unknown) =>
-          zValidateField(APISIX.UpstreamNode, field, value),
-      },
-    ],
-  };
+export type FormItemNodesProps<T extends FieldValues> = UseControllerProps<T> & {
+  onChange?: (value: APISIXType['UpstreamNode'][]) => void;
+  defaultValue?: APISIXType['UpstreamNode'][];
+  label?: React.ReactNode;
+  description?: React.ReactNode;
+  required?: boolean;
+  withAsterisk?: boolean;
 };
 
-export type FormItemNodesProps<T extends FieldValues> =
-  UseControllerProps<T> & {
-    onChange?: (value: APISIXType['UpstreamNode'][]) => void;
-    defaultValue?: APISIXType['UpstreamNode'][];
-  } & Pick<InputWrapperProps, 'label' | 'required' | 'withAsterisk'>;
-
-export const FormItemNodes = <T extends FieldValues>(
-  props: FormItemNodesProps<T>
-) => {
-  const { controllerProps, restProps } = useMemo(
-    () => genControllerProps(props),
-    [props]
-  );
+export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNodesProps<T>) => {
+  const { controllerProps, restProps } = useMemo(() => genControllerProps(props), [props]);
   const { t } = useTranslation();
   const {
     field: { value, onChange: fOnChange, name: fName, disabled },
     fieldState,
   } = useController<T>(controllerProps);
-  const columns = useMemo<ProColumns<DataSource>[]>(
-    () => [
-      {
-        title: 'id',
-        dataIndex: 'id',
-        hidden: true,
-      },
-      {
-        title: t('form.upstreams.nodes.host.title'),
-        dataIndex: 'host',
-        valueType: 'text',
-        formItemProps: genProps('host'),
-      },
-      {
-        title: t('form.upstreams.nodes.port.title'),
-        dataIndex: 'port',
-        valueType: 'digit',
-        formItemProps: genProps('port'),
-        render: (_, entity) => {
-          return entity.port.toString();
-        },
-      },
-      {
-        title: t('form.upstreams.nodes.weight.title'),
-        dataIndex: 'weight',
-        valueType: 'digit',
-        formItemProps: genProps('weight'),
-        render: (_, entity) => {
-          return entity.weight.toString();
-        },
-      },
-      {
-        title: t('form.upstreams.nodes.priority.title'),
-        dataIndex: 'priority',
-        valueType: 'digit',
-        formItemProps: genProps('priority'),
-        render: (_, entity) => {
-          return entity.priority?.toString() || '-';
-        },
-      },
-      {
-        title: t('form.upstreams.nodes.action.title'),
-        valueType: 'option',
-        width: 100,
-        hidden: disabled,
-        render: () => null,
-      },
-    ],
-    [disabled, t]
-  );
-  const { label, required, withAsterisk } = props;
+
+  const { label, description, required, withAsterisk } = props;
   const ob = useLocalObservable(() => ({
     disabled: false,
     setDisabled(disabled: boolean | undefined) {
@@ -192,75 +125,108 @@ export const FormItemNodes = <T extends FieldValues>(
       if (index === -1) return;
       this.values.splice(index, 1);
     },
-    get editableKeys() {
-      return this.disabled ? [] : this.values.map((item) => item.id);
-    },
+    updateValue(id: string, field: keyof DataSource, val: any) {
+      const index = this.values.findIndex((item) => item.id === id);
+      if (index === -1) return;
+      (this.values[index] as any)[field] = val;
+    }
   }));
+
   useEffect(() => {
     ob.setValues(parseToDataSource(value));
   }, [ob, value]);
+
   useEffect(() => {
     ob.setDisabled(disabled);
   }, [disabled, ob]);
 
-  const ref = useClickOutside(() => {
+  const commitChanges = () => {
     const vals = parseToUpstreamNodes(toJS(ob.values));
     fOnChange?.(vals);
     restProps.onChange?.(vals);
+  };
+
+  const ref = useClickOutside(() => {
+    commitChanges();
   }, ['mouseup', 'touchend', 'mousedown', 'touchstart']);
 
   return (
     <InputWrapper
       error={fieldState.error?.message}
       label={label}
+      description={description}
       required={required}
-      withAsterisk={withAsterisk}
       ref={ref}
     >
       <input name={fName} type="hidden" />
-      <AntdConfigProvider>
-        <EditableProTable<DataSource>
-          defaultSize="small"
-          rowKey="id"
-          bordered
-          controlled={false}
-          value={ob.values}
-          recordCreatorProps={false}
-          columns={columns}
-          editable={{
-            type: 'multiple',
-            editableKeys: ob.editableKeys,
-            onValuesChange(_, dataSource) {
-              ob.setValues(dataSource);
-            },
-            actionRender: (row) => {
-              return [
-                <Button
-                  key="delete"
-                  variant="transparent"
-                  size="compact-xs"
-                  px={0}
-                  onClick={() => ob.remove(row.id)}
-                >
-                  {t('form.btn.delete')}
-                </Button>,
-              ];
-            },
+      <Stack gap="xs" mt="xs">
+        {ob.values.map((item) => (
+          <Flex key={item.id} gap="sm" align="center" wrap="wrap">
+            <Text size="sm" mb={0}><Text span c="red">* </Text>{t('form.upstreams.nodes.host.title', 'Host')}:</Text>
+            <TextInput
+              placeholder="Hostname or IP"
+              value={item.host || ''}
+              onChange={(e) => ob.updateValue(item.id, 'host', e.target.value)}
+              onBlur={commitChanges}
+              disabled={ob.disabled}
+              style={{ flex: 2, minWidth: 150 }}
+            />
+
+            <Text size="sm" mb={0}>{t('form.upstreams.nodes.port.title', 'Port')}:</Text>
+            <NumberInput
+              placeholder="Port"
+              value={item.port}
+              onChange={(v) => ob.updateValue(item.id, 'port', v === '' ? undefined : Number(v))}
+              onBlur={commitChanges}
+              disabled={ob.disabled}
+              min={1}
+              max={65535}
+              allowDecimal={false}
+              style={{ flex: 1, minWidth: 80 }}
+            />
+
+            <Text size="sm" mb={0}><Text span c="red">* </Text>{t('form.upstreams.nodes.weight.title', 'Weight')}:</Text>
+            <NumberInput
+              placeholder="1"
+              value={item.weight}
+              onChange={(v) => ob.updateValue(item.id, 'weight', v === '' ? undefined : Number(v))}
+              onBlur={commitChanges}
+              disabled={ob.disabled}
+              min={0}
+              allowDecimal={false}
+              style={{ flex: 1, minWidth: 80 }}
+            />
+
+            {!ob.disabled && (
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                radius="xl"
+                onClick={() => {
+                  ob.remove(item.id);
+                  commitChanges();
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>-</span>
+              </ActionIcon>
+            )}
+          </Flex>
+        ))}
+      </Stack>
+      {!ob.disabled && (
+        <Button
+          variant="light"
+          size="sm"
+          mt="sm"
+          leftSection={<span style={{ fontSize: '1.1rem', fontWeight: 600 }}>+</span>}
+          onClick={() => {
+            ob.append(genRecord());
+            commitChanges();
           }}
-        />
-      </AntdConfigProvider>
-      <Button
-        fullWidth
-        variant="default"
-        mt={8}
-        size="xs"
-        color="cyan"
-        style={{ borderColor: 'whitesmoke' }}
-        onClick={() => ob.append(genRecord())}
-        {...(disabled && { display: 'none' })}
-      >
-        {t('form.upstreams.nodes.add')}
-      </Button>
+        >
+          {t('form.upstreams.nodes.add', 'Add a Node')}
+        </Button>
+      )}
     </InputWrapper>
   );
-};
+});

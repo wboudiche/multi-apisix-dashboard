@@ -21,7 +21,6 @@ import {
 } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import PageHeader from '@/components/page/PageHeader';
 import { RouteAddForm } from '@/routes/routes/add';
 import { CommonFormContext } from '@/utils/form-context';
@@ -33,19 +32,17 @@ function RouteComponent() {
   return (
     <CommonFormContext.Provider value={{ readOnlyFields: ['service_id'] }}>
       <PageHeader title={t('info.add.title', { name: t('routes.singular') })} />
-      <FormTOCBox>
-        <RouteAddForm
-          navigate={(res) =>
-            navigate({
-              to: '/services/detail/$id/routes/detail/$routeId',
-              params: { id, routeId: res.data.value.id },
-            })
-          }
-          defaultValues={{
-            service_id: id,
-          }}
-        />
-      </FormTOCBox>
+      <RouteAddForm
+        navigate={(res) =>
+          navigate({
+            to: '/services/detail/$id/routes/detail/$routeId',
+            params: { id, routeId: res.data.value.id },
+          })
+        }
+        defaultValues={{
+          service_id: id,
+        }}
+      />
     </CommonFormContext.Provider>
   );
 }

@@ -17,10 +17,11 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getPluginConfigListQueryOptions, usePluginConfigList } from '@/apis/hooks';
+import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
@@ -33,6 +34,7 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function PluginConfigsList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination } = usePluginConfigList();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<
     ProColumns<APISIXType['RespPluginConfigItem']>[]
@@ -100,6 +102,10 @@ function PluginConfigsList() {
         search={false}
         options={false}
         pagination={pagination}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as string[]),
+        }}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {
@@ -114,6 +120,18 @@ function PluginConfigsList() {
                     label={t('info.add.title', {
                       name: t('pluginConfigs.singular'),
                     })}
+                  />
+                ),
+              },
+              {
+                key: 'batchDelete',
+                label: (
+                  <BatchDeleteBtn
+                    ids={selectedIds}
+                    apiBase={API_PLUGIN_CONFIGS}
+                    resourceName={t('pluginConfigs.singular')}
+                    onSuccess={refetch}
+                    onClearSelection={() => setSelectedIds([])}
                   />
                 ),
               },

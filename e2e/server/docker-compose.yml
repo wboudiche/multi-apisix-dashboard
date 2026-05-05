@@ -30,6 +30,18 @@ services:
     networks:
       - apisix
 
+  apisix2:
+    image: apache/apisix:dev
+    restart: always
+    volumes:
+      - ./apisix_conf_2.yml:/usr/local/apisix/conf/config.yaml:ro
+    ports:
+      - '9181:9180'
+    depends_on:
+      - etcd
+    networks:
+      - apisix
+
   etcd:
     image: bitnamilegacy/etcd:3.5
 

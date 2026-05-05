@@ -37,23 +37,25 @@ import {
   TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
-import { LabelFilter } from '@/components/page/LabelFilter';
-import { usePermission } from '@/hooks/usePermission';
+import { teamApi } from '@/apis/teams';
 import { RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
+import { LabelFilter } from '@/components/page/LabelFilter';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
 import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { useSearchParams } from '@/utils/useSearchParams';
@@ -87,6 +89,17 @@ export const RouteList = (props: RouteListProps) => {
   const [testDrawerOpen, setTestDrawerOpen] = useState(false);
   const [testDrawerRoute, setTestDrawerRoute] = useState<{ path: string; method: string; host?: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => teamApi.list(),
+    staleTime: 60_000,
+  });
+  const teamMap = useMemo(() => {
+    const map = new Map<string, string>();
+    teams?.forEach((tm) => map.set(tm.id, tm.name));
+    return map;
+  }, [teams]);
 
   const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
   const allSelected = allIds.length > 0 && allIds.every((id: string) => selectedIds.has(id));
@@ -241,7 +254,8 @@ export const RouteList = (props: RouteListProps) => {
             {isVisible('status') && <Table.Th>Status</Table.Th>}
             {isVisible('update_time') && <Table.Th>Update Time</Table.Th>}
             {isVisible('plugin') && <Table.Th>Plugin</Table.Th>}
-            {isVisible('operation') && <Table.Th>Operation</Table.Th>}
+            {isVisible('team') && <Table.Th>{t('teams')}</Table.Th>}
+            {isVisible('operation') && <Table.Th style={{ width: 1, whiteSpace: 'nowrap' }}>Operation</Table.Th>}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -349,6 +363,17 @@ export const RouteList = (props: RouteListProps) => {
                     </Group>
                   ) : (
                     <Text size="sm" c="dimmed">-</Text>
+                  )}
+                </Table.Td>
+              )}
+              {isVisible('team') && (
+                <Table.Td>
+                  {record.value.__team_id ? (
+                    <Badge variant="light" color="teal" size="sm">
+                      {teamMap.get(record.value.__team_id) || record.value.__team_id}
+                    </Badge>
+                  ) : (
+                    <Text size="xs" c="dimmed" fs="italic">{t('noData')}</Text>
                   )}
                 </Table.Td>
               )}
@@ -528,9 +553,10 @@ function RouteComponent() {
     { label: 'Status', value: 'status' },
     { label: 'Update Time', value: 'update_time' },
     { label: 'Plugin', value: 'plugin' },
+    { label: 'Team', value: 'team' },
   ];
 
-  const DEFAULT_COLUMNS = ['name', 'path', 'label', 'status', 'update_time', 'plugin', 'operation'];
+  const DEFAULT_COLUMNS = ['name', 'path', 'label', 'status', 'update_time', 'plugin', 'team', 'operation'];
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
 
   useEffect(() => {

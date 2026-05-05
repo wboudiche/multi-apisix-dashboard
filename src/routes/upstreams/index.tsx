@@ -17,13 +17,15 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getUpstreamListQueryOptions, useUpstreamList } from '@/apis/hooks';
+import { RouteLinkBtn } from '@/components/Btn';
+import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
-import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_UPSTREAMS } from '@/config/constant';
 import { queryClient } from '@/config/global';
@@ -33,6 +35,7 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function RouteComponent() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination } = useUpstreamList();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<
     ProColumns<APISIXType['RespUpstreamList']['data']['list'][number]>[]
@@ -70,19 +73,31 @@ function RouteComponent() {
         title: t('table.actions'),
         valueType: 'option',
         key: 'option',
-        width: 120,
+        width: 200,
         render: (_, record) => [
-          <ToDetailPageBtn
+          <RouteLinkBtn
             key="detail"
             to="/upstreams/detail/$id"
             params={{ id: record.value.id }}
-          />,
+            size="xs"
+            color="blue"
+            variant="filled"
+            radius="sm"
+            styles={{ root: { padding: '0 12px' } }}
+          >
+            {t('form.btn.view')}
+          </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
             name={t('upstreams.singular')}
             target={record.value.id}
             api={`${API_UPSTREAMS}/${record.value.id}`}
             onSuccess={refetch}
+            size="xs"
+            color="red"
+            variant="filled"
+            radius="sm"
+            styles={{ root: { padding: '0 12px' } }}
           />,
         ],
       },
@@ -101,6 +116,10 @@ function RouteComponent() {
           search={false}
           options={false}
           pagination={pagination}
+          rowSelection={{
+            selectedRowKeys: selectedIds,
+            onChange: (keys) => setSelectedIds(keys as string[]),
+          }}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{
             menu: {
@@ -115,6 +134,18 @@ function RouteComponent() {
                       label={t('info.add.title', {
                         name: t('upstreams.singular'),
                       })}
+                    />
+                  ),
+                },
+                {
+                  key: 'batchDelete',
+                  label: (
+                    <BatchDeleteBtn
+                      ids={selectedIds}
+                      apiBase={API_UPSTREAMS}
+                      resourceName={t('upstreams.singular')}
+                      onSuccess={refetch}
+                      onClearSelection={() => setSelectedIds([])}
                     />
                   ),
                 },

@@ -15,11 +15,13 @@
  * limitations under the License.
  */
 import {
-  Fieldset,
-  type FieldsetProps,
   Group,
+  Paper,
+  type PaperProps,
+  Stack,
   TableOfContents,
   type TableOfContentsProps,
+  Text,
 } from '@mantine/core';
 import { useShallowEffect } from '@mantine/hooks';
 import { clsx } from 'clsx';
@@ -49,12 +51,17 @@ const tocDepth = 'data-depth';
 
 const FormTOCCtx = createContext<{
   refreshTOC: () => void;
+  maxDepth?: number;
 }>({
-  refreshTOC: () => {},
+  refreshTOC: () => { },
 });
 
-export type FormSectionProps = Omit<FieldsetProps, 'form'> & {
+export type FormSectionProps = Omit<PaperProps, 'form'> & {
+  legend?: ReactNode;
   extra?: ReactNode;
+  children?: ReactNode;
+  disabled?: boolean;
+  hideInTOC?: boolean;
 };
 
 const LegendGroup = ({
@@ -68,18 +75,27 @@ const LegendGroup = ({
     return null;
   }
   return (
-    <Group>
-      {legend}
+    <Group justify="space-between" mb="xs">
+      <Text fw={700} size="lg" style={{ fontFamily: 'Outfit, sans-serif' }}>
+        {legend}
+      </Text>
       {extra}
     </Group>
   );
 };
 
 export const FormSection = (props: FormSectionProps) => {
-  const { className, legend, extra, children, ...restProps } = props;
+  const { className, legend, extra, children, hideInTOC, ...restProps } = props;
   const parentDepth = useContext(SectionDepthCtx);
-  const { refreshTOC } = useContext(FormTOCCtx);
+  const { refreshTOC, maxDepth } = useContext(FormTOCCtx);
   const depth = useMemo(() => parentDepth + 1, [parentDepth]);
+
+  const shouldHideInTOC = useMemo(() => {
+    if (hideInTOC) return true;
+    if (maxDepth !== undefined && depth > maxDepth) return true;
+    return false;
+  }, [hideInTOC, maxDepth, depth]);
+
   const dataAttrs = useMemo(
     () => ({
       [tocValue]: legend,
@@ -93,14 +109,24 @@ export const FormSection = (props: FormSectionProps) => {
 
   return (
     <SectionDepthProvider value={depth}>
-      <Fieldset
-        className={clsx(tocSelector, classes.root, className)}
-        legend={<LegendGroup legend={legend} extra={extra} />}
+      <Paper
+        className={clsx(!shouldHideInTOC && tocSelector, classes.root, className)}
+        p="sm"
+        mb="4px"
+        withBorder
+        radius="lg"
+        shadow="xs"
+        style={{
+          background: 'var(--bg-card)',
+        }}
         {...restProps}
-        {...dataAttrs}
+        {...(!shouldHideInTOC && dataAttrs)}
       >
-        {children}
-      </Fieldset>
+        <LegendGroup legend={legend} extra={extra} />
+        <Stack gap="md" mt={legend ? 'sm' : 0}>
+          {children}
+        </Stack>
+      </Paper>
     </SectionDepthProvider>
   );
 };
@@ -109,15 +135,16 @@ const TOC = (props: Pick<TableOfContentsProps, 'reinitializeRef'>) => {
   return (
     <TableOfContents
       variant="light"
-      color="blue"
+      color="apisix-red"
       size="sm"
-      radius="sm"
+      radius="md"
       style={{
         flexShrink: 0,
         position: 'sticky',
         top: APPSHELL_HEADER_HEIGHT + 20,
+        background: 'transparent',
       }}
-      w={200}
+      w={220}
       mt={10}
       minDepthToOffset={0}
       depthOffset={20}
@@ -135,17 +162,23 @@ const TOC = (props: Pick<TableOfContentsProps, 'reinitializeRef'>) => {
           });
         },
         children: data.value,
+        style: {
+          borderRadius: '8px',
+          fontWeight: 500,
+        }
       })}
       {...props}
     />
   );
 };
 
-export type FormTOCBoxProps = PropsWithChildren;
+export type FormTOCBoxProps = PropsWithChildren & {
+  maxDepth?: number;
+};
 
 export const FormTOCBox = (props: FormTOCBoxProps) => {
-  const { children } = props;
-  const reinitializeRef = useRef(() => {});
+  const { children, maxDepth } = props;
+  const reinitializeRef = useRef(() => { });
   const refreshTOC = useCallback(
     () => debounce(reinitializeRef.current, 200),
     []
@@ -156,12 +189,12 @@ export const FormTOCBox = (props: FormTOCBoxProps) => {
       preventGrowOverflow={false}
       wrap="nowrap"
       align="start"
-      gap={30}
-      style={{ paddingInlineEnd: '10%', position: 'relative' }}
+      gap={60}
+      style={{ position: 'relative' }}
     >
       <TOC reinitializeRef={reinitializeRef} />
-      <div style={{ width: '80%' }}>
-        <FormTOCCtx.Provider value={{ refreshTOC }}>
+      <div style={{ flex: 1, minWidth: 0, paddingInline: '60px', paddingBottom: '100px', maxWidth: '1400px' }}>
+        <FormTOCCtx.Provider value={{ refreshTOC, maxDepth }}>
           {children}
         </FormTOCCtx.Provider>
       </div>

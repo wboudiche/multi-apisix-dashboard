@@ -59,4 +59,9 @@ export const teamApi = {
     const response = await apiClient.get<{ list: TeamMember[] }>(`/api/v1/teams/${id}/members`);
     return response.data.list || [];
   },
+
+  // Reassign resource ownership to a different team
+  reassignOwnership: async (resourceType: string, resourceId: string, teamId: string): Promise<void> => {
+    await apiClient.put(`/api/v1/apisix/ownership/${resourceType}/${resourceId}`, { team_id: teamId });
+  },
 };

@@ -15,89 +15,36 @@
  * limitations under the License.
  */
 
-import { getAPISIXConf } from '@e2e/utils/common';
-import { test } from '@e2e/utils/test';
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-// use empty storage state to avoid auth
-test.use({ storageState: { cookies: [], origins: [] } });
+const BASE_URL = 'http://localhost:5173/ui';
 
-test('can auth with admin key', { tag: '@auth' }, async ({ page }) => {
-  const settingsModal = page.getByRole('dialog', { name: 'Settings' });
-  const adminKeyInput = page.getByLabel('Admin Key');
-  const failedMsg = page.getByText('failed to check token');
-
-  const checkSettingsModal = async () => {
-    await expect(failedMsg).toBeVisible();
-    await expect(settingsModal).toBeVisible();
-    await expect(page.getByText('UI Commit SHA')).toBeVisible();
-  };
-
-  await test.step('fill wrong admin key, settings modal always be visible', async () => {
-    await checkSettingsModal();
-
-    await expect(adminKeyInput).toBeEmpty();
-    await adminKeyInput.fill('wrong-admin-key');
-    await page
-      .getByRole('dialog', { name: 'Settings' })
-      .getByRole('button')
-      .click();
-
-    await page.reload();
-    await expect(failedMsg).toBeVisible();
-    await expect(settingsModal).toBeVisible();
-  });
-
-  await test.step('fill correct admin key, settings modal can be hidden', async () => {
-    await page.reload();
-    await checkSettingsModal();
-
-    const { adminKey } = await getAPISIXConf();
-    await adminKeyInput.clear();
-    await adminKeyInput.fill(adminKey);
-    await page
-      .getByRole('dialog', { name: 'Settings' })
-      .getByRole('button')
-      .click();
-
-    await page.reload();
-    await expect(failedMsg).toBeHidden();
-  });
+test('redirects to login page when not authenticated', { tag: '@auth' }, async ({ page }) => {
+  await page.goto(`${BASE_URL}/routes`);
+  await page.waitForTimeout(2000);
+  await expect(page).toHaveURL(/\/login/);
 });
 
-test('password input can toggle visibility', { tag: '@auth' }, async ({ page }) => {
-  const settingsModal = page.getByRole('dialog', { name: 'Settings' });
-  const adminKeyInput = page.getByLabel('Admin Key');
-  const testPassword = 'test-admin-key-12345';
+test('can login with valid credentials', { tag: '@auth' }, async ({ page }) => {
+  await page.goto(`${BASE_URL}/login`);
+  await page.waitForTimeout(1000);
 
-  await expect(settingsModal).toBeVisible();
+  await page.getByRole('textbox', { name: 'Username' }).fill('admin');
+  await page.getByPlaceholder('Enter your password').fill('admin');
+  await page.getByRole('button', { name: 'Sign in' }).click();
 
-  await test.step('verify password input is initially masked', async () => {
-    await adminKeyInput.fill(testPassword);
+  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 });
+  await expect(page).toHaveURL(/\/overview/);
+});
 
-    await expect(adminKeyInput).toHaveAttribute('type', 'password');
-  });
+test('shows error with invalid credentials', { tag: '@auth' }, async ({ page }) => {
+  await page.goto(`${BASE_URL}/login`);
+  await page.waitForTimeout(1000);
 
-  await test.step('reveal password by clicking visibility toggle', async () => {
-    // Mantine PasswordInput has a button with class mantine-PasswordInput-visibilityToggle
-    const toggleButton = settingsModal.locator(
-      '.mantine-PasswordInput-visibilityToggle'
-    );
+  await page.getByRole('textbox', { name: 'Username' }).fill('admin');
+  await page.getByPlaceholder('Enter your password').fill('wrong-password');
+  await page.getByRole('button', { name: 'Sign in' }).click();
 
-    await toggleButton.click();
-
-    await expect(adminKeyInput).toHaveAttribute('type', 'text');
-    await expect(adminKeyInput).toHaveValue(testPassword);
-  });
-
-  await test.step('hide password by clicking visibility toggle again', async () => {
-    const toggleButton = settingsModal.locator(
-      '.mantine-PasswordInput-visibilityToggle'
-    );
-
-    await toggleButton.click();
-
-    await expect(adminKeyInput).toHaveAttribute('type', 'password');
-    await expect(adminKeyInput).toHaveValue(testPassword);
-  });
+  await page.waitForTimeout(2000);
+  await expect(page).toHaveURL(/\/login/);
 });

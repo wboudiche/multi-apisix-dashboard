@@ -32,19 +32,6 @@ import { genControllerProps } from './util';
 
 setupMonacoEditor();
 
-const options: monaco.editor.IStandaloneEditorConstructionOptions = {
-  minimap: { enabled: false },
-  contextmenu: false,
-  lineNumbersMinChars: 3,
-  renderLineHighlight: 'none',
-  lineDecorationsWidth: 0,
-  theme: 'vs-light',
-  acceptSuggestionOnEnter: 'on',
-  // auto adjust width and height to parent
-  // see: https://github.com/Microsoft/monaco-editor/issues/543#issuecomment-321767059
-  automaticLayout: true,
-};
-
 type FormItemEditorProps<T extends FieldValues> = InputWrapperProps &
   UseControllerProps<T> & {
     language?: string;
@@ -87,6 +74,16 @@ export const FormItemEditor = <T extends FieldValues>(
   } = useController<T>(enhancedControllerProps);
 
   const [internalLoading, setLoading] = useState(false);
+  const lineHeight = 25;
+  const paddingVertical = 20;
+  const minLines = 3;
+  const maxLines = 20;
+  const lineCount = useMemo(() => {
+    if (!value) return minLines;
+    const lines = String(value).split('\n').length;
+    return Math.max(minLines, Math.min(lines, maxLines));
+  }, [value]);
+  const editorHeight = lineCount * lineHeight + paddingVertical;
 
   useEffect(() => {
     setLoading(true);
@@ -109,10 +106,34 @@ export const FormItemEditor = <T extends FieldValues>(
     setLoading(false);
   }, [customSchema]);
 
+  const options = useMemo<monaco.editor.IStandaloneEditorConstructionOptions>(() => ({
+    minimap: { enabled: false },
+    lineNumbers: 'off',
+    glyphMargin: false,
+    folding: false,
+    lineDecorationsWidth: 12,
+    lineNumbersMinChars: 0,
+    renderLineHighlight: 'none',
+    automaticLayout: true,
+    fontSize: 14,
+    fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+    lineHeight: 25,
+    fontWeight: '400',
+    scrollbar: {
+      vertical: 'auto',
+      horizontal: 'auto',
+      handleMouseWheel: true,
+    },
+    padding: {
+      top: 10,
+      bottom: 10,
+    },
+  }), []);
+
   return (
     <InputWrapper
       error={fieldState.error?.message}
-      id="#editor-wrapper"
+      id="editor-wrapper"
       {...wrapperProps}
     >
       <input name={restField.name} type="hidden" />
@@ -131,11 +152,12 @@ export const FormItemEditor = <T extends FieldValues>(
         />
       )}
       <Editor
+        height={`${editorHeight}px`}
         wrapperProps={{
           className: clsx(
             'editor-wrapper',
             restField.disabled && 'editor-wrapper--disabled'
-          ),
+          )
         }}
         defaultValue={controllerProps.defaultValue}
         value={value}
@@ -144,20 +166,18 @@ export const FormItemEditor = <T extends FieldValues>(
           monacoErrorRef.current = markers?.[0]?.message || null;
           trigger(props.name);
         }}
-        onMount={(editor) => {
-          if (process.env.NODE_ENV === 'test') {
-            window.__monacoEditor__ = editor;
-          }
+        onMount={() => {
+          // Trigger layout once mounted
         }}
         loading={
           <Skeleton
             data-testid="editor-loading"
             visible
-            height="100%"
+            height={`${editorHeight}px`}
             width="100%"
           />
         }
-        options={{ ...options, readOnly: restField.disabled }}
+        options={{ ...options, readOnly: !!restField.disabled }}
         defaultLanguage="json"
         {...(language && { language })}
       />

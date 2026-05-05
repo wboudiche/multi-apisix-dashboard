@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getSSLQueryOptions } from '@/apis/hooks';
-import { usePermission } from '@/hooks/usePermission';
 import { putSSLReq } from '@/apis/ssls';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartSSL } from '@/components/form-slice/FormPartSSL';
@@ -43,6 +42,7 @@ import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { API_SSLS } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { pipeProduce } from '@/utils/producer';
 
 type Props = {

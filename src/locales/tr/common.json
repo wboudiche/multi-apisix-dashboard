@@ -87,6 +87,25 @@
       "uris": "URI'ler",
       "vars": "Değişkenler"
     },
+    "requestOverride": {
+      "title": "İstek Geçersiz Kılma",
+      "description": "Proxy öncesi istek özelliklerini yeniden yaz",
+      "scheme": "Şema",
+      "keepOriginal": "Orijinali Koru",
+      "uri": "URI Geçersiz Kılma",
+      "uriStatic": "Statik",
+      "uriRegex": "Regex",
+      "regexPattern": "Regex Deseni",
+      "regexTemplate": "Değiştirme Şablonu",
+      "host": "Host Geçersiz Kılma",
+      "hostStatic": "Statik",
+      "method": "Metod Geçersiz Kılma",
+      "headers": "Başlık Geçersiz Kılma",
+      "headerKey": "Başlık Adı",
+      "headerValue": "Başlık Değeri",
+      "addHeader": "Başlık Ekle",
+      "syncNotice": "proxy-rewrite eklentisini otomatik olarak yapılandırır"
+    },
     "search": "Ara",
     "secrets": {
       "aws": {
@@ -332,9 +351,7 @@
     "singular": "Service"
   },
   "settings": {
-    "adminKey": "Admin Key",
-    "title": "Ayarlar",
-    "ui-commit-sha": "UI Commit SHA"
+    "title": "Ayarlar"
   },
   "sources": {
     "consumerGroups": "Consumer Grupları",

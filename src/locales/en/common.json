@@ -9,12 +9,17 @@
   "consumers": {
     "singular": "Consumer"
   },
+  "common": {
+    "collapse": "Collapse",
+    "expand": "Expand"
+  },
   "credentials": {
     "singular": "Credential"
   },
   "form": {
     "basic": {
       "desc": "Description",
+      "id": "ID",
       "labels": {
         "errorFormat": "The format of label is wrong, it should be `key:value`",
         "key": "Key",
@@ -28,15 +33,19 @@
         "0": "Disabled",
         "1": "Enabled"
       },
-      "title": "Basic Infomation"
+      "title": "Basic Information"
     },
     "btn": {
       "add": "Add",
       "addARow": "Add a row",
+      "back": "Back",
+      "backToList": "Back to List",
       "cancel": "Cancel",
       "delete": "Delete",
       "edit": "Edit",
+      "next": "Next",
       "save": "Save",
+      "submit": "Submit",
       "upload": "Upload",
       "view": "View"
     },
@@ -55,18 +64,90 @@
       "update_time": "Updated At"
     },
     "json": {
-      "parseError": "JSON format is not valid"
+      "parseError": "JSON format is not valid",
+      "viewRaw": "View JSON",
+      "editRaw": "Edit JSON",
+      "unsaved": "Unsaved",
+      "copy": "Copy",
+      "copied": "Copied",
+      "format": "Format",
+      "duplicate": "Duplicate",
+      "duplicateSuccess": "Route duplicated successfully",
+      "exportOpenAPI": "Export OpenAPI",
+      "selectedCount": "{{count}} selected",
+      "saveSuccess": "JSON saved successfully"
+    },
+    "unsavedChanges": {
+      "title": "Unsaved Changes",
+      "message": "You have unsaved changes that will be lost if you leave this page.",
+      "leave": "Leave",
+      "stay": "Stay"
+    },
+    "error": {
+      "submitFailed": "Failed to submit",
+      "tryAgain": "Please review your configuration and try again"
+    },
+    "draft": {
+      "restored": "Draft restored from previous session",
+      "discard": "Discard Draft"
+    },
+    "import": {
+      "title": "Import Routes",
+      "description": "Paste OpenAPI 3.x spec or APISIX route JSON",
+      "placeholder": "Paste OpenAPI spec or APISIX route JSON here...",
+      "parse": "Parse",
+      "noRoutes": "No routes found in the provided data",
+      "routesFound": "{{count}} route(s) found",
+      "importRoutes": "Import {{count}} route(s)",
+      "successCount": "{{count}} route(s) imported successfully",
+      "failedCount": "{{count}} route(s) failed to import"
+    },
+    "routeTest": {
+      "title": "Test Route",
+      "send": "Send",
+      "headers": "Headers",
+      "query": "Query",
+      "body": "Body",
+      "addHeader": "Add Header",
+      "addParameter": "Add Parameter",
+      "response": "Response",
+      "header": "Header",
+      "value": "Value",
+      "emptyResponse": "Send a request to see the response"
     },
     "plugins": {
       "addPlugin": "Add Plugin",
       "configId": "Plugin Config ID",
+      "configuration": "Configuration",
       "editPlugin": "Edit Plugin",
+      "exampleConfig": "Example Configuration",
       "label": "Plugins",
+      "requiredFields": "Required Fields",
       "searchForSelectedPlugins": "Search for Selected Plugins",
       "selectPlugins": {
         "title": "Select Plugins"
       },
-      "viewPlugin": "View Plugin"
+      "viewPlugin": "View Plugin",
+      "quickTemplates": "Quick Templates",
+      "quickTemplatesDesc": "Common plugin configurations",
+      "category": {
+        "authentication": "Authentication",
+        "traffic-control": "Traffic Control",
+        "observability": "Observability",
+        "transformation": "Transformation",
+        "security": "Security",
+        "serverless": "Serverless",
+        "logging": "Logging",
+        "protocol": "Protocol",
+        "ai": "AI",
+        "other": "Other"
+      },
+      "configSummary": "Config",
+      "noDescription": "No description available",
+      "editorMode": {
+        "form": "Form",
+        "json": "JSON"
+      }
     },
     "protos": {
       "content": "Content",
@@ -85,7 +166,59 @@
       "service": "Service",
       "uri": "URI",
       "uris": "URIs",
-      "vars": "Vars"
+      "vars": "Vars",
+      "varsDescription": "Enter variables in the format: [[\"var\", \"operator\", \"value\"]]. Example: [[\"arg_name\", \"==\", \"val\"]] or [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]",
+      "tooltip": {
+        "uri": "The request path to match. Supports exact match and prefix match with *",
+        "methods": "HTTP methods this route will respond to. Leave empty to match all methods",
+        "priority": "Higher priority routes are matched first when multiple routes match",
+        "host": "The domain name to match against the Host header",
+        "remoteAddr": "Match requests from a specific client IP address or CIDR range",
+        "enableWebsocket": "Enable WebSocket protocol upgrade for this route",
+        "filterFunc": "Custom Lua function for advanced request filtering",
+        "vars": "Nginx variable expressions for advanced matching conditions"
+      },
+      "preview": {
+        "allMethods": "ALL METHODS",
+        "noUri": "No URI defined",
+        "matchPreviewLabel": "Route Preview",
+        "apiInfo": "API Information",
+        "upstream": "Upstream Configuration",
+        "plugins": "Plugins",
+        "customUpstream": "Custom Upstream",
+        "existingUpstream": "Existing Upstream",
+        "boundToService": "Bound to Service",
+        "noUpstream": "No upstream configured",
+        "noPlugins": "No plugins configured"
+      },
+      "duplicateWarning": "A route with the same URI already exists: \"{{name}}\" ({{- uri}})"
+    },
+    "reassignTeam": {
+      "title": "Reassign Team",
+      "selectTeam": "Select team",
+      "current": "Current team",
+      "confirm": "Reassign",
+      "success": "Team reassigned successfully",
+      "error": "Failed to reassign team"
+    },
+    "requestOverride": {
+      "title": "Request Override",
+      "description": "Rewrite request properties before proxying",
+      "scheme": "Scheme",
+      "keepOriginal": "Keep Original",
+      "uri": "URI Override",
+      "uriStatic": "Static",
+      "uriRegex": "Regex",
+      "regexPattern": "Regex Pattern",
+      "regexTemplate": "Replacement Template",
+      "host": "Host Override",
+      "hostStatic": "Static",
+      "method": "Method Override",
+      "headers": "Header Override",
+      "headerKey": "Header Name",
+      "headerValue": "Header Value",
+      "addHeader": "Add Header",
+      "syncNotice": "Configures the proxy-rewrite plugin automatically"
     },
     "search": "Search",
     "secrets": {
@@ -121,8 +254,32 @@
     "services": {
       "enableWebsocket": "Enable WebSocket",
       "hosts": "Hosts",
+      "hostsPlaceholder": "e.g. api.example.com",
+      "hostsDescription": "Domain names this service will handle",
       "script": "Script",
-      "settings": "Service Settings"
+      "settings": "Service Settings",
+      "steps": {
+        "basic": "Basic",
+        "basicDesc": "Name and hosts",
+        "upstream": "Upstream",
+        "upstreamDesc": "Backend targets",
+        "plugin": "Plugins",
+        "pluginDesc": "Extensions",
+        "preview": "Preview",
+        "previewDesc": "Review and submit"
+      },
+      "namePlaceholder": "e.g. my-api-service",
+      "descPlaceholder": "Optional description of this service",
+      "tooltip": {
+        "name": "A unique, human-readable name to identify this service",
+        "desc": "Optional description to help document the purpose of this service",
+        "hosts": "Domain names that this service handles. Routes bound to this service will match these hosts"
+      },
+      "preview": {
+        "upstream": "Upstream Configuration",
+        "plugins": "Plugins",
+        "noPlugins": "No plugins configured"
+      }
     },
     "ssls": {
       "cert": "Certificate",
@@ -141,7 +298,8 @@
       "sni": "SNI",
       "snis": "SNIs",
       "ssl_protocols": "SSL Protocols",
-      "type": "Certificate Type"
+      "type": "Certificate Type",
+      "certificate": "Certificate Configuration"
     },
     "streamRoutes": {
       "protocol": {
@@ -163,6 +321,20 @@
     "upload": {
       "fileOverSize": "file size is too large",
       "readError": "file read error:"
+    },
+    "upstreamMode": {
+      "title": "Upstream Source",
+      "service": "Bind to Service",
+      "serviceDesc": "Use upstream defined by an existing service",
+      "existing": "Use Existing Upstream",
+      "existingDesc": "Select a pre-configured upstream",
+      "custom": "Custom Upstream",
+      "customDesc": "Define upstream nodes and settings inline",
+      "required": "Select an upstream, bind a service, or configure a custom upstream with at least one node",
+      "serviceProvides": "Upstream configuration is provided by this service",
+      "nodesCount": "{{count}} node(s)",
+      "pluginsCount": "{{count}} plugin(s)",
+      "scheme": "Scheme"
     },
     "upstreams": {
       "checks": {
@@ -209,6 +381,9 @@
         },
         "title": "Health Checks"
       },
+      "advancedSettings": "Advanced Settings",
+      "advancedSettingsDesc": "Retry, Timeout, Keepalive, TLS",
+      "algorithm": "Algorithm",
       "connectionConfiguration": "Connection Configuration",
       "discoveryArgs": {
         "title": "Discovery Args"
@@ -223,37 +398,59 @@
       "inline": "Inline Upstream Configuration",
       "keepalivePool": {
         "idleTimeout": "IDLE Timeout",
+        "idleTimeoutDesc": "Max idle time (seconds) before a connection is closed",
         "requests": "Requests",
+        "requestsDesc": "Max number of requests per keepalive connection before recycling",
         "size": "Size",
+        "sizeDesc": "Max number of idle keepalive connections to upstream per worker",
         "title": "Keepalive Pool"
       },
       "key": "Key",
       "keyDesc": "This will be valid when `type` is `chash`",
       "loadBalancing": "Load Balancing",
+      "typeDesc": "Algorithm used to distribute traffic across upstream nodes",
       "nodes": {
         "action": {
           "title": "Action"
         },
         "add": "Add a Node",
+        "desc": "Backend server targets that receive proxied traffic",
         "host": {
-          "title": "Host"
+          "title": "Host",
+          "desc": "IP address or hostname of the upstream server"
         },
         "port": {
-          "title": "Port"
+          "title": "Port",
+          "desc": "Port number (1-65535)"
         },
         "priority": {
           "title": "Priority"
         },
         "title": "Nodes",
         "weight": {
-          "title": "Weight"
+          "title": "Weight",
+          "desc": "Load balancing weight — higher values receive more traffic"
         }
       },
       "passHost": "Pass Host",
+      "passHostDesc": "How the Host header is sent to upstream: pass (keep original), node (use target IP), rewrite (custom host)",
       "retries": "Retries",
+      "retriesDesc": "Number of retry attempts when a request to upstream fails",
       "retry": "Retry",
-      "retryTimeout": "Retry timeout",
+      "retryTimeout": "Retry Timeout",
+      "retryTimeoutDesc": "Maximum time (seconds) allowed for retry attempts before giving up",
       "scheme": "Scheme",
+      "schemeDesc": "Protocol used to communicate with the upstream server",
+      "steps": {
+        "basic": "Basic",
+        "basicDesc": "Name and labels",
+        "nodes": "Nodes",
+        "nodesDesc": "Backend targets",
+        "connection": "Connection",
+        "connectionDesc": "Protocol and settings",
+        "preview": "Preview",
+        "previewDesc": "Review and submit"
+      },
       "serviceDiscovery": {
         "serviceName": "Service Name",
         "title": "Service Discovery"
@@ -264,24 +461,51 @@
       },
       "timeout": {
         "connect": "Connect",
+        "connectDesc": "Max time (seconds) to establish a connection with upstream",
         "read": "Read",
+        "readDesc": "Max time (seconds) to wait for a response from upstream",
         "send": "Send",
+        "sendDesc": "Max time (seconds) to transmit the request to upstream",
         "title": "Timeout"
       },
       "title": "Upstream",
+      "none": "None (Only available when binding the service)",
+      "custom": "Custom",
+      "testConnection": {
+        "title": "Test Connection",
+        "success": "Connected",
+        "failure": "Connection failed",
+        "testing": "Testing..."
+      },
       "tls": {
         "clientCert": "Client Cert",
+        "clientCertDesc": "PEM-encoded client certificate for mTLS with upstream",
         "clientCertId": "Client Cert ID",
+        "clientCertIdDesc": "Reference to an existing SSL resource instead of inline cert/key",
         "clientCertKeyPair": "Client Cert Key Pair",
         "clientKey": "Client Key",
+        "clientKeyDesc": "PEM-encoded private key matching the client certificate",
         "title": "TLS",
-        "verify": "Verify"
+        "verify": "Verify",
+        "verifyDesc": "Enable TLS certificate verification for upstream connections"
       },
       "type": "Type",
       "updateTime": "Update Time",
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "Set this when `pass_host` is `rewrite`",
-      "upstreamId": "Upstream ID"
+      "upstreamId": "Upstream ID",
+      "preview": {
+        "node": "node",
+        "nodes": "nodes",
+        "nodesTitle": "Backend Nodes",
+        "noNodes": "No nodes configured",
+        "connectionTitle": "Connection Settings",
+        "keepaliveTitle": "Keepalive Pool",
+        "healthChecksTitle": "Health Checks",
+        "activeChecks": "Active Checks",
+        "passiveChecks": "Passive Checks",
+        "healthCheckSummary": "Path: {{path}}, Interval: {{interval}}s"
+      }
     }
   },
   "globalRules": {
@@ -332,24 +556,26 @@
     "singular": "Service"
   },
   "settings": {
-    "adminKey": "Admin Key",
-    "title": "Settings",
-    "ui-commit-sha": "UI Commit SHA"
+    "title": "Settings"
   },
   "sources": {
     "consumerGroups": "Consumer Groups",
     "consumers": "Consumers",
     "credentials": "Credentials",
     "globalRules": "Global Rules",
+    "instances": "Instances",
     "pluginConfigs": "Plugin Configs",
     "pluginMetadata": "Plugin Metadata",
     "protos": "Protos",
+    "overview": "Overview",
     "routes": "Routes",
     "secrets": "Secrets",
     "services": "Services",
     "ssls": "SSLs",
     "streamRoutes": "Stream Routes",
-    "upstreams": "Upstreams"
+    "teams": "Teams",
+    "upstreams": "Upstreams",
+    "users": "Users"
   },
   "ssls": {
     "singular": "SSL"

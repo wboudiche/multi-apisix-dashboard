@@ -33,7 +33,6 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getUpstreamReq, putUpstreamReq } from '@/apis/upstreams';
-import { usePermission } from '@/hooks/usePermission';
 import { FormPartBasic } from '@/components/form-slice/FormPartBasic';
 import {
   FormSectionChecks,
@@ -49,6 +48,7 @@ import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { API_UPSTREAMS } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
 

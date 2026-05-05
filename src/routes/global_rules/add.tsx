@@ -28,7 +28,6 @@ import { useTranslation } from 'react-i18next';
 import { putGlobalRuleReq } from '@/apis/global_rules';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartGlobalRules } from '@/components/form-slice/FormPartGlobalRules';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import PageHeader from '@/components/page/PageHeader';
 import { req } from '@/config/req';
@@ -83,9 +82,7 @@ function RouteComponent() {
       <PageHeader
         title={t('info.add.title', { name: t('globalRules.singular') })}
       />
-      <FormTOCBox>
-        <GlobalRuleAddForm />
-      </FormTOCBox>
+      <GlobalRuleAddForm />
     </>
   );
 }

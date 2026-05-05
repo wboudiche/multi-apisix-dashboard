@@ -21,6 +21,41 @@ import { pipeProduce } from '@/utils/producer';
 
 import type { RoutePostType, RoutePutType } from './schema';
 
+export const UPSTREAM_CUSTOM = 'custom';
+export const SERVICE_NONE = 'none';
+
+export const METHOD_COLORS: Record<string, string> = {
+  GET: 'green',
+  POST: 'blue',
+  PUT: 'orange',
+  DELETE: 'red',
+  PATCH: 'yellow',
+  HEAD: 'gray',
+  OPTIONS: 'cyan',
+  TRACE: 'pink',
+};
+
+export type UpstreamNode = { host: string; port: string | number; weight: number };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const normalizeNodes = (raw: any): UpstreamNode[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  return Object.entries(raw).map(([key, weight]) => {
+    const lastColon = key.lastIndexOf(':');
+    const host = lastColon > 0 ? key.substring(0, lastColon) : key;
+    const port = lastColon > 0 ? key.substring(lastColon + 1) : '';
+    return { host, port, weight: weight as number };
+  });
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const nodeHostsFrom = (nodes: any): string[] => {
+  if (Array.isArray(nodes)) return nodes.map((n) => n.host || '').filter(Boolean);
+  if (nodes) return Object.keys(nodes).map((k) => k.replace(/:\d+$/, ''));
+  return [];
+};
+
 export const produceVarsToForm = produce((draft: RoutePostType) => {
   if (draft.vars && Array.isArray(draft.vars)) {
     draft.vars = JSON.stringify(draft.vars);

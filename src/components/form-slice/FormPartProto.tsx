@@ -23,6 +23,7 @@ import {
   FormItemTextareaWithUpload,
   type FormItemTextareaWithUploadProps,
 } from '../form/TextareaWithUpload';
+import { FormSection } from './FormSection';
 
 const fileTypes = '.proto,.pb';
 export const FormPartProto = <T extends FieldValues>(
@@ -31,14 +32,16 @@ export const FormPartProto = <T extends FieldValues>(
   const { t } = useTranslation();
   const form = useFormContext<APISIXType['ProtoPost']>();
   return (
-    <FormItemTextareaWithUpload
-      name="content"
-      label={t('form.protos.content')}
-      placeholder={t('form.protos.contentPlaceholder', { fileTypes })}
-      control={form.control}
-      minRows={10}
-      acceptFileTypes={fileTypes}
-      {...props}
-    />
+    <FormSection legend={t('form.protos.content')}>
+      <FormItemTextareaWithUpload
+        name="content"
+        label={t('form.protos.content')}
+        placeholder={t('form.protos.contentPlaceholder', { fileTypes })}
+        control={form.control}
+        minRows={10}
+        acceptFileTypes={fileTypes}
+        {...props}
+      />
+    </FormSection>
   );
 };

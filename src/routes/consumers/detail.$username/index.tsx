@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { putConsumerReq } from '@/apis/consumers';
-import { usePermission } from '@/hooks/usePermission';
 import { getConsumerQueryOptions } from '@/apis/hooks';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartConsumer } from '@/components/form-slice/FormPartConsumer';
@@ -37,6 +36,7 @@ import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { API_CONSUMERS } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
 

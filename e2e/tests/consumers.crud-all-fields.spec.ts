@@ -44,7 +44,7 @@ test('should CRUD consumer with all fields', async ({ page }) => {
   await test.step('submit with all fields', async () => {
     // Fill username (required)
     await page.getByRole('textbox', { name: 'Username' }).fill(consumerUsername);
-    
+
     // Fill description (optional)
     await page.getByRole('textbox', { name: 'Description' }).fill(description);
 
@@ -81,13 +81,13 @@ test('should CRUD consumer with all fields', async ({ page }) => {
 
     // Update labels - remove old ones and add new ones
     // First, remove existing labels by clicking the X button
-    const labelsSection = page.getByRole('group', { name: 'Basic Infomation' });
+    const labelsSection = page.getByRole('group', { name: 'Basic Information' });
     const removeButtons = labelsSection.locator('button[aria-label^="Remove"]');
     const count = await removeButtons.count();
     for (let i = 0; i < count; i++) {
       await removeButtons.first().click();
     }
-    
+
     // Add new labels
     const labelsInput = page.getByPlaceholder('Input text like `key:value`, then enter or blur');
     await labelsInput.fill('version:v2');
@@ -136,7 +136,7 @@ test('should CRUD consumer with all fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete Consumer Successfully',
     });
-    
+
     // Navigate to consumers list to verify consumer is gone
     await consumersPom.toIndex(page);
     await consumersPom.isIndexPage(page);

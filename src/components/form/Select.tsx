@@ -35,7 +35,7 @@ export const FormItemSelect = <T extends FieldValues, R>(
   const {
     controllerProps,
     restProps: { from, to, ...restProps },
-  } = genControllerProps(props, []);
+  } = genControllerProps(props, undefined);
 
   const {
     field: { value, onChange: fOnChange, ...restField },

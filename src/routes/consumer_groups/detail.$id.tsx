@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { putConsumerGroupReq } from '@/apis/consumer_groups';
-import { usePermission } from '@/hooks/usePermission';
 import { getConsumerGroupQueryOptions } from '@/apis/hooks';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartPluginConfig } from '@/components/form-slice/FormPartPluginConfig';
@@ -38,6 +37,7 @@ import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { API_CONSUMER_GROUPS } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
 

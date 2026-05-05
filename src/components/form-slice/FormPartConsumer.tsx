@@ -14,9 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { getConsumerGroupListQueryOptions } from '@/apis/hooks';
+import { FormItemSelect } from '@/components/form/Select';
 import { FormItemTextInput } from '@/components/form/TextInput';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -24,12 +28,40 @@ import { FormItemPlugins } from './FormItemPlugins';
 import { FormPartBasic } from './FormPartBasic';
 import { FormSection } from './FormSection';
 
-export const FormSectionPluginsOnly = () => {
+export const FormSectionPluginsOnly = ({ context }: { context?: 'consumer' | 'route' }) => {
   const { t } = useTranslation();
   return (
     <FormSection legend={t('form.plugins.label')}>
-      <FormItemPlugins name="plugins" />
+      <FormItemPlugins name="plugins" context={context} />
     </FormSection>
+  );
+};
+
+const FormItemConsumerGroupSelect = () => {
+  const { t } = useTranslation();
+  const { control } = useFormContext<APISIXType['ConsumerPut']>();
+  const { data: consumerGroups } = useSuspenseQuery(
+    getConsumerGroupListQueryOptions({ page: 1, page_size: 500 })
+  );
+
+  const options = useMemo(
+    () =>
+      consumerGroups?.list?.map((g) => ({
+        value: g.value.id,
+        label: g.value.name || g.value.id,
+      })) ?? [],
+    [consumerGroups]
+  );
+
+  return (
+    <FormItemSelect
+      control={control}
+      name="group_id"
+      label={t('form.consumers.groupId')}
+      data={options}
+      searchable
+      clearable
+    />
   );
 };
 
@@ -50,12 +82,8 @@ export const FormPartConsumer = () => {
           />
         }
       />
-      <FormItemTextInput
-        control={control}
-        name="group_id"
-        label={t('form.consumers.groupId')}
-      />
-      <FormSectionPluginsOnly />
+      <FormItemConsumerGroupSelect />
+      <FormSectionPluginsOnly context="consumer" />
     </>
   );
 };

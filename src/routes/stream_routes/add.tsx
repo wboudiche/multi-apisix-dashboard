@@ -29,7 +29,6 @@ import {
   StreamRoutePostSchema,
   type StreamRoutePostType,
 } from '@/components/form-slice/FormPartStreamRoute/schema';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import PageHeader from '@/components/page/PageHeader';
 import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_routes/ErrorComponent';
 import { req } from '@/config/req';
@@ -82,16 +81,14 @@ function RouteComponent() {
       <PageHeader
         title={t('info.add.title', { name: t('streamRoutes.singular') })}
       />
-      <FormTOCBox>
-        <StreamRouteAddForm
-          navigate={(res) =>
-            navigate({
-              to: '/stream_routes/detail/$id',
-              params: { id: res.data.value.id },
-            })
-          }
-        />
-      </FormTOCBox>
+      <StreamRouteAddForm
+        navigate={(res) =>
+          navigate({
+            to: '/stream_routes/detail/$id',
+            params: { id: res.data.value.id },
+          })
+        }
+      />
     </>
   );
 }

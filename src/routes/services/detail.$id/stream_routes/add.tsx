@@ -21,7 +21,6 @@ import {
 } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import PageHeader from '@/components/page/PageHeader';
 import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_routes/ErrorComponent';
 import { StreamRouteAddForm } from '@/routes/stream_routes/add';
@@ -36,19 +35,17 @@ function RouteComponent() {
       <PageHeader
         title={t('info.add.title', { name: t('streamRoutes.singular') })}
       />
-      <FormTOCBox>
-        <StreamRouteAddForm
-          navigate={(res) =>
-            navigate({
-              to: '/services/detail/$id/stream_routes/detail/$routeId',
-              params: { id, routeId: res.data.value.id },
-            })
-          }
-          defaultValues={{
-            service_id: id,
-          }}
-        />
-      </FormTOCBox>
+      <StreamRouteAddForm
+        navigate={(res) =>
+          navigate({
+            to: '/services/detail/$id/stream_routes/detail/$routeId',
+            params: { id, routeId: res.data.value.id },
+          })
+        }
+        defaultValues={{
+          service_id: id,
+        }}
+      />
     </CommonFormContext.Provider>
   );
 }

@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsersIndexRouteImport } from './routes/users/index'
 import { Route as UpstreamsIndexRouteImport } from './routes/upstreams/index'
+import { Route as TeamsIndexRouteImport } from './routes/teams/index'
 import { Route as Stream_routesIndexRouteImport } from './routes/stream_routes/index'
 import { Route as SslsIndexRouteImport } from './routes/ssls/index'
 import { Route as ServicesIndexRouteImport } from './routes/services/index'
@@ -19,6 +21,9 @@ import { Route as RoutesIndexRouteImport } from './routes/routes/index'
 import { Route as ProtosIndexRouteImport } from './routes/protos/index'
 import { Route as Plugin_metadataIndexRouteImport } from './routes/plugin_metadata/index'
 import { Route as Plugin_configsIndexRouteImport } from './routes/plugin_configs/index'
+import { Route as OverviewIndexRouteImport } from './routes/overview/index'
+import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as InstancesIndexRouteImport } from './routes/instances/index'
 import { Route as Global_rulesIndexRouteImport } from './routes/global_rules/index'
 import { Route as ConsumersIndexRouteImport } from './routes/consumers/index'
 import { Route as Consumer_groupsIndexRouteImport } from './routes/consumer_groups/index'
@@ -61,9 +66,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsersIndexRoute = UsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UpstreamsIndexRoute = UpstreamsIndexRouteImport.update({
   id: '/upstreams/',
   path: '/upstreams/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamsIndexRoute = TeamsIndexRouteImport.update({
+  id: '/teams/',
+  path: '/teams/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Stream_routesIndexRoute = Stream_routesIndexRouteImport.update({
@@ -104,6 +119,21 @@ const Plugin_metadataIndexRoute = Plugin_metadataIndexRouteImport.update({
 const Plugin_configsIndexRoute = Plugin_configsIndexRouteImport.update({
   id: '/plugin_configs/',
   path: '/plugin_configs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OverviewIndexRoute = OverviewIndexRouteImport.update({
+  id: '/overview/',
+  path: '/overview/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginIndexRoute = LoginIndexRouteImport.update({
+  id: '/login/',
+  path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstancesIndexRoute = InstancesIndexRouteImport.update({
+  id: '/instances/',
+  path: '/instances/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Global_rulesIndexRoute = Global_rulesIndexRouteImport.update({
@@ -313,6 +343,9 @@ export interface FileRoutesByFullPath {
   '/consumer_groups': typeof Consumer_groupsIndexRoute
   '/consumers': typeof ConsumersIndexRoute
   '/global_rules': typeof Global_rulesIndexRoute
+  '/instances': typeof InstancesIndexRoute
+  '/login': typeof LoginIndexRoute
+  '/overview': typeof OverviewIndexRoute
   '/plugin_configs': typeof Plugin_configsIndexRoute
   '/plugin_metadata': typeof Plugin_metadataIndexRoute
   '/protos': typeof ProtosIndexRoute
@@ -321,7 +354,9 @@ export interface FileRoutesByFullPath {
   '/services': typeof ServicesIndexRoute
   '/ssls': typeof SslsIndexRoute
   '/stream_routes': typeof Stream_routesIndexRoute
+  '/teams': typeof TeamsIndexRoute
   '/upstreams': typeof UpstreamsIndexRoute
+  '/users': typeof UsersIndexRoute
   '/consumer_groups/detail/$id': typeof Consumer_groupsDetailIdRoute
   '/consumers/detail/$username': typeof ConsumersDetailUsernameRouteWithChildren
   '/global_rules/detail/$id': typeof Global_rulesDetailIdRoute
@@ -361,6 +396,9 @@ export interface FileRoutesByTo {
   '/consumer_groups': typeof Consumer_groupsIndexRoute
   '/consumers': typeof ConsumersIndexRoute
   '/global_rules': typeof Global_rulesIndexRoute
+  '/instances': typeof InstancesIndexRoute
+  '/login': typeof LoginIndexRoute
+  '/overview': typeof OverviewIndexRoute
   '/plugin_configs': typeof Plugin_configsIndexRoute
   '/plugin_metadata': typeof Plugin_metadataIndexRoute
   '/protos': typeof ProtosIndexRoute
@@ -369,7 +407,9 @@ export interface FileRoutesByTo {
   '/services': typeof ServicesIndexRoute
   '/ssls': typeof SslsIndexRoute
   '/stream_routes': typeof Stream_routesIndexRoute
+  '/teams': typeof TeamsIndexRoute
   '/upstreams': typeof UpstreamsIndexRoute
+  '/users': typeof UsersIndexRoute
   '/consumer_groups/detail/$id': typeof Consumer_groupsDetailIdRoute
   '/global_rules/detail/$id': typeof Global_rulesDetailIdRoute
   '/plugin_configs/detail/$id': typeof Plugin_configsDetailIdRoute
@@ -408,6 +448,9 @@ export interface FileRoutesById {
   '/consumer_groups/': typeof Consumer_groupsIndexRoute
   '/consumers/': typeof ConsumersIndexRoute
   '/global_rules/': typeof Global_rulesIndexRoute
+  '/instances/': typeof InstancesIndexRoute
+  '/login/': typeof LoginIndexRoute
+  '/overview/': typeof OverviewIndexRoute
   '/plugin_configs/': typeof Plugin_configsIndexRoute
   '/plugin_metadata/': typeof Plugin_metadataIndexRoute
   '/protos/': typeof ProtosIndexRoute
@@ -416,7 +459,9 @@ export interface FileRoutesById {
   '/services/': typeof ServicesIndexRoute
   '/ssls/': typeof SslsIndexRoute
   '/stream_routes/': typeof Stream_routesIndexRoute
+  '/teams/': typeof TeamsIndexRoute
   '/upstreams/': typeof UpstreamsIndexRoute
+  '/users/': typeof UsersIndexRoute
   '/consumer_groups/detail/$id': typeof Consumer_groupsDetailIdRoute
   '/consumers/detail/$username': typeof ConsumersDetailUsernameRouteWithChildren
   '/global_rules/detail/$id': typeof Global_rulesDetailIdRoute
@@ -458,6 +503,9 @@ export interface FileRouteTypes {
     | '/consumer_groups'
     | '/consumers'
     | '/global_rules'
+    | '/instances'
+    | '/login'
+    | '/overview'
     | '/plugin_configs'
     | '/plugin_metadata'
     | '/protos'
@@ -466,7 +514,9 @@ export interface FileRouteTypes {
     | '/services'
     | '/ssls'
     | '/stream_routes'
+    | '/teams'
     | '/upstreams'
+    | '/users'
     | '/consumer_groups/detail/$id'
     | '/consumers/detail/$username'
     | '/global_rules/detail/$id'
@@ -506,6 +556,9 @@ export interface FileRouteTypes {
     | '/consumer_groups'
     | '/consumers'
     | '/global_rules'
+    | '/instances'
+    | '/login'
+    | '/overview'
     | '/plugin_configs'
     | '/plugin_metadata'
     | '/protos'
@@ -514,7 +567,9 @@ export interface FileRouteTypes {
     | '/services'
     | '/ssls'
     | '/stream_routes'
+    | '/teams'
     | '/upstreams'
+    | '/users'
     | '/consumer_groups/detail/$id'
     | '/global_rules/detail/$id'
     | '/plugin_configs/detail/$id'
@@ -552,6 +607,9 @@ export interface FileRouteTypes {
     | '/consumer_groups/'
     | '/consumers/'
     | '/global_rules/'
+    | '/instances/'
+    | '/login/'
+    | '/overview/'
     | '/plugin_configs/'
     | '/plugin_metadata/'
     | '/protos/'
@@ -560,7 +618,9 @@ export interface FileRouteTypes {
     | '/services/'
     | '/ssls/'
     | '/stream_routes/'
+    | '/teams/'
     | '/upstreams/'
+    | '/users/'
     | '/consumer_groups/detail/$id'
     | '/consumers/detail/$username'
     | '/global_rules/detail/$id'
@@ -601,6 +661,9 @@ export interface RootRouteChildren {
   Consumer_groupsIndexRoute: typeof Consumer_groupsIndexRoute
   ConsumersIndexRoute: typeof ConsumersIndexRoute
   Global_rulesIndexRoute: typeof Global_rulesIndexRoute
+  InstancesIndexRoute: typeof InstancesIndexRoute
+  LoginIndexRoute: typeof LoginIndexRoute
+  OverviewIndexRoute: typeof OverviewIndexRoute
   Plugin_configsIndexRoute: typeof Plugin_configsIndexRoute
   Plugin_metadataIndexRoute: typeof Plugin_metadataIndexRoute
   ProtosIndexRoute: typeof ProtosIndexRoute
@@ -609,7 +672,9 @@ export interface RootRouteChildren {
   ServicesIndexRoute: typeof ServicesIndexRoute
   SslsIndexRoute: typeof SslsIndexRoute
   Stream_routesIndexRoute: typeof Stream_routesIndexRoute
+  TeamsIndexRoute: typeof TeamsIndexRoute
   UpstreamsIndexRoute: typeof UpstreamsIndexRoute
+  UsersIndexRoute: typeof UsersIndexRoute
   Consumer_groupsDetailIdRoute: typeof Consumer_groupsDetailIdRoute
   ConsumersDetailUsernameRoute: typeof ConsumersDetailUsernameRouteWithChildren
   Global_rulesDetailIdRoute: typeof Global_rulesDetailIdRoute
@@ -632,11 +697,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/users/': {
+      id: '/users/'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/upstreams/': {
       id: '/upstreams/'
       path: '/upstreams'
       fullPath: '/upstreams'
       preLoaderRoute: typeof UpstreamsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teams/': {
+      id: '/teams/'
+      path: '/teams'
+      fullPath: '/teams'
+      preLoaderRoute: typeof TeamsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stream_routes/': {
@@ -693,6 +772,27 @@ declare module '@tanstack/react-router' {
       path: '/plugin_configs'
       fullPath: '/plugin_configs'
       preLoaderRoute: typeof Plugin_configsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/overview/': {
+      id: '/overview/'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof OverviewIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/': {
+      id: '/login/'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/instances/': {
+      id: '/instances/'
+      path: '/instances'
+      fullPath: '/instances'
+      preLoaderRoute: typeof InstancesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/global_rules/': {
@@ -1015,6 +1115,9 @@ const rootRouteChildren: RootRouteChildren = {
   Consumer_groupsIndexRoute: Consumer_groupsIndexRoute,
   ConsumersIndexRoute: ConsumersIndexRoute,
   Global_rulesIndexRoute: Global_rulesIndexRoute,
+  InstancesIndexRoute: InstancesIndexRoute,
+  LoginIndexRoute: LoginIndexRoute,
+  OverviewIndexRoute: OverviewIndexRoute,
   Plugin_configsIndexRoute: Plugin_configsIndexRoute,
   Plugin_metadataIndexRoute: Plugin_metadataIndexRoute,
   ProtosIndexRoute: ProtosIndexRoute,
@@ -1023,7 +1126,9 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesIndexRoute: ServicesIndexRoute,
   SslsIndexRoute: SslsIndexRoute,
   Stream_routesIndexRoute: Stream_routesIndexRoute,
+  TeamsIndexRoute: TeamsIndexRoute,
   UpstreamsIndexRoute: UpstreamsIndexRoute,
+  UsersIndexRoute: UsersIndexRoute,
   Consumer_groupsDetailIdRoute: Consumer_groupsDetailIdRoute,
   ConsumersDetailUsernameRoute: ConsumersDetailUsernameRouteWithChildren,
   Global_rulesDetailIdRoute: Global_rulesDetailIdRoute,

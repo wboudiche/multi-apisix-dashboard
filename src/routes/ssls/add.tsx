@@ -28,7 +28,6 @@ import {
   SSLPostSchema,
   type SSLPostType,
 } from '@/components/form-slice/FormPartSSL/schema';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import PageHeader from '@/components/page/PageHeader';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
@@ -73,9 +72,7 @@ function RouteComponent() {
   return (
     <>
       <PageHeader title={t('info.add.title', { name: t('ssls.singular') })} />
-      <FormTOCBox>
-        <SSLAddForm />
-      </FormTOCBox>
+      <SSLAddForm />
     </>
   );
 }

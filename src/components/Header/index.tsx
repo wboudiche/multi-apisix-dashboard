@@ -38,6 +38,7 @@ import { instanceApi, type InstanceHealth } from '@/apis/instances';
 import { type Team, teamApi } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom, instancesAtom, setInstancesAtom } from '@/stores/instance';
 import { currentTeamIdAtom } from '@/stores/team';
@@ -45,7 +46,6 @@ import IconMenu from '~icons/material-symbols/menu';
 import IconMenuOpen from '~icons/material-symbols/menu-open';
 
 import { LanguageMenu } from './LanguageMenu';
-import { SettingModalBtn } from './SettingModalBtn';
 
 const Logo = () => {
   const { t } = useTranslation();
@@ -81,13 +81,11 @@ const HealthDot: FC<{ status?: 'Connected' | 'Disconnected'; error?: string }> =
 
 type TeamSwitcherProps = {
   teams: Team[];
-  role?: string;
+  isAdmin: boolean;
 };
 
-const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, role }) => {
+const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   const [currentTeamId, setCurrentTeamId] = useAtom(currentTeamIdAtom);
-
-  const isAdmin = role === 'super_admin' || role === 'instance_admin';
 
   const handleTeamChange = (value: string | null) => {
     const newTeamId = value ?? '';
@@ -96,8 +94,6 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, role }) => {
     queryClient.invalidateQueries({ queryKey: ['services'] });
     queryClient.invalidateQueries({ queryKey: ['upstreams'] });
   };
-
-  if (!role) return null;
 
   if (isAdmin) {
     const teamData = [
@@ -224,8 +220,7 @@ export const Header: FC<HeaderProps> = (props) => {
   // Current selection display with health dot
   const currentHealth = healthMap[currentInstanceId];
 
-  // Effective role: use the instance-level role if available, else fall back to global role
-  const effectiveRole = activeUserInstance?.role || currentUser?.role;
+  const { isAdmin } = usePermission();
 
   return (
     <AppShell.Header>
@@ -266,10 +261,9 @@ export const Header: FC<HeaderProps> = (props) => {
 
           {/* Team Switcher */}
           {teams.length > 0 && currentInstanceId && (
-            <TeamSwitcher teams={teams} role={effectiveRole} />
+            <TeamSwitcher teams={teams} isAdmin={isAdmin} />
           )}
 
-          <SettingModalBtn />
           <LanguageMenu />
 
           {/* User Menu */}

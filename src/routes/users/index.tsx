@@ -70,7 +70,7 @@ const UsersPage = () => {
     username: '',
     password: '',
     email: '',
-    role: 'developer',
+    role: 'user',
   });
 
   const [userAssignments, setUserAssignments] = useState<Record<string, UserInstanceRole[]>>({});
@@ -141,57 +141,63 @@ const UsersPage = () => {
 
     try {
       const token = localStorage.getItem('auth:access_token');
-      const response = await fetch('/api/v1/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
+      let userId = editingUser?.id;
 
-      if (response.ok) {
-        const newUser = await response.json();
-        
-        // Save instance specific roles, teams and scopes
-        for (const instanceID in instanceRoles) {
-          const config = instanceRoles[instanceID];
-          if (config.role) {
-            await fetch(`/api/v1/user-access/${newUser.id}/instances/${instanceID}/role`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                role: config.role,
-                team_id: config.team_id,
-                scope: config.scope
-              }),
-            });
-          }
+      // Only create user if not editing
+      if (!editingUser) {
+        const response = await fetch('/api/v1/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          notifications.show({
+            title: 'Error',
+            message: error.error || 'Failed to create user',
+            color: 'red',
+          });
+          return;
         }
-
-        notifications.show({
-          title: 'Success',
-          message: 'User and permissions created successfully',
-          color: 'green',
-        });
-        setModalOpen(false);
-        resetForm();
-        loadData();
-      } else {
-        const error = await response.json();
-        notifications.show({
-          title: 'Error',
-          message: error.error || 'Failed to create user',
-          color: 'red',
-        });
+        const newUser = await response.json();
+        userId = newUser.id;
       }
+
+      // Save instance specific roles, teams and scopes
+      for (const instanceID in instanceRoles) {
+        const config = instanceRoles[instanceID];
+        if (config.role) {
+          await fetch(`/api/v1/user-access/${userId}/instances/${instanceID}/role`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              role: config.role,
+              team_id: config.team_id,
+              scope: config.scope
+            }),
+          });
+        }
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: editingUser ? 'Permissions updated successfully' : 'User and permissions created successfully',
+        color: 'green',
+      });
+      setModalOpen(false);
+      resetForm();
+      loadData();
     } catch {
       notifications.show({
         title: 'Error',
-        message: 'Failed to create user',
+        message: editingUser ? 'Failed to update permissions' : 'Failed to create user',
         color: 'red',
       });
     }
@@ -229,7 +235,7 @@ const UsersPage = () => {
       username: '',
       password: '',
       email: '',
-      role: 'developer',
+      role: 'user',
     });
     setActiveTab('basic');
   };
@@ -419,6 +425,7 @@ const UsersPage = () => {
           <Tabs.List mb="lg" grow>
             <Tabs.Tab value="basic" leftSection={<IconUser width="16" height="16" />}>Basic Info</Tabs.Tab>
             <Tabs.Tab value="access" leftSection={<IconInstance width="16" height="16" />} disabled={formData.role === 'super_admin'}>Instance Access</Tabs.Tab>
+
           </Tabs.List>
 
           <Tabs.Panel value="basic">
@@ -451,14 +458,12 @@ const UsersPage = () => {
               )}
               <Select
                 label="Global Role"
-                description="Super Admins have full access to everything"
+                description="Super Admins have full access to all instances. Regular users need per-instance role assignments."
                 value={formData.role}
-                onChange={(value) => setFormData({ ...formData, role: value || 'developer' })}
+                onChange={(value) => setFormData({ ...formData, role: value || 'user' })}
                 data={[
                   { value: 'super_admin', label: 'Super Admin (Full Access)' },
-                  { value: 'instance_admin', label: 'Instance Admin' },
-                  { value: 'developer', label: 'Developer' },
-                  { value: 'viewer', label: 'Viewer' },
+                  { value: 'user', label: 'User (Assign per-instance roles below)' },
                 ]}
               />
             </Stack>

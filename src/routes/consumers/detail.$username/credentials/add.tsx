@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { putCredentialReq } from '@/apis/credentials';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartCredential } from '@/components/form-slice/FormPartCredential';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import PageHeader from '@/components/page/PageHeader';
 import { req } from '@/config/req';
@@ -86,9 +85,7 @@ function RouteComponent() {
           name: t('credentials.singular'),
         })}
       />
-      <FormTOCBox>
-        <CredentialAddForm />
-      </FormTOCBox>
+      <CredentialAddForm />
     </>
   );
 }

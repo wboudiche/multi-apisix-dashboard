@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { putConsumerGroupReq } from '@/apis/consumer_groups';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartPluginConfig } from '@/components/form-slice/FormPartPluginConfig';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import PageHeader from '@/components/page/PageHeader';
 import { req } from '@/config/req';
@@ -69,7 +68,7 @@ const ConsumerGroupAddForm = () => {
         )}
       >
         <FormSectionGeneral />
-        <FormPartPluginConfig basicProps={{ showName: false }} />
+        <FormPartPluginConfig />
         <FormSubmitBtn>{t('form.btn.add')}</FormSubmitBtn>
       </form>
     </FormProvider>
@@ -83,9 +82,7 @@ function RouteComponent() {
       <PageHeader
         title={t('info.add.title', { name: t('consumerGroups.singular') })}
       />
-      <FormTOCBox>
-        <ConsumerGroupAddForm />
-      </FormTOCBox>
+      <ConsumerGroupAddForm />
     </>
   );
 }

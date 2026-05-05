@@ -17,10 +17,11 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getSSLListQueryOptions, useSSLList } from '@/apis/hooks';
+import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
@@ -33,6 +34,7 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function RouteComponent() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination } = useSSLList();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<ProColumns<APISIXType['RespSSLItem']>[]>(() => {
     return [
@@ -100,6 +102,10 @@ function RouteComponent() {
           search={false}
           options={false}
           pagination={pagination}
+          rowSelection={{
+            selectedRowKeys: selectedIds,
+            onChange: (keys) => setSelectedIds(keys as string[]),
+          }}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{
             menu: {
@@ -112,6 +118,18 @@ function RouteComponent() {
                       key="add"
                       to="/ssls/add"
                       label={t('info.add.title', { name: t('ssls.singular') })}
+                    />
+                  ),
+                },
+                {
+                  key: 'batchDelete',
+                  label: (
+                    <BatchDeleteBtn
+                      ids={selectedIds}
+                      apiBase={API_SSLS}
+                      resourceName={t('ssls.singular')}
+                      onSuccess={refetch}
+                      onClearSelection={() => setSelectedIds([])}
                     />
                   ),
                 },

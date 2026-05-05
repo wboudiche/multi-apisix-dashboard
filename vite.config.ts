@@ -38,10 +38,17 @@ if (inDevContainer) {
 export default defineConfig({
   base: BASE_PATH,
   server: {
+    host: '127.0.0.1',
     // as an example, if you want to use the e2e server as the api server,
     proxy: {
+      // Proxy APISIX Admin requests to our Go backend (which handles multi-instance routing)
       [API_PREFIX]: {
-        target: 'http://localhost:9180',
+        target: 'http://127.0.0.1:8086',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/apisix\/admin/, '/api/v1/apisix/admin'),
+      },
+      '/api': {
+        target: 'http://127.0.0.1:8086',
         changeOrigin: true,
       },
     },
@@ -91,7 +98,7 @@ export default defineConfig({
       semicolons: false,
     }),
     i18nProgress({
-      langs: ['en', 'es', 'de', 'zh'],
+      langs: ['en', 'es', 'de', 'zh', 'tr'],
       baseLang: 'en',
       getTranslationDir: (lang) => `./src/locales/${lang}`,
     }),

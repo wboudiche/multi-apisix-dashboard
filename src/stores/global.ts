@@ -14,18 +14,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { atom } from 'jotai';
-import { atomWithStorage } from 'jotai/utils';
-
-// Admin key with persistent storage
-export const adminKeyAtom = atomWithStorage<string>(
-  'settings:adminKey',
-  '',
-  undefined,
-  {
-    getOnInit: true,
-  }
-);
-
-// Settings modal visibility state
-export const isSettingsOpenAtom = atom<boolean>(false);

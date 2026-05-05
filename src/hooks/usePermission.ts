@@ -43,6 +43,11 @@ export type Permissions = {
 
 const effectiveRoleAtom = atom<Role | undefined>((get) => {
   const user = get(currentUserAtom);
+
+  // super_admin is a global role that should never be downgraded by instance-level assignments
+  // Early return avoids subscribing to instance atoms unnecessarily
+  if (user?.role === 'super_admin') return 'super_admin';
+
   const instanceId = get(currentInstanceIdAtom);
   const userInstances = get(userInstancesAtom);
 

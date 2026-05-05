@@ -14,11 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Text } from '@mantine/core';
+import { Stack } from '@mantine/core';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { FormItemLabels } from '@/components/form/Labels';
 import { FormItemNumberInput } from '@/components/form/NumberInput';
 import { FormItemSelect } from '@/components/form/Select';
 import { FormItemSwitch } from '@/components/form/Switch';
@@ -35,7 +34,7 @@ const FormSectionChecksActive = () => {
   const { control } = useFormContext<FormPartUpstreamType>();
   const np = useNamePrefix();
   return (
-    <FormSection legend={t('form.upstreams.checks.active.title')}>
+    <Stack gap="sm">
       <FormItemSwitch
         control={control}
         name={np('checks.active.https_verify_certificate')}
@@ -76,12 +75,12 @@ const FormSectionChecksActive = () => {
         name={np('checks.active.http_path')}
         label={t('form.upstreams.checks.active.http_path')}
       />
-      <FormItemLabels
+      <FormItemTagsInput
         control={control}
         name={np('checks.active.http_request_headers')}
         label={t('form.upstreams.checks.active.http_request_headers')}
       />
-      <FormSection legend={t('form.upstreams.checks.active.healthy.title')}>
+      <FormSection legend={t('form.upstreams.checks.active.healthy.title')} withBorder={false} p={0} shadow="none" style={{ background: 'transparent' }}>
         <FormItemNumberInput
           control={control}
           name={np('checks.active.healthy.interval')}
@@ -102,7 +101,7 @@ const FormSectionChecksActive = () => {
           to={Number}
         />
       </FormSection>
-      <FormSection legend={t('form.upstreams.checks.active.unhealthy.title')}>
+      <FormSection legend={t('form.upstreams.checks.active.unhealthy.title')} withBorder={false} p={0} shadow="none" style={{ background: 'transparent' }}>
         <FormItemNumberInput
           control={control}
           name={np('checks.active.unhealthy.interval')}
@@ -135,155 +134,112 @@ const FormSectionChecksActive = () => {
           to={Number}
         />
       </FormSection>
-    </FormSection>
+    </Stack>
   );
 };
 
-const FormItemChecksPassiveEnabled = () => {
+const FormSectionChecksPassive = () => {
+  const { t } = useTranslation();
   const { control } = useFormContext<FormPartUpstreamType>();
+  const np = useNamePrefix();
   return (
-    <FormItemSwitch
-      control={control}
-      name="__checksPassiveEnabled"
-      data-testid="checksPassiveEnabled"
-      shouldUnregister={false}
-    />
+    <Stack gap="sm">
+      <FormItemSelect
+        control={control}
+        name={np('checks.passive.type')}
+        defaultValue={APISIX.UpstreamHealthCheckPassiveType.options[0].value}
+        label={t('form.upstreams.checks.passive.type')}
+        data={APISIX.UpstreamHealthCheckPassiveType.options.map(
+          (v) => v.value
+        )}
+      />
+
+      <FormSection legend={t('form.upstreams.checks.passive.healthy.title')} withBorder={false} p={0} shadow="none" style={{ background: 'transparent' }}>
+        <FormItemNumberInput
+          control={control}
+          name={np('checks.passive.healthy.successes')}
+          label={t('form.upstreams.checks.passive.healthy.successes')}
+          allowDecimal={false}
+        />
+        <FormItemTagsInput
+          control={control}
+          name={np('checks.passive.healthy.http_statuses')}
+          label={t('form.upstreams.checks.passive.healthy.http_statuses')}
+          from={String}
+          to={Number}
+        />
+      </FormSection>
+
+      <FormSection
+        legend={t('form.upstreams.checks.passive.unhealthy.title')}
+        withBorder={false} p={0} shadow="none" style={{ background: 'transparent' }}
+      >
+        <FormItemNumberInput
+          control={control}
+          name={np('checks.passive.unhealthy.http_failures')}
+          label={t('form.upstreams.checks.passive.unhealthy.http_failures')}
+          allowDecimal={false}
+        />
+        <FormItemNumberInput
+          control={control}
+          name={np('checks.passive.unhealthy.tcp_failures')}
+          label={t('form.upstreams.checks.passive.unhealthy.tcp_failures')}
+          allowDecimal={false}
+        />
+        <FormItemNumberInput
+          control={control}
+          name={np('checks.passive.unhealthy.timeouts')}
+          label={t('form.upstreams.checks.passive.unhealthy.timeouts')}
+          allowDecimal={false}
+        />
+        <FormItemTagsInput
+          control={control}
+          name={np('checks.passive.unhealthy.http_statuses')}
+          label={t('form.upstreams.checks.passive.unhealthy.http_statuses')}
+          from={String}
+          to={Number}
+        />
+      </FormSection>
+    </Stack>
   );
 };
-const FormSectionChecksPassiveCore = () => {
+
+export const FormSectionChecks = () => {
   const { t } = useTranslation();
   const { control, formState } = useFormContext<FormPartUpstreamType>();
-  const np = useNamePrefix();
+
+  const activeEnabled = useWatch({
+    control,
+    name: '__checksEnabled',
+    defaultValue: formState.defaultValues?.__checksEnabled,
+  });
+
   const passiveEnabled = useWatch({
     control,
     name: '__checksPassiveEnabled',
     defaultValue: formState.defaultValues?.__checksPassiveEnabled,
   });
 
-  if (passiveEnabled) {
-    return (
-      <>
-        <FormItemSelect
-          control={control}
-          name={np('checks.passive.type')}
-          defaultValue={APISIX.UpstreamHealthCheckPassiveType.options[0].value}
-          label={t('form.upstreams.checks.passive.type')}
-          data={APISIX.UpstreamHealthCheckPassiveType.options.map(
-            (v) => v.value
-          )}
-        />
-
-        <FormSection legend={t('form.upstreams.checks.passive.healthy.title')}>
-          <FormItemNumberInput
-            control={control}
-            name={np('checks.passive.healthy.successes')}
-            label={t('form.upstreams.checks.passive.healthy.successes')}
-            allowDecimal={false}
-          />
-          <FormItemTagsInput
-            control={control}
-            name={np('checks.passive.healthy.http_statuses')}
-            label={t('form.upstreams.checks.passive.healthy.http_statuses')}
-            from={String}
-            to={Number}
-          />
-        </FormSection>
-
-        <FormSection
-          legend={t('form.upstreams.checks.passive.unhealthy.title')}
-        >
-          <FormItemNumberInput
-            control={control}
-            name={np('checks.passive.unhealthy.http_failures')}
-            label={t('form.upstreams.checks.passive.unhealthy.http_failures')}
-            allowDecimal={false}
-          />
-          <FormItemNumberInput
-            control={control}
-            name={np('checks.passive.unhealthy.tcp_failures')}
-            label={t('form.upstreams.checks.passive.unhealthy.tcp_failures')}
-            allowDecimal={false}
-          />
-          <FormItemNumberInput
-            control={control}
-            name={np('checks.passive.unhealthy.timeouts')}
-            label={t('form.upstreams.checks.passive.unhealthy.timeouts')}
-            allowDecimal={false}
-          />
-          <FormItemTagsInput
-            control={control}
-            name={np('checks.passive.unhealthy.http_statuses')}
-            label={t('form.upstreams.checks.passive.unhealthy.http_statuses')}
-            from={String}
-            to={Number}
-          />
-        </FormSection>
-      </>
-    );
-  }
   return (
-    <Text c="gray.6" size="sm">
-      {t('form.disabled')}
-    </Text>
-  );
-};
+    <FormSection legend={t('form.upstreams.checks.title')}>
+      <FormItemSwitch
+        control={control}
+        name="__checksEnabled"
+        label={t('form.upstreams.checks.active.title')}
+        shouldUnregister={false}
+        data-testid="checksEnabled"
+      />
+      {activeEnabled && <FormSectionChecksActive />}
 
-const FormSectionChecksPassive = () => {
-  const { t } = useTranslation();
-  return (
-    <FormSection
-      legend={t('form.upstreams.checks.passive.title')}
-      extra={<FormItemChecksPassiveEnabled />}
-    >
-      <FormSectionChecksPassiveCore />
-    </FormSection>
-  );
-};
-
-const FormItemChecksEnabled = () => {
-  const { control } = useFormContext<FormPartUpstreamType>();
-  return (
-    <FormItemSwitch
-      control={control}
-      name="__checksEnabled"
-      data-testid="checksEnabled"
-      shouldUnregister={false}
-    />
-  );
-};
-
-const FormSectionChecksCore = () => {
-  const { t } = useTranslation();
-  const { control, formState } = useFormContext<FormPartUpstreamType>();
-  const enabled = useWatch({
-    control,
-    name: '__checksEnabled',
-    defaultValue: formState.defaultValues?.__checksEnabled,
-  });
-
-  if (enabled) {
-    return (
-      <>
-        <FormSectionChecksActive />
-        <FormSectionChecksPassive />
-      </>
-    );
-  }
-  return (
-    <Text c="gray.6" size="sm">
-      {t('form.disabled')}
-    </Text>
-  );
-};
-
-export const FormSectionChecks = () => {
-  const { t } = useTranslation();
-  return (
-    <FormSection
-      legend={t('form.upstreams.checks.title')}
-      extra={<FormItemChecksEnabled />}
-    >
-      <FormSectionChecksCore />
+      <FormItemSwitch
+        control={control}
+        name="__checksPassiveEnabled"
+        label={t('form.upstreams.checks.passive.title')}
+        shouldUnregister={false}
+        data-testid="checksPassiveEnabled"
+        mt="md"
+      />
+      {passiveEnabled && <FormSectionChecksPassive />}
     </FormSection>
   );
 };

@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getProtoQueryOptions } from '@/apis/hooks';
-import { usePermission } from '@/hooks/usePermission';
 import { putProtoReq } from '@/apis/protos';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartProto } from '@/components/form-slice/FormPartProto';
@@ -38,6 +37,7 @@ import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { API_PROTOS } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
 

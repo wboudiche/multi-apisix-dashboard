@@ -20,9 +20,8 @@ export const genControllerProps = <T extends FieldValues, R>(
   props: UseControllerProps<T> & R,
   defaultValueFallback?: unknown
 ) => {
-  const { name, control, defaultValue, rules, shouldUnregister, ...restProps } =
+  const { name, control, defaultValue, rules, shouldUnregister, disabled, ...restProps } =
     props;
-  const { disabled } = restProps;
   return {
     controllerProps: {
       name,

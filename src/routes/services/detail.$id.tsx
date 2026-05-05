@@ -79,7 +79,6 @@ export const DetailTabs = () => {
 function RouteComponent() {
   return (
     <>
-      <DetailTabs />
       <Outlet />
     </>
   );

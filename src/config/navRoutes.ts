@@ -20,54 +20,87 @@ import type { FileRouteTypes } from '@/routeTree.gen';
 export type NavRoute = {
   to: FileRouteTypes['to'];
   label: keyof Resources['en']['common']['sources'];
+  icon: string;
 };
 export const navRoutes: NavRoute[] = [
   {
+    to: '/overview',
+    label: 'overview',
+    icon: 'dashboard',
+  },
+  {
+    to: '/instances',
+    label: 'instances',
+    icon: 'cloud',
+  },
+  {
+    to: '/users',
+    label: 'users',
+    icon: 'person',
+  },
+  {
+    to: '/teams',
+    label: 'teams',
+    icon: 'group',
+  },
+  {
     to: '/services',
     label: 'services',
+    icon: 'layers',
   },
   {
     to: '/routes',
     label: 'routes',
+    icon: 'alt-route',
   },
   {
     to: '/stream_routes',
     label: 'streamRoutes',
+    icon: 'settings-input-component',
   },
   {
     to: '/upstreams',
     label: 'upstreams',
+    icon: 'dns',
   },
   {
     to: '/consumers',
     label: 'consumers',
+    icon: 'group',
   },
   {
     to: '/consumer_groups',
     label: 'consumerGroups',
+    icon: 'groups',
   },
   {
     to: '/ssls',
     label: 'ssls',
+    icon: 'vpn-key',
   },
   {
     to: '/global_rules',
     label: 'globalRules',
+    icon: 'rule',
   },
   {
     to: '/plugin_metadata',
     label: 'pluginMetadata',
+    icon: 'extension',
   },
   {
     to: '/plugin_configs',
     label: 'pluginConfigs',
+    icon: 'settings',
   },
   {
     to: '/secrets',
     label: 'secrets',
+    icon: 'password',
   },
   {
     to: '/protos',
     label: 'protos',
+    icon: 'api',
   },
 ];

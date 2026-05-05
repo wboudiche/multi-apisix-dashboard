@@ -17,10 +17,11 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getGlobalRuleListQueryOptions, useGlobalRuleList } from '@/apis/hooks';
+import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
@@ -46,6 +47,7 @@ function RouteComponent() {
 function GlobalRulesList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination } = useGlobalRuleList();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<
     ProColumns<APISIXType['RespConsumerGroupItem']>[]
@@ -90,6 +92,10 @@ function GlobalRulesList() {
         search={false}
         options={false}
         pagination={pagination}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as string[]),
+        }}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {
@@ -104,6 +110,18 @@ function GlobalRulesList() {
                     label={t('info.add.title', {
                       name: t('globalRules.singular'),
                     })}
+                  />
+                ),
+              },
+              {
+                key: 'batchDelete',
+                label: (
+                  <BatchDeleteBtn
+                    ids={selectedIds}
+                    apiBase={API_GLOBAL_RULES}
+                    resourceName={t('globalRules.singular')}
+                    onSuccess={refetch}
+                    onClearSelection={() => setSelectedIds([])}
                   />
                 ),
               },

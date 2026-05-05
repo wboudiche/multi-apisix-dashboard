@@ -18,10 +18,12 @@ import { type APIRequestContext, request } from '@playwright/test';
 import axios, { type AxiosAdapter } from 'axios';
 import { stringify } from 'qs';
 
-import { API_HEADER_KEY, API_PREFIX, BASE_PATH } from '@/config/constant';
+import { API_PREFIX, BASE_PATH } from '@/config/constant';
 
 import { getAPISIXConf } from './common';
 import { env } from './env';
+
+const API_HEADER_KEY = 'X-API-KEY';
 
 export const getPlaywrightRequestAdapter = (
   ctx: APIRequestContext

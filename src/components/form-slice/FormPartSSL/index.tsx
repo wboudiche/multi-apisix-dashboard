@@ -75,32 +75,34 @@ export const FormPartSSL = () => {
   return (
     <>
       <FormPartBasic showName={false} showDesc={false} showStatus />
-      <FormItemSelect
-        control={control}
-        name="type"
-        label={t('form.ssls.type')}
-        data={APISIX.SSLType.options.map((v) => v.value.toString())}
-        defaultValue={APISIX.SSLType.options[0].value.toString()}
-      />
-      <FormItemTagsInput
-        control={control}
-        name="ssl_protocols"
-        label={t('form.ssls.ssl_protocols')}
-        data={APISIX.SSLProtocols.options.map((v) => v.value.toString())}
-      />
-      <FormItemTextInput
-        control={control}
-        label={t('form.ssls.sni')}
-        name="sni"
-        placeholder="domain1.com"
-      />
-      <FormItemTagsInput
-        control={control}
-        label={t('form.ssls.snis')}
-        name="snis"
-        placeholder="domain1.com, domain2.com"
-      />
-      <FormItemCertKeyList />
+      <FormSection legend={t('form.ssls.certificate')}>
+        <FormItemSelect
+          control={control}
+          name="type"
+          label={t('form.ssls.type')}
+          data={APISIX.SSLType.options.map((v) => v.value.toString())}
+          defaultValue={APISIX.SSLType.options[0].value.toString()}
+        />
+        <FormItemTagsInput
+          control={control}
+          name="ssl_protocols"
+          label={t('form.ssls.ssl_protocols')}
+          data={APISIX.SSLProtocols.options.map((v) => v.value.toString())}
+        />
+        <FormItemTextInput
+          control={control}
+          label={t('form.ssls.sni')}
+          name="sni"
+          placeholder="domain1.com"
+        />
+        <FormItemTagsInput
+          control={control}
+          label={t('form.ssls.snis')}
+          name="snis"
+          placeholder="domain1.com, domain2.com"
+        />
+        <FormItemCertKeyList />
+      </FormSection>
       <FormSectionClient />
     </>
   );

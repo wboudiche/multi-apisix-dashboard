@@ -14,8 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Box, Group, Stack,Text, Title } from '@mantine/core';
+import { Box, Group, Stack, Text, Title } from '@mantine/core';
 import { type FC } from 'react';
+
+
 
 type PageHeaderProps = {
   title: string;
@@ -26,12 +28,29 @@ type PageHeaderProps = {
 const PageHeader: FC<PageHeaderProps> = (props) => {
   const { title, desc, extra } = props;
   return (
-    <Box py="md" mb="lg">
+    <Box className="PageTitle-root" mb="md">
       <Group justify="space-between" align="center">
-        <Stack gap="xs">
-          <Title order={2}>{title}</Title>
+        <Stack gap={4}>
+          <Title order={1} style={{
+            fontFamily: 'Outfit, sans-serif',
+            fontWeight: 700,
+            fontSize: '1.75rem',
+            letterSpacing: '-0.03em',
+            background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--brand) 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>
+            {title}
+          </Title>
           {desc && (
-            <Text c="gray" size="sm">
+            <Text
+              size="sm"
+              style={{
+                color: 'var(--text-muted)',
+                fontFamily: 'DM Sans, sans-serif',
+              }}
+            >
               {desc}
             </Text>
           )}

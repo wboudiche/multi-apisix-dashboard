@@ -87,6 +87,25 @@
       "uris": "URIs",
       "vars": "Variables"
     },
+    "requestOverride": {
+      "title": "Reescritura de Solicitud",
+      "description": "Reescribir propiedades de la solicitud antes del proxy",
+      "scheme": "Esquema",
+      "keepOriginal": "Mantener Original",
+      "uri": "Reescritura de URI",
+      "uriStatic": "Estático",
+      "uriRegex": "Regex",
+      "regexPattern": "Patrón Regex",
+      "regexTemplate": "Plantilla de Reemplazo",
+      "host": "Reescritura de Host",
+      "hostStatic": "Estático",
+      "method": "Reescritura de Método",
+      "headers": "Reescritura de Cabeceras",
+      "headerKey": "Nombre de Cabecera",
+      "headerValue": "Valor de Cabecera",
+      "addHeader": "Agregar Cabecera",
+      "syncNotice": "Configura el plugin proxy-rewrite automáticamente"
+    },
     "search": "Buscar",
     "secrets": {
       "aws": {
@@ -332,9 +351,7 @@
     "singular": "Servicio"
   },
   "settings": {
-    "adminKey": "Clave de Administrador",
-    "title": "Configuraciones",
-    "ui-commit-sha": "SHA de Commit de la UI"
+    "title": "Configuraciones"
   },
   "sources": {
     "consumerGroups": "Grupos de Consumidores",

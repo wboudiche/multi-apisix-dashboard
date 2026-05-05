@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getServiceQueryOptions } from '@/apis/hooks';
-import { usePermission } from '@/hooks/usePermission';
 import { putServiceReq } from '@/apis/services';
 import { FormPartBasic } from '@/components/form-slice/FormPartBasic';
 import { FormSectionUpstream } from '@/components/form-slice/FormPartRoute';
@@ -43,6 +42,7 @@ import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { API_SERVICES } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { produceRmUpstreamWhenHas } from '@/utils/form-producer';
 import { pipeProduce } from '@/utils/producer';

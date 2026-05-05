@@ -14,19 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Button, Drawer } from '@mantine/core';
-import { useState } from 'react';
+import {
+  Badge,
+  Button,
+  Drawer,
+  Group,
+  ScrollArea,
+  SimpleGrid,
+  Stack,
+  Text,
+} from '@mantine/core';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
-  PluginCardList,
+  PluginCard,
+} from './PluginCard';
+import {
   type PluginCardListProps,
   PluginCardListSearch,
 } from './PluginCardList';
-import { type PluginEditorDrawerProps } from './PluginEditorDrawer';
+import {
+  CATEGORY_COLORS,
+  CATEGORY_ORDER,
+  groupPluginsByCategory,
+  type PluginCategory,
+} from './pluginMetadata';
 
-export type SelectPluginsDrawerProps = Pick<PluginCardListProps, 'plugins'> &
-  Pick<PluginEditorDrawerProps, 'schema'> & {
+export type SelectPluginsDrawerProps = Pick<PluginCardListProps, 'plugins'> & {
     onAdd: (name: string) => void;
     opened: boolean;
     setOpened: (open: boolean) => void;
@@ -39,6 +54,17 @@ export const SelectPluginsDrawer = (props: SelectPluginsDrawerProps) => {
   const { plugins, onAdd, opened, setOpened, disabled = false } = props;
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
+
+  const filteredPlugins = useMemo(() => {
+    if (!search) return plugins;
+    const lower = search.toLowerCase().trim();
+    return plugins.filter((p) => p.toLowerCase().includes(lower));
+  }, [plugins, search]);
+
+  const groupedPlugins = useMemo(
+    () => groupPluginsByCategory(filteredPlugins),
+    [filteredPlugins]
+  );
 
   return (
     <>
@@ -56,14 +82,41 @@ export const SelectPluginsDrawer = (props: SelectPluginsDrawerProps) => {
           <PluginCardListSearch search={search} setSearch={setSearch} />
         </Drawer.Header>
 
-        <PluginCardList
-          mode="add"
-          cols={2}
-          h="80vh"
-          search={search}
-          onAdd={onAdd}
-          plugins={plugins}
-        />
+        <ScrollArea.Autosize h="80vh" type="scroll">
+          <Stack gap="md">
+            {CATEGORY_ORDER.map((cat: PluginCategory) => {
+              const catPlugins = groupedPlugins[cat];
+              if (!catPlugins || catPlugins.length === 0) return null;
+              return (
+                <Stack key={cat} gap="xs">
+                  <Group gap={6}>
+                    <Badge size="sm" variant="light" color={CATEGORY_COLORS[cat]}>
+                      {t(`form.plugins.category.${cat}`)}
+                    </Badge>
+                    <Text size="xs" c="dimmed">
+                      {catPlugins.length}
+                    </Text>
+                  </Group>
+                  <SimpleGrid cols={2}>
+                    {catPlugins.map((name) => (
+                      <PluginCard
+                        key={name}
+                        mode="add"
+                        name={name}
+                        onAdd={() => onAdd(name)}
+                      />
+                    ))}
+                  </SimpleGrid>
+                </Stack>
+              );
+            })}
+            {filteredPlugins.length === 0 && (
+              <Text size="sm" c="dimmed" ta="center" py="xl">
+                {t('noData')}
+              </Text>
+            )}
+          </Stack>
+        </ScrollArea.Autosize>
       </Drawer>
       {!disabled && (
         <Button ml={8} onClick={() => setOpened(true)}>

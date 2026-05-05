@@ -24,7 +24,6 @@ import { useTranslation } from 'react-i18next';
 import { putConsumerReq } from '@/apis/consumers';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartConsumer } from '@/components/form-slice/FormPartConsumer';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import PageHeader from '@/components/page/PageHeader';
 import { req } from '@/config/req';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
@@ -76,9 +75,7 @@ function RouteComponent() {
       <PageHeader
         title={t('info.add.title', { name: t('consumers.singular') })}
       />
-      <FormTOCBox>
-        <ConsumerAddForm />
-      </FormTOCBox>
+      <ConsumerAddForm />
     </>
   );
 }

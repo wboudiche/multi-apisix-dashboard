@@ -17,13 +17,15 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getConsumerListQueryOptions, useConsumerList } from '@/apis/hooks';
+import { RouteLinkBtn } from '@/components/Btn';
+import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
-import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMERS } from '@/config/constant';
 import { queryClient } from '@/config/global';
@@ -33,6 +35,7 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function ConsumersList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination } = useConsumerList();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<ProColumns<APISIXType['RespConsumerItem']>[]>(() => {
     return [
@@ -63,19 +66,31 @@ function ConsumersList() {
         title: t('table.actions'),
         valueType: 'option',
         key: 'option',
-        width: 120,
+        width: 200,
         render: (_, record) => [
-          <ToDetailPageBtn
+          <RouteLinkBtn
             key="detail"
             to="/consumers/detail/$username"
             params={{ username: record.value.username }}
-          />,
+            size="xs"
+            color="blue"
+            variant="filled"
+            radius="sm"
+            styles={{ root: { padding: '0 12px' } }}
+          >
+            {t('form.btn.view')}
+          </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
             name={t('consumers.singular')}
             target={record.value.username}
             api={`${API_CONSUMERS}/${record.value.username}`}
             onSuccess={refetch}
+            size="xs"
+            color="red"
+            variant="filled"
+            radius="sm"
+            styles={{ root: { padding: '0 12px' } }}
           />,
         ],
       },
@@ -92,6 +107,10 @@ function ConsumersList() {
         search={false}
         options={false}
         pagination={pagination}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as string[]),
+        }}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {
@@ -106,6 +125,18 @@ function ConsumersList() {
                     label={t('info.add.title', {
                       name: t('consumers.singular'),
                     })}
+                  />
+                ),
+              },
+              {
+                key: 'batchDelete',
+                label: (
+                  <BatchDeleteBtn
+                    ids={selectedIds}
+                    apiBase={API_CONSUMERS}
+                    resourceName={t('consumers.singular')}
+                    onSuccess={refetch}
+                    onClearSelection={() => setSelectedIds([])}
                   />
                 ),
               },

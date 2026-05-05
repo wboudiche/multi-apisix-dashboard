@@ -14,14 +14,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { Tabs } from '@mantine/core';
+import {
+  createFileRoute,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useParams,
+} from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 
-import { DetailCredentialsTabs } from '@/components/page-slice/consumers/DetailCredentialsTabs';
+import PageHeader from '@/components/page/PageHeader';
+import IconCredential from '~icons/material-symbols/key-outline';
+import IconConsumer from '~icons/material-symbols/person-outline';
 
 function RouteComponent() {
+  const { t } = useTranslation();
+  const { username } = useParams({ strict: false });
+  const navigate = useNavigate();
+  const pathname = useLocation({ select: (l) => l.pathname });
+  const activeTab = pathname.includes('credentials') ? 'credentials' : 'detail';
+
   return (
     <>
-      <DetailCredentialsTabs />
+      <PageHeader
+        title={`${t('consumers.singular')}: ${username}`}
+      />
+      <Tabs
+        value={activeTab}
+        onChange={(v) => {
+          navigate({
+            to: v === 'credentials'
+              ? '/consumers/detail/$username/credentials'
+              : '/consumers/detail/$username',
+            params: { username: username as string },
+          });
+        }}
+        mb="md"
+      >
+        <Tabs.List>
+          <Tabs.Tab value="detail" leftSection={<IconConsumer width="16" height="16" />}>
+            {t('info.detail.title', { name: t('consumers.singular') })}
+          </Tabs.Tab>
+          <Tabs.Tab value="credentials" leftSection={<IconCredential width="16" height="16" />}>
+            {t('sources.credentials')}
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
       <Outlet />
     </>
   );
@@ -29,4 +68,4 @@ function RouteComponent() {
 
 export const Route = createFileRoute('/consumers/detail/$username')({
   component: RouteComponent,
-}); 
+});

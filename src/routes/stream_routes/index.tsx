@@ -17,11 +17,13 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import type { FC } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getStreamRouteListQueryOptions, useStreamRouteList } from '@/apis/hooks';
 import type { WithServiceIdFilter } from '@/apis/routes';
+import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
@@ -38,9 +40,7 @@ export type StreamRouteListProps = {
     ListPageKeys,
     '/stream_routes/' | '/services/detail/$id/stream_routes/'
   >;
-  ToDetailBtn: (props: {
-    record: APISIXType['RespStreamRouteItem'];
-  }) => React.ReactNode;
+  ToDetailBtn: FC<{ record: APISIXType['RespStreamRouteItem'] }>;
   defaultParams?: Partial<WithServiceIdFilter>;
 };
 
@@ -51,6 +51,7 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
     defaultParams
   );
   const { t } = useTranslation();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<
     ProColumns<APISIXType['RespStreamRouteItem']>[]
@@ -109,6 +110,10 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
         search={false}
         options={false}
         pagination={pagination}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as string[]),
+        }}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {
@@ -123,6 +128,18 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
                       name: t('streamRoutes.singular'),
                     })}
                     to={`${routeKey}add`}
+                  />
+                ),
+              },
+              {
+                key: 'batchDelete',
+                label: (
+                  <BatchDeleteBtn
+                    ids={selectedIds}
+                    apiBase={API_STREAM_ROUTES}
+                    resourceName={t('streamRoutes.singular')}
+                    onSuccess={refetch}
+                    onClearSelection={() => setSelectedIds([])}
                   />
                 ),
               },

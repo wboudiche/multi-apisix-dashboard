@@ -18,6 +18,8 @@ import { z } from 'zod';
 
 import { APISIX } from '@/types/schema/apisix';
 
+import { SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
+
 export const RoutePostSchema = APISIX.Route.omit({
   id: true,
   create_time: true,
@@ -27,6 +29,22 @@ export const RoutePostSchema = APISIX.Route.omit({
   // and passing the original schema of `vars` for validation
   // is not in line with this usage.
   vars: z.string().optional(),
+  name: z.string().min(1, 'Name is required'),
+  uri: z.string().min(1, 'URI is required'),
+}).superRefine((data, ctx) => {
+  const hasService = data.service_id && data.service_id !== SERVICE_NONE;
+  const hasExistingUpstream = data.upstream_id && data.upstream_id !== UPSTREAM_CUSTOM;
+  const hasCustomUpstream = data.upstream_id === UPSTREAM_CUSTOM &&
+    data.upstream?.nodes &&
+    (Array.isArray(data.upstream.nodes) ? data.upstream.nodes.length > 0 : Object.keys(data.upstream.nodes).length > 0);
+
+  if (!hasService && !hasExistingUpstream && !hasCustomUpstream) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Select an upstream, bind a service, or configure a custom upstream with at least one node',
+      path: ['upstream_id'],
+    });
+  }
 });
 
 export type RoutePostType = z.infer<typeof RoutePostSchema>;

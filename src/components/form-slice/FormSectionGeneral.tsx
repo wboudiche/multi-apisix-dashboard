@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Divider } from '@mantine/core';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -52,21 +51,27 @@ export type FormSectionGeneralProps = {
   readOnly?: boolean;
 };
 
-export const FormSectionGeneral = (props: FormSectionGeneralProps) => {
+export const FormSectionGeneralContent = (props: FormSectionGeneralProps) => {
   const { showDate = props.readOnly, showID = true, readOnly = false } = props;
-  const { t } = useTranslation();
   const { register } = useFormContext<APISIXType['Info']>();
-  // we use fieldset disabled to show readonly state
-  // because mantine readOnly style looks like we can edit
-  // this is also the way rhf recommends,
-  // Using disable directly on the component will cause rhf to ignore the value
+  return (
+    <>
+      <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0 }}>
+        {showID && <FormItemID />}
+        <input type="hidden" {...register('create_time')} />
+        <input type="hidden" {...register('update_time')} />
+        {showDate && <DisplayDate />}
+      </fieldset>
+    </>
+  );
+};
+
+export const FormSectionGeneral = (props: FormSectionGeneralProps) => {
+  const { readOnly = false } = props;
+  const { t } = useTranslation();
   return (
     <FormSection legend={t('form.general.title')} disabled={readOnly}>
-      {showID && <FormItemID />}
-      {showID && showDate && <Divider my="lg" />}
-      <input type="hidden" {...register('create_time')} />
-      <input type="hidden" {...register('update_time')} />
-      {showDate && <DisplayDate />}
+      <FormSectionGeneralContent {...props} />
     </FormSection>
   );
 };

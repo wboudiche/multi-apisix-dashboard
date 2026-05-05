@@ -26,7 +26,7 @@ export const FormPartCredential = () => {
     <>
       <FormPartBasic showName={false} />
       <FormSection legend={t('form.plugins.label')}>
-        <FormItemPlugins name="plugins" schema="consumer_schema" />
+        <FormItemPlugins name="plugins" schema="consumer_schema" context="consumer" />
       </FormSection>
     </>
   );

@@ -43,20 +43,26 @@ import type { APISIXType } from '@/types/schema/apisix';
 import type { PluginCardProps } from './PluginCard';
 import { PluginCardList, PluginCardListSearch } from './PluginCardList';
 import { type PluginConfig, PluginEditorDrawer } from './PluginEditorDrawer';
+import { getPluginCategory } from './pluginMetadata';
 import { SelectPluginsDrawer } from './SelectPluginsDrawer';
+
+export type PluginContext = 'route' | 'consumer';
 
 export type FormItemPluginsProps<T extends FieldValues> = InputWrapperProps &
   UseControllerProps<T> & {
     onChange?: (value: Record<string, unknown>) => void;
+    context?: PluginContext;
   } & Partial<NeedPluginSchema>;
 
 export const FormItemPlugins = <T extends FieldValues>(
   props: FormItemPluginsProps<T>
 ) => {
+  const { context, ...propsWithoutContext } = props;
   const {
     controllerProps,
     restProps: { schema = 'schema', ...restProps },
-  } = genControllerProps(props, {});
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } = genControllerProps(propsWithoutContext as any, {});
   const { t } = useTranslation();
 
   const {
@@ -81,7 +87,9 @@ export const FormItemPlugins = <T extends FieldValues>(
       originObj: Record<string, Record<string, unknown>>;
     }) {
       const { names, originObj } = props;
-      this.allPluginNames = names;
+      this.allPluginNames = context === 'consumer'
+        ? names.filter((n) => getPluginCategory(n) === 'authentication')
+        : names;
       this.pluginSchemaObj = new Map(Object.entries(originObj));
     },
     get selected() {
@@ -89,6 +97,24 @@ export const FormItemPlugins = <T extends FieldValues>(
     },
     get unSelected() {
       return difference(this.allPluginNames, this.selected);
+    },
+    get configsMap(): Record<string, object> {
+      const result: Record<string, object> = {};
+      for (const [k, v] of this.__map.entries()) {
+        result[k] = v;
+      }
+      return result;
+    },
+    get descriptionsMap(): Record<string, string> {
+      const result: Record<string, string> = {};
+      for (const [name, schemaData] of this.pluginSchemaObj.entries()) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const s = schemaData as any;
+        if (s?.schema?.description) {
+          result[name] = s.schema.description;
+        }
+      }
+      return result;
     },
     save() {
       const obj = Object.fromEntries(toJS(this.__map));
@@ -152,25 +178,29 @@ export const FormItemPlugins = <T extends FieldValues>(
     <InputWrapper error={fieldState.error?.message} {...restProps}>
       <input name={fName} type="hidden" />
       <Drawer.Stack>
-        <Group>
-          <PluginCardListSearch
-            search={pluginsOb.search}
-            setSearch={pluginsOb.setSearch}
-          />
-          <SelectPluginsDrawer
-            plugins={pluginsOb.unSelected}
-            opened={pluginsOb.selectPluginsOpened}
-            setOpened={pluginsOb.setSelectPluginsOpened}
-            onAdd={(name) => pluginsOb.on('add', name)}
-            disabled={restField.disabled}
-          />
-        </Group>
+        {!isView && (
+          <Group>
+            <PluginCardListSearch
+              search={pluginsOb.search}
+              setSearch={pluginsOb.setSearch}
+            />
+            <SelectPluginsDrawer
+              plugins={pluginsOb.unSelected}
+              opened={pluginsOb.selectPluginsOpened}
+              setOpened={pluginsOb.setSelectPluginsOpened}
+              onAdd={(name) => pluginsOb.on('add', name)}
+              disabled={restField.disabled}
+            />
+          </Group>
+        )}
         <PluginCardList
           mode={isView ? 'view' : 'edit'}
           placeholder={t('form.plugins.searchForSelectedPlugins')}
           mah="60vh"
           search={pluginsOb.search}
           plugins={pluginsOb.selected}
+          descriptions={pluginsOb.descriptionsMap}
+          configs={pluginsOb.configsMap}
           onDelete={pluginsOb.delete}
           onView={(name) => pluginsOb.on('view', name)}
           onEdit={(name) => pluginsOb.on('edit', name)}

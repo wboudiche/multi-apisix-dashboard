@@ -21,11 +21,9 @@ import { getDefaultStore } from 'jotai';
 import { stringify } from 'qs';
 
 import {
-  API_HEADER_KEY,
   API_PREFIX,
   SKIP_INTERCEPTOR_HEADER,
 } from '@/config/constant';
-import { adminKeyAtom, isSettingsOpenAtom } from '@/stores/global';
 import { currentInstanceIdAtom } from '@/stores/instance';
 
 export const req = axios.create();
@@ -49,12 +47,6 @@ req.interceptors.request.use((conf) => {
   const token = localStorage.getItem('auth:access_token');
   if (token) {
     conf.headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  // Get admin key from global store (for direct APISIX access)
-  const adminKey = getDefaultStore().get(adminKeyAtom);
-  if (adminKey) {
-    conf.headers.set(API_HEADER_KEY, adminKey);
   }
 
   // Get current instance ID and add it as header for proxy requests
@@ -114,9 +106,7 @@ req.interceptors.response.use(
         message: d?.error_msg || d?.message,
         color: 'red',
       });
-      // Requires to enter admin key at 401
       if (res.status === HttpStatusCode.Unauthorized) {
-        getDefaultStore().set(isSettingsOpenAtom, true);
         return Promise.resolve({ data: {} });
       }
     }

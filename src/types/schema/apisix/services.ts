@@ -24,7 +24,7 @@ const Service = z
   .object({
     plugins: APISIXPlugins.Plugins.optional(),
     upstream: APISIXUpstreams.Upstream.omit({ id: true }).optional(),
-    upstream_id: z.string().optional(),
+    upstream_id: z.string().nullish(),
     script: z.string().optional(),
     enable_websocket: z.boolean().optional(),
     hosts: z.array(z.string()).optional(),
@@ -38,9 +38,14 @@ export const APISIXServices = {
     id: true,
     create_time: true,
     update_time: true,
+  }).extend({
+    id: z.string().optional(),
   }),
   ServicePut: Service.omit({
+    id: true,
     create_time: true,
     update_time: true,
+  }).extend({
+    id: z.string().optional(),
   }),
 };

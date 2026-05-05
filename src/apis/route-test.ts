@@ -14,22 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { ActionIcon } from '@mantine/core';
-import { useSetAtom } from 'jotai';
 
-import { isSettingsOpenAtom } from '@/stores/global';
-import IconSettings from '~icons/material-symbols/settings';
+import { req } from '@/config/req';
 
-export const SettingModalBtn = () => {
-  const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
+export type RouteTestRequest = {
+  method: string;
+  path: string;
+  headers?: Record<string, string>;
+  body?: string;
+  query?: Record<string, string>;
+};
 
-  return (
-    <ActionIcon
-      onClick={() => setIsSettingsOpen(true)}
-      variant="light"
-      size="sm"
-    >
-      <IconSettings />
-    </ActionIcon>
-  );
+export type RouteTestResponse = {
+  status: number;
+  status_text: string;
+  headers: Record<string, string[]>;
+  body: string;
+  duration_ms: number;
+};
+
+export const testRoute = async (data: RouteTestRequest): Promise<RouteTestResponse> => {
+  const response = await req.post<RouteTestResponse>('/test-route', data, { baseURL: '/api/v1' });
+  return response.data;
 };

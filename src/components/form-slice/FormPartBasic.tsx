@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { ComboboxItem } from '@mantine/core';
+import { type ComboboxItem, Stack } from '@mantine/core';
 import { type PropsWithChildren, type ReactNode, useMemo } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import type { APISIXType } from '@/types/schema/apisix';
@@ -24,10 +24,12 @@ import { APISIXCommon } from '@/types/schema/apisix/common';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 
 import { FormItemLabels } from '../form/Labels';
+import { LabelWithTooltip } from '../form/LabelWithTooltip';
 import { FormItemSelect } from '../form/Select';
 import { FormItemTextarea } from '../form/Textarea';
 import { FormItemTextInput } from '../form/TextInput';
 import { FormSection, type FormSectionProps } from './FormSection';
+import { FormSectionGeneralContent } from './FormSectionGeneral';
 
 const FormItemStatus = () => {
   const { control } = useFormContext<APISIXType['Basic']>();
@@ -61,6 +63,11 @@ export type FormPartBasicProps = Omit<FormSectionProps, 'form'> &
     showName?: boolean;
     showDesc?: boolean;
     showLabels?: boolean;
+    showGeneral?: boolean;
+    namePlaceholder?: string;
+    descPlaceholder?: string;
+    nameTooltip?: string;
+    descTooltip?: string;
   };
 
 export const FormPartBasic = (props: FormPartBasicProps) => {
@@ -71,32 +78,51 @@ export const FormPartBasic = (props: FormPartBasicProps) => {
     showName = true,
     showDesc = true,
     showLabels = true,
+    showGeneral = false,
+    namePlaceholder,
+    descPlaceholder,
+    nameTooltip,
+    descTooltip,
     ...restProps
   } = props;
-  const { control } = useFormContext<APISIXType['Basic']>();
+  const { control, formState } = useFormContext<APISIXType['Basic']>();
   const { t } = useTranslation();
   const np = useNamePrefix();
+  const isReadOnly = formState.disabled;
+
+  const desc = useWatch({ control, name: np('desc') as 'desc' });
+  const labels = useWatch({ control, name: np('labels') as 'labels' });
+  const hasLabels = labels && typeof labels === 'object' && Object.keys(labels).length > 0;
 
   return (
-    <FormSection legend={t('form.basic.title')} {...restProps}>
-      {before}
-      {showName && (
-        <FormItemTextInput
-          name={np('name')}
-          label={t('form.basic.name')}
-          control={control}
-        />
-      )}
-      {showDesc && (
-        <FormItemTextarea
-          name={np('desc')}
-          label={t('form.basic.desc')}
-          control={control}
-        />
-      )}
-      {showLabels && <FormItemLabels name={np('labels')} control={control} />}
-      {showStatus && <FormItemStatus />}
-      {children}
+    <FormSection
+      legend={restProps.legend || t('form.basic.title')}
+      {...restProps}
+    >
+      <Stack gap="md" mt="sm">
+        {showGeneral && <FormSectionGeneralContent readOnly={restProps.disabled} />}
+        {before}
+        {showName && (
+          <FormItemTextInput
+            name={np('name')}
+            label={nameTooltip ? <LabelWithTooltip label={t('form.basic.name')} tooltip={nameTooltip} /> : t('form.basic.name')}
+            control={control}
+            withAsterisk
+            placeholder={namePlaceholder}
+          />
+        )}
+        {showDesc && (!isReadOnly || !!desc) && (
+          <FormItemTextarea
+            name={np('desc')}
+            label={descTooltip ? <LabelWithTooltip label={t('form.basic.desc')} tooltip={descTooltip} /> : t('form.basic.desc')}
+            control={control}
+            placeholder={descPlaceholder}
+          />
+        )}
+        {showLabels && (!isReadOnly || hasLabels) && <FormItemLabels name={np('labels')} control={control} />}
+        {showStatus && <FormItemStatus />}
+        {children}
+      </Stack>
     </FormSection>
   );
 };

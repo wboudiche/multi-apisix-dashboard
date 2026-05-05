@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getStreamRouteQueryOptions } from '@/apis/hooks';
-import { usePermission } from '@/hooks/usePermission';
 import { putStreamRouteReq } from '@/apis/stream_routes';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
@@ -40,6 +39,7 @@ import PageHeader from '@/components/page/PageHeader';
 import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_routes/ErrorComponent';
 import { API_STREAM_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 
 type Props = {

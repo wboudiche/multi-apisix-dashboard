@@ -16,10 +16,12 @@
  */
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
 import type { AxiosInstance } from 'axios';
+import { useAtomValue } from 'jotai';
 
 import { getRouteListReq, getRouteReq } from '@/apis/routes';
 import { getUpstreamListReq, getUpstreamReq } from '@/apis/upstreams';
 import { req } from '@/config/req';
+import { currentInstanceIdAtom } from '@/stores/instance';
 import type {
   APISIXDetailResponse,
   APISIXListResponse,
@@ -53,24 +55,33 @@ const genDetailQueryOptions =
       ...args: T
     ) => Promise<APISIXDetailResponse<R>>
   ) =>
-  (...args: T) => {
-    return queryOptions({
-      queryKey: [key, ...args],
-      queryFn: () => getDetailReq(req, ...args),
-    });
-  };
+    (...args: T) => {
+      return queryOptions({
+        queryKey: [key, ...args],
+        queryFn: () => getDetailReq(req, ...args),
+      });
+    };
 /** simple factory func for list query options which support extends PageSearchType */
 const genListQueryOptions =
   <P extends PageSearchType, R>(
     key: string,
     listReq: (req: AxiosInstance, props: P) => Promise<APISIXListResponse<R>>
   ) =>
-  (props: P) => {
-    return queryOptions({
-      queryKey: [key, props],
-      queryFn: () => listReq(req, props),
-    });
-  };
+    (props: P, instanceIdOverride?: string) => {
+      // Use the override (from reactive hook) or fall back to localStorage (for loaders)
+      const instanceId = instanceIdOverride ?? (localStorage.getItem('instance:current_id') || '');
+      return queryOptions({
+        queryKey: [key, instanceId, props],
+        queryFn: () => {
+          // Skip the API call when no APISIX instance is selected yet.
+          // This prevents the route loader from throwing before the Header mounts.
+          if (!instanceId) {
+            return { list: [], total: 0 } as APISIXListResponse<R>;
+          }
+          return listReq(req, props);
+        },
+      });
+    };
 
 /** simple hook factory func for list hooks which support extends PageSearchType */
 export const genUseList = <
@@ -85,8 +96,11 @@ export const genUseList = <
   return (replaceKey?: U, defaultParams?: Partial<P>) => {
     const key = replaceKey || routeKey;
     const { params, setParams } = useSearchParams<T | U, P>(key);
+    // Reactively read instance ID — triggers a query key change when the user
+    // switches instances in the Header, causing an automatic data refetch.
+    const currentInstanceId = useAtomValue(currentInstanceIdAtom);
     const listQuery = useSuspenseQuery(
-      listQueryOptions({ ...defaultParams, ...params })
+      listQueryOptions({ ...defaultParams, ...params } as P, currentInstanceId)
     );
     const { data, isLoading, refetch } = listQuery;
     const opts = { data, setParams, params };

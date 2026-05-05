@@ -25,7 +25,6 @@ import {
   useCredentialsList,
 } from '@/apis/hooks';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
-import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CREDENTIALS } from '@/config/constant';
@@ -129,13 +128,7 @@ function CredentialsList() {
 }
 
 function RouteComponent() {
-  const { t } = useTranslation();
-  return (
-    <>
-      <PageHeader title={t('sources.credentials')} />
-      <CredentialsList />
-    </>
-  );
+  return <CredentialsList />;
 }
 
 export const Route = createFileRoute('/consumers/detail/$username/credentials/')({

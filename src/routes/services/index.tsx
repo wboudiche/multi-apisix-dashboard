@@ -17,13 +17,15 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getServiceListQueryOptions, useServiceList } from '@/apis/hooks';
+import { RouteLinkBtn } from '@/components/Btn';
+import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
-import { ToAddPageBtn,ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SERVICES } from '@/config/constant';
 import { queryClient } from '@/config/global';
@@ -33,6 +35,7 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 const ServiceList = () => {
   const { data, isLoading, refetch, pagination } = useServiceList();
   const { t } = useTranslation();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<ProColumns<APISIXType['RespServiceItem']>[]>(() => {
     return [
@@ -69,19 +72,31 @@ const ServiceList = () => {
         title: t('table.actions'),
         valueType: 'option',
         key: 'option',
-        width: 120,
+        width: 200,
         render: (_, record) => [
-          <ToDetailPageBtn
+          <RouteLinkBtn
             key="detail"
             to="/services/detail/$id"
             params={{ id: record.value.id }}
-          />,
+            size="xs"
+            color="blue"
+            variant="filled"
+            radius="sm"
+            styles={{ root: { padding: '0 12px' } }}
+          >
+            {t('form.btn.view')}
+          </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
             name={t('services.singular')}
             target={record.value.id}
             api={`${API_SERVICES}/${record.value.id}`}
             onSuccess={refetch}
+            size="xs"
+            color="red"
+            variant="filled"
+            radius="sm"
+            styles={{ root: { padding: '0 12px' } }}
           />,
         ],
       },
@@ -98,6 +113,10 @@ const ServiceList = () => {
         search={false}
         options={false}
         pagination={pagination}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as string[]),
+        }}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {
@@ -112,6 +131,18 @@ const ServiceList = () => {
                       name: t('services.singular'),
                     })}
                     to="/services/add"
+                  />
+                ),
+              },
+              {
+                key: 'batchDelete',
+                label: (
+                  <BatchDeleteBtn
+                    ids={selectedIds}
+                    apiBase={API_SERVICES}
+                    resourceName={t('services.singular')}
+                    onSuccess={refetch}
+                    onClearSelection={() => setSelectedIds([])}
                   />
                 ),
               },

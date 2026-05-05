@@ -22,6 +22,7 @@ import { APISIX } from '@/types/schema/apisix';
 export const FormPartUpstreamSchema = APISIX.Upstream.extend({
   __checksEnabled: z.boolean().optional().default(false),
   __checksPassiveEnabled: z.boolean().optional().default(false),
+  __upstreamType: z.enum(['node', 'discovery']).optional().default('node'),
 });
 
 export type FormPartUpstreamType = z.infer<typeof FormPartUpstreamSchema>;

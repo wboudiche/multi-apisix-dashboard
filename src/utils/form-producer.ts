@@ -40,7 +40,39 @@ export const produceRmUpstreamWhenHas = (
   ...idKeys: ('upstream_id' | 'service_id')[]
 ) =>
   produce((draft) => {
-    if (idKeys.some((idKey) => draft[idKey]) && isNotEmpty(draft.upstream)) {
+    // 1. Handle special values for upstream_id
+    if (draft.upstream_id === 'none') {
+      delete draft.upstream_id;
+      delete draft.upstream;
+    } else if (draft.upstream_id === 'custom') {
+      delete draft.upstream_id;
+      // Keep draft.upstream for inline configuration
+    } else if (idKeys.some((idKey) => draft[idKey]) && isNotEmpty(draft.upstream)) {
+      // If an actual ID is present, remove the inline upstream
       delete draft.upstream;
     }
   });
+
+export const produceCleanEmpty = produce((draft) => {
+  const clean = (obj: any) => {
+    if (!obj || typeof obj !== 'object') return;
+    Object.keys(obj).forEach((key) => {
+      const val = obj[key];
+      if (val === '') {
+        delete obj[key];
+      } else if (Array.isArray(val)) {
+        if (val.length === 0) {
+          delete obj[key];
+        } else {
+          val.forEach(clean);
+        }
+      } else if (typeof val === 'object') {
+        clean(val);
+        if (Object.keys(val).length === 0) {
+          delete obj[key];
+        }
+      }
+    });
+  };
+  clean(draft);
+});

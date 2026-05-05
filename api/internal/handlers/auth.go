@@ -96,11 +96,18 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 	}
 	user.PasswordHash = ""
 
+	// Prefer the role stored on the user record; fall back to the JWT claim
+	// so that users created before role persistence was wired up still work.
+	effectiveRole := user.Role
+	if effectiveRole == "" {
+		effectiveRole = middleware.GetRole(c)
+	}
+
 	resp := gin.H{
 		"id":       user.ID,
 		"username": user.Username,
 		"email":    user.Email,
-		"role":     user.Role,
+		"role":     effectiveRole,
 	}
 
 	instanceID := c.GetHeader("X-Instance-ID")

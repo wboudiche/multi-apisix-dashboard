@@ -168,6 +168,9 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 				proxy.GET("/routes", proxyHandler.ListRoutes)
 				proxy.GET("/services", proxyHandler.ListServices)
 				proxy.GET("/upstreams", proxyHandler.ListUpstreams)
+
+				// Ownership reassignment (admin only)
+				proxy.PUT("/ownership/:resource_type/:resource_id", proxyHandler.ReassignOwnership)
 			}
 		}
 	}

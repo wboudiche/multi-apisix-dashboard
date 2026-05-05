@@ -14,13 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Button, Card,Group, Text } from '@mantine/core';
+import { Badge, Button, Card, Group, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+
+import {
+  CATEGORY_COLORS,
+  getPluginCategory,
+  getPluginDescription,
+  summarizePluginConfig,
+} from './pluginMetadata';
 
 export type PluginCardProps = {
   name: string;
-  desc?: string;
   mode: 'add' | 'edit' | 'view';
+  description?: string;
+  config?: object;
   onAdd?: (name: string) => void;
   onEdit?: (name: string) => void;
   onDelete?: (name: string) => void;
@@ -28,63 +36,85 @@ export type PluginCardProps = {
 };
 
 export const PluginCard = (props: PluginCardProps) => {
-  const { name, desc, mode, onAdd, onEdit, onView, onDelete } = props;
+  const { name, mode, description, config, onAdd, onEdit, onView, onDelete } = props;
   const { t } = useTranslation();
+  const category = getPluginCategory(name);
+  const categoryColor = CATEGORY_COLORS[category];
+  const desc = getPluginDescription(name, description);
+  const configSummary = config ? summarizePluginConfig(name, config) : '';
+
   return (
-    <Card withBorder radius="md" p="md" data-testid={`plugin-${name}`}>
-      <Card.Section withBorder inheritPadding py="xs">
-        <Group justify="space-between">
-          <Group>
-            <Text fw={500}>{name}</Text>
+    <Card withBorder radius="md" p="sm" data-testid={`plugin-${name}`}>
+      <Stack gap={6}>
+        <Group justify="space-between" wrap="nowrap" gap="xs">
+          <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+            <Group gap={6} wrap="nowrap">
+              <Text fw={600} size="sm" truncate>
+                {name}
+              </Text>
+              <Badge
+                size="xs"
+                variant="light"
+                color={categoryColor}
+                style={{ flexShrink: 0 }}
+              >
+                {t(`form.plugins.category.${category}`)}
+              </Badge>
+            </Group>
+            {desc && (
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                {desc}
+              </Text>
+            )}
+          </Stack>
+          <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+            {mode === 'add' && (
+              <Button
+                size="xs"
+                variant="light"
+                color="blue"
+                onClick={() => onAdd?.(name)}
+              >
+                {t('form.btn.add')}
+              </Button>
+            )}
+            {mode === 'view' && (
+              <Button
+                size="xs"
+                variant="light"
+                onClick={() => onView?.(name)}
+              >
+                {t('form.btn.view')}
+              </Button>
+            )}
+            {mode === 'edit' && (
+              <>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="blue"
+                  onClick={() => onEdit?.(name)}
+                >
+                  {t('form.btn.edit')}
+                </Button>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="red"
+                  onClick={() => onDelete?.(name)}
+                >
+                  {t('form.btn.delete')}
+                </Button>
+              </>
+            )}
           </Group>
         </Group>
-      </Card.Section>
-
-      <Text size="sm" c="dimmed" mt="xs">
-        {desc}
-      </Text>
-
-      <Group mt="md" justify="flex-end">
-        {mode === 'add' && (
-          <Button
-            size="compact-xs"
-            variant="light"
-            color="blue"
-            onClick={() => onAdd?.(name)}
-          >
-            {t('form.btn.add')}
-          </Button>
+        {configSummary && (mode === 'edit' || mode === 'view') && (
+          <Text size="xs" ff="monospace" c="dimmed" lineClamp={1}>
+            {configSummary}
+          </Text>
         )}
-        {mode === 'view' && (
-          <Button
-            size="compact-xs"
-            variant="light"
-            onClick={() => onView?.(name)}
-          >
-            {t('form.btn.view')}
-          </Button>
-        )}
-        {mode === 'edit' && (
-          <>
-            <Button
-              size="compact-xs"
-              variant="light"
-              color="blue"
-              onClick={() => onEdit?.(name)}
-            >
-              {t('form.btn.edit')}
-            </Button>
-            <Button
-              size="compact-xs"
-              variant="light"
-              color="red"
-              onClick={() => onDelete?.(name)}
-            >
-              {t('form.btn.delete')}
-            </Button>
-          </>
-        )}
-      </Group>
+      </Stack>
     </Card>
   );
 };

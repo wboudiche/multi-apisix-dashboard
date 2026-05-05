@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Group, Skeleton } from '@mantine/core';
+import { Button, Group, Modal, Select, Skeleton, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
@@ -23,17 +23,19 @@ import {
   useNavigate,
   useParams,
 } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getRouteQueryOptions } from '@/apis/hooks';
 import { putRouteReq } from '@/apis/routes';
+import {teamApi } from '@/apis/teams';
 import {
   FormPartBasicWithPriority,
   FormSectionMatchRules,
   FormSectionPlugins,
+  FormSectionRequestOverride,
   FormSectionService,
   FormSectionUpstream,
 } from '@/components/form-slice/FormPartRoute';
@@ -55,9 +57,10 @@ import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
 import { API_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
-import { type APISIXType } from '@/types/schema/apisix';
 import { usePermission } from '@/hooks/usePermission';
+import { type APISIXType } from '@/types/schema/apisix';
 import IconCode from '~icons/material-symbols/code';
+import IconGroup from '~icons/material-symbols/group';
 import IconPlayArrow from '~icons/material-symbols/play-arrow';
 
 type Props = {
@@ -136,6 +139,12 @@ const RouteDetailForm = (props: Props) => {
       fields: ['upstream', 'upstream_id', 'service_id'],
     },
     {
+      label: t('form.requestOverride.title'),
+      description: t('form.requestOverride.description'),
+      content: <FormSectionRequestOverride />,
+      fields: [],
+    },
+    {
       label: 'Plugins Config',
       description: 'Add and configure plugins',
       content: <FormSectionPlugins />,
@@ -170,6 +179,78 @@ const RouteDetailForm = (props: Props) => {
   );
 };
 
+type ReassignTeamModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  resourceType: string;
+  resourceId: string;
+  currentTeamId?: string;
+};
+
+const ReassignTeamModal = (props: ReassignTeamModalProps) => {
+  const { opened, onClose, onSaved, resourceType, resourceId, currentTeamId } = props;
+  const { t } = useTranslation();
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(currentTeamId || null);
+  const [saving, setSaving] = useState(false);
+
+  const { data: teams = [] } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => teamApi.list(),
+    staleTime: 60_000,
+    enabled: opened,
+  });
+
+  useEffect(() => {
+    if (opened) setSelectedTeamId(currentTeamId || null);
+  }, [opened, currentTeamId]);
+
+  const teamOptions = useMemo(
+    () => teams.map((tm) => ({ value: tm.id, label: tm.name })),
+    [teams]
+  );
+
+  const currentTeamName = teams.find((tm) => tm.id === currentTeamId)?.name;
+
+  const handleSave = async () => {
+    if (!selectedTeamId) return;
+    setSaving(true);
+    try {
+      await teamApi.reassignOwnership(resourceType, resourceId, selectedTeamId);
+      notifications.show({ message: t('form.reassignTeam.success'), color: 'green' });
+      onSaved();
+      onClose();
+    } catch {
+      notifications.show({ message: t('form.reassignTeam.error'), color: 'red' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal opened={opened} onClose={onClose} title={t('form.reassignTeam.title')} centered size="sm">
+      {currentTeamName && (
+        <Text size="sm" c="dimmed" mb="sm">
+          {t('form.reassignTeam.current')}: <Text component="span" fw={600}>{currentTeamName}</Text>
+        </Text>
+      )}
+      <Select
+        label={t('form.reassignTeam.selectTeam')}
+        data={teamOptions}
+        value={selectedTeamId}
+        onChange={setSelectedTeamId}
+        searchable
+      />
+      <Group justify="flex-end" mt="md">
+        <Button variant="outline" color="gray" onClick={onClose}>{t('form.btn.cancel')}</Button>
+        <Button onClick={handleSave} loading={saving} disabled={!selectedTeamId || selectedTeamId === currentTeamId}>
+          {t('form.reassignTeam.confirm')}
+        </Button>
+      </Group>
+    </Modal>
+  );
+};
+
 type RouteDetailProps = Pick<Props, 'id'> & {
   onDeleteSuccess: () => void;
 };
@@ -180,6 +261,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const { canEdit } = usePermission();
   const [jsonDrawerOpen, setJsonDrawerOpen] = useBoolean(false);
   const [testDrawerOpen, setTestDrawerOpen] = useBoolean(false);
+  const [reassignOpen, setReassignOpen] = useBoolean(false);
   const [jsonSaving, setJsonSaving] = useState(false);
 
   const routeQuery = useQuery(getRouteQueryOptions(id));
@@ -187,6 +269,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const routeUri = rawJson?.uri as string || (rawJson?.uris as string[])?.[0] || '/';
   const routeMethod = (rawJson?.methods as string[])?.[0] || 'GET';
   const routeHost = rawJson?.host as string || (rawJson?.hosts as string[])?.[0] || undefined;
+  const currentTeamId = rawJson?.__team_id as string || undefined;
 
   const handleJsonSave = useCallback(async (data: Record<string, unknown>) => {
     setJsonSaving(true);
@@ -235,6 +318,17 @@ export const RouteDetail = (props: RouteDetailProps) => {
               </Button>
               {canEdit && (
                 <Button
+                  onClick={() => setReassignOpen(true)}
+                  size="compact-sm"
+                  variant="light"
+                  color="teal"
+                  leftSection={<IconGroup width="16" height="16" />}
+                >
+                  {t('form.reassignTeam.title')}
+                </Button>
+              )}
+              {canEdit && (
+                <Button
                   onClick={() => setReadOnly(false)}
                   size="compact-sm"
                   variant="gradient"
@@ -268,6 +362,13 @@ export const RouteDetail = (props: RouteDetailProps) => {
         defaultPath={routeUri}
         defaultMethod={routeMethod}
         defaultHost={routeHost}
+      />
+      <ReassignTeamModal
+        opened={reassignOpen}
+        onClose={() => { setReassignOpen(false); routeQuery.refetch(); }}
+        resourceType="routes"
+        resourceId={id}
+        currentTeamId={currentTeamId}
       />
     </>
   );

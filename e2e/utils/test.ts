@@ -17,9 +17,9 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { expect, test as baseTest } from '@playwright/test';
+import { test as baseTest } from '@playwright/test';
 
-import { fileExists, getAPISIXConf } from './common';
+import { fileExists } from './common';
 import { env } from './env';
 
 export type Test = typeof test;
@@ -27,38 +27,31 @@ export const test = baseTest.extend<object, { workerStorageState: string }>({
   storageState: ({ workerStorageState }, use) => use(workerStorageState),
   workerStorageState: [
     async ({ browser }, use) => {
-      // Use parallelIndex as a unique identifier for each worker.
       const id = test.info().parallelIndex;
       const fileName = path.resolve(
         test.info().project.outputDir,
         `.auth/${id}.json`
       );
-      const { adminKey } = await getAPISIXConf();
 
-      // file exists and contains admin key, use it
+      // Reuse existing auth state if available
       if (
         (await fileExists(fileName)) &&
-        (await readFile(fileName)).toString().includes(adminKey)
+        (await readFile(fileName)).toString().includes('auth:access_token')
       ) {
         return use(fileName);
       }
 
       const page = await browser.newPage({ storageState: undefined });
-
-      // have to use env here, because the baseURL is not available in worker
       await page.goto(env.E2E_TARGET_URL);
 
-      // we need to authenticate
-      const settingsModal = page.getByRole('dialog', { name: 'Settings' });
-      await expect(settingsModal).toBeVisible();
-      // PasswordInput renders with a label, use getByLabel instead
-      const adminKeyInput = page.getByLabel('Admin Key');
-      await adminKeyInput.clear();
-      await adminKeyInput.fill(adminKey);
-      await page
-        .getByRole('dialog', { name: 'Settings' })
-        .getByRole('button')
-        .click();
+      // Authenticate via JWT login form
+      await page.waitForURL((url) => url.pathname.includes('/login'), { timeout: 10000 });
+      await page.getByRole('textbox', { name: 'Username' }).fill('admin');
+      await page.getByPlaceholder('Enter your password').fill('admin');
+      await page.getByRole('button', { name: 'Sign in' }).click();
+
+      // Wait for redirect away from login
+      await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 });
 
       await page.context().storageState({ path: fileName });
       await page.close();

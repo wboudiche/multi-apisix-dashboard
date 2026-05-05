@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { putSecretReq } from '@/apis/secrets';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartSecret } from '@/components/form-slice/FormPartSecret';
-import { FormTOCBox } from '@/components/form-slice/FormSection';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import PageHeader from '@/components/page/PageHeader';
 import { queryClient } from '@/config/global';
@@ -82,9 +81,7 @@ function RouteComponent() {
       <PageHeader
         title={t('info.add.title', { name: t('secrets.singular') })}
       />
-      <FormTOCBox>
-        <SecretAddForm />
-      </FormTOCBox>
+      <SecretAddForm />
     </>
   );
 }

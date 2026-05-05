@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import i18nProgress from 'virtual:i18n-progress';
 
 import type { Resources } from '@/config/i18n';
-import IconLanguage from '~icons/material-symbols/language-chinese-array';
+import IconLanguage from '~icons/material-symbols/language';
 
 const LangMap: Record<keyof Resources, string> = {
   en: 'English',
@@ -30,7 +30,7 @@ const LangMap: Record<keyof Resources, string> = {
 };
 
 const TranslationProgress = ({ lang }: { lang: string }) => {
-  const percent = i18nProgress[lang].percent;
+  const percent = i18nProgress[lang]?.percent;
   if (typeof percent === 'number' && percent < 100) {
     return (
       <span

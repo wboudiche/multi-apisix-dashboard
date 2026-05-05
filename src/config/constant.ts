@@ -17,8 +17,7 @@
 export const BASE_PATH = '/ui';
 export const PAGE_SIZE_MIN = 10;
 export const PAGE_SIZE_MAX = 500;
-export const API_HEADER_KEY = 'X-API-KEY';
-export const API_PREFIX = '/apisix/admin';
+export const API_PREFIX = '/api/v1/apisix/admin';
 export const API_ROUTES = '/routes';
 export const API_STREAM_ROUTES = '/stream_routes';
 export const API_UPSTREAMS = '/upstreams';

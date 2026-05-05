@@ -30,4 +30,12 @@ export const produceToUpstreamForm = (
     d.__checksEnabled = !!upstream.checks && isNotEmpty(upstream.checks);
     d.__checksPassiveEnabled =
       !!upstream.checks?.passive && isNotEmpty(upstream.checks.passive);
+
+    // When a route has inline upstream data but no upstream_id, mark it as 'custom'
+    // so the form correctly shows the inline upstream fields and preview.
+    const hasInlineUpstream = upstream.nodes && isNotEmpty(upstream.nodes);
+    const draft = d as Record<string, unknown>;
+    if (hasInlineUpstream && !draft.upstream_id && !draft.service_id) {
+      draft.upstream_id = 'custom';
+    }
   });

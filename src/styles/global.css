@@ -1,52 +1,880 @@
-.monaco-editor,
-.monaco-editor .overflow-guard {
-  border-radius: var(--mantine-radius-sm);
+/* APISIX Premium Dashboard Design - Based on frontend-design skill */
+
+/* Import distinctive fonts */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@300;400;500;600;700;800;900&family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* APISIX Brand Colors */
+  --brand: #F8423F;
+  --brand-hover: #E53532;
+  --brand-active: #D32F2F;
+  --brand-subtle: rgba(248, 66, 63, 0.1);
+
+  /* Premium color palette */
+  --bg-primary: #F8F9FA;
+  --bg-secondary: #E9ECEF;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --text-primary: #1A1D21;
+  --text-secondary: #5C6370;
+  --text-muted: #909296;
+  --text-inverse: #FFFFFF;
+  --border-light: #DEE2E6;
+  --border-medium: #CED4DA;
+  --border-focus: #F8423F;
+
+  /* Shadows for depth */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 30px 60px rgba(0, 0, 0, 0.15), 0 15px 30px rgba(0, 0, 0, 0.1);
+  --shadow-focus: 0 0 0 4px rgba(248, 66, 63, 0.15), 0 0 0 1px rgba(248, 66, 63, 0.3);
+  --shadow-glow: 0 0 30px rgba(248, 66, 63, 0.2);
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Timing Functions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* This is to fix the suggest widget offset problem */
-.monaco-editor .suggest-widget {
-  width: 200px !important;
-  left: 60px !important;
+/* ===== Base Styles ===== */
+
+* {
+  box-sizing: border-box;
 }
 
-.monaco-editor {
-  padding-bottom: 200px;
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* ===== Page Background with Pattern ===== */
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 90%, rgba(248, 66, 63, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(248, 66, 63, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(248, 66, 63, 0.02) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ===== App Shell ===== */
+
+[class*="AppShell-main"] {
+  background: linear-gradient(180deg, var(--bg-primary) 0%, #F0F2F5 100%) !important;
+}
+
+/* ===== Header ===== */
+
+[class*="Header-root"],
+[class*="AppShell-header"] {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+/* ===== Navigation ===== */
+
+[class*="AppShell-navbar"] {
+  overflow: hidden !important;
+}
+
+[class*="NavLink-root"] {
+  border-radius: var(--radius-md) !important;
+  margin: 2px 0 !important;
+  padding: 8px 20px !important;
+  transition: background var(--transition-base), box-shadow var(--transition-base) !important;
+  font-weight: 500 !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+[class*="NavLink-root"][data-active="true"] {
+  background: linear-gradient(135deg, var(--brand-subtle) 0%, rgba(248, 66, 63, 0.05) 100%) !important;
+  box-shadow: inset 3px 0 0 var(--brand) !important;
+}
+
+[class*="NavLink-root"]:hover:not([data-active="true"]) {
+  background: linear-gradient(135deg, rgba(248, 66, 63, 0.06) 0%, rgba(248, 66, 63, 0.02) 100%) !important;
+}
+
+/* ===== Buttons ===== */
+
+/* Base Button Styling (highest specificity to override Mantine defaults) */
+.mantine-Button-root:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"]),
+button[type="submit"] {
+  border: none;
+  font-weight: 600 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  letter-spacing: 0.02em;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.mantine-Button-root:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"])::before,
+button[type="submit"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: all 0.5s;
+}
+
+.mantine-Button-root:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"]):hover::before,
+button[type="submit"]:hover::before {
+  left: 100%;
+}
+
+.mantine-Button-root:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"]):hover,
+button[type="submit"]:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+.mantine-Button-root:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"]):active,
+button[type="submit"]:active {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Password visibility toggle - simple icon button */
+.mantine-PasswordInput-visibilityToggle {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-secondary) !important;
+  padding: 8px !important;
+  min-width: auto !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.mantine-PasswordInput-visibilityToggle:hover {
+  background: var(--brand-subtle) !important;
+  color: var(--brand) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Secondary button */
+[class*="Button-secondary"] {
+  background: var(--bg-card) !important;
+  border: 1.5px solid var(--border-medium) !important;
+  color: var(--text-primary) !important;
+}
+
+[class*="Button-secondary"]:hover {
+  border-color: var(--brand) !important;
+  color: var(--brand) !important;
+  background: var(--brand-subtle) !important;
+}
+
+/* ===== Cards ===== */
+
+[class*="Card-root"] {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all var(--transition-base) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+[class*="Card-root"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+[class*="Card-root"]:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg) !important;
+  border-color: rgba(248, 66, 63, 0.2) !important;
+}
+
+[class*="Card-root"]:hover::before {
+  opacity: 1;
+}
+
+/* ===== Tables ===== */
+
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-light) !important;
+}
+
+table thead tr {
+  background: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%) !important;
+}
+
+table th {
+  font-family: 'Sora', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.7rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary) !important;
+  border-bottom: 2px solid var(--brand) !important;
+  padding: 16px 20px !important;
+  background: transparent !important;
+  white-space: nowrap;
+}
+
+table td {
+  padding: 16px 20px !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  color: var(--text-primary) !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.9rem;
+}
+
+table tbody tr {
+  transition: all var(--transition-fast) !important;
+}
+
+table tbody tr:hover {
+  background: linear-gradient(90deg, var(--brand-subtle) 0%, rgba(248, 66, 63, 0.03) 100%) !important;
+}
+
+table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* ===== Inputs ===== */
+
+[class*="TextInput-input"],
+[class*="PasswordInput-input"],
+[class*="Select-input"],
+[class*="NumberInput-input"],
+[class*="Textarea-input"],
+[class*="TagsInput-input"],
+[class*="MultiSelect-input"],
+[class*="DateTimePicker-input"],
+[class*="Input-input"] {
+  border: 1.5px solid var(--border-medium) !important;
+  background: var(--bg-card) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-fast) !important;
+  font-family: 'DM Sans', sans-serif !important;
+  padding: 8px 12px !important;
+  min-height: 40px !important;
+}
+
+/* Reset internal inputs for complex components (TagsInput, MultiSelect) that cause double borders */
+[class*="PillsInput-field"],
+[class*="TagsInput-inputField"],
+[class*="MultiSelect-inputField"],
+[class*="combobox-search"],
+.mantine-PillsInput-field {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  outline: none !important;
+}
+
+[class*="PillsInput-input"],
+[class*="pills-input"],
+.mantine-PillsInput-input {
+  border: 1.5px solid var(--border-medium) !important;
+}
+
+[class*="TextInput-input"]:focus,
+[class*="PasswordInput-input"]:focus,
+[class*="Select-input"]:focus,
+[class*="NumberInput-input"]:focus,
+[class*="Textarea-input"]:focus,
+input:focus,
+textarea:focus,
+select:focus,
+.editor-wrapper:focus-within {
+  border-color: var(--brand) !important;
+  box-shadow: var(--shadow-focus) !important;
+  background: var(--bg-card) !important;
 }
 
 .editor-wrapper {
-  border: 1px solid var(--mantine-color-gray-4);
-  border-radius: var(--mantine-radius-sm);
-  position: relative;
-  height: 100%;
+  border: 1.5px solid var(--border-medium) !important;
+  background: var(--bg-card) !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden;
+  transition: all var(--transition-fast) !important;
+  height: 200px;
+}
 
-  &:focus-within {
-    border-color: var(--mantine-color-blue-6);
+
+.editor-wrapper--disabled {
+  background: var(--bg-secondary) !important;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Input label */
+[class*="InputLabel-root"],
+[class*="FormLabel-root"] {
+  font-family: 'Sora', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  color: var(--text-secondary) !important;
+  margin-bottom: 6px !important;
+  letter-spacing: 0.03em;
+}
+
+/* ===== Modal ===== */
+
+[class*="Modal-content"] {
+  border: none !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-xl) !important;
+  overflow: hidden;
+}
+
+[class*="Modal-header"] {
+  background: linear-gradient(180deg, #FAFBFC 0%, var(--bg-card) 100%) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: 24px 28px !important;
+}
+
+[class*="Modal-title"] {
+  font-family: 'Outfit', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+  color: var(--text-primary) !important;
+}
+
+[class*="Modal-body"] {
+  padding: 28px !important;
+}
+
+[class*="Modal-footer"] {
+  padding: 20px 28px !important;
+  border-top: 1px solid var(--border-light) !important;
+  background: #FAFBFC !important;
+}
+
+/* ===== Badge ===== */
+
+[class*="Badge-root"] {
+  font-family: 'Sora', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.05em;
+  padding: 4px 10px !important;
+  border-radius: var(--radius-full) !important;
+}
+
+/* ===== Dropdown ===== */
+
+[class*="DropdownMenu-dropdown"] {
+  border: none !important;
+  box-shadow: var(--shadow-lg) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 8px !important;
+  background: var(--bg-card) !important;
+}
+
+[class*="DropdownMenu-item"] {
+  border-radius: var(--radius-md) !important;
+  margin: 2px 4px !important;
+  padding: 10px 14px !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-fast) !important;
+}
+
+[class*="DropdownMenu-item"]:hover {
+  background: var(--brand-subtle) !important;
+  color: var(--brand) !important;
+}
+
+/* ===== Pagination ===== */
+
+[class*="Pagination-root"] {
+  gap: 4px;
+}
+
+[class*="Pagination-control"] {
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 500 !important;
+  border-radius: var(--radius-md) !important;
+  min-width: 40px;
+  height: 40px;
+  transition: all var(--transition-fast) !important;
+}
+
+[class*="Pagination-control"][data-active="true"] {
+  background: linear-gradient(135deg, var(--brand) 0%, #E53532 100%) !important;
+  border-color: var(--brand) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+[class*="Pagination-control"]:hover:not([data-active="true"]) {
+  background: var(--brand-subtle) !important;
+  border-color: var(--brand) !important;
+  color: var(--brand) !important;
+}
+
+/* ===== Tabs ===== */
+
+[class*="Tabs-tab"] {
+  font-family: 'Sora', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.03em;
+  padding: 12px 20px !important;
+  border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+  transition: all var(--transition-fast) !important;
+}
+
+[class*="Tabs-tab"][data-active="true"] {
+  color: var(--brand) !important;
+  border-color: var(--brand) !important;
+  background: var(--brand-subtle) !important;
+}
+
+/* ===== Switch ===== */
+
+[class*="Switch-track"] {
+  background: var(--border-medium) !important;
+}
+
+[class*="Switch-track"][data-checked="true"] {
+  background: var(--brand) !important;
+}
+
+/* ===== Tooltip ===== */
+
+[class*="Tooltip-tooltip"] {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 8px 14px !important;
+  border-radius: var(--radius-md) !important;
+  background: linear-gradient(180deg, #2D3136 0%, #1A1D21 100%) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* ===== Scrollbar ===== */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #BCC1C6 0%, #8B9399 100%);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #A8AFB5 0%, #7A8389 100%);
+}
+
+/* ===== Title/Heading ===== */
+
+[class*="Title-root"] {
+  font-family: 'Outfit', sans-serif !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  letter-spacing: -0.03em;
+}
+
+/* ===== Empty State ===== */
+
+[class*="EmptyState-root"] {
+  padding: 80px 40px !important;
+}
+
+[class*="EmptyState-root"] svg {
+  opacity: 0.3;
+  filter: grayscale(100%);
+  transition: all var(--transition-base) !important;
+}
+
+[class*="EmptyState-root"]:hover svg {
+  opacity: 0.5;
+  filter: grayscale(0%);
+}
+
+/* ===== Loading ===== */
+
+[class*="Loader-root"] {
+  color: var(--brand) !important;
+}
+
+/* ===== Action Icon ===== */
+
+[class*="ActionIcon-root"] {
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-fast) !important;
+}
+
+[class*="ActionIcon-root"]:hover {
+  background: var(--brand-subtle) !important;
+  color: var(--brand) !important;
+  transform: scale(1.1);
+}
+
+/* ===== Notifications ===== */
+
+[class*="Notification-root"] {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: none !important;
+}
+
+/* ===== Stepper - Timeline Styling (APISIX Style) ===== */
+
+.mantine-Stepper-root {
+  justify-content: center;
+}
+
+.mantine-Stepper-step {
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: var(--space-2) !important;
+  transition: all var(--transition-base) !important;
+}
+
+.mantine-Stepper-stepIcon {
+  margin-right: 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  font-weight: 700 !important;
+  font-family: 'Outfit', sans-serif !important;
+  font-size: 0.9rem !important;
+  transition: all var(--transition-base) !important;
+  border-width: 2px !important;
+}
+
+.mantine-Stepper-step {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  min-width: 120px !important;
+}
+
+.mantine-Stepper-stepBody {
+  text-align: center !important;
+  margin-top: var(--space-2) !important;
+  margin-left: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+.mantine-Stepper-stepLabel {
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 2px !important;
+  text-align: center !important;
+}
+
+.mantine-Stepper-stepDescription {
+  font-size: 10px !important;
+  max-width: 140px !important;
+  text-align: center !important;
+  white-space: normal !important;
+}
+
+.mantine-Stepper-separator {
+  margin: 0 -20px !important;
+  /* Pull separators inward towards icons slightly */
+  margin-top: 16px !important;
+  flex: 1 !important;
+  z-index: 1 !important;
+}
+
+/* Active and Completed States */
+.mantine-Stepper-step[data-active="true"] .mantine-Stepper-stepIcon {
+  background: white !important;
+  color: var(--brand) !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 4px var(--brand-glow) !important;
+}
+
+.mantine-Stepper-step[data-completed="true"] .mantine-Stepper-stepIcon {
+  background: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
+
+/* Animating the step content */
+.animate-fade-in {
+  animation: fadeIn 0.4s var(--ease-out);
+}
+
+/* ============================================
+   Page Title Section
+   ============================================ */
+
+[class*="PageTitle-root"] {
+  margin-bottom: 4px !important;
+}
+
+[class*="PageTitle-root"] h1,
+[class*="PageTitle-root"] h2 {
+  font-family: 'Outfit', sans-serif !important;
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--brand) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   Form Section
+   ============================================ */
+
+[class*="FormSection-root"] {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  border: 1px solid var(--border-light);
+  margin-bottom: 8px;
+}
+
+[class*="FormSection-root"]:hover {
+  border-color: rgba(248, 66, 63, 0.2);
+}
+
+/* ============================================
+   Animation Classes
+   ============================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.editor-wrapper--disabled {
-  background-color: var(--mantine-color-gray-0);
-  border-color: var(--mantine-color-gray-3);
-  cursor: not-allowed !important;
-
-  &:focus-within {
-    border-color: var(--mantine-color-gray-3);
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
 
-  & * {
-    cursor: not-allowed !important;
-    pointer-events: none !important;
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(248, 66, 63, 0.4);
   }
 
-  .monaco-editor,
-  .monaco-editor .monaco-editor-background,
-  .monaco-editor .overflow-guard,
-  .monaco-editor .margin-view-overlays {
-    background-color: var(--mantine-color-gray-0) !important;
+  50% {
+    box-shadow: 0 0 0 10px rgba(248, 66, 63, 0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.animate-pulse-red {
+  animation: pulse 2s infinite;
+}
+
+/* Utility Classes */
+.text-brand {
+  color: var(--brand) !important;
+}
+
+.bg-brand {
+  background: var(--brand) !important;
+}
+
+.border-brand {
+  border-color: var(--brand) !important;
+}
+
+/* ===== Dark Mode ===== */
+
+[data-mantine-color-scheme="dark"] {
+  --bg-primary: #0F1113;
+  --bg-secondary: #1A1D21;
+  --bg-card: #252830;
+  --text-primary: #F0F2F5;
+  --text-secondary: #A0A4AB;
+  --text-muted: #6C7280;
+  --border-light: #2D3139;
+  --border-medium: #3D424B;
+}
+
+[data-mantine-color-scheme="dark"] body::before {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 90%, rgba(248, 66, 63, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(248, 66, 63, 0.05) 0%, transparent 50%);
+}
+
+[data-mantine-color-scheme="dark"] [class*="Header-root"],
+[data-mantine-color-scheme="dark"] [class*="AppShell-header"] {
+  background: rgba(37, 40, 48, 0.85) !important;
+}
+
+/* ============================================
+   Login Page Specific
+   ============================================ */
+
+/* Centered card styling for login */
+.mantine-AppShell-main:has(.mantine-Container-root:only-child) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* ============================================
+   Instance Health Indicator
+   ============================================ */
+
+@keyframes healthPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 
-  .monaco-editor .view-lines,
-  .monaco-editor .view-line * {
-    color: var(--mantine-color-gray-5) !important;
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
   }
+}
+
+
+
+/* ============================================
+   Page Transitions 
+   ============================================ */
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.page-transition-enter {
+  animation: slideInFromRight 0.3s var(--ease-out);
+}
+
+/* ============================================
+   Subtle button overrides for variant=outline 
+   ============================================ */
+
+.mantine-Button-root[data-variant="outline"] {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1.5px solid var(--border-medium) !important;
+  box-shadow: none !important;
+}
+
+.mantine-Button-root[data-variant="outline"]:hover {
+  border-color: var(--brand) !important;
+  color: var(--brand) !important;
+  background: var(--brand-subtle) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.mantine-Button-root[data-variant="subtle"] {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.mantine-Button-root[data-variant="subtle"]:hover {
+  background: var(--brand-subtle) !important;
+  color: var(--brand) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
