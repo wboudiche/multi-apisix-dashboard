@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
@@ -122,15 +121,11 @@ func (s *AuthService) GenerateTokens(user *models.User) (*TokenPair, error) {
 }
 
 func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
-	log.Printf("[DEBUG ValidateToken] Secret: %s...", s.jwtCfg.Secret[:min(10, len(s.jwtCfg.Secret))])
-	log.Printf("[DEBUG ValidateToken] Token: %s...", tokenString[:min(30, len(tokenString))])
-
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(s.jwtCfg.Secret), nil
 	})
 
 	if err != nil {
-		log.Printf("[DEBUG ValidateToken] Parse error: %v", err)
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, ErrTokenExpired
 		}
@@ -139,11 +134,9 @@ func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
-		log.Printf("[DEBUG ValidateToken] Claims ok: %v, token.Valid: %v", ok, token.Valid)
 		return nil, ErrInvalidToken
 	}
 
-	log.Printf("[DEBUG ValidateToken] Valid for user: %s", claims.Username)
 	return claims, nil
 }
 

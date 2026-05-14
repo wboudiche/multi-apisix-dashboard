@@ -30,11 +30,21 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	defaultJWTSecret     = "your-secret-key-change-in-production"
+	defaultAdminPassword = "admin"
+)
+
 func main() {
-	// Load config
 	cfg := config.Load()
 
-	// Initialize etcd client
+	if cfg.JWT.Secret == defaultJWTSecret {
+		log.Println("WARNING: JWT_SECRET is the documented default. Set a strong random value (32+ bytes) before deploying.")
+	}
+	if cfg.Security.AdminPassword == defaultAdminPassword {
+		log.Println("WARNING: ADMIN_PASSWORD is the documented default. Change the admin password from the UI immediately.")
+	}
+
 	etcdClient, err := services.NewEtcdClient(cfg.Etcd)
 	if err != nil {
 		log.Fatalf("Failed to connect to etcd: %v", err)

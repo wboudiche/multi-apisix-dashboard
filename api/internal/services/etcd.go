@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
 
@@ -35,7 +36,7 @@ func NewEtcdClient(cfg config.EtcdConfig) (*EtcdClient, error) {
 		Endpoints:   cfg.Endpoints,
 		Username:    cfg.Username,
 		Password:    cfg.Password,
-		DialTimeout: 5 * 1000000000, // 5 seconds
+		DialTimeout: 5 * time.Second,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to etcd: %w", err)

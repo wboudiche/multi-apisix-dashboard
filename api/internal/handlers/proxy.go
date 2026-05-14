@@ -19,9 +19,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
@@ -29,6 +29,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+var proxyClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
 
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
@@ -105,14 +114,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	path = strings.TrimPrefix(path, "/api/v1/apisix")
 
 	resourceType, resourceID := h.getResourceMetadata(path)
-	log.Printf("[DEBUG Proxy] Context: ResourceType=%s, ResourceID=%s, Method=%s", resourceType, resourceID, c.Request.Method)
 
-	// 1. Pre-mutation checks (PUT, PATCH, DELETE)
 	if role != models.RoleSuperAdmin && role != models.RoleInstanceAdmin {
 		if (c.Request.Method == http.MethodPut || c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) && resourceID != "" {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 			if ownerTeamID != "" && ownerTeamID != effectiveTeamID {
-				log.Printf("[DEBUG Proxy] Blocked mutation: Owner=%s, UserTeam=%s", ownerTeamID, effectiveTeamID)
 				c.JSON(http.StatusForbidden, gin.H{"error": "Resource owned by another team"})
 				c.Abort()
 				return
@@ -143,8 +149,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		proxyReq.Header.Set("X-API-Key", instance.AdminKey)
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(proxyReq)
+	resp, err := proxyClient.Do(proxyReq)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to connect to APISIX: " + err.Error()})
 		return
@@ -152,9 +157,6 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		log.Printf("[DEBUG Proxy] Target responded with %d: %s", resp.StatusCode, string(respBody))
-	}
 
 	// 3. Post-mutation: Record ownership for new objects
 	if (resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated) &&
@@ -179,7 +181,6 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 
 		if resourceID != "" && effectiveTeamID != "" {
-			log.Printf("[DEBUG Proxy] Recording ownership: %s/%s -> %s", resourceType, resourceID, effectiveTeamID)
 			h.ownershipService.SetOwner(c.Request.Context(), &models.Ownership{
 				InstanceID:   instanceID,
 				ResourceType: resourceType,
@@ -230,7 +231,6 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		} else if isSingle && !isAdmin {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 			if effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
-				log.Printf("[DEBUG Proxy] Blocked access to single resource: Owner=%s, UserTeam=%s", ownerTeamID, effectiveTeamID)
 				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this resource"})
 				return
 			}
