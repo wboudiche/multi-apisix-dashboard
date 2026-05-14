@@ -27,29 +27,14 @@ docker compose -f e2e/server/docker-compose.yml up -d
 This brings up:
 
 - `server-apisix-1` — APISIX on `:9180` (Admin API), `:9080` (HTTP), `:9100` (TCP stream), `:9200` (UDP stream).
-- `server-etcd-1` — etcd, **not** exposed on the host by default (used by APISIX over the docker network).
+- `server-apisix2-1` — second APISIX on `:9181` (used by the seeded "Staging APISIX" instance and multi-instance E2E tests).
+- `server-etcd-1` — etcd, exposed on host `:2379` so the Go backend running locally can reach it.
 
 The admin key for APISIX is in [`e2e/server/apisix_conf.yml`](../../e2e/server/apisix_conf.yml) under `deployment.admin.admin_key`. You don't paste it into the browser anymore — you register it once when adding the instance through the UI, and it's stored server-side in the Go backend's etcd.
 
-### Need a second APISIX for multi-instance testing?
+### Multi-instance testing
 
-```sh
-# Use the second config + a different port mapping
-docker run -d --name apisix-staging \
-  --network server_apisix \
-  -p 9181:9180 \
-  -v "$PWD/e2e/server/apisix_conf_2.yml:/usr/local/apisix/conf/config.yaml:ro" \
-  apache/apisix:3.15.0-debian
-```
-
-Then register it via `/ui/instances` once you're logged in.
-
-### Need etcd reachable from the Go backend running on the host?
-
-The compose file keeps etcd on the docker network only. For local Go-backend development against this same etcd, either:
-
-- **Easier**: expose etcd in a `docker-compose.override.yml` (publish port 2379), or
-- **Cleaner**: run the Go backend in docker on the `server_apisix` network and point it at `http://etcd:2379`.
+The compose stack already provides two APISIX instances (`:9180` and `:9181`) so you can exercise the multi-instance UI and tests without extra setup. Register both via `/ui/instances` once you're logged in.
 
 ## 2. Build and run the Go backend
 
@@ -137,7 +122,7 @@ go build -C api -o ../bin/api ./cmd          # build
 
 ## Troubleshooting
 
-**Backend won't start, "failed to connect to etcd"** — etcd isn't reachable from where the backend is running. From the host, `curl http://localhost:2379/version` should return JSON; if not, either expose etcd on the host (`docker-compose.override.yml`) or run the backend inside the docker network.
+**Backend won't start, "failed to connect to etcd"** — etcd isn't reachable from where the backend is running. From the host, `curl http://localhost:2379/version` should return JSON. If port `2379` is in use by another stack, stop that container or change `ETCD_ENDPOINTS` for the backend.
 
 **Frontend hits 401 in a loop** — the access token is missing/invalid and the refresh token is also rejected. The interceptor will redirect to `/ui/login`. Check that the Go backend is up on `:8086` and that `JWT_SECRET` hasn't changed since the token was issued (changing the secret invalidates all tokens).
 

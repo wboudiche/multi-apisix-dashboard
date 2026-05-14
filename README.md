@@ -26,7 +26,8 @@ You need: Docker (for APISIX + etcd), Node 22 + pnpm 10, and Go 1.22+ (with tool
 docker compose -f e2e/server/docker-compose.yml up -d
 
 # 2. Build and run the Go backend (port 8086, JWT auth in front of APISIX)
-cd api && go build -o ../bin/api ./cmd && cd ..
+mkdir -p bin
+go build -C api -o ../bin/api ./cmd
 PORT=8086 ETCD_ENDPOINTS=http://localhost:2379 ADMIN_PASSWORD=admin ./bin/api &
 
 # 3. Install JS deps and start the Vite dev server (port 5173)
