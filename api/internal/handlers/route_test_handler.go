@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apache/apisix-dashboard/api/internal/middleware"
-	"github.com/apache/apisix-dashboard/api/internal/services"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

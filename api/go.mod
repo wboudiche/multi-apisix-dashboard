@@ -1,4 +1,4 @@
-module github.com/apache/apisix-dashboard/api
+module github.com/wboudiche/multi-apisix-dashboard/api
 
 go 1.24.0
 
