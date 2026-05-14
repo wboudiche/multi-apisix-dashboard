@@ -17,155 +17,117 @@
 #
 -->
 
-# Contributing to Apache APISIX Dashboard
+# Contributing to Multi-Tenant APISIX Dashboard
 
-We would love for you to contribute to Apache APISIX Dashboard and help make it even better than it is today! As a contributor, here are the guidelines we would like you to follow:
+Thanks for your interest in contributing. This project is a fork of [apache/apisix-dashboard](https://github.com/apache/apisix-dashboard) that adds a Go backend and multi-tenant controls (users, teams, instances, roles, labels). Bug fixes against upstream code are welcome too — if you also want them upstream, mention that in your PR and we'll help land it there.
 
-- [Code of Conduct](#coc)
-- [How to contribute?](#contribute)
-- [How to report a bug?](#bug)
-- [How to add a new feature?](#feature)
-- [Commit Message Guidelines](#commit)
-- [Question or Problem?](#question)
+Participation in this project is governed by [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
-## <a name="coc"></a> Code of Conduct
+## Reporting bugs
 
-This project and everyone participating in it is governed by the Apache software Foundation's [Code of Conduct](http://www.apache.org/foundation/policies/conduct.html). By participating, you are expected to adhere to this code. If you are aware of unacceptable behavior, please visit the [Reporting Guidelines page](http://www.apache.org/foundation/policies/conduct.html#reporting-guidelines) and follow the instructions there.
+Search [open issues](../../issues) first. When opening a new one, include:
 
-## <a name="contribute"></a> How to contribute?
+- A clear title and description.
+- Steps to reproduce (commands run, URL hit, role/instance/team in use).
+- Expected vs. actual behavior.
+- Backend logs (`./bin/api` stderr) and browser console output if relevant.
+- Versions: APISIX, Go, Node, browser.
 
-Most of the contributions that we receive are code contributions, but you can also contribute to the documentation or simply report solid bugs for us to fix.
+## Proposing a feature or significant change
 
-## <a name="bug"></a> How to report a bug?
+Open an issue first to discuss the design. Multi-tenant features especially benefit from upfront discussion because they cross the Go ↔ React boundary, the etcd schema, and the auth/RBAC middleware. PRs that arrive with no prior issue and substantial scope changes are likely to need rework.
 
-- **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/apache/apisix-dashboard/issues).
+## Development setup
 
-- If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/apache/apisix-dashboard/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
+See [`docs/en/development.md`](./docs/en/development.md) — covers Docker, etcd, the Go backend, and the Vite dev server.
 
-## <a name="feature"></a> How to add a new feature or change an existing one
+## Submitting a pull request
 
-_Before making any significant changes, please [open an issue](https://github.com/apache/apisix-dashboard/issues)._ Discussing your proposed changes ahead of time will make the contribution process smooth for everyone.
+Before you push:
 
-Once we've discussed your changes and you've got your code ready, make sure that tests are passing and open your pull request. Your PR is most likely to be accepted if it:
+- `pnpm lint` must pass with zero warnings (`--max-warnings=0`).
+- `pnpm build` must succeed (TypeScript + Vite).
+- `go test -C api ./...` must pass for backend changes.
+- E2E (`pnpm e2e`) should pass for changes that touch resource pages or the auth flow.
+- Add tests for new functionality. Co-locate Go tests next to the code; add Playwright specs under `e2e/tests/`.
+- Update `docs/en/development.md` or the README if your change affects how others run or deploy the project.
 
-- Update the README.md with details of changes to the interface.
-- Includes tests for new functionality.
-- References the original issue in description, e.g. "resolve #123".
-- Has a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
+In the PR description:
 
-## <a name="commit"></a> Commit Message Format
+- Reference the related issue (e.g. "resolves #123").
+- Explain the *why* — what user-visible problem this solves.
+- Note any breaking changes and migration steps (especially for etcd schema or JWT/auth changes — those affect existing deployments).
+- For UI changes, include a screenshot or short clip.
 
-*This specification is inspired by and supersedes the [AngularJS commit message format][commit-message-format].*
+## Commit message format
 
-We have very precise rules over how our Git commit messages must be formatted.
-This format leads to **easier to read commit history**.
-
-Each commit message consists of a **header**, a **body**, and a **footer**.
-
-```
-<header>
-<BLANK LINE>
-<body>
-<BLANK LINE>
-<footer>
-```
-
-The `header` is mandatory and must conform to the [Commit Message Header](#commit-header) format.
-
-The `body` is mandatory for all commits except for those of type "docs".
-When the body is present it must be at least 20 characters long and must conform to the [Commit Message Body](#commit-body) format.
-
-The `footer` is optional. The [Commit Message Footer](#commit-footer) format describes what the footer is used for and the structure it must have.
-
-Any line of the commit message cannot be longer than 100 characters.
-
-#### <a name="commit-header"></a> Commit Message Header
+Inherited from upstream. Each commit has a header, body, and optional footer:
 
 ```
 <type>(<scope>): <short summary>
-  │       │             │
-  │       │             └─⫸ Summary in present tense. Not capitalized. No period at the end.
-  │       │
-  │       └─⫸ Commit Scope: route|upstream|consumer|ssl|plugin|common
-  │
-  └─⫸ Commit Type: build|ci|docs|feat|fix|perf|refactor|test
+
+<body explaining why — required for everything except docs>
+
+<optional footer: BREAKING CHANGE, Fixes #N, etc.>
 ```
 
-The `<type>` and `<summary>` fields are mandatory, the `(<scope>)` field is optional.
+### Type
 
-##### Type
+One of: `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `test`.
 
-Must be one of the following:
+### Scope
 
-* **build**: Changes that affect the build system or external dependencies (example scopes: webpack, npm)
-* **ci**: Changes to our CI configuration files and scripts (example scopes: GitHub Actions)
-* **docs**: Documentation only changes
-* **feat**: A new feature
-* **fix**: A bug fix
-* **perf**: A code change that improves performance
-* **refactor**: A code change that neither fixes a bug nor adds a feature
-* **test**: Adding missing tests or correcting existing tests
+This fork extends the upstream scope list with the multi-tenant additions. Use one of:
 
-##### Scope
+- Upstream resource scopes: `route`, `upstream`, `consumer`, `ssl`, `plugin`, `common`
+- Multi-tenant scopes: `auth`, `user`, `team`, `instance`, `role`, `label`, `overview`, `api` (Go backend, not a specific feature)
 
-The scope should be the name of the npm package affected (as perceived by the person reading the changelog generated from commit messages).
+Or omit the scope if the change is cross-cutting (`refactor:` across many areas, `docs:` not tied to one feature).
 
-The following is the list of supported scopes:
+### Summary
 
-* `route`
-* `upstream`
-* `consumer`
-* `ssl`
-* `plugin`
-* `common`
+- Imperative, present tense (`add`, not `added`).
+- Lowercase first letter.
+- No trailing period.
+- ≤100 chars per line in the whole message.
 
-There are currently a few exceptions to the "use package name" rule:
+### Body
 
-* `packaging`: used for changes that change the npm package layout in all of our packages, e.g. public path changes, package.json changes done to all packages, d.ts file/format changes, changes to bundles, etc.
+Imperative, present tense. Explains **why** — the motivation, the alternative considered, the trade-off. Not what the code does (the diff already shows that).
 
-* `changelog`: used for updating the release notes in CHANGELOG.md
+### Footer
 
-* none/empty string: useful for `test` and `refactor` changes that are done across all packages (e.g. `test: add missing unit tests`) and for docs changes that are not related to a specific package (e.g. `docs: fix typo in tutorial`).
+- `BREAKING CHANGE: <summary>` followed by a blank line and migration instructions, when applicable.
+- `Fixes #N` to auto-close issues.
 
-##### Summary
+### Reverts
 
-Use the summary field to provide a succinct description of the change:
+Start the header with `revert:` followed by the original header. In the body, include `This reverts commit <SHA>` and the reason.
 
-* use the imperative, present tense: "change" not "changed" nor "changes"
-* don't capitalize the first letter
-* no dot (.) at the end
-
-#### <a name="commit-body"></a> Commit Message Body
-
-Just as in the summary, use the imperative, present tense: "fix" not "fixed" nor "fixes".
-
-Explain the motivation for the change in the commit message body. This commit message should explain _why_ you are making the change.
-You can include a comparison of the previous behavior with the new behavior in order to illustrate the impact of the change.
-
-#### <a name="commit-footer"></a> Commit Message Footer
-
-The footer can contain information about breaking changes and is also the place to reference GitHub issues, Jira tickets, and other PRs that this commit closes or is related to.
+Examples:
 
 ```
-BREAKING CHANGE: <breaking change summary>
-<BLANK LINE>
-<breaking change description + migration instructions>
-<BLANK LINE>
-<BLANK LINE>
-Fixes #<issue number>
+feat(instance): add per-instance admin key rotation
+
+Operators currently need to redeploy the backend to rotate an instance's
+admin key. This adds a UI flow + PUT /instances/:id/key endpoint so a
+super_admin can rotate without restarting.
+
+Fixes #142
 ```
 
-Breaking Change section should start with the phrase "BREAKING CHANGE: " followed by a summary of the breaking change, a blank line, and a detailed description of the breaking change that also includes migration instructions.
+```
+fix(auth): reject empty JWT_SECRET at startup
 
-### Revert commits
+A blank secret was silently accepted, producing tokens that any HS256
+implementation would also accept. Refuse to start if JWT_SECRET is the
+literal default in non-dev mode.
 
-If the commit reverts a previous commit, it should begin with `revert:`, followed by the header of the reverted commit.
+BREAKING CHANGE: backend now panics on startup if JWT_SECRET is unset
+or matches the documented default. Set a 32+ byte random value before
+upgrading.
+```
 
-The content of the commit message body should contain:
+## Questions
 
-- information about the SHA of the commit being reverted in the following format: `This reverts commit <SHA>`,
-- a clear description of the reason for reverting the commit message.
-
-## <a name="question"></a> Do you have questions about the source code?
-
-- Subscribe to our mail list and send the question mail to [dev@apisix.apache.org](mailto:dev@apisix.apache.org)
+Open a [discussion](../../discussions) (or an issue if discussions aren't enabled yet).

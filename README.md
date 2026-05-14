@@ -1,31 +1,75 @@
-# Apache APISIX Dashboard
+# Multi-Tenant APISIX Dashboard
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/apache/apisix-dashboard/blob/master/LICENSE)
-[![Slack](https://badgen.net/badge/Slack/Join%20Apache%20APISIX?icon=slack)](https://apisix.apache.org/slack)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
-<p align="center">
-  <a href="https://apisix.apache.org/">Website</a> •
-  <a href="https://github.com/apache/apisix/tree/master/docs">Docs</a> •
-  <a href="https://twitter.com/apacheapisix">Twitter</a>
-</p>
+A multi-tenant control plane for [Apache APISIX](https://github.com/apache/apisix), forked from [apache/apisix-dashboard](https://github.com/apache/apisix-dashboard).
 
-- The master version should be used with Apache APISIX master version.
-- The project will not be released independently but will use a fixed git tag for each APISIX release.
+Where the upstream dashboard is a single-page app that talks directly to one APISIX Admin API using a shared admin key, this fork adds a **Go backend** in front that provides:
 
-## What's Apache APISIX Dashboard
+- **User accounts** with bcrypt-hashed passwords and JWT-based login (no more sharing the admin key with everyone).
+- **Multiple APISIX instances** registered through the UI — one dashboard, N gateways (staging, prod, per-region, …).
+- **Teams** as the tenancy unit, with per-resource ownership.
+- **Per-instance roles**: `super_admin`, `instance_admin`, `developer`, `viewer`. The same user can be admin on staging and viewer on prod.
+- **Label-based classification** for routes and other resources, with backend-enforced validation.
+- **OpenAPI import/export** for routes.
+- **Live route tester** (curl-style) and **upstream connection tester** directly from the UI.
+- **Overview dashboard** with gateway health and consolidated counts across instances.
 
-The Apache APISIX Dashboard is designed to make it as easy as possible for users to operate [Apache APISIX](https://github.com/apache/apisix) through a frontend interface.
+The frontend (React + TanStack Router + Mantine + Ant Design Pro) and most of the resource forms come from upstream; the `api/` directory and the new top-level pages (`login`, `overview`, `instances`, `teams`, `users`) are the multi-tenant additions.
 
-## Development
+## Quick start
 
-Pull requests are encouraged and always welcome. [Pick an issue](https://github.com/apache/apisix-dashboard/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) and help us out!
+You need: Docker (for APISIX + etcd), Node 22 + pnpm 10, and Go 1.22+ (with toolchain auto-download for the 1.24 declared in `api/go.mod`).
 
-Please refer to the [Development Guide](./docs/en/development.md).
+```sh
+# 1. Bring up APISIX + etcd
+docker compose -f e2e/server/docker-compose.yml up -d
+
+# 2. Build and run the Go backend (port 8086, JWT auth in front of APISIX)
+cd api && go build -o ../bin/api ./cmd && cd ..
+PORT=8086 ETCD_ENDPOINTS=http://localhost:2379 ADMIN_PASSWORD=admin ./bin/api &
+
+# 3. Install JS deps and start the Vite dev server (port 5173)
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Open <http://localhost:5173/ui> and log in with `admin / admin`. Change the password immediately from the user menu.
+
+See [`docs/en/development.md`](./docs/en/development.md) for the full dev setup, including how to run multiple APISIX instances and how the auth/proxy flow works.
+
+## Architecture
+
+```
+┌──────────────┐   JWT Bearer   ┌────────────────┐  X-API-KEY  ┌──────────────┐
+│   Browser    │ ─────────────▶ │  Go backend    │ ──────────▶ │  APISIX A    │
+│  React SPA   │  X-Instance-ID │  (Gin, :8086)  │             │  (:9180)     │
+│              │  X-Team-ID     │                │             └──────────────┘
+└──────────────┘                │  + etcd        │             ┌──────────────┐
+                                │   (users,      │ ──────────▶ │  APISIX B    │
+                                │   teams,       │             │  (:9181)     │
+                                │   instances,   │             └──────────────┘
+                                │   roles,       │                    ...
+                                │   ownership,   │
+                                │   labels)      │
+                                └────────────────┘
+```
+
+The dashboard never holds an APISIX admin key in the browser — it ships only JWTs. The backend looks up the target instance by `X-Instance-ID`, attaches that instance's admin key server-side, and proxies the request.
+
+## Versioning
+
+- The fork tracks upstream `apache/apisix-dashboard` for the resource UI. Multi-tenant features live on `feat/multi-tenant-dashboard` and main.
+- Each APISIX release line is supported with a matching git tag, same convention as upstream.
 
 ## Contributing
 
-Please refer to the [Contribution Guide](./CONTRIBUTING.md) for a more detailed information.
+This fork is public and accepts contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
+
+## Trademark
+
+APISIX® is a registered trademark of The Apache Software Foundation. This project is an **independent fork** of `apache/apisix-dashboard` and is **not affiliated with, endorsed by, or sponsored by** the Apache Software Foundation. The name "Multi-Tenant APISIX Dashboard" describes what the project does — provide a multi-tenant dashboard for Apache APISIX — and is used in accordance with [Apache's trademark guidelines for downstream projects](https://www.apache.org/foundation/marks/).
 
 ## License
 
-[Apache License 2.0](./LICENSE)
+[Apache License 2.0](./LICENSE) — same as upstream. See [NOTICE](./NOTICE) for attribution.

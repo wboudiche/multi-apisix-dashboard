@@ -1,5 +1,17 @@
-Apache APISIX
-Copyright 2019-2023 The Apache Software Foundation
+Multi-Tenant APISIX Dashboard
+Copyright 2026 Walid Boudiche and contributors
 
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
+This product is a fork of Apache APISIX Dashboard, originally developed by
+the Apache Software Foundation (http://www.apache.org/), and includes
+software developed at The Apache Software Foundation.
+
+This work modifies files from the original Apache APISIX Dashboard and adds
+new files (notably the api/ directory and multi-tenant frontend pages).
+See the git history for the complete list of changes.
+
+APISIX is a registered trademark of The Apache Software Foundation. This
+project is an independent fork and is not affiliated with or endorsed by
+the Apache Software Foundation.
+
+Apache APISIX Dashboard
+Copyright 2019-2023 The Apache Software Foundation
