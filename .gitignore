@@ -52,7 +52,12 @@ api/premium_server_v6
 api/server
 api/server_v[0-9]*
 api/test_etcd
+/apisix-dashboard-api
+/bin/
 
 # Runtime/process logs
 nohup.out
 api/nohup.out
+
+# Playwright MCP session output
+/.playwright-mcp/
