@@ -17,7 +17,7 @@
 import { createFileRoute, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
-import { getRouteListQueryOptions } from '@/apis/hooks';
+import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import PageHeader from '@/components/page/PageHeader';
 import { ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { queryClient } from '@/config/global';
@@ -27,17 +27,19 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function RouteComponent() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/services/detail/$id/routes/' });
+  const { data, isLoading, refetch, setParams } = useRouteList();
   return (
     <>
       <PageHeader title={t('sources.routes')} />
       <RouteList
         routeKey="/services/detail/$id/routes/"
-        defaultParams={{
-          filter: {
-            service_id: id,
-          },
-        }}
-        ToDetailBtn={({ record }) => (
+        data={data}
+        isLoading={isLoading}
+        refetch={refetch}
+        setParams={setParams}
+        visibleColumns={['name', 'host', 'path', 'desc', 'operation']}
+        defaultParams={{ filter: { service_id: id } }}
+        ToDetailBtn={({ record }: { record: { value: { id: string } } }) => (
           <ToDetailPageBtn
             key="detail"
             to="/services/detail/$id/routes/detail/$routeId"

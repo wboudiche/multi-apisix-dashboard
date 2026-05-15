@@ -183,7 +183,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
               </Text>
             </Group>
             <ScrollArea.Autosize mah={200}>
-              <Table size="sm" striped>
+              <Table striped>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>{t('form.basic.name')}</Table.Th>

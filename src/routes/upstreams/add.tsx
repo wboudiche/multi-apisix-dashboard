@@ -20,7 +20,7 @@ import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, type Resolver, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
@@ -68,8 +68,8 @@ const UpstreamAddForm = () => {
     } catch { /* ignore */ }
   }
 
-  const form = useForm({
-    resolver: zodResolver(PostUpstreamSchema),
+  const form = useForm<PostUpstreamType>({
+    resolver: zodResolver(PostUpstreamSchema) as unknown as Resolver<PostUpstreamType>,
     shouldUnregister: false,
     mode: 'all',
     defaultValues: savedDraft.current || defaultValues,

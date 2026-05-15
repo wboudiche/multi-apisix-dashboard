@@ -34,6 +34,7 @@
       "add": "Ekle",
       "addARow": "Satır ekle",
       "cancel": "İptal",
+      "create": "Oluştur",
       "delete": "Sil",
       "edit": "Düzenle",
       "save": "Kaydet",
@@ -341,7 +342,32 @@
     "singular": "Proto"
   },
   "routes": {
-    "singular": "Route"
+    "singular": "Route",
+    "list": {
+      "headerHost": "Host",
+      "headerPath": "Yol",
+      "headerDescription": "Açıklama",
+      "headerLabels": "Etiketler",
+      "headerVersion": "Sürüm",
+      "headerStatus": "Durum",
+      "headerUpdateTime": "Güncelleme Zamanı",
+      "headerPlugin": "Eklenti",
+      "headerOperation": "İşlem",
+      "statusPublished": "Yayınlandı",
+      "statusUnpublished": "Yayınlanmadı",
+      "actionOffline": "Çevrimdışı",
+      "actionConfigure": "Yapılandır",
+      "actionMore": "Daha Fazla",
+      "filterReset": "Sıfırla",
+      "filterSearch": "Ara",
+      "filterExpand": "Genişlet",
+      "filterCollapse": "Daralt",
+      "filterLabels": "Etiketler:",
+      "columnsTitle": "Sütun Görüntüsü",
+      "columnsReset": "Sıfırla",
+      "columnsNotFixed": "Sabit Değil",
+      "columnsFixedRight": "Sağa Sabit"
+    }
   },
   "seconds": "Saniye",
   "secrets": {

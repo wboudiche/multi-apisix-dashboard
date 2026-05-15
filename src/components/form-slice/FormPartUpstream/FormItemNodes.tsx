@@ -23,7 +23,6 @@ import { equals, isNil } from 'rambdax';
 import { useEffect, useMemo } from 'react';
 import { type FieldValues, useController, type UseControllerProps } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import type { ZodObject, ZodRawShape } from 'zod';
 
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { zGetDefault } from '@/utils/zod';
@@ -32,26 +31,12 @@ import { genControllerProps } from '../../form/util';
 
 type DataSource = APISIXType['UpstreamNode'] & APISIXType['ID'];
 
-const zValidateField = <T extends ZodRawShape, R extends keyof T>(
-  zObj: ZodObject<T>,
-  field: R,
-  value: unknown
-) => {
-  const fieldSchema = zObj.shape[field];
-  const res = fieldSchema.safeParse(value);
-  if (res.success) {
-    return Promise.resolve();
-  }
-  const error = res.error.issues[0];
-  return Promise.reject(new Error(error.message));
-};
-
 const genRecord = (data?: DataSource | APISIXType['UpstreamNode']) => {
   const d = data || zGetDefault(APISIX.UpstreamNode);
   return {
     id: nanoid(),
-    weight: 1,
     ...d,
+    weight: d.weight ?? 1,
   } as DataSource;
 };
 
@@ -106,7 +91,7 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
     fieldState,
   } = useController<T>(controllerProps);
 
-  const { label, description, required, withAsterisk } = props;
+  const { label, description, required } = props;
   const ob = useLocalObservable(() => ({
     disabled: false,
     setDisabled(disabled: boolean | undefined) {
@@ -125,9 +110,11 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
       if (index === -1) return;
       this.values.splice(index, 1);
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateValue(id: string, field: keyof DataSource, val: any) {
       const index = this.values.findIndex((item) => item.id === id);
       if (index === -1) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.values[index] as any)[field] = val;
     }
   }));

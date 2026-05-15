@@ -68,7 +68,7 @@ export const FormItemPlugins = <T extends FieldValues>(
   const {
     field: { value: rawObject, onChange: fOnChange, name: fName, ...restField },
     fieldState,
-  } = useController<T>(controllerProps);
+  } = useController<T>(controllerProps as UseControllerProps<T>);
   const isView = useMemo(() => restField.disabled, [restField.disabled]);
 
   const pluginsOb = useLocalObservable(() => ({
@@ -137,7 +137,7 @@ export const FormItemPlugins = <T extends FieldValues>(
     get curPluginSchema() {
       const d = this.pluginSchemaObj.get(this.curPlugin.name);
       if (!d) return {};
-      return d[schema];
+      return d[schema as keyof typeof d];
     },
     editorOpened: false,
     setEditorOpened(val: boolean) {

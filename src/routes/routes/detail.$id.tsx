@@ -41,6 +41,7 @@ import {
 } from '@/components/form-slice/FormPartRoute';
 import { RoutePreviewSummary } from '@/components/form-slice/FormPartRoute/RoutePreviewSummary';
 import {
+  type RoutePostType,
   RoutePutSchema,
   type RoutePutType,
 } from '@/components/form-slice/FormPartRoute/schema';
@@ -78,7 +79,7 @@ const RouteDetailForm = (props: Props) => {
   const routeQuery = useQuery(getRouteQueryOptions(id));
   const { data: routeData, isLoading, refetch } = routeQuery;
 
-  const form = useForm({
+  const form = useForm<RoutePutType>({
     resolver: zodResolver(RoutePutSchema),
     shouldUnregister: false,
     shouldFocusError: true,
@@ -90,9 +91,9 @@ const RouteDetailForm = (props: Props) => {
     if (routeData?.value && !isLoading) {
       const upstreamProduced = produceToUpstreamForm(
         routeData.value.upstream || {},
-        routeData.value
+        routeData.value as APISIXType['Route']
       );
-      form.reset(produceVarsToForm(upstreamProduced));
+      form.reset(produceVarsToForm(upstreamProduced as RoutePostType) as RoutePutType);
     }
   }, [routeData, form, isLoading]);
 
@@ -269,7 +270,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const routeUri = rawJson?.uri as string || (rawJson?.uris as string[])?.[0] || '/';
   const routeMethod = (rawJson?.methods as string[])?.[0] || 'GET';
   const routeHost = rawJson?.host as string || (rawJson?.hosts as string[])?.[0] || undefined;
-  const currentTeamId = rawJson?.__team_id as string || undefined;
+  const currentTeamId = (rawJson as Record<string, unknown> | null)?.__team_id as string | undefined;
 
   const handleJsonSave = useCallback(async (data: Record<string, unknown>) => {
     setJsonSaving(true);
@@ -365,7 +366,8 @@ export const RouteDetail = (props: RouteDetailProps) => {
       />
       <ReassignTeamModal
         opened={reassignOpen}
-        onClose={() => { setReassignOpen(false); routeQuery.refetch(); }}
+        onClose={() => setReassignOpen(false)}
+        onSaved={() => routeQuery.refetch()}
         resourceType="routes"
         resourceId={id}
         currentTeamId={currentTeamId}

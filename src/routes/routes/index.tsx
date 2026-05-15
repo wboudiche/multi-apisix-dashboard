@@ -60,6 +60,8 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
+import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
+import IconArrowDropUp from '~icons/material-symbols/arrow-drop-up';
 import IconCode from '~icons/material-symbols/code';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
 import IconDelete from '~icons/material-symbols/delete-outline';
@@ -69,6 +71,7 @@ import IconRefresh from '~icons/material-symbols/refresh';
 import IconSettings from '~icons/material-symbols/settings-outline';
 import IconUpload from '~icons/material-symbols/upload';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type RouteListProps = {
   routeKey: Extract<ListPageKeys, '/routes/' | '/services/detail/$id/routes/'>;
   data: any;
@@ -76,11 +79,15 @@ export type RouteListProps = {
   refetch: () => void;
   setParams: (params: any) => void;
   visibleColumns: string[];
+  defaultParams?: Record<string, any>;
+  ToDetailBtn?: React.ComponentType<{ record: any }>;
 };
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const RouteList = (props: RouteListProps) => {
   const { routeKey, data, isLoading, refetch, setParams, visibleColumns } = props;
-  const { params } = useSearchParams(routeKey);
+  const { params: rawParams } = useSearchParams(routeKey);
+  const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
   const { canEdit, canDelete } = usePermission();
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
@@ -246,20 +253,21 @@ export const RouteList = (props: RouteListProps) => {
             <Table.Th style={{ width: 40 }}><Checkbox aria-label="Select all" checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll} /></Table.Th>
             {isVisible('name') && <Table.Th>{t('form.basic.name')}</Table.Th>}
             {isVisible('id') && <Table.Th>ID</Table.Th>}
-            {isVisible('host') && <Table.Th>Host</Table.Th>}
-            {isVisible('path') && <Table.Th>Path</Table.Th>}
-            {isVisible('desc') && <Table.Th>Description</Table.Th>}
-            {isVisible('label') && <Table.Th>Labels</Table.Th>}
-            {isVisible('version') && <Table.Th>Version</Table.Th>}
-            {isVisible('status') && <Table.Th>Status</Table.Th>}
-            {isVisible('update_time') && <Table.Th>Update Time</Table.Th>}
-            {isVisible('plugin') && <Table.Th>Plugin</Table.Th>}
-            {isVisible('team') && <Table.Th>{t('teams')}</Table.Th>}
-            {isVisible('operation') && <Table.Th style={{ width: 1, whiteSpace: 'nowrap' }}>Operation</Table.Th>}
+            {isVisible('host') && <Table.Th>{t('routes.list.headerHost')}</Table.Th>}
+            {isVisible('path') && <Table.Th>{t('routes.list.headerPath')}</Table.Th>}
+            {isVisible('desc') && <Table.Th>{t('routes.list.headerDescription')}</Table.Th>}
+            {isVisible('label') && <Table.Th>{t('routes.list.headerLabels')}</Table.Th>}
+            {isVisible('version') && <Table.Th>{t('routes.list.headerVersion')}</Table.Th>}
+            {isVisible('status') && <Table.Th>{t('routes.list.headerStatus')}</Table.Th>}
+            {isVisible('update_time') && <Table.Th>{t('routes.list.headerUpdateTime')}</Table.Th>}
+            {isVisible('plugin') && <Table.Th>{t('routes.list.headerPlugin')}</Table.Th>}
+            {isVisible('team') && <Table.Th>{t('sources.teams')}</Table.Th>}
+            {isVisible('operation') && <Table.Th style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {data?.list.map((record, index) => (
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {data?.list.map((record: any, index: number) => (
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
                 <Checkbox aria-label="Select row" checked={selectedIds.has(record.value.id)} onChange={() => toggleSelect(record.value.id)} />
@@ -338,9 +346,9 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('status') && (
                 <Table.Td>
                   {record.value.status === 1 ? (
-                    <Badge color="green" variant="outline" size="sm">Published</Badge>
+                    <Badge color="green" variant="outline" size="sm">{t('routes.list.statusPublished')}</Badge>
                   ) : (
-                    <Badge color="gray" variant="outline" size="sm">Unpublished</Badge>
+                    <Badge color="gray" variant="outline" size="sm">{t('routes.list.statusUnpublished')}</Badge>
                   )}
                 </Table.Td>
               )}
@@ -392,7 +400,7 @@ export const RouteList = (props: RouteListProps) => {
                       radius="sm"
                       styles={{ root: { padding: '0 12px' } }}
                     >
-                      Offline
+                      {t('routes.list.actionOffline')}
                     </DeleteResourceBtn>
                     <RouteLinkBtn
                       to="/routes/detail/$id"
@@ -403,11 +411,11 @@ export const RouteList = (props: RouteListProps) => {
                       radius="sm"
                       styles={{ root: { padding: '0 12px' } }}
                     >
-                      Configure
+                      {t('routes.list.actionConfigure')}
                     </RouteLinkBtn>
                     <Menu shadow="md" width={160}>
                       <Menu.Target>
-                        <Button size="xs" variant="default" radius="sm" rightSection={<span style={{ fontSize: '10px' }}>▼</span>}>More</Button>
+                        <Button size="xs" variant="default" radius="sm" rightSection={<IconArrowDropDown width="14" height="14" />}>{t('routes.list.actionMore')}</Button>
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item
@@ -494,7 +502,8 @@ export const RouteList = (props: RouteListProps) => {
   );
 };
 
-const FilterInput = ({ label, placeholder, valueKey, selectData, localParams, setLocalParams }: { label: string; placeholder: string; valueKey: string; selectData?: any[]; localParams: any; setLocalParams: (params: any) => void }) => (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const FilterInput = ({ label, placeholder, valueKey, selectData, localParams, setLocalParams }: { label: string; placeholder: string; valueKey: string; selectData?: { label: string; value: string }[]; localParams: any; setLocalParams: (params: any) => void }) => (
   <Group gap="xs" style={{ minWidth: 250 }}>
     <Text size="sm" fw={500} style={{ width: 80, textAlign: 'right' }}>{label}:</Text>
     {selectData ? (
@@ -531,7 +540,7 @@ function RouteComponent() {
 
   const filteredData = useMemo(() => {
     if (!data || appliedLabels.length === 0) return data;
-    const filtered = data.list?.filter((record: any) => {
+    const filtered = data.list?.filter((record: { value?: { labels?: Record<string, string> } }) => {
       const routeLabels = record.value?.labels;
       if (!routeLabels) return false;
       return appliedLabels.every((tag) => {
@@ -576,9 +585,9 @@ function RouteComponent() {
                 <FilterInput label="Status" placeholder="UnPublished/Published" valueKey="status" selectData={[{ label: 'Published', value: '1' }, { label: 'UnPublished', value: '0' }]} localParams={localParams} setLocalParams={setLocalParams} />
               </Group>
               <Group gap="sm">
-                <Button variant="default" size="sm" onClick={() => { setLocalParams({}); resetParams(); }}>Reset</Button>
-                <Button color="blue" variant="filled" size="sm" onClick={() => setParams(localParams)}>Search</Button>
-                <Button variant="transparent" size="sm" onClick={() => setExpanded(true)} rightSection={<span style={{ fontSize: '10px', color: '#1890ff' }}>▼</span>} style={{ color: '#1890ff', fontWeight: 400 }}>Expand</Button>
+                <Button variant="default" size="sm" onClick={() => { setLocalParams({}); resetParams(); }}>{t('routes.list.filterReset')}</Button>
+                <Button color="blue" variant="filled" size="sm" onClick={() => setParams(localParams)}>{t('routes.list.filterSearch')}</Button>
+                <Button variant="transparent" size="sm" onClick={() => setExpanded(true)} rightSection={<IconArrowDropDown width="14" height="14" />} style={{ color: '#1890ff', fontWeight: 400 }}>{t('routes.list.filterExpand')}</Button>
               </Group>
             </Group>
           ) : (
@@ -588,16 +597,16 @@ function RouteComponent() {
               <Grid.Col span={4}><FilterInput label="Status" placeholder="UnPublished/Published" valueKey="status" selectData={[{ label: 'Published', value: '1' }, { label: 'UnPublished', value: '0' }]} localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
               <Grid.Col span={12}>
                 <Group gap="xs" align="center" wrap="nowrap">
-                  <Text size="sm" fw={500} style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>Labels:</Text>
+                  <Text size="sm" fw={500} style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>{t('routes.list.filterLabels')}</Text>
                   <LabelFilter value={selectedLabels} onChange={setSelectedLabels} />
                 </Group>
               </Grid.Col>
 
               <Grid.Col span={12}>
                 <Group justify="flex-end" gap="sm">
-                  <Button variant="default" size="sm" onClick={() => { setLocalParams({}); setSelectedLabels([]); setAppliedLabels([]); resetParams(); }}>Reset</Button>
-                  <Button color="blue" variant="filled" size="sm" onClick={() => { setAppliedLabels(selectedLabels); setParams({ ...localParams, label: selectedLabels.length > 0 ? selectedLabels[0].split(':')[0] : undefined }); }}>Search</Button>
-                  <Button variant="transparent" size="sm" onClick={() => setExpanded(false)} rightSection={<span style={{ fontSize: '10px', color: '#1890ff' }}>▲</span>} style={{ color: '#1890ff', fontWeight: 400 }}>Collapse</Button>
+                  <Button variant="default" size="sm" onClick={() => { setLocalParams({}); setSelectedLabels([]); setAppliedLabels([]); resetParams(); }}>{t('routes.list.filterReset')}</Button>
+                  <Button color="blue" variant="filled" size="sm" onClick={() => { setAppliedLabels(selectedLabels); setParams({ ...localParams, label: selectedLabels.length > 0 ? selectedLabels[0].split(':')[0] : undefined }); }}>{t('routes.list.filterSearch')}</Button>
+                  <Button variant="transparent" size="sm" onClick={() => setExpanded(false)} rightSection={<IconArrowDropUp width="14" height="14" />} style={{ color: '#1890ff', fontWeight: 400 }}>{t('routes.list.filterCollapse')}</Button>
                 </Group>
               </Grid.Col>
             </Grid>
@@ -609,7 +618,7 @@ function RouteComponent() {
         <Group justify="flex-end" mb="md" align="center">
           <Group gap="sm">
             <ToAddPageBtn
-              label={t('form.btn.create', { defaultValue: 'Create' })}
+              label={t('form.btn.create')}
               to="/routes/add"
               color="blue"
             />
@@ -630,11 +639,11 @@ function RouteComponent() {
               </Popover.Target>
               <Popover.Dropdown p="xs">
                 <Group justify="space-between" mb="xs">
-                  <Text size="xs" fw={700}>Column Display</Text>
-                  <Anchor size="xs" component="button" onClick={() => setVisibleColumns(DEFAULT_COLUMNS)}>Reset</Anchor>
+                  <Text size="xs" fw={700}>{t('routes.list.columnsTitle')}</Text>
+                  <Anchor size="xs" component="button" onClick={() => setVisibleColumns(DEFAULT_COLUMNS)}>{t('routes.list.columnsReset')}</Anchor>
                 </Group>
 
-                <Text size="xs" c="dimmed" mb={4}>Not Fixed</Text>
+                <Text size="xs" c="dimmed" mb={4}>{t('routes.list.columnsNotFixed')}</Text>
                 <Stack gap={4}>
                   {ALL_COLUMNS.map(col => (
                     <Checkbox
@@ -653,7 +662,7 @@ function RouteComponent() {
                 </Stack>
 
                 <Divider my="xs" />
-                <Text size="xs" c="dimmed" mb={4}>Fixed the right</Text>
+                <Text size="xs" c="dimmed" mb={4}>{t('routes.list.columnsFixedRight')}</Text>
                 <Checkbox
                   size="xs"
                   label="Operation"

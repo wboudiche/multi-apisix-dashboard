@@ -34,6 +34,7 @@
       "add": "Hinzufügen",
       "addARow": "Zeile hinzufügen",
       "cancel": "Abbrechen",
+      "create": "Erstellen",
       "delete": "Löschen",
       "edit": "Bearbeiten",
       "save": "Speichern",
@@ -341,7 +342,32 @@
     "singular": "Proto"
   },
   "routes": {
-    "singular": "Route"
+    "singular": "Route",
+    "list": {
+      "headerHost": "Host",
+      "headerPath": "Pfad",
+      "headerDescription": "Beschreibung",
+      "headerLabels": "Labels",
+      "headerVersion": "Version",
+      "headerStatus": "Status",
+      "headerUpdateTime": "Aktualisiert am",
+      "headerPlugin": "Plugin",
+      "headerOperation": "Aktion",
+      "statusPublished": "Veröffentlicht",
+      "statusUnpublished": "Nicht veröffentlicht",
+      "actionOffline": "Offline",
+      "actionConfigure": "Konfigurieren",
+      "actionMore": "Mehr",
+      "filterReset": "Zurücksetzen",
+      "filterSearch": "Suchen",
+      "filterExpand": "Erweitern",
+      "filterCollapse": "Einklappen",
+      "filterLabels": "Labels:",
+      "columnsTitle": "Spaltenanzeige",
+      "columnsReset": "Zurücksetzen",
+      "columnsNotFixed": "Nicht fixiert",
+      "columnsFixedRight": "Rechts fixiert"
+    }
   },
   "seconds": "Sekunden",
   "secrets": {

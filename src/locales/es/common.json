@@ -34,6 +34,7 @@
       "add": "Añadir",
       "addARow": "Añadir una fila",
       "cancel": "Cancelar",
+      "create": "Crear",
       "delete": "Eliminar",
       "edit": "Editar",
       "save": "Guardar",
@@ -341,7 +342,32 @@
     "singular": "Proto"
   },
   "routes": {
-    "singular": "Ruta"
+    "singular": "Ruta",
+    "list": {
+      "headerHost": "Host",
+      "headerPath": "Ruta",
+      "headerDescription": "Descripción",
+      "headerLabels": "Etiquetas",
+      "headerVersion": "Versión",
+      "headerStatus": "Estado",
+      "headerUpdateTime": "Actualizado",
+      "headerPlugin": "Plugin",
+      "headerOperation": "Operación",
+      "statusPublished": "Publicado",
+      "statusUnpublished": "No publicado",
+      "actionOffline": "Desconectar",
+      "actionConfigure": "Configurar",
+      "actionMore": "Más",
+      "filterReset": "Restablecer",
+      "filterSearch": "Buscar",
+      "filterExpand": "Expandir",
+      "filterCollapse": "Contraer",
+      "filterLabels": "Etiquetas:",
+      "columnsTitle": "Visualización de columnas",
+      "columnsReset": "Restablecer",
+      "columnsNotFixed": "No fijado",
+      "columnsFixedRight": "Fijado a la derecha"
+    }
   },
   "seconds": "Segundos",
   "secrets": {

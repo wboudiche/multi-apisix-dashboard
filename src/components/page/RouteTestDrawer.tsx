@@ -341,7 +341,7 @@ export const RouteTestDrawer = ({
                 </Tabs.Panel>
 
                 <Tabs.Panel value="headers" pt="xs">
-                  <Table size="sm" striped>
+                  <Table striped>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>{t('form.routeTest.header')}</Table.Th>

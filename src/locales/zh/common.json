@@ -34,6 +34,7 @@
       "add": "新增",
       "addARow": "新增一行",
       "cancel": "取消",
+      "create": "创建",
       "delete": "删除",
       "edit": "编辑",
       "save": "保存",
@@ -341,7 +342,32 @@
     "singular": "Proto"
   },
   "routes": {
-    "singular": "路由"
+    "singular": "路由",
+    "list": {
+      "headerHost": "主机",
+      "headerPath": "路径",
+      "headerDescription": "描述",
+      "headerLabels": "标签",
+      "headerVersion": "版本",
+      "headerStatus": "状态",
+      "headerUpdateTime": "更新时间",
+      "headerPlugin": "插件",
+      "headerOperation": "操作",
+      "statusPublished": "已发布",
+      "statusUnpublished": "未发布",
+      "actionOffline": "下线",
+      "actionConfigure": "配置",
+      "actionMore": "更多",
+      "filterReset": "重置",
+      "filterSearch": "搜索",
+      "filterExpand": "展开",
+      "filterCollapse": "折叠",
+      "filterLabels": "标签：",
+      "columnsTitle": "列显示",
+      "columnsReset": "重置",
+      "columnsNotFixed": "不固定",
+      "columnsFixedRight": "固定到右侧"
+    }
   },
   "seconds": "秒",
   "secrets": {

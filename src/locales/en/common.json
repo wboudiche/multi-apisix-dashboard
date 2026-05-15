@@ -41,6 +41,7 @@
       "back": "Back",
       "backToList": "Back to List",
       "cancel": "Cancel",
+      "create": "Create",
       "delete": "Delete",
       "edit": "Edit",
       "next": "Next",
@@ -546,7 +547,32 @@
     "singular": "Proto"
   },
   "routes": {
-    "singular": "Route"
+    "singular": "Route",
+    "list": {
+      "headerHost": "Host",
+      "headerPath": "Path",
+      "headerDescription": "Description",
+      "headerLabels": "Labels",
+      "headerVersion": "Version",
+      "headerStatus": "Status",
+      "headerUpdateTime": "Update Time",
+      "headerPlugin": "Plugin",
+      "headerOperation": "Operation",
+      "statusPublished": "Published",
+      "statusUnpublished": "Unpublished",
+      "actionOffline": "Offline",
+      "actionConfigure": "Configure",
+      "actionMore": "More",
+      "filterReset": "Reset",
+      "filterSearch": "Search",
+      "filterExpand": "Expand",
+      "filterCollapse": "Collapse",
+      "filterLabels": "Labels:",
+      "columnsTitle": "Column Display",
+      "columnsReset": "Reset",
+      "columnsNotFixed": "Not Fixed",
+      "columnsFixedRight": "Fixed Right"
+    }
   },
   "seconds": "Seconds",
   "secrets": {

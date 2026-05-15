@@ -89,7 +89,7 @@ export const RouteAddForm = (props: Props) => {
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const form = useForm({
+  const form = useForm<RoutePostType>({
     resolver: zodResolver(RoutePostSchema),
     shouldUnregister: false,
     shouldFocusError: true,
