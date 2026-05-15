@@ -15,7 +15,10 @@
 
 package models
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Instance represents an APISIX instance configuration
 type Instance struct {
@@ -85,12 +88,41 @@ const (
 	RoleViewer        = "viewer"
 )
 
-// Permission constants
+// Permission constants. Resource names match the APISIX admin-API path segments
+// (plural where APISIX is plural) so a path like /admin/ssls/<id> can be checked
+// against the "ssls:*" entry directly.
 var RolePermissions = map[string][]string{
 	RoleSuperAdmin:    {"*"},
-	RoleInstanceAdmin: {"routes:*", "services:*", "upstreams:*", "consumers:*", "ssl:*", "plugin_configs:*", "protos:*", "global_rules:*", "consumer_groups:*", "secrets:*", "labels:write", "labels:read"},
-	RoleDeveloper:     {"routes:*", "services:*", "upstreams:*", "consumers:*", "consumer_groups:*", "labels:read"},
-	RoleViewer:        {"routes:read", "services:read", "upstreams:read", "consumers:read", "ssl:read", "plugin_configs:read", "protos:read", "global_rules:read", "consumer_groups:read", "secrets:read", "labels:read"},
+	RoleInstanceAdmin: {"routes:*", "services:*", "upstreams:*", "consumers:*", "ssls:*", "plugin_configs:*", "protos:*", "global_rules:*", "consumer_groups:*", "secrets:*", "stream_routes:*", "labels:write", "labels:read"},
+	RoleDeveloper:     {"routes:*", "services:*", "upstreams:*", "consumers:*", "consumer_groups:*", "stream_routes:*", "labels:read"},
+	RoleViewer:        {"routes:read", "services:read", "upstreams:read", "consumers:read", "ssls:read", "plugin_configs:read", "protos:read", "global_rules:read", "consumer_groups:read", "secrets:read", "stream_routes:read", "labels:read"},
+}
+
+// HasResourcePermission reports whether role is permitted to perform action
+// against resourceType. action is "read" or "write". resourceType matches the
+// APISIX path segment (e.g. "routes", "ssls", "global_rules"). Unknown roles
+// deny.
+func HasResourcePermission(role, resourceType, action string) bool {
+	if role == RoleSuperAdmin {
+		return true
+	}
+	perms, ok := RolePermissions[role]
+	if !ok {
+		return false
+	}
+	for _, p := range perms {
+		if p == "*" {
+			return true
+		}
+		res, rest, ok := strings.Cut(p, ":")
+		if !ok || res != resourceType {
+			continue
+		}
+		if rest == "*" || rest == action {
+			return true
+		}
+	}
+	return false
 }
 
 // Config keys stored in etcd

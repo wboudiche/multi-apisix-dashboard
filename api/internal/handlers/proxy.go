@@ -79,10 +79,23 @@ func (h *ProxyHandler) getResourceMetadata(path string) (string, string) {
 // ProxyRequest handles proxying requests to APISIX Admin API with Team-Based Ownership
 func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	ui := middleware.GetUserInstance(c)
-	role := middleware.GetRole(c)
+	jwtRole := middleware.GetRole(c)
+
+	// Effective role MUST come from the per-instance UserInstance assignment,
+	// not the JWT global claim. The only JWT-role shortcircuit honored is
+	// super_admin. This prevents a globally-mis-roled user (e.g. one whose
+	// User.Role was somehow set to instance_admin) from masquerading as an
+	// admin on instances they have no business with.
+	effRole := jwtRole
+	isSuperAdmin := jwtRole == models.RoleSuperAdmin
+	if !isSuperAdmin && ui != nil {
+		effRole = ui.Role
+	}
+	isInstanceAdmin := !isSuperAdmin && ui != nil && ui.Role == models.RoleInstanceAdmin
+	isAdmin := isSuperAdmin || isInstanceAdmin
 
 	var effectiveTeamID string
-	if role == models.RoleSuperAdmin || role == models.RoleInstanceAdmin {
+	if isAdmin {
 		effectiveTeamID = c.GetHeader("X-Team-ID")
 	} else if ui != nil {
 		effectiveTeamID = ui.TeamID
@@ -115,7 +128,17 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 	resourceType, resourceID := h.getResourceMetadata(path)
 
-	if role != models.RoleSuperAdmin && role != models.RoleInstanceAdmin {
+	action := "write"
+	if c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead {
+		action = "read"
+	}
+	if resourceType != "" && !models.HasResourcePermission(effRole, resourceType, action) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Role not permitted for this resource"})
+		c.Abort()
+		return
+	}
+
+	if !isAdmin {
 		if (c.Request.Method == http.MethodPut || c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) && resourceID != "" {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 			if ownerTeamID != "" && ownerTeamID != effectiveTeamID {
@@ -192,7 +215,6 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 	// 4. GET: Enrich list responses with __team_id and filter for non-admins
 	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK {
-		isAdmin := role == models.RoleSuperAdmin || role == models.RoleInstanceAdmin
 		isList := strings.HasSuffix(path, "/routes") || strings.HasSuffix(path, "/services") || strings.HasSuffix(path, "/upstreams")
 		isSingle := resourceID != "" && (strings.Contains(path, "/routes/") || strings.Contains(path, "/services/") || strings.Contains(path, "/upstreams/"))
 
@@ -251,8 +273,11 @@ func (h *ProxyHandler) ListUpstreams(c *gin.Context) { h.ProxyRequest(c) }
 
 // ReassignOwnership changes the team owner of a resource (admin only)
 func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
-	role := middleware.GetRole(c)
-	if role != models.RoleSuperAdmin && role != models.RoleInstanceAdmin {
+	jwtRole := middleware.GetRole(c)
+	ui := middleware.GetUserInstance(c)
+	isSuperAdmin := jwtRole == models.RoleSuperAdmin
+	isInstanceAdmin := !isSuperAdmin && ui != nil && ui.Role == models.RoleInstanceAdmin
+	if !isSuperAdmin && !isInstanceAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can reassign ownership"})
 		return
 	}

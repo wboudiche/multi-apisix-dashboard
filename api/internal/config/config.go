@@ -63,7 +63,7 @@ func Load() *Config {
 			Prefix:    "/apisix-dashboard",
 		},
 		JWT: JWTConfig{
-			Secret:        getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+			Secret:        os.Getenv("JWT_SECRET"),
 			AccessExpiry:  15 * time.Minute,
 			RefreshExpiry: 7 * 24 * time.Hour,
 		},

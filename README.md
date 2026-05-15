@@ -30,7 +30,11 @@ docker compose -f e2e/server/docker-compose.yml up -d
 # 2. Build and run the Go backend (port 8086, JWT auth in front of APISIX)
 mkdir -p bin
 go build -C api -o ../bin/api ./cmd
-PORT=8086 ETCD_ENDPOINTS=http://localhost:2379 ADMIN_PASSWORD=admin ./bin/api &
+PORT=8086 \
+  ETCD_ENDPOINTS=http://localhost:2379 \
+  JWT_SECRET="$(openssl rand -hex 32)" \
+  ADMIN_PASSWORD=admin \
+  ./bin/api &
 
 # 3. Install JS deps and start the Vite dev server (port 5173)
 pnpm install --frozen-lockfile

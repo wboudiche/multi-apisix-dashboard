@@ -58,7 +58,7 @@ Environment variables read by the backend (see `api/internal/config/config.go`):
 | `HOST` | `0.0.0.0` | |
 | `ETCD_ENDPOINTS` | `http://localhost:2379` | Comma-separated for HA. |
 | `ETCD_USERNAME` / `ETCD_PASSWORD` | unset | Optional. |
-| `JWT_SECRET` | `your-secret-key-change-in-production` | **Override in any non-dev environment.** |
+| `JWT_SECRET` | _required, ≥ 32 bytes_ | The backend refuses to start when this is empty or set to the legacy default `your-secret-key-change-in-production`. Generate one with `openssl rand -hex 32`. |
 | `ADMIN_PASSWORD` | `admin` | Used only on first boot to seed the bootstrap `admin` user. |
 
 On first boot, the backend creates a default `admin` user (super_admin) with the password from `ADMIN_PASSWORD`. Change it from the UI immediately.

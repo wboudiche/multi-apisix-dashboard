@@ -31,15 +31,19 @@ import (
 )
 
 const (
-	defaultJWTSecret     = "your-secret-key-change-in-production"
-	defaultAdminPassword = "admin"
+	legacyDefaultJWTSecret = "your-secret-key-change-in-production"
+	defaultAdminPassword   = "admin"
+	minJWTSecretLength     = 32
 )
 
 func main() {
 	cfg := config.Load()
 
-	if cfg.JWT.Secret == defaultJWTSecret {
-		log.Println("WARNING: JWT_SECRET is the documented default. Set a strong random value (32+ bytes) before deploying.")
+	if cfg.JWT.Secret == "" || cfg.JWT.Secret == legacyDefaultJWTSecret {
+		log.Fatal("JWT_SECRET is required and must not be the documented default. Generate one with: openssl rand -hex 32")
+	}
+	if len(cfg.JWT.Secret) < minJWTSecretLength {
+		log.Fatalf("JWT_SECRET must be at least %d bytes; got %d", minJWTSecretLength, len(cfg.JWT.Secret))
 	}
 	if cfg.Security.AdminPassword == defaultAdminPassword {
 		log.Println("WARNING: ADMIN_PASSWORD is the documented default. Change the admin password from the UI immediately.")

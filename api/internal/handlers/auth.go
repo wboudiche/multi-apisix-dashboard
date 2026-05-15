@@ -154,6 +154,14 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
+	// The global Role field is reserved for super_admin (or empty for users
+	// whose effective role is entirely derived from per-instance assignments).
+	// Anything else gets baked into the JWT and bypasses per-instance RBAC.
+	if req.Role != "" && req.Role != models.RoleSuperAdmin {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role: global role can only be super_admin or empty"})
+		return
+	}
+
 	// Hash password
 	hash, err := h.authService.HashPassword(req.Password)
 	if err != nil {

@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -24,6 +25,66 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// blockedNets are the CIDRs we refuse to dial from /test-upstream. Resolving a
+// user-supplied host to any of these makes the endpoint a reachability oracle
+// for the dashboard host's internal network (cloud metadata, etcd, the docker
+// daemon, etc.). The IP-property helpers already cover loopback/link-local/
+// multicast/unspecified; this list adds the private RFC1918 ranges and IPv6
+// unique-local that those helpers do not flag.
+var blockedNets = func() []*net.IPNet {
+	cidrs := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"100.64.0.0/10", // CGNAT
+		"fc00::/7",      // IPv6 unique-local
+	}
+	out := make([]*net.IPNet, 0, len(cidrs))
+	for _, c := range cidrs {
+		if _, n, err := net.ParseCIDR(c); err == nil {
+			out = append(out, n)
+		}
+	}
+	return out
+}()
+
+func isBlockedAddr(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsInterfaceLocalMulticast() {
+		return true
+	}
+	for _, n := range blockedNets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+var errAddrNotAllowed = errors.New("address not allowed")
+
+func resolveAllowedIP(host string) (net.IP, error) {
+	if ip := net.ParseIP(host); ip != nil {
+		if isBlockedAddr(ip) {
+			return nil, errAddrNotAllowed
+		}
+		return ip, nil
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil || len(ips) == 0 {
+		return nil, errAddrNotAllowed
+	}
+	for _, ip := range ips {
+		if isBlockedAddr(ip) {
+			return nil, errAddrNotAllowed
+		}
+	}
+	return ips[0], nil
+}
 
 type UpstreamHandler struct{}
 
@@ -68,19 +129,24 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 		wg.Add(1)
 		go func(idx int, n TestUpstreamNode) {
 			defer wg.Done()
-			addr := fmt.Sprintf("%s:%d", n.Host, n.Port)
-			start := time.Now()
 
+			if n.Port < 1 || n.Port > 65535 {
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				return
+			}
+
+			ip, err := resolveAllowedIP(n.Host)
+			if err != nil {
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				return
+			}
+
+			addr := net.JoinHostPort(ip.String(), fmt.Sprintf("%d", n.Port))
+			start := time.Now()
 			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 			rtt := time.Since(start).Milliseconds()
-
 			if err != nil {
-				results[idx] = NodeTestResult{
-					Host:    n.Host,
-					Port:    n.Port,
-					Status:  "failed",
-					Message: fmt.Sprintf("Connection failed: %v", err),
-				}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
 				return
 			}
 			conn.Close()
