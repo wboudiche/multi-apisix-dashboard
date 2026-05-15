@@ -2,6 +2,8 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
+![Instances list — manage multiple Apache APISIX gateways from one dashboard](./docs/en/assets/screenshots/instances.png)
+
 A multi-tenant control plane for [Apache APISIX](https://github.com/apache/apisix), forked from [apache/apisix-dashboard](https://github.com/apache/apisix-dashboard).
 
 Where the upstream dashboard is a single-page app that talks directly to one APISIX Admin API using a shared admin key, this fork adds a **Go backend** in front that provides:
