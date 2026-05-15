@@ -3,6 +3,29 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "dashboard": {
+    "loading": "Loading dashboard…",
+    "errorTitle": "Dashboard Error",
+    "errorMessage": "Failed to load the dashboard. Please try again."
+  },
+  "instanceGuard": {
+    "noInstances": {
+      "title": "No APISIX gateway connected",
+      "message": "Register your first APISIX instance to start managing routes, services and upstreams.",
+      "cta": "Add an instance"
+    },
+    "noSelection": {
+      "title": "No instance selected",
+      "message": "Pick an APISIX instance from the selector in the header above to view this page."
+    }
+  },
+  "proxyError": {
+    "title": "Cannot reach {{name}}",
+    "message": "The dashboard couldn't connect to this gateway. The APISIX instance may be down, unreachable from the dashboard server, or the admin key may be wrong.",
+    "messageWithDetail": "The dashboard couldn't connect to this gateway: {{detail}}",
+    "retry": "Retry",
+    "editInstance": "Edit instance"
+  },
   "consumerGroups": {
     "singular": "Consumer Group"
   },

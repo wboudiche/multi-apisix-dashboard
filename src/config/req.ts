@@ -25,6 +25,7 @@ import {
   SKIP_INTERCEPTOR_HEADER,
 } from '@/config/constant';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { proxyErrorAtom } from '@/stores/proxyError';
 
 export const req = axios.create();
 
@@ -82,6 +83,16 @@ const matchSkipInterceptor = (err: AxiosError) => {
   return interceptors.some((v: string) => v === String(status));
 };
 
+// A proxy path is one that the Go backend forwards to a specific APISIX
+// instance — those are the only requests whose failure means "the gateway
+// is unreachable" rather than "the dashboard is broken". The `req` axios
+// instance is configured with baseURL = '/api/v1/apisix/admin', so we
+// check baseURL (typed `url` here is the relative path like `/routes`).
+const isProxyRequest = (config?: { url?: string; baseURL?: string }) => {
+  const full = `${config?.baseURL || ''}${config?.url || ''}`;
+  return full.includes('/apisix/admin');
+};
+
 req.interceptors.response.use(
   (res) => {
     // it's a apisix design
@@ -94,19 +105,45 @@ req.interceptors.response.use(
     ) {
       res.data.list = [];
     }
+    // A successful proxy response means the gateway is reachable again;
+    // clear any stale banner state.
+    if (isProxyRequest(res.config)) {
+      const store = getDefaultStore();
+      if (store.get(proxyErrorAtom)) store.set(proxyErrorAtom, null);
+    }
     return res;
   },
   (err) => {
     if (err.response) {
       if (matchSkipInterceptor(err)) return Promise.reject(err);
       const res = err.response as AxiosResponse<APISIXRespErr>;
+      const status = res.status;
+      const proxy = isProxyRequest(err.config);
+
+      // Proxy 502/504 = the dashboard backend couldn't reach the configured
+      // APISIX. Route this through the persistent banner instead of a toast
+      // so the user has retry/edit affordances; suppress the toast to avoid
+      // a duplicate signal.
+      if (proxy && (status === HttpStatusCode.BadGateway || status === HttpStatusCode.GatewayTimeout)) {
+        const store = getDefaultStore();
+        const instanceId = store.get(currentInstanceIdAtom)
+          || localStorage.getItem('instance:current_id')
+          || '';
+        store.set(proxyErrorAtom, {
+          instanceId,
+          status,
+          message: res.data?.error_msg || res.data?.message || '',
+        });
+        return Promise.reject(err);
+      }
+
       const d = res.data;
       notifications.show({
         id: d?.error_msg || d?.message,
         message: d?.error_msg || d?.message,
         color: 'red',
       });
-      if (res.status === HttpStatusCode.Unauthorized) {
+      if (status === HttpStatusCode.Unauthorized) {
         return Promise.resolve({ data: {} });
       }
     }

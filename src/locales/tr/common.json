@@ -3,6 +3,29 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "dashboard": {
+    "loading": "Dashboard yükleniyor…",
+    "errorTitle": "Dashboard Hatası",
+    "errorMessage": "Dashboard yüklenemedi. Lütfen tekrar deneyin."
+  },
+  "instanceGuard": {
+    "noInstances": {
+      "title": "APISIX ağ geçidi bağlı değil",
+      "message": "Rotaları, servisleri ve upstream'leri yönetmeye başlamak için ilk APISIX örneğinizi kaydedin.",
+      "cta": "Örnek ekle"
+    },
+    "noSelection": {
+      "title": "Örnek seçilmedi",
+      "message": "Bu sayfayı görüntülemek için üst kısımdaki seçiciden bir APISIX örneği seçin."
+    }
+  },
+  "proxyError": {
+    "title": "{{name}} erişilemiyor",
+    "message": "Dashboard bu ağ geçidine bağlanamadı. APISIX örneği kapalı, dashboard sunucusundan erişilemiyor veya admin anahtarı yanlış olabilir.",
+    "messageWithDetail": "Dashboard bu ağ geçidine bağlanamadı: {{detail}}",
+    "retry": "Yeniden dene",
+    "editInstance": "Örneği düzenle"
+  },
   "consumerGroups": {
     "singular": "Consumer Grubu"
   },

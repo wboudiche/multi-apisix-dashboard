@@ -3,6 +3,29 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "dashboard": {
+    "loading": "Dashboard wird geladen…",
+    "errorTitle": "Dashboard-Fehler",
+    "errorMessage": "Das Dashboard konnte nicht geladen werden. Bitte erneut versuchen."
+  },
+  "instanceGuard": {
+    "noInstances": {
+      "title": "Kein APISIX-Gateway verbunden",
+      "message": "Registriere deine erste APISIX-Instanz, um Routen, Services und Upstreams zu verwalten.",
+      "cta": "Instanz hinzufügen"
+    },
+    "noSelection": {
+      "title": "Keine Instanz ausgewählt",
+      "message": "Wähle oben im Kopfbereich eine APISIX-Instanz aus, um diese Seite anzuzeigen."
+    }
+  },
+  "proxyError": {
+    "title": "Verbindung zu {{name}} fehlgeschlagen",
+    "message": "Das Dashboard konnte das Gateway nicht erreichen. Die APISIX-Instanz ist möglicherweise offline, vom Dashboard-Server nicht erreichbar, oder der Admin-Schlüssel ist falsch.",
+    "messageWithDetail": "Das Dashboard konnte das Gateway nicht erreichen: {{detail}}",
+    "retry": "Erneut versuchen",
+    "editInstance": "Instanz bearbeiten"
+  },
   "consumerGroups": {
     "singular": "Konsumenten-Gruppe"
   },

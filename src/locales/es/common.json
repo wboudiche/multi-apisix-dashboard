@@ -3,6 +3,29 @@
     "dashboard": "Panel de APISIX",
     "logo": "Logo de APISIX"
   },
+  "dashboard": {
+    "loading": "Cargando panel…",
+    "errorTitle": "Error del panel",
+    "errorMessage": "No se pudo cargar el panel. Inténtalo de nuevo."
+  },
+  "instanceGuard": {
+    "noInstances": {
+      "title": "No hay ninguna pasarela APISIX conectada",
+      "message": "Registra tu primera instancia de APISIX para empezar a gestionar rutas, servicios y upstreams.",
+      "cta": "Añadir instancia"
+    },
+    "noSelection": {
+      "title": "Ninguna instancia seleccionada",
+      "message": "Elige una instancia de APISIX en el selector de la cabecera para ver esta página."
+    }
+  },
+  "proxyError": {
+    "title": "No se puede contactar con {{name}}",
+    "message": "El panel no pudo conectarse a esta pasarela. La instancia de APISIX puede estar caída, inaccesible desde el servidor del panel, o la clave de administrador puede ser incorrecta.",
+    "messageWithDetail": "El panel no pudo conectarse a esta pasarela: {{detail}}",
+    "retry": "Reintentar",
+    "editInstance": "Editar instancia"
+  },
   "consumerGroups": {
     "singular": "Grupo de Consumidores"
   },

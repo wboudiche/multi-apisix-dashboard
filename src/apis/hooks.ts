@@ -47,6 +47,16 @@ import { getServiceListReq, getServiceReq } from './services';
 import { getSSLListReq, getSSLReq } from './ssls';
 import { getStreamRouteListReq, getStreamRouteReq } from './stream_routes';
 
+// Treat proxy-unreachable errors (the dashboard backend couldn't reach the
+// gateway) as "empty data" at the query layer so route loaders don't throw
+// into the router's error boundary. The axios interceptor in src/config/req.ts
+// has already set the proxyErrorAtom, so the persistent banner renders
+// above the page while the page itself shows an empty list/detail.
+const isProxyUnreachable = (err: unknown) => {
+  const status = (err as { response?: { status?: number } })?.response?.status;
+  return status === 502 || status === 504;
+};
+
 const genDetailQueryOptions =
   <T extends unknown[], R>(
     key: string,
@@ -58,7 +68,16 @@ const genDetailQueryOptions =
     (...args: T) => {
       return queryOptions({
         queryKey: [key, ...args],
-        queryFn: () => getDetailReq(req, ...args),
+        queryFn: async () => {
+          try {
+            return await getDetailReq(req, ...args);
+          } catch (err) {
+            if (isProxyUnreachable(err)) {
+              return { value: {} } as APISIXDetailResponse<R>;
+            }
+            throw err;
+          }
+        },
       });
     };
 /** simple factory func for list query options which support extends PageSearchType */
@@ -72,13 +91,20 @@ const genListQueryOptions =
       const instanceId = instanceIdOverride ?? (localStorage.getItem('instance:current_id') || '');
       return queryOptions({
         queryKey: [key, instanceId, props],
-        queryFn: () => {
+        queryFn: async () => {
           // Skip the API call when no APISIX instance is selected yet.
           // This prevents the route loader from throwing before the Header mounts.
           if (!instanceId) {
             return { list: [], total: 0 } as APISIXListResponse<R>;
           }
-          return listReq(req, props);
+          try {
+            return await listReq(req, props);
+          } catch (err) {
+            if (isProxyUnreachable(err)) {
+              return { list: [], total: 0 } as APISIXListResponse<R>;
+            }
+            throw err;
+          }
         },
       });
     };
