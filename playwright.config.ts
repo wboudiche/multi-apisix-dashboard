@@ -24,6 +24,7 @@ import { env } from './e2e/utils/env';
 export default defineConfig({
   testDir: './e2e/tests',
   outputDir: './test-results',
+  globalSetup: './e2e/utils/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
