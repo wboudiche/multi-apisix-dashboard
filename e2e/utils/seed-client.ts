@@ -212,10 +212,16 @@ export async function ensureUser(token: string, input: CreateUserInput): Promise
 // non-empty team_id for these roles.
 // ---------------------------------------------------------------------------
 
+export type Scope = {
+  tags?: string[];
+  path_prefixes?: string[];
+};
+
 export type UserInstanceRoleInput = {
   role: string;
   /** Required for developer and viewer roles. */
   team_id: string;
+  scope?: Scope;
 };
 
 export async function ensureUserInstanceRole(
@@ -232,6 +238,7 @@ export async function ensureUserInstanceRole(
       json: {
         role: input.role,
         team_id: input.team_id,
+        ...(input.scope ? { scope: input.scope } : {}),
       },
     },
   );
