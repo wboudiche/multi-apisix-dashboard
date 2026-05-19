@@ -25,7 +25,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
  * resource (a one-liner: page.getByRole('row').filter({ hasText: name })).
  */
 export type ResourcePOMShape = {
-  goto: { toIndex: (page: Page) => Promise<void> };
+  goto: { toIndex: (page: Page) => Promise<unknown> };
   locator: {
     /** Returns the table row for a resource by its visible name. */
     rowByName: (page: Page, name: string) => Locator;
