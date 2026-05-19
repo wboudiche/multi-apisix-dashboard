@@ -35,7 +35,7 @@ export type RestrictedWriteOpts = {
    * Navigates the page to the resource list view. Typically
    * <resourcePom>.goto.toIndex.
    */
-  gotoIndex: (page: Page) => Promise<void>;
+  gotoIndex: (page: Page) => Promise<unknown>;
   /**
    * The visible label on the add-button that admins see. The
    * test asserts dev_user does NOT see this button. The match
