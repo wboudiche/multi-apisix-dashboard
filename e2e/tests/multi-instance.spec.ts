@@ -15,10 +15,13 @@
  * limitations under the License.
  */
 
+import { getFixtures } from '@e2e/utils/fixtures';
 import { expect, test } from '@playwright/test';
 
-const API = 'http://127.0.0.1:8086';
-const INSTANCE_ID = '83c346e5-1f26-4c13-ad73-8681747f8b9e';
+const API = process.env.E2E_API_URL ?? 'http://127.0.0.1:8086';
+const fx = getFixtures();
+const INSTANCE_ID = fx.localInstanceId;
+const STAGING_INSTANCE_ID = fx.stagingInstanceId;
 
 async function login(username: string, password: string): Promise<string> {
   const res = await fetch(`${API}/api/v1/login`, {
@@ -107,7 +110,7 @@ test.describe('User Management', () => {
     expect(res.status).toBe(200);
     const users = await res.json();
     expect(users.length).toBeGreaterThan(0);
-    expect(users.some((u: any) => u.username === 'admin')).toBe(true);
+    expect(users.some((u: { username: string }) => u.username === 'admin')).toBe(true);
   });
 
   test('non-admin cannot list users', async () => {
@@ -130,12 +133,10 @@ test.describe('User Management', () => {
 });
 
 test.describe('RBAC - Role Based Access Control', () => {
-  let adminToken: string;
   let devToken: string;
   let viewerToken: string;
 
   test.beforeAll(async () => {
-    adminToken = await login('admin', 'admin');
     devToken = await login('dev_user', 'dev123');
     viewerToken = await login('viewer_user', 'view123');
   });
@@ -182,12 +183,10 @@ test.describe('RBAC - Role Based Access Control', () => {
 
 test.describe('Multi-Instance', () => {
   let adminToken: string;
-  let devToken: string;
   let viewerToken: string;
 
   test.beforeAll(async () => {
     adminToken = await login('admin', 'admin');
-    devToken = await login('dev_user', 'dev123');
     viewerToken = await login('viewer_user', 'view123');
   });
 
@@ -211,16 +210,8 @@ test.describe('Multi-Instance', () => {
   });
 
   test('viewer cannot access unassigned instance', async () => {
-    // Get staging instance ID
-    const allRes = await fetch(`${API}/api/v1/instances`, {
-      headers: headers(adminToken),
-    });
-    const all = await allRes.json();
-    const staging = all.find((i: any) => i.name === 'Staging APISIX');
-    if (!staging) return;
-
     const res = await fetch(`${API}/api/v1/apisix/routes`, {
-      headers: headers(viewerToken, staging.id),
+      headers: headers(viewerToken, STAGING_INSTANCE_ID),
     });
     expect(res.status).toBe(403);
   });
@@ -310,7 +301,7 @@ test.describe('Team Ownership', () => {
     });
     expect(res.status).toBe(200);
     const data = await res.json();
-    const names = data.list.map((r: any) => r.value.name);
+    const names = data.list.map((r: { value: { name?: string } }) => r.value.name);
     expect(names).toContain('ownership-test-route');
   });
 
@@ -320,7 +311,7 @@ test.describe('Team Ownership', () => {
     });
     expect(res.status).toBe(200);
     const data = await res.json();
-    const names = data.list.map((r: any) => r.value.name);
+    const names = data.list.map((r: { value: { name?: string } }) => r.value.name);
     expect(names).not.toContain('ownership-test-route');
   });
 
@@ -340,13 +331,16 @@ test.describe('Team Ownership', () => {
     expect(res.status).toBe(403);
   });
 
-  test('viewer (no team) cannot see team-owned route', async () => {
+  test('viewer in a different team cannot see team-owned route', async () => {
+    // viewer_user is assigned to Viewers Team (backend requires team_id for
+    // both viewer and developer roles). The route is owned by Backend Team,
+    // so the ownership filter must still hide it from viewer_user.
     const res = await fetch(`${API}/api/v1/apisix/routes`, {
       headers: headers(viewerToken, INSTANCE_ID),
     });
     expect(res.status).toBe(200);
     const data = await res.json();
-    const names = data.list.map((r: any) => r.value.name);
+    const names = data.list.map((r: { value: { name?: string } }) => r.value.name);
     expect(names).not.toContain('ownership-test-route');
   });
 
