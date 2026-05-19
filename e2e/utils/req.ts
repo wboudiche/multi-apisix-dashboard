@@ -20,10 +20,11 @@ import { stringify } from 'qs';
 
 import { API_PREFIX, BASE_PATH } from '@/config/constant';
 
-import { getAPISIXConf } from './common';
 import { env } from './env';
+import { getFixtures } from './fixtures';
 
-const API_HEADER_KEY = 'X-API-KEY';
+const SEED_API =
+  process.env['E2E_API_URL'] ?? 'http://127.0.0.1:8086';
 
 export const getPlaywrightRequestAdapter = (
   ctx: APIRequestContext
@@ -59,8 +60,28 @@ export const getPlaywrightRequestAdapter = (
   };
 };
 
+const adminLogin = async (): Promise<string> => {
+  const fx = getFixtures();
+  const res = await fetch(`${SEED_API}/api/v1/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: fx.users.admin.username,
+      password: fx.users.admin.password,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `e2eReq admin login failed: ${res.status} ${await res.text()}`
+    );
+  }
+  const data = (await res.json()) as { access_token: string };
+  return data.access_token;
+};
+
 export const getE2eReq = async (ctx: APIRequestContext) => {
-  const { adminKey } = await getAPISIXConf();
+  const fx = getFixtures();
+  const token = await adminLogin();
   const API_URL = env.E2E_TARGET_URL.slice(0, -BASE_PATH.length - 1);
 
   return axios.create({
@@ -70,7 +91,10 @@ export const getE2eReq = async (ctx: APIRequestContext) => {
       stringify(p, {
         arrayFormat: 'repeat',
       }),
-    headers: { [API_HEADER_KEY]: adminKey },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'X-Instance-ID': fx.localInstanceId,
+    },
   });
 };
 
