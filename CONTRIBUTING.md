@@ -50,6 +50,7 @@ Before you push:
 - `go test -C api ./...` must pass for backend changes.
 - E2E (`pnpm e2e`) should pass for changes that touch resource pages or the auth flow.
 - Add tests for new functionality. Co-locate Go tests next to the code; add Playwright specs under `e2e/tests/`.
+- Multi-tenant RBAC and ownership coverage lives in `e2e/tests/*.ownership.spec.ts` and `e2e/tests/*.restricted-write.spec.ts`; fixtures (test users, teams, second instance) are provisioned by `e2e/utils/global-setup.ts` before any spec runs.
 - Update `docs/en/development.md` or the README if your change affects how others run or deploy the project.
 
 In the PR description:
