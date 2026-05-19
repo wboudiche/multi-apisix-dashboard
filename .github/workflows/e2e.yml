@@ -115,7 +115,24 @@ jobs:
             done
           ' || (echo "Go backend not ready after $TIMEOUT seconds"; cat backend.log; exit 1)
 
+      - name: Start vite dev server
+        run: |
+          nohup pnpm dev > vite.log 2>&1 &
+          echo "Vite PID: $!"
+
+      - name: Wait for vite dev server
+        run: |
+          TIMEOUT=60
+          timeout $TIMEOUT bash -c '
+            until curl -f -s http://127.0.0.1:5173/ui/ > /dev/null 2>&1; do
+              echo "Waiting for vite dev server..."
+              sleep 2
+            done
+          ' || (echo "Vite dev server not ready after $TIMEOUT seconds"; cat vite.log; exit 1)
+
       - name: Run e2e tests
+        env:
+          E2E_TARGET_URL: http://127.0.0.1:5173/ui/
         run: |
           pnpm e2e --shard=${{ matrix.shard }}/3
 
@@ -141,4 +158,9 @@ jobs:
             echo "================= go-backend ===================="
             cat backend.log
             echo "================= go-backend ===================="
+          fi
+          if [ -f vite.log ]; then
+            echo "================= vite-dev ===================="
+            cat vite.log
+            echo "================= vite-dev ===================="
           fi

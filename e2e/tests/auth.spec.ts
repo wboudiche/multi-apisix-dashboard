@@ -15,9 +15,11 @@
  * limitations under the License.
  */
 
+/* eslint-disable playwright/no-wait-for-timeout */
+import { env } from '@e2e/utils/env';
 import { expect, test } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:5173/ui';
+const BASE_URL = env.E2E_TARGET_URL.replace(/\/$/, '');
 
 test('redirects to login page when not authenticated', { tag: '@auth' }, async ({ page }) => {
   await page.goto(`${BASE_URL}/routes`);

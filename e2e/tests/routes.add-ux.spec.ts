@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-skipped-test, playwright/no-conditional-expect */
+import { env } from '@e2e/utils/env';
 import { expect, test } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:5173/ui';
+const BASE_URL = env.E2E_TARGET_URL.replace(/\/$/, '');
 
 test.setTimeout(60000);
 
@@ -303,7 +305,7 @@ test.describe('Route Add - UX Improvements', () => {
 
     // Handle the beforeunload dialog that appears when form is dirty
     page.on('dialog', (dialog) => dialog.accept());
-    await page.goto(`${BASE_URL}/routes/add`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/routes/add`, { waitUntil: 'load' });
     await page.waitForTimeout(5000);
 
     // The draft should be restored

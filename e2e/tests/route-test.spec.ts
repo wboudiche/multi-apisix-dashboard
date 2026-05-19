@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-skipped-test, playwright/no-conditional-expect */
+import { env } from '@e2e/utils/env';
 import { expect, test } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:5173/ui';
+const BASE_URL = env.E2E_TARGET_URL.replace(/\/$/, '');
 
 async function login(page: import('@playwright/test').Page) {
   await page.goto(BASE_URL);
@@ -214,7 +216,7 @@ test.describe('Route Test Drawer', () => {
 
     // Initially with GET, Body tab should not be visible
     const bodyTabBefore = drawer.getByRole('tab', { name: /^body$/i });
-    const bodyVisibleBefore = await bodyTabBefore.isVisible().catch(() => false);
+    await expect(bodyTabBefore).toBeHidden();
 
     // Change method to POST
     const methodSelect = drawer.locator('.mantine-Select-input').first();

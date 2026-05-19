@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-conditional-expect */
+import { env } from '@e2e/utils/env';
 import { expect, test } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:5173/ui';
+const BASE_URL = env.E2E_TARGET_URL.replace(/\/$/, '');
 // Staging APISIX (stable instance) - gateway on 9181, no direct gateway port exposed
 const APISIX_ADMIN = 'http://127.0.0.1:9181';
 const ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
