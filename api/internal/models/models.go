@@ -94,8 +94,8 @@ const (
 var RolePermissions = map[string][]string{
 	RoleSuperAdmin:    {"*"},
 	RoleInstanceAdmin: {"routes:*", "services:*", "upstreams:*", "consumers:*", "ssls:*", "plugin_configs:*", "protos:*", "global_rules:*", "consumer_groups:*", "secrets:*", "stream_routes:*", "labels:write", "labels:read"},
-	RoleDeveloper:     {"routes:*", "services:*", "upstreams:*", "consumers:*", "consumer_groups:*", "stream_routes:*", "labels:read"},
-	RoleViewer:        {"routes:read", "services:read", "upstreams:read", "consumers:read", "ssls:read", "plugin_configs:read", "protos:read", "global_rules:read", "consumer_groups:read", "secrets:read", "stream_routes:read", "labels:read"},
+	RoleDeveloper:     {"routes:*", "services:*", "upstreams:*", "consumers:*", "consumer_groups:*", "stream_routes:*", "labels:read", "plugins:read"},
+	RoleViewer:        {"routes:read", "services:read", "upstreams:read", "consumers:read", "ssls:read", "plugin_configs:read", "protos:read", "global_rules:read", "consumer_groups:read", "secrets:read", "stream_routes:read", "labels:read", "plugins:read"},
 }
 
 // HasResourcePermission reports whether role is permitted to perform action
