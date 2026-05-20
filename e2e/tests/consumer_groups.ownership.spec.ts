@@ -48,6 +48,11 @@ ownershipMatrixSuite({
       .click();
     const pluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
     await pluginDialog.getByRole('button', { name: 'Add' }).click();
+    // Wait for the Add-Plugin dialog to dismiss before submitting; otherwise
+    // its (now-hidden) Add button still resolves alongside the form's submit
+    // button and getByRole('button', { name: 'Add', exact: true }) throws
+    // strict-mode-violation against 2 matches.
+    await pluginDialog.waitFor({ state: 'hidden' });
 
     await consumerGroupsPom.getAddBtn(page).click();
     await consumerGroupsPom.toIndex(page);

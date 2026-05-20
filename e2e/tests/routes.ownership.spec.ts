@@ -28,6 +28,10 @@ ownershipMatrixSuite({
   createMinimal: async (page, name) => {
     // Walk the 5-step Add-Route wizard with minimal-but-valid inputs.
     await routesPom.toAdd(page);
+    // Wait for the wizard to render — the Name field lives in step 1 but
+    // only mounts after the route schema + plugins list resolves. Without
+    // this gate the first fill() races the render and times out at 30s.
+    await routesPom.isAddPage(page);
 
     // Step 1 — API information
     await page.getByLabel('Name', { exact: true }).first().fill(name);
