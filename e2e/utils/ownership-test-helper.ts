@@ -67,6 +67,12 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
   test.describe.configure({ mode: 'serial' });
 
   test.describe(`${opts.resourceLabel} — team ownership matrix`, () => {
+    // The first test walks the resource's add form, which is a 5-step
+    // wizard for routes and a single dialog-heavy form for consumer
+    // groups; either can edge past Playwright's 30s default on CI's
+    // slower runners. The other 3 tests are short list-page checks.
+    test.setTimeout(60000);
+
     test.afterAll(async ({ browser }) => {
       const page = await browser.newPage();
       try {

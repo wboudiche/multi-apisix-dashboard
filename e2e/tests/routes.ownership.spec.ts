@@ -28,14 +28,18 @@ ownershipMatrixSuite({
   createMinimal: async (page, name) => {
     // Walk the 5-step Add-Route wizard with minimal-but-valid inputs.
     await routesPom.toAdd(page);
-    // Wait for the wizard to render — the Name field lives in step 1 but
-    // only mounts after the route schema + plugins list resolves. Without
-    // this gate the first fill() races the render and times out at 30s.
     await routesPom.isAddPage(page);
 
-    // Step 1 — API information
-    await page.getByLabel('Name', { exact: true }).first().fill(name);
-    await page.getByLabel('URI', { exact: true }).fill(`/${name}`);
+    // Step 1 — API information. The wizard mounts lazily after the
+    // route schema + plugins list resolves; explicitly wait for the
+    // Name textbox to attach before filling it (was timing out at
+    // 30s on CI's slower runners).
+    const nameField = page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first();
+    await nameField.waitFor({ state: 'visible', timeout: 30000 });
+    await nameField.fill(name);
+    await page.getByRole('textbox', { name: 'URI', exact: true }).fill(`/${name}`);
     await page.getByRole('textbox', { name: 'HTTP Methods' }).click();
     await page.getByRole('option', { name: 'GET' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
