@@ -48,6 +48,14 @@ export type OwnershipMatrixOpts = {
    * no longer exists, must return silently.
    */
   cleanup: (page: Page, name: string) => Promise<void>;
+  /**
+   * Opt in to asserting that the resource row shows a 'Backend Team'
+   * chip after creation. Only the routes list currently renders a
+   * Teams column; the other resource list pages don't expose team
+   * ownership in their table yet (the data is enforced server-side
+   * but not surfaced in the list). Default: false.
+   */
+  assertTeamChipInRow?: boolean;
 };
 
 const INSTANCE_NAME = 'Local APISIX';
@@ -74,7 +82,7 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
       }
     });
 
-    test(`dev_user (Backend Team) can create a ${opts.resourceLabel} and the row shows the Backend Team chip`, async ({
+    test(`dev_user (Backend Team) can create a ${opts.resourceLabel}`, async ({
       page,
     }) => {
       await permission.loginAs(
@@ -87,7 +95,9 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
 
       const row = opts.pom.locator.rowByName(page, resourceName);
       await expect(row).toBeVisible();
-      await expect(row.getByText('Backend Team')).toBeVisible();
+      if (opts.assertTeamChipInRow) {
+        await expect(row.getByText('Backend Team')).toBeVisible();
+      }
     });
 
     test(`frontend_dev (Frontend Team) does NOT see the ${opts.resourceLabel} in the list`, async ({

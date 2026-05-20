@@ -20,6 +20,7 @@ import { e2eReq } from '@e2e/utils/req';
 
 ownershipMatrixSuite({
   resourceLabel: 'route',
+  assertTeamChipInRow: true,
   pom: {
     goto: { toIndex: routesPom.toIndex },
     locator: { rowByName: routesPom.rowByName },
