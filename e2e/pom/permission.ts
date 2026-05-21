@@ -15,9 +15,25 @@
  * limitations under the License.
  */
 import { env } from '@e2e/utils/env';
+import { getFixtures } from '@e2e/utils/fixtures';
 import { expect, type Page } from '@playwright/test';
 
 const dashboardBase = () => env.E2E_TARGET_URL.replace(/\/$/, '');
+
+const headerSelect = (page: Page) =>
+  page
+    .locator('header')
+    .getByPlaceholder('Select instance')
+    .or(page.locator('header').getByRole('searchbox'))
+    .first();
+
+/** Map known instance names back to the IDs written by globalSetup. */
+const instanceIdByName = (name: string): string | undefined => {
+  const fx = getFixtures();
+  if (name === 'Local APISIX') return fx.localInstanceId;
+  if (name === 'Staging APISIX') return fx.stagingInstanceId;
+  return undefined;
+};
 
 export const permission = {
   /**
@@ -63,22 +79,34 @@ export const permission = {
   },
 
   /**
-   * Switch the active APISIX instance via the header Select.
-   * The Select's input shows the currently-selected instance name
-   * (or the placeholder 'Select instance' if none chosen yet).
+   * Switch the active APISIX instance.
+   *
+   * The header Select races with the app's auto-select on first load
+   * (right after loginAs() clears localStorage), so the UI click can
+   * land on whichever instance the backend happens to return first.
+   * When the instance name is one we provisioned in globalSetup, seed
+   * `instance:current_id` in localStorage and reload — that's the same
+   * key `currentInstanceIdAtom` reads on init, so the React app comes
+   * up with the right instance already selected. Otherwise fall back
+   * to the UI dropdown.
    */
   switchInstance: async (page: Page, instanceName: string) => {
-    const select = page
-      .locator('header')
-      .getByPlaceholder('Select instance')
-      .or(page.locator('header').getByRole('searchbox'))
-      .first();
-    await select.click();
-    await page
-      .getByRole('option', { name: instanceName, exact: false })
-      .click();
+    const id = instanceIdByName(instanceName);
+    if (id) {
+      await page.evaluate(
+        ([key, val]) => localStorage.setItem(key, val),
+        ['instance:current_id', id] as const,
+      );
+      await page.reload();
+    } else {
+      const select = headerSelect(page);
+      await select.click();
+      await page
+        .getByRole('option', { name: instanceName, exact: false })
+        .click();
+    }
     // Confirm the switch landed; X-Instance-ID is now wired
     // through the apiClient interceptor (src/stores/instance.ts).
-    await expect(select).toHaveValue(instanceName);
+    await expect(headerSelect(page)).toHaveValue(instanceName);
   },
 };
