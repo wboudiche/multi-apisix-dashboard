@@ -24,6 +24,7 @@ import {
   Group,
   Modal,
   Paper,
+  ScrollArea,
   Stack,
   Switch,
   Table,
@@ -206,7 +207,7 @@ const InstancesPage = () => {
   };
 
   return (
-    <Container size="xl" className="animate-fade-in-up">
+    <Container fluid className="animate-fade-in-up">
       <Box className="PageTitle-root" mb="xl">
         <Group justify="space-between">
           <Box>
@@ -215,13 +216,15 @@ const InstancesPage = () => {
               Manage connections to your Apache APISIX gateways
             </Text>
           </Box>
-          <Button 
-            leftSection={<IconPlus width="18" height="18" />} 
-            onClick={() => { resetForm(); setModalOpen(true); }}
-            className="animate-pulse-hover"
-          >
-            Add Instance
-          </Button>
+          {instances.length > 0 && (
+            <Button
+              leftSection={<IconPlus width="18" height="18" />}
+              onClick={() => { resetForm(); setModalOpen(true); }}
+              className="animate-pulse-hover"
+            >
+              Add Instance
+            </Button>
+          )}
         </Group>
       </Box>
 
@@ -348,6 +351,7 @@ const InstancesPage = () => {
         onClose={() => { setModalOpen(false); resetForm(); }}
         title={editingInstance ? 'Edit Instance' : 'Add New Instance'}
         size="lg"
+        scrollAreaComponent={ScrollArea.Autosize}
         overlayProps={{
           backgroundOpacity: 0.55,
           blur: 3,

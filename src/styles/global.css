@@ -796,18 +796,6 @@ select:focus,
 }
 
 /* ============================================
-   Login Page Specific
-   ============================================ */
-
-/* Centered card styling for login */
-.mantine-AppShell-main:has(.mantine-Container-root:only-child) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-}
-
-/* ============================================
    Instance Health Indicator
    ============================================ */
 
