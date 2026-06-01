@@ -49,22 +49,6 @@ const extractServers = (route: Record<string, unknown>): { url: string }[] => {
     }
   }
 
-  const upstream = route.upstream as Record<string, unknown> | undefined;
-  if (upstream && typeof upstream === 'object' && upstream.nodes) {
-    const nodes = upstream.nodes;
-    if (Array.isArray(nodes)) {
-      for (const node of nodes) {
-        if (node && typeof node === 'object' && typeof (node as Record<string, unknown>).host === 'string') {
-          addServer((node as Record<string, unknown>).host as string);
-        }
-      }
-    } else if (typeof nodes === 'object' && nodes !== null) {
-      for (const key of Object.keys(nodes as Record<string, unknown>)) {
-        addServer(key);
-      }
-    }
-  }
-
   return servers;
 };
 
@@ -90,10 +74,10 @@ export const routesToOpenAPI = (routes: Record<string, unknown>[], title?: strin
     const routeName = typeof route.name === 'string' ? route.name : '';
     const routeDesc = typeof route.desc === 'string' ? route.desc : '';
 
-    const tags: string[] = [];
-    if (route.labels && typeof route.labels === 'object' && route.labels !== null) {
-      tags.push(...Object.keys(route.labels as Record<string, unknown>));
-    }
+    const labels =
+      route.labels && typeof route.labels === 'object'
+        ? (route.labels as Record<string, string>)
+        : null;
 
     const servers = extractServers(route);
 
@@ -112,12 +96,25 @@ export const routesToOpenAPI = (routes: Record<string, unknown>[], title?: strin
           },
         };
 
-        if (tags.length > 0) {
-          operation.tags = [...tags];
+        if (labels) {
+          operation.tags = Object.keys(labels);
+          operation['x-apisix-labels'] = labels;
         }
 
         if (servers.length > 0) {
           operation.servers = servers;
+        }
+
+        if (route.upstream && typeof route.upstream === 'object') {
+          operation['x-apisix-upstream'] = route.upstream;
+        }
+
+        if (typeof route.upstream_id === 'string') {
+          operation['x-apisix-upstream_id'] = route.upstream_id;
+        }
+
+        if (typeof route.service_id === 'string') {
+          operation['x-apisix-service_id'] = route.service_id;
         }
 
         if (route.plugins && typeof route.plugins === 'object' && route.plugins !== null) {

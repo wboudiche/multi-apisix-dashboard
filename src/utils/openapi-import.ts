@@ -27,6 +27,7 @@ type OpenAPIOperation = {
   'x-apisix-service_id'?: string;
   'x-apisix-upstream_id'?: string;
   'x-apisix-priority'?: number;
+  'x-apisix-labels'?: Record<string, string>;
   servers?: { url: string }[];
 };
 
@@ -95,7 +96,9 @@ export const openAPIToRoutes = (spec: OpenAPISpec): APISIXRoute[] => {
       route.desc = mergedOp.description;
     }
 
-    if (mergedOp.tags && mergedOp.tags.length > 0) {
+    if (mergedOp['x-apisix-labels']) {
+      route.labels = mergedOp['x-apisix-labels'];
+    } else if (mergedOp.tags && mergedOp.tags.length > 0) {
       route.labels = {};
       for (const tag of mergedOp.tags) {
         route.labels[tag] = 'true';
