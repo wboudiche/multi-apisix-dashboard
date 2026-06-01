@@ -66,8 +66,19 @@ The dashboard never holds an APISIX admin key in the browser — it ships only J
 
 ## Versioning
 
-- The fork tracks upstream `apache/apisix-dashboard` for the resource UI. Multi-tenant features live on `feat/multi-tenant-dashboard` and main.
-- Each APISIX release line is supported with a matching git tag, same convention as upstream.
+This project is an independent fork of [`apache/apisix-dashboard`](https://github.com/apache/apisix-dashboard): the resource UI derives from upstream, while the multi-tenant features (Go backend, JWT auth, teams, instances, per-instance roles) live on `main`. Releases use independent semver (`vMAJOR.MINOR.PATCH`) on the fork's own cadence rather than mirroring upstream tag-for-tag; the first release is `v0.1.0`.
+
+### APISIX compatibility
+
+The dashboard speaks the APISIX **Admin API v3**: it reads the `{ "list": [...], "total": N }` list response (see `src/config/req.ts`) and carries no v2 (`node`/`nodes`) fallback, so **Apache APISIX 3.x is required — 2.x is not supported**. Within the 3.x line, the supported floor is set by the newest Admin API resources the UI surfaces:
+
+| Capability | Minimum APISIX |
+| --- | --- |
+| Core resources (routes, services, upstreams, consumers, ssls, global_rules, plugin_configs, protos, stream_routes, consumer_groups) | 3.0 |
+| `secrets` resource | 3.1 |
+| Consumer `credentials` resource | 3.11 |
+
+So core resource management works against **APISIX 3.0+**, while the full feature set (including consumer credentials) needs **3.11+**, through the current stable **3.16**. CI runs the e2e suite against a pinned **`apache/apisix:3.16.0-debian`** — see [`e2e/server/Dockerfile`](./e2e/server/Dockerfile) and [`e2e/server/docker-compose.yml`](./e2e/server/docker-compose.yml). To move the tested line, bump that pin and cut a new fork release.
 
 ## Contributing
 
