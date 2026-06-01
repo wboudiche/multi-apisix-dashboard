@@ -14,16 +14,17 @@ name: "CodeQL"
 on:
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
-      - master
+      - main
     paths-ignore:
       - 'docs/**'
   schedule:
     - cron: '18 23 * * 0'
+  workflow_dispatch:
 
 jobs:
   analyze:
