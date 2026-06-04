@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-skipped-test, playwright/no-conditional-expect */
+/* eslint-disable playwright/no-wait-for-timeout */
 import { env } from '@e2e/utils/env';
 import { expect, test } from '@playwright/test';
 
@@ -43,6 +43,19 @@ async function goToAddRoute(page: import('@playwright/test').Page) {
   await expect(page).toHaveURL(/\/routes\/add/);
 }
 
+// Helper: clear the pre-selected default methods (GET/POST/PUT/DELETE) from the TagsInput.
+// The add-route form ships with defaults, so selected methods are absent from the dropdown.
+async function clearMethods(page: import('@playwright/test').Page) {
+  const wrapper = page
+    .locator('.mantine-InputWrapper-root')
+    .filter({ hasText: 'HTTP Methods' });
+  const removeButtons = wrapper.locator('.mantine-Pill-remove');
+  while ((await removeButtons.count()) > 0) {
+    await removeButtons.first().click();
+    await page.waitForTimeout(100);
+  }
+}
+
 // Helper: select HTTP methods from the TagsInput
 async function selectMethods(page: import('@playwright/test').Page, methods: string[]) {
   const methodsInput = page
@@ -59,6 +72,17 @@ async function selectMethods(page: import('@playwright/test').Page, methods: str
   // Close dropdown by clicking outside (on the page title)
   await page.locator('h1').first().click();
   await page.waitForTimeout(500);
+}
+
+// Helper: make the upstream step valid. The form defaults to a custom upstream with no
+// nodes, which fails schema validation and blocks the Next button on step 2.
+async function addUpstreamNode(page: import('@playwright/test').Page) {
+  const addNodeBtn = page.getByRole('button', { name: 'Add a Node' });
+  await addNodeBtn.waitFor({ state: 'visible', timeout: 10000 });
+  await addNodeBtn.click();
+  await page.waitForTimeout(500);
+  await page.locator('input[placeholder="Hostname or IP"]').fill('httpbin.org');
+  await page.locator('input[placeholder="Port"]').fill('80');
 }
 
 // Helper: click Next, waiting for any dropdown/overlay to close first
@@ -81,24 +105,23 @@ test.describe('Route Add - UX Improvements', () => {
   test('Feature 7: Match Preview shows methods and URI in real-time', async ({ page }) => {
     await goToAddRoute(page);
 
-    // Initially no preview (no data entered)
-    await expect(page.locator('text=Route Preview')).toBeHidden();
+    // The form ships with defaults (uri /* + GET/POST/PUT/DELETE),
+    // so the preview is visible immediately with those values
+    const previewBar = page.locator('[style*="dashed"]', { hasText: 'Route Preview' });
+    await expect(previewBar).toBeVisible();
+    await expect(previewBar.locator('code:has-text("/*")')).toBeVisible();
 
-    // Fill URI
+    // Changing the URI updates the preview in real-time
     await page.locator('input[name="uri"]').fill('/api/test');
     await page.waitForTimeout(500);
+    await expect(previewBar.locator('code:has-text("/api/test")')).toBeVisible();
 
-    // Preview should appear with the URI and "ALL METHODS"
-    await expect(page.locator('text=Route Preview')).toBeVisible();
-    await expect(page.locator('code:has-text("/api/test")')).toBeVisible();
-    await expect(page.locator('text=ALL METHODS')).toBeVisible();
+    // Removing all methods falls back to the ALL METHODS badge
+    await clearMethods(page);
+    await expect(previewBar.locator('text=ALL METHODS')).toBeVisible();
 
-    // Select specific methods
+    // Selecting specific methods replaces the ALL METHODS badge
     await selectMethods(page, ['GET', 'POST']);
-
-    // The preview bar (dashed border Paper) should show selected methods
-    const previewBar = page.locator('[style*="dashed"]');
-    await expect(previewBar).toBeVisible();
     const previewText = await previewBar.textContent();
     expect(previewText).toContain('GET');
     expect(previewText).toContain('POST');
@@ -129,9 +152,10 @@ test.describe('Route Add - UX Improvements', () => {
     await page.locator('input[name="name"]').fill('test-plugin-badge');
     await page.locator('input[name="uri"]').fill('/test-badge');
 
-    await clickNext(page);
-    await clickNext(page);
-    await clickNext(page);
+    await clickNext(page); // step 1 -> 2 (Upstream)
+    await addUpstreamNode(page); // custom upstream needs a node to pass validation
+    await clickNext(page); // step 2 -> 3 (Request Override)
+    await clickNext(page); // step 3 -> 4 (Plugins)
 
     // Open plugin drawer
     await page.getByRole('button', { name: 'Select Plugins' }).click();
@@ -160,6 +184,7 @@ test.describe('Route Add - UX Improvements', () => {
 
     await page.locator('input[name="name"]').fill('test-step-summary');
     await page.locator('input[name="uri"]').fill('/summary-test');
+    await clearMethods(page); // drop the GET/POST/PUT/DELETE defaults
     await selectMethods(page, ['GET']);
 
     // Go to step 2
@@ -180,19 +205,21 @@ test.describe('Route Add - UX Improvements', () => {
 
     await page.locator('input[name="name"]').fill('test-preview');
     await page.locator('input[name="uri"]').fill('/preview-test');
+    await clearMethods(page); // drop the GET/POST/PUT/DELETE defaults
     await selectMethods(page, ['GET']);
 
     // Navigate through all steps to Preview (step 5)
     await clickNext(page); // step 1 -> 2
+    await addUpstreamNode(page); // custom upstream needs a node to pass validation
     await clickNext(page); // step 2 -> 3 (Request Override)
     await clickNext(page); // step 3 -> 4 (Plugins)
     await clickNext(page); // step 4 -> 5 (Preview)
     await page.waitForTimeout(1000);
 
-    // Should show structured content from RoutePreviewSummary
-    // Use exact heading match to avoid matching stepper label "Define API Information"
-    await expect(page.getByRole('button', { name: 'API Information', exact: true })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: 'Upstream Configuration', exact: true })).toBeVisible();
+    // Should show structured content from RoutePreviewSummary (section headings are
+    // plain Text paragraphs). Exact match avoids the stepper label "Define API Information".
+    await expect(page.getByText('API Information', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Upstream Configuration', { exact: true })).toBeVisible();
 
     // Should show the route name and URI
     await expect(page.locator('text=test-preview')).toBeVisible();
@@ -207,27 +234,18 @@ test.describe('Route Add - UX Improvements', () => {
     await page.locator('input[name="name"]').fill('test-upstream-conn');
     await page.locator('input[name="uri"]').fill('/upstream-test');
 
-    // Go to step 2 (Upstream)
+    // Go to step 2 (Upstream) — custom upstream mode is the default
     await clickNext(page);
 
-    // Select "Custom" from the Upstream dropdown
-    const upstreamSelect = page.locator('.mantine-Select-input').last();
-    await upstreamSelect.click();
-    await page.waitForTimeout(500);
+    // The button renders disabled until a node with a host exists
+    const testBtn = page.getByRole('button', { name: /Test Connection/i });
+    await expect(testBtn).toBeVisible({ timeout: 5000 });
+    await expect(testBtn).toBeDisabled();
 
-    const customOption = page.getByRole('option', { name: 'Custom' });
-    if (await customOption.isVisible()) {
-      await customOption.click();
-      await page.waitForTimeout(1000);
+    await addUpstreamNode(page);
+    await expect(testBtn).toBeEnabled();
 
-      const testBtn = page.getByRole('button', { name: /Test Connection/i });
-      await expect(testBtn).toBeVisible({ timeout: 5000 });
-
-      await page.screenshot({ path: '/tmp/ux-test-connection.png' });
-    } else {
-      await page.keyboard.press('Escape');
-      test.skip();
-    }
+    await page.screenshot({ path: '/tmp/ux-test-connection.png' });
   });
 
   test('Feature 10: Keyboard navigation with Enter and Escape', async ({ page }) => {
