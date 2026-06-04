@@ -30,6 +30,10 @@ export const useFormDraftAutoSave = (key: string, form: UseFormReturn<any>) => {
     timeoutRef.current = setTimeout(() => {
       if (clearedRef.current) return;
       try {
+        // Only save once the user actually changed something — forms with
+        // pre-filled defaults (e.g. routes) would otherwise save a draft on
+        // every visit before any input
+        if (!form.formState.isDirty) return;
         const values = form.getValues();
         // Only save if there's meaningful data
         if (values.name || values.uri || values.uris?.length) {

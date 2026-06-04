@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Badge, Group, Text } from '@mantine/core';
+import { Alert, Badge, Button, Group, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -42,8 +42,11 @@ import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
 import { FormWizard } from '@/components/form-slice/FormWizard';
 import PageHeader from '@/components/page/PageHeader';
 import { req } from '@/config/req';
+import { useFormDraftAutoSave } from '@/hooks/useFormDraftAutoSave';
 import type { APISIXType } from '@/types/schema/apisix';
 import IconWarning from '~icons/material-symbols/warning-outline';
+
+const DRAFT_KEY = 'apisix-route-draft';
 
 type Props = {
   navigate: (res: APISIXType['RespRouteDetail']) => Promise<void>;
@@ -88,18 +91,42 @@ export const RouteAddForm = (props: Props) => {
   const { t } = useTranslation();
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const draftNotifiedRef = useRef(false);
+
+  // [Feature 11] Draft auto-save and restore
+  const savedDraft = useRef<Partial<RoutePostType> | undefined>(undefined);
+  if (!savedDraft.current) {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) savedDraft.current = JSON.parse(saved);
+    } catch { /* ignore */ }
+  }
 
   const form = useForm<RoutePostType>({
     resolver: zodResolver(RoutePostSchema),
     shouldUnregister: false,
     shouldFocusError: true,
     mode: 'all',
-    defaultValues,
+    defaultValues: (savedDraft.current as RoutePostType) || defaultValues,
   });
+
+  const { clearDraft } = useFormDraftAutoSave(DRAFT_KEY, form);
+
+  useEffect(() => {
+    if (savedDraft.current && !draftNotifiedRef.current) {
+      draftNotifiedRef.current = true;
+      notifications.show({
+        message: t('form.draft.restored'),
+        color: 'blue',
+        autoClose: 5000,
+      });
+    }
+  }, [t]);
 
   const postRoute = useMutation({
     mutationFn: (d: RoutePostType) => postRouteReq(req, produceRoute(d)),
     async onSuccess(res) {
+      clearDraft();
       notifications.show({
         message: t('info.add.success', { name: t('routes.singular') }),
         color: 'green',
@@ -184,6 +211,22 @@ export const RouteAddForm = (props: Props) => {
 
   return (
     <FormProvider {...form}>
+      {savedDraft.current && (
+        <Group justify="flex-end" mb="xs">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-xs"
+            onClick={() => {
+              clearDraft();
+              form.reset(defaultValues as RoutePostType);
+              savedDraft.current = undefined;
+            }}
+          >
+            {t('form.draft.discard')}
+          </Button>
+        </Group>
+      )}
       <FormWizard
         steps={steps}
         onComplete={form.handleSubmit((d) => {
