@@ -119,6 +119,11 @@ export const FormSection = (props: FormSectionProps) => {
         style={{
           background: 'var(--bg-card)',
         }}
+        // Expose the section as a named group (the visual legend is a styled
+        // Text, not a <legend>, so screen readers and role-based queries
+        // would otherwise see an anonymous container)
+        role={legend ? 'group' : undefined}
+        aria-label={typeof legend === 'string' ? legend : undefined}
         {...restProps}
         {...(!shouldHideInTOC && dataAttrs)}
       >

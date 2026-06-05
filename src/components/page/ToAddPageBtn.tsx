@@ -75,6 +75,7 @@ export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
         component={RouteLink as any}
         to={to}
         params={params}
+        aria-label={t('form.btn.view')}
       >
         <IconVisibility width="18" height="18" />
       </ActionIcon>
