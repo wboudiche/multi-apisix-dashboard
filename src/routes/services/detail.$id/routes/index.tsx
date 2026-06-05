@@ -27,7 +27,12 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function RouteComponent() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/services/detail/$id/routes/' });
-  const { data, isLoading, refetch, setParams } = useRouteList();
+  // Pass the nested route id — the hook defaults to '/routes/', which has
+  // no active match under /services/detail/$id/routes and crashes the page
+  const { data, isLoading, refetch, setParams } = useRouteList(
+    '/services/detail/$id/routes/',
+    { filter: { service_id: id } }
+  );
   return (
     <>
       <PageHeader title={t('sources.routes')} />

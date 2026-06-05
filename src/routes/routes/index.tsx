@@ -49,6 +49,7 @@ import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
 import { LabelFilter } from '@/components/page/LabelFilter';
+import PageHeader from '@/components/page/PageHeader';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
 import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
@@ -574,6 +575,7 @@ function RouteComponent() {
 
   return (
     <Box className="animate-fade-in-up" bg="#f0f2f5" style={{ minHeight: '100vh', width: '100%' }}>
+      <PageHeader title={t('sources.routes')} />
 
       <Paper p="md" mb="md" radius="sm" shadow="sm" w="100%" style={{ border: '1px solid #eee' }}>
         <Stack gap="md">
