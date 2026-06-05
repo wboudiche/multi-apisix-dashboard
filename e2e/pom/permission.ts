@@ -93,6 +93,17 @@ export const permission = {
   switchInstance: async (page: Page, instanceName: string) => {
     const id = instanceIdByName(instanceName);
     if (id) {
+      // Wait for the header's auto-select to settle first — its async
+      // effect captured an empty instance id at mount and would otherwise
+      // overwrite the seeded value when it resolves (between our setItem
+      // and the reload's localStorage read)
+      await page
+        .waitForFunction(() => !!localStorage.getItem('instance:current_id'), {
+          timeout: 10000,
+        })
+        .catch(() => {
+          /* no instances yet — seeding below still applies */
+        });
       await page.evaluate(
         ([key, val]) => localStorage.setItem(key, val),
         ['instance:current_id', id] as const,

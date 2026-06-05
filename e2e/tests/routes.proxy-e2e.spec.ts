@@ -42,6 +42,15 @@ async function login(page: import('@playwright/test').Page) {
 // header's auto-select with dropdown clicks.
 async function switchToStagingAPISIX(page: import('@playwright/test').Page) {
   const fx = getFixtures();
+  // Wait for the header's in-flight auto-select to settle before seeding,
+  // otherwise it overwrites the pin between setItem and the reload
+  await page
+    .waitForFunction(() => !!localStorage.getItem('instance:current_id'), {
+      timeout: 10000,
+    })
+    .catch(() => {
+      /* no instances yet */
+    });
   await page.evaluate(
     (id) => localStorage.setItem('instance:current_id', id),
     fx.stagingInstanceId
