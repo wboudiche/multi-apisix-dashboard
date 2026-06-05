@@ -41,7 +41,8 @@ const assert = {
     await expect(page).toHaveURL((url) =>
       url.pathname.includes('/consumers/detail')
     );
-    const title = page.getByRole('heading', { name: 'Consumer Detail' });
+    // The detail layout renders "Consumer: <username>" as its heading
+    const title = page.getByRole('heading', { name: /^Consumer: / });
     await expect(title).toBeVisible();
   },
 };

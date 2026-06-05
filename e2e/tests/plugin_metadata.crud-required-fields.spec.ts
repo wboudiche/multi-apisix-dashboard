@@ -71,6 +71,10 @@ test('should CRUD plugin metadata with required fields only', async ({
     const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
     await expect(addPluginDialog).toBeVisible();
 
+    // The editor opens in Form mode by default for plugins with a schema.
+    // Switch to JSON mode to use the Monaco editor.
+    await addPluginDialog.locator('label:has-text("JSON")').click();
+
     // Fill in minimal required configuration
     const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
     await uiFillMonacoEditor(page, pluginEditor, '{"host": "127.0.0.1"}');
@@ -102,8 +106,11 @@ test('should CRUD plugin metadata with required fields only', async ({
     const editPluginDialog = page.getByRole('dialog', { name: 'Edit Plugin' });
     await expect(editPluginDialog).toBeVisible();
 
+    // Switch to JSON mode so the saved config is rendered as text in Monaco.
+    await editPluginDialog.locator('label:has-text("JSON")').click();
+
     // Verify existing configuration is shown
-    await expect(editPluginDialog.getByText('host')).toBeVisible();
+    await expect(editPluginDialog.locator('.monaco-editor').getByText('"host"', { exact: true })).toBeVisible();
 
     // Update the configuration
     const pluginEditor = await uiGetMonacoEditor(page, editPluginDialog);

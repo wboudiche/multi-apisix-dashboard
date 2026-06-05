@@ -19,7 +19,7 @@ import { expect, type Page } from '@playwright/test';
 
 const locator = {
   getAddBtn: (page: Page) =>
-    page.getByRole('link', { name: 'Add Stream Route' }),
+    page.getByRole('button', { name: 'Add Stream Route' }),
 };
 
 const assert = {

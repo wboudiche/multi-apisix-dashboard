@@ -27,16 +27,24 @@ export interface PaginationTestConfig<T> {
   items: T[];
   filterItemsNotInPage: (page: Page) => Promise<T[]>;
   getCell: (page: Page, item: T) => Locator;
+  /**
+   * 'antd' (default): ProTable pagination with a "N / page" size selector.
+   * 'mantine': Mantine <Pagination> — page numbers are buttons and there is
+   * no page-size selector, so size-switching steps are skipped (page_size
+   * still works through the URL).
+   */
+  variant?: 'antd' | 'mantine';
 }
 
 export function setupPaginationTests<T>(
   test: typeof realTest,
-  { pom, items, filterItemsNotInPage, getCell }: PaginationTestConfig<T>
+  { pom, items, filterItemsNotInPage, getCell, variant = 'antd' }: PaginationTestConfig<T>
 ) {
   const defaultPageNum = 1;
   const defaultPageSize = 10;
   const newPageSize = 20;
   const newPageNum = 2;
+  const hasPageSizeSelector = variant === 'antd';
 
   const getPageSizeSelection = (page: Page, size: number) => {
     return page
@@ -50,6 +58,9 @@ export function setupPaginationTests<T>(
   };
 
   const getPageNum = (page: Page, num: number) => {
+    if (variant === 'mantine') {
+      return page.getByRole('button', { name: `${num}`, exact: true });
+    }
     return page.getByRole('listitem', { name: `${num}` });
   };
 
@@ -77,7 +88,9 @@ export function setupPaginationTests<T>(
           url.searchParams.get('page_size') === defaultPageSize.toString()
       );
       // page_size should exist in table
-      await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
+      if (hasPageSizeSelector) {
+        await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
+      }
 
       // pageNum should exist in url
       await expect(page).toHaveURL(
@@ -93,39 +106,43 @@ export function setupPaginationTests<T>(
       }
     });
 
-    await test.step(`can switch page size to ${newPageSize}`, async () => {
-      // click page size selection, then click new page size option
-      await getPageSizeSelection(page, defaultPageSize).click();
-      await getPageSizeOption(page, newPageSize).click();
+    if (hasPageSizeSelector) {
+      await test.step(`can switch page size to ${newPageSize}`, async () => {
+        // click page size selection, then click new page size option
+        await getPageSizeSelection(page, defaultPageSize).click();
+        await getPageSizeOption(page, newPageSize).click();
 
-      await expect(getPageSizeSelection(page, newPageSize)).toBeVisible();
-      await expect(getPageNum(page, defaultPageNum)).toBeVisible();
-      // old page_size should be hidden
-      await expect(getPageSizeSelection(page, defaultPageSize)).toBeHidden();
+        await expect(getPageSizeSelection(page, newPageSize)).toBeVisible();
+        await expect(getPageNum(page, defaultPageNum)).toBeVisible();
+        // old page_size should be hidden
+        await expect(getPageSizeSelection(page, defaultPageSize)).toBeHidden();
 
-      // page_size should exist in url
-      await expect(page).toHaveURL(
-        (url) => url.searchParams.get('page_size') === newPageSize.toString()
-      );
-      // pageNum should exist in url
-      await expect(page).toHaveURL(
-        (url) => url.searchParams.get('page') === defaultPageNum.toString()
-      );
+        // page_size should exist in url
+        await expect(page).toHaveURL(
+          (url) => url.searchParams.get('page_size') === newPageSize.toString()
+        );
+        // pageNum should exist in url
+        await expect(page).toHaveURL(
+          (url) => url.searchParams.get('page') === defaultPageNum.toString()
+        );
 
-      // all items should be visible
-      for (const item of items) {
-        await itemIsVisible(page, item);
-      }
-    });
+        // all items should be visible
+        for (const item of items) {
+          await itemIsVisible(page, item);
+        }
+      });
+    }
 
-    await test.step('switch to default', async () => {
-      await getPageSizeSelection(page, newPageSize).click();
-      await getPageSizeOption(page, defaultPageSize).click();
+    if (hasPageSizeSelector) {
+      await test.step('switch to default', async () => {
+        await getPageSizeSelection(page, newPageSize).click();
+        await getPageSizeOption(page, defaultPageSize).click();
 
-      await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
-      await expect(getPageNum(page, defaultPageNum)).toBeVisible();
-      await expect(getPageSizeSelection(page, newPageSize)).toBeHidden();
-    });
+        await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
+        await expect(getPageNum(page, defaultPageNum)).toBeVisible();
+        await expect(getPageSizeSelection(page, newPageSize)).toBeHidden();
+      });
+    }
 
     await test.step(`can switch page num to ${newPageNum}`, async () => {
       const itemsNotInPage = await filterItemsNotInPage(page);
@@ -159,7 +176,9 @@ export function setupPaginationTests<T>(
           url.searchParams.get('page_size') === defaultPageSize.toString()
       );
       // page_size should exist in table
-      await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
+      if (hasPageSizeSelector) {
+        await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
+      }
 
       // pageNum should exist in url
       await expect(page).toHaveURL(
@@ -181,9 +200,11 @@ export function setupPaginationTests<T>(
       await page.goto(url.toString());
 
       // check pagination
-      await expect(getPageSizeSelection(page, newPageSize)).toBeVisible();
+      if (hasPageSizeSelector) {
+        await expect(getPageSizeSelection(page, newPageSize)).toBeVisible();
+        await expect(getPageSizeSelection(page, defaultPageSize)).toBeHidden();
+      }
       await expect(getPageNum(page, defaultPageNum)).toBeVisible();
-      await expect(getPageSizeSelection(page, defaultPageSize)).toBeHidden();
 
       // pagination should exist in url
       await expect(page).toHaveURL((url) => {
@@ -204,9 +225,11 @@ export function setupPaginationTests<T>(
       url.searchParams.set('page_size', defaultPageSize.toString());
       await page.goto(url.toString());
 
-      await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
+      if (hasPageSizeSelector) {
+        await expect(getPageSizeSelection(page, defaultPageSize)).toBeVisible();
+        await expect(getPageSizeSelection(page, newPageSize)).toBeHidden();
+      }
       await expect(getPageNum(page, defaultPageNum)).toBeVisible();
-      await expect(getPageSizeSelection(page, newPageSize)).toBeHidden();
     });
 
     await test.step(`can switch page num to ${newPageNum}`, async () => {

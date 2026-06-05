@@ -16,6 +16,7 @@
  */
 /* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-conditional-expect */
 import { env } from '@e2e/utils/env';
+import { getFixtures } from '@e2e/utils/fixtures';
 import { expect, test } from '@playwright/test';
 
 const BASE_URL = env.E2E_TARGET_URL.replace(/\/$/, '');
@@ -36,17 +37,18 @@ async function login(page: import('@playwright/test').Page) {
   }
 }
 
-async function switchToLocalAPISIX(page: import('@playwright/test').Page) {
-  const instanceSelect = page.locator('input[placeholder="Select instance"]');
-  if (await instanceSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await instanceSelect.click();
-    await page.waitForTimeout(500);
-    const staging = page.locator('[role="option"]:has-text("Staging")');
-    if (await staging.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await staging.click();
-      await page.waitForTimeout(1000);
-    }
-  }
+// This spec verifies against APISIX_ADMIN (:9181 — the "Staging" instance),
+// so pin the staging instance deterministically instead of racing the
+// header's auto-select with dropdown clicks.
+async function switchToStagingAPISIX(page: import('@playwright/test').Page) {
+  const fx = getFixtures();
+  await page.evaluate(
+    (id) => localStorage.setItem('instance:current_id', id),
+    fx.stagingInstanceId
+  );
+  await page.reload();
+  await page.waitForLoadState('load');
+  await page.waitForTimeout(1000);
 }
 
 async function cleanupRoute(routeUri: string) {
@@ -79,7 +81,7 @@ test.describe('Route Proxy E2E - Full Lifecycle', () => {
 
   test('Create route via dashboard, proxy request through APISIX gateway, verify response', async ({ page, request }) => {
     await login(page);
-    await switchToLocalAPISIX(page);
+    await switchToStagingAPISIX(page);
 
     // ==========================================
     // STEP 1: Create a route via the dashboard UI

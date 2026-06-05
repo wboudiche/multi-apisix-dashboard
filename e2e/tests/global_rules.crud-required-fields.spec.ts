@@ -63,6 +63,10 @@ test('should CRUD global rule with required fields only', async ({ page }) => {
     const pluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
     await expect(pluginDialog).toBeVisible();
 
+    // The editor opens in Form mode by default for plugins with a schema.
+    // Switch to JSON mode to use the Monaco editor.
+    await pluginDialog.locator('label:has-text("JSON")').click();
+
     // Add minimal plugin configuration using Monaco editor
     const pluginEditor = await uiGetMonacoEditor(page, pluginDialog);
     await uiFillMonacoEditor(page, pluginEditor, '{"body": "test response"}');

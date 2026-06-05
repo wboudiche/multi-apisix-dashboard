@@ -34,13 +34,13 @@ test('should navigate to routes page', async ({ page }) => {
   await test.step('verify routes page components', async () => {
     await expect(routesPom.getAddRouteBtn(page)).toBeVisible();
 
-    // list table exists
+    // list table exists (redesigned columns: Name / Path / Status / Operation)
     const table = page.getByRole('table');
     await expect(table).toBeVisible();
-    await expect(table.getByText('ID', { exact: true })).toBeVisible();
     await expect(table.getByText('Name', { exact: true })).toBeVisible();
-    await expect(table.getByText('URI', { exact: true })).toBeVisible();
-    await expect(table.getByText('Actions', { exact: true })).toBeVisible();
+    await expect(table.getByText('Path', { exact: true })).toBeVisible();
+    await expect(table.getByText('Status', { exact: true })).toBeVisible();
+    await expect(table.getByText('Operation', { exact: true })).toBeVisible();
   });
 });
 
@@ -92,5 +92,8 @@ test.describe('page and page_size should work correctly', () => {
     filterItemsNotInPage,
     getCell: (page, item) =>
       page.getByRole('cell', { name: item.name }).first(),
+    // The redesigned routes list uses Mantine Pagination without a
+    // page-size selector
+    variant: 'mantine',
   });
 });

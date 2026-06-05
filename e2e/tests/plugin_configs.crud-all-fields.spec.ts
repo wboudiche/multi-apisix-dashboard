@@ -61,7 +61,7 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
   await test.step('fill in all fields', async () => {
     // Fill in basic fields
     await page
-      .getByLabel('Name', { exact: true })
+      .getByRole('textbox', { name: 'Name', exact: true })
       .first()
       .fill(pluginConfigNameWithAllFields);
     await page.getByLabel('Description').first().fill(description);
@@ -92,6 +92,9 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
       .click();
 
     const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
+    // The editor opens in Form mode by default for plugins with a schema.
+    // Switch to JSON mode to use the Monaco editor.
+    await addPluginDialog.locator('label:has-text("JSON")').click();
     const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
     await uiFillMonacoEditor(
       page,
@@ -111,10 +114,13 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
     // should show edit plugin dialog
     const editPluginDialog = page.getByRole('dialog', { name: 'Edit Plugin' });
 
+    // Switch to JSON mode so the saved config is rendered as text in Monaco.
+    await editPluginDialog.locator('label:has-text("JSON")').click();
+
     await expect(
-      editPluginDialog.getByText('test response body')
+      editPluginDialog.locator('.monaco-editor').getByText('test response body').first()
     ).toBeVisible();
-    await expect(editPluginDialog.getByText('X-Custom-Header')).toBeVisible();
+    await expect(editPluginDialog.locator('.monaco-editor').getByText('X-Custom-Header').first()).toBeVisible();
     // save edit plugin dialog
     await editPluginDialog.getByRole('button', { name: 'Save' }).click();
     await expect(editPluginDialog).toBeHidden();
@@ -137,7 +143,7 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
     await expect(ID).toBeDisabled();
 
     // Verify the plugin config name
-    const name = page.getByLabel('Name', { exact: true }).first();
+    const name = page.getByRole('textbox', { name: 'Name', exact: true }).first();
     await expect(name).toHaveValue(pluginConfigNameWithAllFields);
     await expect(name).toBeDisabled();
 
@@ -162,7 +168,7 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
     await page.getByRole('button', { name: 'Edit' }).click();
 
     // Verify we're in edit mode - fields should be editable now
-    const nameField = page.getByLabel('Name', { exact: true }).first();
+    const nameField = page.getByRole('textbox', { name: 'Name', exact: true }).first();
     await expect(nameField).toBeEnabled();
 
     // Update the description field
@@ -184,6 +190,8 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
     await responseRewritePlugin.getByRole('button', { name: 'Edit' }).click();
 
     const editPluginDialog = page.getByRole('dialog', { name: 'Edit Plugin' });
+    // Switch to JSON mode to use the Monaco editor.
+    await editPluginDialog.locator('label:has-text("JSON")').click();
     const pluginEditor = await uiGetMonacoEditor(page, editPluginDialog);
     await uiFillMonacoEditor(
       page,
@@ -232,7 +240,7 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
     // Navigate to detail page
     await page
       .getByRole('row', { name: pluginConfigNameWithAllFields })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await pluginConfigsPom.isDetailPage(page);
 

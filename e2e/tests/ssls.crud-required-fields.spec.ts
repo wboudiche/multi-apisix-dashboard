@@ -68,7 +68,7 @@ test('should CRUD SSL with required fields', async ({ page }) => {
     // Click on the View button to go to the detail page
     await page
       .getByRole('row', { name: firstSni })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await sslsPom.isDetailPage(page);
   });
@@ -137,7 +137,7 @@ test('should CRUD SSL with required fields', async ({ page }) => {
     // Click on the View button to go to the detail page
     await page
       .getByRole('row', { name: snis[0] })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await sslsPom.isDetailPage(page);
 

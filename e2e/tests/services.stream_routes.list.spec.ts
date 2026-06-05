@@ -123,7 +123,8 @@ test('should only show stream routes with current service_id', async ({
       .click();
     await servicesPom.isDetailPage(page);
 
-    await servicesPom.getServiceStreamRoutesTab(page).click();
+    const svcId0 = page.url().split('/detail/')[1].split('/')[0];
+    await servicesPom.toServiceStreamRoutes(page, svcId0);
     await servicesPom.isServiceStreamRoutesPage(page);
 
     // Stream routes from another service should not be visible
@@ -178,7 +179,8 @@ test('should display stream routes list under service', async ({ page }) => {
   await servicesPom.isDetailPage(page);
 
   // Navigate to Stream Routes tab
-  await servicesPom.getServiceStreamRoutesTab(page).click();
+  const svcId1 = page.url().split('/detail/')[1].split('/')[0];
+  await servicesPom.toServiceStreamRoutes(page, svcId1);
   await servicesPom.isServiceStreamRoutesPage(page);
 
   await test.step('should display all stream routes under service', async () => {
@@ -210,7 +212,7 @@ test('should display stream routes list under service', async ({ page }) => {
     // Click on the first stream route's View button
     await page
       .getByRole('row', { name: streamRoutes[0].server_addr })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
 
     await servicesPom.isServiceStreamRouteDetailPage(page);
@@ -219,9 +221,10 @@ test('should display stream routes list under service', async ({ page }) => {
     const serverAddrField = page.getByLabel('Server Address', { exact: true });
     await expect(serverAddrField).toHaveValue(streamRoutes[0].server_addr);
 
-    // Verify service_id is correct
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
+    // The bound service is shown in the Service select (by name).
+    await expect(page.getByRole('textbox', { name: 'Service', exact: true })).toHaveValue(
+      serviceName
+    );
   });
 
   await test.step('should have Add Stream Route button', async () => {
@@ -236,10 +239,9 @@ test('should display stream routes list under service', async ({ page }) => {
     await addStreamRouteBtn.click();
     await servicesPom.isServiceStreamRouteAddPage(page);
 
-    // Verify service_id is pre-filled
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
-    await expect(serviceIdField).toBeDisabled();
+    // The Service binding is pre-filled (by name)
+    const serviceField = page.getByRole('textbox', { name: 'Service', exact: true });
+    await expect(serviceField).toHaveValue(serviceName);
   });
 
   await test.step('should show correct stream route count', async () => {

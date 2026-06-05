@@ -34,37 +34,20 @@ const deletePluginMetadata = async (req: typeof e2eReq, name: string) => {
   });
 };
 const getMonacoEditorValue = async (editPluginDialog: Locator) => {
-  const textarea = editPluginDialog.locator('textarea');
-
-  // Wait for Monaco editor to be fully loaded with content (increased timeout for CI)
-  await textarea.waitFor({ state: 'attached', timeout: 10000 });
-
-  let editorValue = '';
-
-  // Try to get value from textarea first
-  if (await textarea.count() > 0) {
-    editorValue = await textarea.inputValue();
-  }
-
-  // Fallback to reading view-lines if textarea value is incomplete
-  if (!editorValue || editorValue.trim() === '{') {
-    // Wait for view-lines to be populated
-    await editPluginDialog.locator('.view-line').first().waitFor({ timeout: 10000 });
-    const lines = await editPluginDialog.locator('.view-line').allTextContents();
-    editorValue = lines.join('\n').replace(/\s+/g, ' ');
-  }
-
-  if (!editorValue || editorValue.trim() === '{') {
-    const allText = await editPluginDialog.textContent();
-    console.log('DEBUG: editorValue fallback failed, dialog text:', allText);
-  }
-  return editorValue;
+  // The Monaco textarea only mirrors typed input; read the full model value
+  // through the test hook registered in src/components/form/Editor.tsx
+  await editPluginDialog
+    .locator('.monaco-editor')
+    .first()
+    .waitFor({ timeout: 10000 });
+  return editPluginDialog
+    .page()
+    .evaluate(() => window.__monacoEditor__?.getModel()?.getValue() ?? '');
 };
 
 // Helper function to close edit dialog
 const closeEditDialog = async (editPluginDialog: Locator) => {
   const buttons = await editPluginDialog.locator('button').allTextContents();
-  console.log('DEBUG: Edit Plugin dialog buttons:', buttons);
   let closed = false;
   for (const [i, name] of buttons.entries()) {
     if (name.trim().toLowerCase() === 'cancel') {
@@ -114,6 +97,10 @@ test('should CRUD plugin metadata with all fields', async ({ page }) => {
     const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
     await expect(addPluginDialog).toBeVisible();
 
+    // The editor opens in Form mode by default for plugins with a schema.
+    // Switch to JSON mode to use the Monaco editor.
+    await addPluginDialog.locator('label:has-text("JSON")').click();
+
     // Fill in comprehensive configuration with all available fields
     const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
     await uiFillMonacoEditor(
@@ -160,8 +147,11 @@ test('should CRUD plugin metadata with all fields', async ({ page }) => {
     const editPluginDialog = page.getByRole('dialog', { name: 'Edit Plugin' });
     await expect(editPluginDialog).toBeVisible();
 
+    // Switch to JSON mode so the saved config is rendered as text in Monaco.
+    await editPluginDialog.locator('label:has-text("JSON")').click();
+
     // Verify existing configuration is shown
-    await expect(editPluginDialog.getByText('log_format')).toBeVisible();
+    await expect(editPluginDialog.locator('.monaco-editor').getByText('log_format').first()).toBeVisible();
 
     // Update the configuration with additional fields
     const pluginEditor = await uiGetMonacoEditor(page, editPluginDialog);
@@ -202,6 +192,9 @@ test('should CRUD plugin metadata with all fields', async ({ page }) => {
     await httpLoggerCard.getByRole('button', { name: 'Edit' }).click();
     const editPluginDialog = page.getByRole('dialog', { name: 'Edit Plugin' });
     await expect(editPluginDialog).toBeVisible();
+
+    // Switch to JSON mode so the saved config is rendered in the Monaco editor.
+    await editPluginDialog.locator('label:has-text("JSON")').click();
 
     // Get Monaco editor value using helper
     const editorValue = await getMonacoEditorValue(editPluginDialog);

@@ -59,6 +59,10 @@ test('should CRUD global rule with multiple plugins', async ({ page }) => {
     const pluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
     await expect(pluginDialog).toBeVisible();
 
+    // The editor opens in Form mode by default for plugins with a schema.
+    // Switch to JSON mode to use the Monaco editor.
+    await pluginDialog.locator('label:has-text("JSON")').click();
+
     // Configure response-rewrite with custom configuration using Monaco editor
     const pluginEditor = await uiGetMonacoEditor(page, pluginDialog);
     await uiFillMonacoEditor(
@@ -93,6 +97,9 @@ test('should CRUD global rule with multiple plugins', async ({ page }) => {
 
     const corsPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
     await expect(corsPluginDialog).toBeVisible();
+
+    // Switch to JSON mode to use the Monaco editor.
+    await corsPluginDialog.locator('label:has-text("JSON")').click();
 
     // Submit with simple configuration for cors
     const corsEditor = await uiGetMonacoEditor(page, corsPluginDialog);

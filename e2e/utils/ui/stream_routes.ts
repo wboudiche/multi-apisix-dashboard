@@ -14,10 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import type { APISIXType } from '@/types/schema/apisix';
+
+/**
+ * The redesigned stream route form has no inline node editor — the upstream
+ * is referenced through a searchable Select of pre-existing upstreams
+ * (seed one via the API first, then select it here by name).
+ */
+export const uiSelectStreamRouteUpstream = async (
+  page: Page,
+  upstreamName: string
+) => {
+  await page.getByRole('textbox', { name: 'Upstream', exact: true }).click();
+  await page.getByRole('option', { name: upstreamName, exact: true }).click();
+};
 
 export const uiFillStreamRouteRequiredFields = async (
   page: Page,
@@ -97,7 +110,6 @@ export const uiCheckStreamRouteRequiredFields = async (
 
 export const uiFillStreamRouteAllFields = async (
   page: Page,
-  upstreamSection: Locator,
   data: Partial<APISIXType['StreamRoute']>
 ) => {
   // Fill basic fields
@@ -109,55 +121,6 @@ export const uiFillStreamRouteAllFields = async (
     desc: data.desc,
     labels: data.labels,
   });
-
-  // Fill upstream nodes
-  if (data.upstream?.nodes && data.upstream.nodes.length > 0) {
-    for (let i = 0; i < data.upstream.nodes.length; i++) {
-      const node = data.upstream.nodes[i];
-      const nodeRow = upstreamSection
-        .locator('section')
-        .filter({ hasText: 'Nodes' })
-        .getByRole('row')
-        .nth(i + 1);
-
-      await nodeRow.getByPlaceholder('Host').fill(node.host);
-      await nodeRow.getByPlaceholder('Port').fill(node.port.toString());
-      await nodeRow.getByPlaceholder('Weight').fill(node.weight.toString());
-
-      // Click add if there are more nodes to add
-      if (i < data.upstream.nodes.length - 1) {
-        await upstreamSection
-          .locator('section')
-          .filter({ hasText: 'Nodes' })
-          .getByRole('button', { name: 'Add' })
-          .click();
-      }
-    }
-  }
-
-  // Fill upstream retries
-  if (data.upstream?.retries !== undefined) {
-    await upstreamSection.getByLabel('Retries').fill(data.upstream.retries.toString());
-  }
-
-  // Fill upstream timeout
-  if (data.upstream?.timeout) {
-    if (data.upstream.timeout.connect !== undefined) {
-      await upstreamSection
-        .getByLabel('Connect', { exact: true })
-        .fill(data.upstream.timeout.connect.toString());
-    }
-    if (data.upstream.timeout.send !== undefined) {
-      await upstreamSection
-        .getByLabel('Send', { exact: true })
-        .fill(data.upstream.timeout.send.toString());
-    }
-    if (data.upstream.timeout.read !== undefined) {
-      await upstreamSection
-        .getByLabel('Read', { exact: true })
-        .fill(data.upstream.timeout.read.toString());
-    }
-  }
 
   // Fill protocol fields
   if (data.protocol?.name) {
@@ -171,7 +134,6 @@ export const uiFillStreamRouteAllFields = async (
 
 export const uiCheckStreamRouteAllFields = async (
   page: Page,
-  upstreamSection: Locator,
   data: Partial<APISIXType['StreamRoute']>
 ) => {
   // Check basic fields
@@ -183,52 +145,6 @@ export const uiCheckStreamRouteAllFields = async (
     desc: data.desc,
     labels: data.labels,
   });
-
-  // Check upstream nodes
-  if (data.upstream?.nodes && data.upstream.nodes.length > 0) {
-    for (let i = 0; i < data.upstream.nodes.length; i++) {
-      const node = data.upstream.nodes[i];
-      const nodeRow = upstreamSection
-        .locator('section')
-        .filter({ hasText: 'Nodes' })
-        .getByRole('row')
-        .nth(i + 1);
-
-      await expect(nodeRow.getByPlaceholder('Host')).toHaveValue(node.host);
-      await expect(nodeRow.getByPlaceholder('Port')).toHaveValue(
-        node.port.toString()
-      );
-      await expect(nodeRow.getByPlaceholder('Weight')).toHaveValue(
-        node.weight.toString()
-      );
-    }
-  }
-
-  // Check upstream retries
-  if (data.upstream?.retries !== undefined) {
-    await expect(upstreamSection.getByLabel('Retries')).toHaveValue(
-      data.upstream.retries.toString()
-    );
-  }
-
-  // Check upstream timeout
-  if (data.upstream?.timeout) {
-    if (data.upstream.timeout.connect !== undefined) {
-      await expect(
-        upstreamSection.getByLabel('Connect', { exact: true })
-      ).toHaveValue(data.upstream.timeout.connect.toString());
-    }
-    if (data.upstream.timeout.send !== undefined) {
-      await expect(
-        upstreamSection.getByLabel('Send', { exact: true })
-      ).toHaveValue(data.upstream.timeout.send.toString());
-    }
-    if (data.upstream.timeout.read !== undefined) {
-      await expect(
-        upstreamSection.getByLabel('Read', { exact: true })
-      ).toHaveValue(data.upstream.timeout.read.toString());
-    }
-  }
 
   // Check protocol fields
   if (data.protocol?.name) {

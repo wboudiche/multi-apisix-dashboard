@@ -75,12 +75,15 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.isIndexPage(page);
 
       const row = page.locator('tr').filter({ hasText: createdSecretId });
-      await row.getByRole('button', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'View' }).click();
       await secretsPom.isDetailPage(page);
+
+      // Auto-waiting assertion first: textContent() has no built-in wait, so
+      // reading the body before the suspense query resolves grabs the skeleton
+      await expect(page.locator('input[name="id"]')).toHaveValue(createdSecretId);
 
       const pageContent = await page.textContent('body');
       expect(pageContent).toContain('Secret Manager');
-      await expect(page.locator('input[name="id"]')).toHaveValue(createdSecretId);
       // Verify AWS-specific fields are present (labels)
       expect(pageContent).toContain('Access Key ID');
       expect(pageContent).toContain('Secret Access Key');
@@ -102,7 +105,7 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.isIndexPage(page);
 
       const row = page.locator('tr').filter({ hasText: createdSecretId });
-      await row.getByRole('button', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'View' }).click();
       await secretsPom.isDetailPage(page);
     });
 
@@ -135,7 +138,7 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.isIndexPage(page);
 
       const row = page.locator('tr').filter({ hasText: createdSecretId });
-      await row.getByRole('button', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'View' }).click();
       await secretsPom.isDetailPage(page);
 
       await page.getByRole('button', { name: 'Delete' }).click();

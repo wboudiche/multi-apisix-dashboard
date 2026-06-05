@@ -64,6 +64,9 @@ test('should CRUD Consumer Group with required fields', async ({ page }) => {
       .click();
 
     const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
+    // The editor opens in Form mode by default for plugins with a schema.
+    // Switch to JSON mode to use the Monaco editor.
+    await addPluginDialog.locator('label:has-text("JSON")').click();
     const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
     await uiFillMonacoEditor(page, pluginEditor, '{"hide_credentials": true}');
 
@@ -102,7 +105,7 @@ test('should CRUD Consumer Group with required fields', async ({ page }) => {
     // Click View button to go to detail page
     await page
       .getByRole('row', { name: new RegExp(testId) })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await consumerGroupsPom.isDetailPage(page);
 
@@ -120,9 +123,10 @@ test('should CRUD Consumer Group with required fields', async ({ page }) => {
     // Cancel without making changes
     await page.getByRole('button', { name: 'Cancel' }).click();
 
-    // Verify we're back in detail view
+    // Verify we're back in detail view (the read-only view does not render
+    // the Description field, so check the Edit button reappeared instead)
     await consumerGroupsPom.isDetailPage(page);
-    await expect(descField).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
   });
 
   await test.step('delete consumer group', async () => {

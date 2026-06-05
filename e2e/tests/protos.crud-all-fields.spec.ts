@@ -54,7 +54,7 @@ test.describe('CRUD proto with all fields', () => {
 
     await test.step('fill in all fields', async () => {
       // Fill Content (ID is auto-generated, proto only has content field)
-      await page.getByLabel('Content').fill(protoContent);
+      await page.getByRole('textbox', { name: 'Content' }).fill(protoContent);
     });
 
     await test.step('submit the form', async () => {
@@ -105,7 +105,7 @@ test.describe('CRUD proto with all fields', () => {
 
       // Find and click the View button for the created proto
       const row = page.locator('tr').filter({ hasText: createdProtoId });
-      await row.getByRole('button', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'View' }).click();
       
       // Verify we're on the detail page
       await protosPom.isDetailPage(page);
@@ -134,7 +134,7 @@ message UpdatedTestMessage {
       await protosPom.isIndexPage(page);
 
       const row = page.locator('tr').filter({ hasText: createdProtoId });
-      await row.getByRole('button', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'View' }).click();
       await protosPom.isDetailPage(page);
     });
 
@@ -143,7 +143,7 @@ message UpdatedTestMessage {
       await page.getByRole('button', { name: 'Edit' }).click();
 
       // Clear and fill the content field
-      const contentField = page.getByLabel('Content');
+      const contentField = page.getByRole('textbox', { name: 'Content' });
       await contentField.clear();
       await contentField.fill(updatedContent);
     });
@@ -182,7 +182,7 @@ message UpdatedTestMessage {
 
       // Find and click the View button
       const row = page.locator('tr').filter({ hasText: createdProtoId });
-      await row.getByRole('button', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'View' }).click();
       await protosPom.isDetailPage(page);
 
       // Click Delete button

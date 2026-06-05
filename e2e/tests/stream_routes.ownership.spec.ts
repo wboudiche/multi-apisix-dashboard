@@ -15,9 +15,15 @@
  * limitations under the License.
  */
 import { streamRoutesPom } from '@e2e/pom/stream_routes';
+import { getFixtures } from '@e2e/utils/fixtures';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
-import { uiFillStreamRouteRequiredFields } from '@e2e/utils/ui/stream_routes';
+import {
+  uiFillStreamRouteRequiredFields,
+  uiSelectStreamRouteUpstream,
+} from '@e2e/utils/ui/stream_routes';
+
+import { API_UPSTREAMS } from '@/config/constant';
 
 // Stream routes have no human name. We synthesise a unique server_port
 // from the ownership helper's `name` argument (deterministic hash into
@@ -41,23 +47,30 @@ ownershipMatrixSuite({
   },
   createMinimal: async (page, name) => {
     const port = portFromName(name);
+    // Seed an upstream via the API (the redesigned form references an
+    // existing upstream instead of an inline node editor). It must be owned
+    // by the Backend Team, otherwise dev_user's select won't list it —
+    // admins may set the owning team via the X-Team-ID header.
+    const upstreamName = `sr-own-upstream-${port}`;
+    await e2eReq
+      .post(
+        API_UPSTREAMS,
+        {
+          name: upstreamName,
+          nodes: [{ host: '127.0.0.2', port: 8080, weight: 1 }],
+        },
+        { headers: { 'X-Team-ID': getFixtures().backendTeamId } }
+      )
+      .catch(() => {
+        /* may already exist from a retry */
+      });
+
     await streamRoutesPom.toAdd(page);
     await uiFillStreamRouteRequiredFields(page, {
       server_addr: '127.0.1.99',
       server_port: port,
     });
-
-    // Add a single upstream node manually.
-    const upstreamSection = page.getByRole('group', {
-      name: 'Upstream',
-      exact: true,
-    });
-    const nodesSection = upstreamSection.getByRole('group', { name: 'Nodes' });
-    await nodesSection.getByRole('button', { name: 'Add a Node' }).click();
-    const firstRow = nodesSection.locator('tr.ant-table-row').first();
-    await firstRow.locator('input').nth(0).fill('127.0.0.2');
-    await firstRow.locator('input').nth(1).fill('8080');
-    await firstRow.locator('input').nth(2).fill('1');
+    await uiSelectStreamRouteUpstream(page, upstreamName);
 
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await streamRoutesPom.toIndex(page);

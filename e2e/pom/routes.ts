@@ -20,8 +20,9 @@ import { expect, type Page } from '@playwright/test';
 const locator = {
   getRouteNavBtn: (page: Page) =>
     page.getByRole('link', { name: 'Routes', exact: true }),
+  // The redesigned routes list uses a "Create" toolbar button
   getAddRouteBtn: (page: Page) =>
-    page.getByRole('button', { name: 'Add Route', exact: true }),
+    page.getByRole('button', { name: 'Create', exact: true }),
   getAddBtn: (page: Page) =>
     page.getByRole('button', { name: 'Add', exact: true }),
   rowByName: (page: Page, name: string) =>

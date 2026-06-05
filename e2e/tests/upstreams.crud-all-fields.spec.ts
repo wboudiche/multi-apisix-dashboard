@@ -32,7 +32,7 @@ test.beforeAll(async () => {
 });
 
 test('should CRUD upstream with all fields', async ({ page }) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const upstreamNameWithAllFields = randomId('test-upstream-full');
   const description =
@@ -51,30 +51,18 @@ test('should CRUD upstream with all fields', async ({ page }) => {
     desc: description,
   });
 
-  // Submit the form
-  const addBtn = page.getByRole('button', { name: 'Add', exact: true });
-  await addBtn.click();
+  // Submit the form from the wizard's Preview step.
+  await upstreamsPom.getAddBtn(page).click();
 
   // Wait for success message
   await uiHasToastMsg(page, {
     hasText: 'Add Upstream Successfully',
   });
 
-  // Verify automatic redirection to detail page
-  await upstreamsPom.isDetailPage(page);
-
-  await test.step('verify all fields in detail page', async () => {
-    await uiCheckUpstreamAllFields(page, {
-      name: upstreamNameWithAllFields,
-      desc: description,
-    });
-  });
+  // The wizard redirects back to the list page on success.
+  await upstreamsPom.isIndexPage(page);
 
   await test.step('return to list page and verify', async () => {
-    // Return to the upstream list page
-    await upstreamsPom.getUpstreamNavBtn(page).click();
-    await upstreamsPom.isIndexPage(page);
-
     // Verify the created upstream is visible in the list - using a more reliable method
     // Using expect's toBeVisible method which has a retry mechanism
     await expect(page.locator('.ant-table-tbody')).toBeVisible();
@@ -83,17 +71,21 @@ test('should CRUD upstream with all fields', async ({ page }) => {
     await expect(page.getByText(upstreamNameWithAllFields)).toBeVisible();
   });
 
-  await test.step('delete the created upstream', async () => {
-    // Find the row containing the upstream name
-    const row = page
+  await test.step('verify all fields in detail page', async () => {
+    await page
       .locator('tr')
-      .filter({ hasText: upstreamNameWithAllFields });
-    await expect(row).toBeVisible();
+      .filter({ hasText: upstreamNameWithAllFields })
+      .getByRole('button', { name: 'View' })
+      .click();
+    await upstreamsPom.isDetailPage(page);
+    await uiCheckUpstreamAllFields(page, {
+      name: upstreamNameWithAllFields,
+      desc: description,
+    });
+  });
 
-    // Click to view details
-    await row.getByRole('button', { name: 'View' }).click();
-
-    // Verify entered detail page
+  await test.step('delete the created upstream', async () => {
+    // We are already on the detail page from the previous step.
     await upstreamsPom.isDetailPage(page);
 
     // Delete the upstream

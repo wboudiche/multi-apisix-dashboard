@@ -65,17 +65,19 @@ test('should CRUD stream route under service', async ({ page }) => {
   await servicesPom.isDetailPage(page);
 
   // Navigate to Stream Routes tab
-  await servicesPom.getServiceStreamRoutesTab(page).click();
+  const serviceId = page.url().split('/detail/')[1].split('/')[0];
+  await servicesPom.toServiceStreamRoutes(page, serviceId);
   await servicesPom.isServiceStreamRoutesPage(page);
 
   await servicesPom.getAddStreamRouteBtn(page).click();
   await servicesPom.isServiceStreamRouteAddPage(page);
 
   await test.step('can submit without any fields (no required fields)', async () => {
-    // Verify service_id is pre-filled and disabled (since it's read-only in service context)
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
-    await expect(serviceIdField).toBeDisabled();
+    // The Service select is pre-filled (from the service_id default) and
+    // disabled (read-only in service context). The Mantine Select shows the
+    // service name, not the id.
+    const serviceField = page.getByRole('textbox', { name: 'Service', exact: true });
+    await expect(serviceField).toHaveValue(serviceName);
 
     // Submit the form without filling any other fields
     await servicesPom.getAddBtn(page).click();
@@ -93,10 +95,10 @@ test('should CRUD stream route under service', async ({ page }) => {
     await expect(ID).toBeVisible();
     await expect(ID).toBeDisabled();
 
-    // Verify service_id is still pre-filled and disabled
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
-    await expect(serviceIdField).toBeDisabled();
+    // Verify the Service binding is still present (the select stays
+    // enabled in the redesigned form)
+    const serviceField = page.getByRole('textbox', { name: 'Service', exact: true });
+    await expect(serviceField).toHaveValue(serviceName);
 
     // Verify default values for server address and port (should be empty initially)
     const serverAddrField = page.getByLabel('Server Address', { exact: true });
@@ -115,9 +117,10 @@ test('should CRUD stream route under service', async ({ page }) => {
     const serverAddrField = page.getByLabel('Server Address', { exact: true });
     await expect(serverAddrField).toBeEnabled();
 
-    // Service ID should still be disabled even in edit mode
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toBeDisabled();
+    // The Service binding stays present (and enabled) in edit mode.
+    await expect(
+      page.getByRole('textbox', { name: 'Service', exact: true })
+    ).toHaveValue(serviceName);
 
     // Fill in some fields
     await serverAddrField.fill(streamRouteServerAddr);
@@ -191,7 +194,7 @@ test('should CRUD stream route under service', async ({ page }) => {
     // Click on the stream route to go to the detail page
     await page
       .getByRole('row', { name: updatedStreamRouteServerAddr })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await servicesPom.isServiceStreamRouteDetailPage(page);
   });

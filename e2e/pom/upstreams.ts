@@ -22,8 +22,11 @@ const locator = {
     page.getByRole('link', { name: 'Upstreams' }),
   getAddUpstreamBtn: (page: Page) =>
     page.getByRole('button', { name: 'Add Upstream' }),
+  // The add/edit flow is now a multi-step FormWizard. CommonPOM still requires
+  // a `getAddBtn` that "submits" the form, so we map it to the wizard's final
+  // Submit button (only rendered on the last/preview step).
   getAddBtn: (page: Page) =>
-    page.getByRole('button', { name: 'Add', exact: true }),
+    page.getByRole('button', { name: 'Submit', exact: true }),
 };
 
 const assert = {

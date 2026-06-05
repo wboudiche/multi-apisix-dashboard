@@ -18,7 +18,7 @@ import { upstreamsPom } from '@e2e/pom/upstreams';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiCannotSubmitEmptyForm, uiHasToastMsg } from '@e2e/utils/ui';
+import { uiHasToastMsg } from '@e2e/utils/ui';
 import {
   uiCheckUpstreamRequiredFields,
   uiFillUpstreamRequiredFields,
@@ -45,8 +45,12 @@ test('should CRUD upstream with required fields', async ({ page }) => {
   await upstreamsPom.getAddUpstreamBtn(page).click();
   await upstreamsPom.isAddPage(page);
 
-  await test.step('cannot submit without required fields', async () => {
-    await uiCannotSubmitEmptyForm(page, upstreamsPom);
+  await test.step('cannot advance without required fields', async () => {
+    // The wizard replaced the old "invalid configuration" toast with per-step
+    // validation: clicking "Next" with an empty required field keeps the
+    // wizard on the current step (the Name input stays visible).
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toBeVisible();
   });
 
   await test.step('submit with required fields', async () => {
@@ -58,11 +62,21 @@ test('should CRUD upstream with required fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Add Upstream Successfully',
     });
+    // The wizard redirects back to the list page on success.
+    await upstreamsPom.isIndexPage(page);
   });
 
-  await test.step('auto navigate to upstream detail page', async () => {
+  await test.step('can see upstream in list page', async () => {
+    await expect(page.getByRole('cell', { name: upstreamName })).toBeVisible();
+  });
+
+  await test.step('navigate to upstream detail page', async () => {
+    await page
+      .getByRole('row', { name: upstreamName })
+      .getByRole('button', { name: 'View' })
+      .click();
     await upstreamsPom.isDetailPage(page);
-    // Verify ID exists
+    // Verify ID exists (step 1 of the read-only wizard).
     const ID = page.getByRole('textbox', { name: 'ID', exact: true });
     await expect(ID).toBeVisible();
     await expect(ID).toBeDisabled();
@@ -72,89 +86,73 @@ test('should CRUD upstream with required fields', async ({ page }) => {
     });
   });
 
-  await test.step('can see upstream in list page', async () => {
-    await upstreamsPom.getUpstreamNavBtn(page).click();
-    await expect(page.getByRole('cell', { name: upstreamName })).toBeVisible();
-  });
-
-  await test.step('navigate to upstream detail page', async () => {
-    // Click on the upstream name to go to the detail page
-    await page
-      .getByRole('row', { name: upstreamName })
-      .getByRole('button', { name: 'View' })
-      .click();
-    await upstreamsPom.isDetailPage(page);
-    const name = page.getByLabel('Name', { exact: true });
-    await expect(name).toHaveValue(upstreamName);
-  });
-
   await test.step('edit and update upstream in detail page', async () => {
-    // Click the Edit button in the detail page
+    // Enter edit mode — the wizard fields become editable.
     await page.getByRole('button', { name: 'Edit' }).click();
 
-    // Verify we're in edit mode - fields should be editable now
-    const nameField = page.getByLabel('Name', { exact: true });
+
+    // The wizard keeps whatever step the read-only view was on;
+    // go back to step 1 (Basic) explicitly.
+    await page.getByRole('button', { name: /Basic/ }).first().click();
+    // Step 1 (Basic) is active: update description + add a label.
+    const nameField = page.getByRole('textbox', { name: 'Name', exact: true });
     await expect(nameField).toBeEnabled();
 
-    // Update the description field
-    const descriptionField = page.getByLabel('Description');
-    await descriptionField.fill('Updated description for testing');
+    await page.getByLabel('Description').fill('Updated description for testing');
 
-    // Add a simple label (key:value format)
     const labelsField = page.getByRole('textbox', { name: 'Labels' });
     await expect(labelsField).toBeEnabled();
-
-    // Add a single label in key:value format
     await labelsField.click();
     await labelsField.fill('version:v1');
     await labelsField.press('Enter');
-
-    // Verify the label was added by checking if the input is cleared
-    // This indicates the tag was successfully created
     await expect(labelsField).toHaveValue('');
 
-    // Update a node - change the host of the first node
-    const nodesSection = page.getByRole('group', { name: 'Nodes' });
-    const rows = nodesSection.locator('tr.ant-table-row');
-    const firstRowHost = rows.nth(0).getByRole('textbox').first();
-    await firstRowHost.fill('updated-test.com');
-    await expect(firstRowHost).toHaveValue('updated-test.com');
-    await nodesSection.click();
+    // Advance to the Nodes step and update the first node's host.
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    const firstHost = page.getByPlaceholder('Hostname or IP').first();
+    await firstHost.fill('updated-test.com');
+    await expect(firstHost).toHaveValue('updated-test.com');
+    await page.locator('h1').first().click();
 
-    // Click the Save button to save changes
-    const saveBtn = page.getByRole('button', { name: 'Save' });
-    await saveBtn.click();
+    // Advance through Connection to the Preview step, then Submit.
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Submit', exact: true }).click();
 
-    // Verify the update was successful
     await uiHasToastMsg(page, {
       hasText: 'success',
     });
 
-    // Verify we're back in detail view mode
+    // Back in read-only detail mode.
     await upstreamsPom.isDetailPage(page);
 
-    // Verify the updated fields
+    // Verify the updated description + label (step 1 / Basic tab).
+    await page.getByRole('button', { name: 'Basic', exact: true }).click();
     await expect(page.getByLabel('Description')).toHaveValue(
       'Updated description for testing'
     );
-
-    // Check if the updated node host text is visible somewhere in the nodes section
-    await expect(nodesSection).toBeVisible();
-    await expect(nodesSection.getByText('updated-test.com')).toBeVisible();
-
-    // check labels
     await expect(page.getByText('version:v1')).toBeVisible();
 
-    // Return to list page and verify the upstream exists
+    // Verify the updated node host (step 2).
+    await page.getByRole('button', { name: 'Nodes', exact: true }).click();
+    await expect(
+      page.getByPlaceholder('Hostname or IP').first()
+    ).toHaveValue('updated-test.com');
+
+    // Return to list page and verify the upstream exists.
     await upstreamsPom.getUpstreamNavBtn(page).click();
     await upstreamsPom.isIndexPage(page);
-
-    // Find the row with our upstream
     const row = page.getByRole('row', { name: upstreamName });
     await expect(row).toBeVisible();
   });
 
   await test.step('delete upstream in detail page', async () => {
+    await page
+      .getByRole('row', { name: upstreamName })
+      .getByRole('button', { name: 'View' })
+      .click();
+    await upstreamsPom.isDetailPage(page);
+
     await page.getByRole('button', { name: 'Delete' }).click();
 
     await page

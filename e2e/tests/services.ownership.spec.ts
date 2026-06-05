@@ -32,7 +32,7 @@ ownershipMatrixSuite({
     await servicesPom.toIndex(page);
     await servicesPom.getAddServiceBtn(page).click();
     await uiFillServiceRequiredFields(page, { name });
-    await servicesPom.getAddBtn(page).click();
+    await servicesPom.getSubmitBtn(page).click();
     await servicesPom.toIndex(page);
   },
   cleanup: async (_page, name) => {

@@ -225,7 +225,7 @@ test('should be able to navigate to credential detail', async ({ page }) => {
     // Click on the first credential's View button
     await page
       .getByRole('row', { name: credentials[0].id })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
 
     await credentialsPom.isCredentialDetailPage(page);
@@ -236,8 +236,9 @@ test('should be able to navigate to credential detail', async ({ page }) => {
     const idField = page.getByLabel('ID', { exact: true }).first();
     await expect(idField).toHaveValue(credentials[0].id);
 
-    const descField = page.getByLabel('Description', { exact: true });
-    await expect(descField).toHaveValue(credentials[0].desc || '');
+    // The redesigned credential detail page has no Description field;
+    // verify the configured plugin card is shown instead
+    await expect(page.getByText('key-auth').first()).toBeVisible();
   });
 });
 
@@ -353,8 +354,13 @@ test('should be able to edit credential', async ({ page }) => {
     await expect(saveBtn).toBeVisible();
     await saveBtn.click();
 
-    // Wait for success notification
+    // Wait for success notification, then for the form to settle back into
+    // read-only mode (the Edit button reappears once the refetch finished) —
+    // reloading mid-refetch leaves the page suspended past the POM timeout
     await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   await test.step('verify changes are saved', async () => {
@@ -362,15 +368,15 @@ test('should be able to edit credential', async ({ page }) => {
     await page.reload();
     await credentialsPom.isCredentialDetailPage(page);
 
+    // The read-only detail view does not render the Description field;
+    // re-enter edit mode to read the persisted value
+    await page.getByRole('button', { name: 'Edit' }).click();
     const descField = page.getByLabel('Description', { exact: true });
     await expect(descField).toHaveValue(updatedDesc);
   });
 
   await test.step('restore original description', async () => {
-    // Edit again to restore original value
-    const editBtn = page.getByRole('button', { name: 'Edit' });
-    await editBtn.click();
-
+    // Still in edit mode from the previous step
     const descField = page.getByLabel('Description', { exact: true });
     await descField.clear();
     await descField.fill(credentialToEdit.desc || '');

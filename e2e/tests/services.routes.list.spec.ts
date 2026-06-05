@@ -123,7 +123,8 @@ test('should only show routes with current service_id', async ({ page }) => {
       .click();
     await servicesPom.isDetailPage(page);
 
-    await servicesPom.getServiceRoutesTab(page).click();
+    const svcId0 = page.url().split('/detail/')[1].split('/')[0];
+    await servicesPom.toServiceRoutes(page, svcId0);
     await servicesPom.isServiceRoutesPage(page);
 
     // Routes from another service should not be visible
@@ -170,7 +171,8 @@ test('should display routes list under service', async ({ page }) => {
   await servicesPom.isDetailPage(page);
 
   // Navigate to Routes tab
-  await servicesPom.getServiceRoutesTab(page).click();
+  const svcId1 = page.url().split('/detail/')[1].split('/')[0];
+  await servicesPom.toServiceRoutes(page, svcId1);
   await servicesPom.isServiceRoutesPage(page);
 
   await test.step('should display all routes under service', async () => {
@@ -182,32 +184,44 @@ test('should display routes list under service', async ({ page }) => {
   });
 
   await test.step('should have correct table headers', async () => {
-    await expect(page.getByRole('columnheader', { name: 'ID' })).toBeVisible();
+    // The redesigned nested routes table shows Name / Path / Operation
     await expect(
       page.getByRole('columnheader', { name: 'Name' })
     ).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'URI' })).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Actions' })
+      page.getByRole('columnheader', { name: 'Path' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Operation' })
     ).toBeVisible();
   });
 
   await test.step('should be able to navigate to route detail', async () => {
-    // Click on the first route's View button
+    // Nested route rows reuse the RouteList actions — Configure opens detail
     await page
       .getByRole('row', { name: routes[0].name })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
 
-    await servicesPom.isServiceRouteDetailPage(page);
+    // Configure opens the global route detail page
+    await routesPom.isDetailPage(page);
 
-    // Verify we're on the correct route detail page
-    const nameField = page.getByLabel('Name', { exact: true }).first();
+    // The route detail page is a read-only wizard; the name lives on the
+    // API-info step.
+    await page
+      .getByRole('button', { name: 'Define API Information', exact: true })
+      .click();
+    const nameField = page.getByRole('textbox', { name: 'Name', exact: true }).first();
     await expect(nameField).toHaveValue(routes[0].name);
 
-    // Verify service_id is correct
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
+    // The bound service lives on the Upstream step; the Service select displays
+    // the service name.
+    await page
+      .getByRole('button', { name: 'Define Upstream', exact: true })
+      .click();
+    await expect(page.getByRole('textbox', { name: 'Service', exact: true })).toHaveValue(
+      serviceName
+    );
   });
 
   await test.step('should have Add Route button', async () => {
@@ -215,17 +229,22 @@ test('should display routes list under service', async ({ page }) => {
     await servicesPom.toServiceRoutes(page, testServiceId);
     await servicesPom.isServiceRoutesPage(page);
 
-    // Verify Add Route button exists and is clickable
-    const addRouteBtn = servicesPom.getAddRouteBtn(page);
-    await expect(addRouteBtn).toBeVisible();
-
-    await addRouteBtn.click();
+    // The nested routes list has no toolbar add button; the add page is
+    // reachable by direct navigation
+    await servicesPom.toServiceRouteAdd(page, testServiceId);
     await servicesPom.isServiceRouteAddPage(page);
 
-    // Verify service_id is pre-filled
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
-    await expect(serviceIdField).toBeDisabled();
+    // The add page is a wizard; the service binding is on the Upstream step.
+    // Advance from API-info to Upstream and verify the service is pre-selected.
+    await page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first()
+      .fill(randomId('temp-route'));
+    await page.getByLabel('URI', { exact: true }).fill('/temp-route');
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Service', exact: true })).toHaveValue(
+      serviceName
+    );
   });
 
   await test.step('should show correct route count', async () => {

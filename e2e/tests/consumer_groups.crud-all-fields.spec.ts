@@ -72,6 +72,9 @@ test('should CRUD Consumer Group with all fields', async ({ page }) => {
       .click();
 
     const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
+    // The editor opens in Form mode by default for plugins with a schema.
+    // Switch to JSON mode to use the Monaco editor.
+    await addPluginDialog.locator('label:has-text("JSON")').click();
     const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
     await uiFillMonacoEditor(
       page,
@@ -98,10 +101,8 @@ test('should CRUD Consumer Group with all fields', async ({ page }) => {
     await expect(idField).toHaveValue(testId);
     await expect(idField).toBeDisabled();
 
-    // Verify description
-    const descField = page.getByRole('textbox', { name: 'Description' });
-    await expect(descField).toHaveValue(testDesc);
-    await expect(descField).toBeDisabled();
+    // NOTE: the read-only detail view does not render the Description
+    // field; it is verified in edit mode below
 
     // Verify plugin is added
     await expect(page.getByText('basic-auth')).toBeVisible();
@@ -111,9 +112,10 @@ test('should CRUD Consumer Group with all fields', async ({ page }) => {
     // Click Edit button
     await page.getByRole('button', { name: 'Edit' }).click();
 
-    // Verify we're in edit mode
+    // Verify we're in edit mode and the created description persisted
     const descField = page.getByRole('textbox', { name: 'Description' });
     await expect(descField).toBeEnabled();
+    await expect(descField).toHaveValue(testDesc);
 
     // Update description
     await descField.clear();
@@ -149,7 +151,7 @@ test('should CRUD Consumer Group with all fields', async ({ page }) => {
     // Click View to go to detail page
     await page
       .getByRole('row', { name: new RegExp(testId) })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await consumerGroupsPom.isDetailPage(page);
 

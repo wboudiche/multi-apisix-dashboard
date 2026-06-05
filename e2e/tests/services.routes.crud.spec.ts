@@ -14,27 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { routesPom } from '@e2e/pom/routes';
 import { servicesPom } from '@e2e/pom/services';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
-import { uiFillUpstreamRequiredFields } from '@e2e/utils/ui/upstreams';
+import {
+  ROUTE_STEP_API_INFO,
+  ROUTE_STEP_UPSTREAM,
+  uiGotoRouteStep,
+  uiRouteWizardNext,
+  uiRouteWizardSubmit,
+  uiSelectHttpMethods,
+} from '@e2e/utils/ui/routes';
 import { expect } from '@playwright/test';
 
 import { deleteAllRoutes } from '@/apis/routes';
 import { deleteAllServices, postServiceReq } from '@/apis/services';
-import type { APISIXType } from '@/types/schema/apisix';
 
 test.describe.configure({ mode: 'serial' });
 
 const serviceName = randomId('test-service');
 const routeName = randomId('test-route');
 const routeUri = '/test-route';
-const nodes: APISIXType['UpstreamNode'][] = [
-  { host: 'test.com', port: 80, weight: 100 },
-  { host: 'test2.com', port: 80, weight: 100 },
-];
 
 let testServiceId: string;
 
@@ -63,55 +66,50 @@ test('should CRUD route under service with required fields', async ({
   await servicesPom.toIndex(page);
   await servicesPom.isIndexPage(page);
 
-  // Click on the service to go to detail page
   await page
     .getByRole('row', { name: serviceName })
     .getByRole('button', { name: 'View' })
     .click();
   await servicesPom.isDetailPage(page);
 
-  // Navigate to Routes tab
-  await servicesPom.getServiceRoutesTab(page).click();
+  // The service detail page has no tabs; navigate to the nested routes page
+  const serviceId = page.url().split('/detail/')[1].split('/')[0];
+  await servicesPom.toServiceRoutes(page, serviceId);
   await servicesPom.isServiceRoutesPage(page);
 
-  await servicesPom.getAddRouteBtn(page).click();
+  // The nested routes list has no toolbar; navigate to the add page directly
+  await servicesPom.toServiceRouteAdd(page, serviceId);
   await servicesPom.isServiceRouteAddPage(page);
 
-  await test.step('cannot submit without required fields', async () => {
-    await servicesPom.getAddBtn(page).click();
-    await servicesPom.isServiceRouteAddPage(page);
-    await uiHasToastMsg(page, {
-      hasText: 'invalid configuration',
-    });
+  await test.step('cannot advance past API-info step without required fields', async () => {
+    // The nested route add page does not pre-fill uri/methods; clicking Next
+    // with an empty uri keeps the wizard on the API-info step.
+    await uiRouteWizardNext(page);
+    await expect(page.getByLabel('URI', { exact: true })).toBeVisible();
   });
 
   await test.step('submit with required fields', async () => {
-    // Fill in the Name field
-    await page.getByLabel('Name', { exact: true }).first().fill(routeName);
+    // Step 1 — API info.
+    await page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first()
+      .fill(routeName);
     await page.getByLabel('URI', { exact: true }).fill(routeUri);
+    await uiSelectHttpMethods(page, ['GET']);
+    await uiRouteWizardNext(page);
 
-    // Select HTTP method
-    await page.getByRole('textbox', { name: 'HTTP Methods' }).click();
-    await page.getByRole('option', { name: 'GET' }).click();
+    // Step 2 — Upstream. The route is bound to the service (service mode is
+    // pre-selected from the service_id default), so the Service select shows the
+    // bound service. The Mantine Select displays the service name, not the id.
+    await expect(page.getByRole('textbox', { name: 'Service', exact: true })).toHaveValue(
+      serviceName
+    );
 
-    // Verify service_id is pre-filled and disabled (since it's read-only in service context)
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
-    await expect(serviceIdField).toBeDisabled();
-
-    // Add upstream nodes
-    const upstreamSection = page.getByRole('group', {
-      name: 'Upstream',
-      exact: true,
-    });
-    await uiFillUpstreamRequiredFields(upstreamSection, {
-      nodes,
-      name: 'test-upstream',
-      desc: 'test',
-    });
-
-    // Submit the form
-    await servicesPom.getAddBtn(page).click();
+    // Walk to Preview (Request Override -> Plugins -> Preview) and submit.
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardSubmit(page);
     await uiHasToastMsg(page, {
       hasText: 'Add Route Successfully',
     });
@@ -120,91 +118,84 @@ test('should CRUD route under service with required fields', async ({
   await test.step('auto navigate to route detail page', async () => {
     await servicesPom.isServiceRouteDetailPage(page);
 
-    // Verify the route details
-    // Verify ID exists
+    // API-info step holds ID / Name / URI.
+    await uiGotoRouteStep(page, ROUTE_STEP_API_INFO);
     const ID = page.getByRole('textbox', { name: 'ID', exact: true });
     await expect(ID).toBeVisible();
     await expect(ID).toBeDisabled();
 
-    // Verify the route name
-    const name = page.getByLabel('Name', { exact: true }).first();
+    const name = page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first();
     await expect(name).toHaveValue(routeName);
     await expect(name).toBeDisabled();
 
-    // Verify the route URI
     const uri = page.getByLabel('URI', { exact: true });
     await expect(uri).toHaveValue(routeUri);
     await expect(uri).toBeDisabled();
 
-    // Verify service_id is still pre-filled and disabled
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toHaveValue(testServiceId);
-    await expect(serviceIdField).toBeDisabled();
+    // Service binding lives on the Upstream step (FormSectionService). The
+    // Mantine Select displays the service name.
+    await uiGotoRouteStep(page, ROUTE_STEP_UPSTREAM);
+    await expect(page.getByRole('textbox', { name: 'Service', exact: true })).toHaveValue(
+      serviceName
+    );
   });
 
   await test.step('edit and update route in detail page', async () => {
-    // Click the Edit button in the detail page
     await page.getByRole('button', { name: 'Edit' }).click();
 
-    // Verify we're in edit mode - fields should be editable now
-    const nameField = page.getByLabel('Name', { exact: true }).first();
+    // Edit mode; update fields on the API-info step.
+    await uiGotoRouteStep(page, ROUTE_STEP_API_INFO);
+    const nameField = page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first();
     await expect(nameField).toBeEnabled();
 
-    // Service ID should still be disabled even in edit mode
-    const serviceIdField = page.getByLabel('Service ID', { exact: true });
-    await expect(serviceIdField).toBeDisabled();
+    await page
+      .getByLabel('Description')
+      .first()
+      .fill('Updated description for testing');
+    await page.getByLabel('URI', { exact: true }).fill(`${routeUri}-updated`);
 
-    // Update the description field
-    const descriptionField = page.getByLabel('Description').first();
-    await descriptionField.fill('Updated description for testing');
+    // Walk to Preview (Upstream, Request Override, Plugins, Preview)
+    // and submit.
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardSubmit(page);
 
-    // Update URI
-    const uriField = page.getByLabel('URI', { exact: true });
-    await uriField.fill(`${routeUri}-updated`);
-
-    // Click the Save button to save changes
-    const saveBtn = page.getByRole('button', { name: 'Save' });
-    await saveBtn.click();
-
-    // Verify the update was successful
     await uiHasToastMsg(page, {
       hasText: 'success',
     });
 
-    // Verify we're back in detail view mode
     await servicesPom.isServiceRouteDetailPage(page);
 
-    // Verify the updated fields
-    // Verify description
+    await uiGotoRouteStep(page, ROUTE_STEP_API_INFO);
     await expect(page.getByLabel('Description').first()).toHaveValue(
       'Updated description for testing'
     );
-
-    // Check if the updated URI is visible
     await expect(page.getByLabel('URI', { exact: true })).toHaveValue(
       `${routeUri}-updated`
     );
   });
 
   await test.step('route should exist in service routes list', async () => {
-    // Navigate back to service routes list
     await servicesPom.toServiceRoutes(page, testServiceId);
     await servicesPom.isServiceRoutesPage(page);
 
     await expect(page.getByRole('cell', { name: routeName })).toBeVisible();
 
-    // Click on the route name to go to the detail page
     await page
       .getByRole('row', { name: routeName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
-    await servicesPom.isServiceRouteDetailPage(page);
+    // Configure opens the global route detail page
+    await routesPom.isDetailPage(page);
   });
 
   await test.step('delete route in detail page', async () => {
-    // We're already on the detail page from the previous step
-
-    // Delete the route
     await page.getByRole('button', { name: 'Delete' }).click();
 
     await page
@@ -212,11 +203,15 @@ test('should CRUD route under service with required fields', async ({
       .getByRole('button', { name: 'Delete' })
       .click();
 
-    // Will redirect to service routes page
-    await servicesPom.isServiceRoutesPage(page);
+    // Deleting from the global detail page redirects to the global list
+    await routesPom.isIndexPage(page);
     await uiHasToastMsg(page, {
       hasText: 'Delete Route Successfully',
     });
+
+    // The route is gone from the nested service routes list too
+    await servicesPom.toServiceRoutes(page, serviceId);
+    await servicesPom.isServiceRoutesPage(page);
     await expect(page.getByRole('cell', { name: routeName })).toBeHidden();
   });
 });

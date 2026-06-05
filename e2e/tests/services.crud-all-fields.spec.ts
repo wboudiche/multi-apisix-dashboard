@@ -46,21 +46,26 @@ test('should CRUD service with all fields', async ({ page }) => {
   await servicesPom.getAddServiceBtn(page).click();
   await servicesPom.isAddPage(page);
 
+  // Walk the wizard filling all fields the redesign exposes.
   await uiFillServiceAllFields(test, page, {
     name: serviceNameWithAllFields,
     desc: description,
   });
 
-  // Submit the form
-  const addBtn = page.getByRole('button', { name: 'Add', exact: true });
-  await addBtn.click();
+  // Submit from the Preview step.
+  await servicesPom.getSubmitBtn(page).click();
 
-  // Wait for success message
   await uiHasToastMsg(page, {
     hasText: 'Add Service Successfully',
   });
 
-  // Verify automatic redirection to detail page
+  // The wizard navigates back to the services list after creation;
+  // open the created service from the list
+  await servicesPom.isIndexPage(page);
+  await page
+    .getByRole('row', { name: serviceNameWithAllFields })
+    .getByRole('button', { name: 'View' })
+    .click();
   await servicesPom.isDetailPage(page);
 
   await test.step('verify all fields in detail page', async () => {
@@ -71,50 +76,35 @@ test('should CRUD service with all fields', async ({ page }) => {
   });
 
   await test.step('return to list page and verify', async () => {
-    // Return to the service list page
     await servicesPom.getServiceNavBtn(page).click();
     await servicesPom.isIndexPage(page);
 
-    // Verify the created service is visible in the list
     await expect(page.locator('.ant-table-tbody')).toBeVisible();
-
-    // Use expect to wait for the service name to appear
     await expect(page.getByText(serviceNameWithAllFields)).toBeVisible();
   });
 
   await test.step('delete the created service', async () => {
-    // Find the row containing the service name
     const row = page.locator('tr').filter({ hasText: serviceNameWithAllFields });
     await expect(row).toBeVisible();
 
-    // Click to view details
     await row.getByRole('button', { name: 'View' }).click();
-
-    // Verify entered detail page
     await servicesPom.isDetailPage(page);
 
-    // Delete the service
     await page.getByRole('button', { name: 'Delete' }).click();
 
-    // Confirm deletion
     const deleteDialog = page.getByRole('dialog', { name: 'Delete Service' });
     await expect(deleteDialog).toBeVisible();
     await deleteDialog.getByRole('button', { name: 'Delete' }).click();
 
-    // Verify successful deletion
     await servicesPom.isIndexPage(page);
     await uiHasToastMsg(page, {
       hasText: 'Delete Service Successfully',
     });
 
-    // Verify removed from the list
     await expect(page.getByText(serviceNameWithAllFields)).toBeHidden();
 
-    // Final verification: Reload the page and check again to ensure it's really gone
     await page.reload();
     await servicesPom.isIndexPage(page);
-
-    // After reload, the service should still be gone
     await expect(page.getByText(serviceNameWithAllFields)).toBeHidden();
   });
 });

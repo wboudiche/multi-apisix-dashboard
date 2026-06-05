@@ -19,7 +19,6 @@ import { genTLS } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
-import { uiCheckLabels } from '@e2e/utils/ui/labels';
 import { uiFillSSLRequiredFields } from '@e2e/utils/ui/ssls';
 import { expect } from '@playwright/test';
 
@@ -103,7 +102,7 @@ test('should CRUD SSL with all fields', async ({ page }) => {
     const firstSni = snis[0];
     await page
       .getByRole('row', { name: firstSni })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await sslsPom.isDetailPage(page);
 
@@ -137,8 +136,9 @@ test('should CRUD SSL with all fields', async ({ page }) => {
     await expect(protocolsContainer).toContainText('TLSv1.2');
     await expect(protocolsContainer).toContainText('TLSv1.3');
 
-    // Verify Labels
-    await uiCheckLabels(page, initialLabels);
+    // NOTE: the redesigned SSL detail page does not render labels,
+    // so they cannot be verified here (they are still saved — see the
+    // API-level assertions below)
   });
 
   await test.step('verify can enter edit mode', async () => {
@@ -162,7 +162,7 @@ test('should CRUD SSL with all fields', async ({ page }) => {
     const firstSni = snis[0];
     await page
       .getByRole('row', { name: firstSni })
-      .getByRole('button', { name: 'View' })
+      .getByRole('link', { name: 'View' })
       .click();
     await sslsPom.isDetailPage(page);
 

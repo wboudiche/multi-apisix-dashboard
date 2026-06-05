@@ -31,8 +31,11 @@ const assert = {
     await expect(page).toHaveURL((url) =>
       url.pathname.includes(`/consumers/detail/${username}/credentials`)
     );
-    const title = page.getByRole('heading', { name: 'Credentials' });
+    // The credentials list is a tab panel under the consumer detail layout —
+    // the page heading is "Consumer: <username>", not "Credentials"
+    const title = page.getByRole('heading', { name: `Consumer: ${username}` });
     await expect(title).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Credentials' })).toBeVisible();
   },
   isCredentialAddPage: async (page: Page, username: string) => {
     await expect(page).toHaveURL((url) =>

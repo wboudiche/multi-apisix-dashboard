@@ -22,13 +22,19 @@ const locator = {
     page.getByRole('link', { name: 'Services', exact: true }),
   getAddServiceBtn: (page: Page) =>
     page.getByRole('button', { name: 'Add Service', exact: true }),
+  // The service add page is a wizard whose final step exposes "Submit"; the
+  // nested service stream-route add page is a single-page form whose submit is
+  // labelled "Add".
   getAddBtn: (page: Page) =>
     page.getByRole('button', { name: 'Add', exact: true }),
+  getSubmitBtn: (page: Page) =>
+    page.getByRole('button', { name: 'Submit', exact: true }),
   // Service routes locators
   getServiceRoutesTab: (page: Page) =>
     page.getByRole('tab', { name: 'Routes', exact: true }),
+  // The nested routes list reuses the shared RouteList toolbar ("Create")
   getAddRouteBtn: (page: Page) =>
-    page.getByRole('button', { name: 'Add Route', exact: true }),
+    page.getByRole('button', { name: 'Create', exact: true }),
   // Service stream routes locators
   getServiceStreamRoutesTab: (page: Page) =>
     page.getByRole('tab', { name: 'Stream Routes', exact: true }),

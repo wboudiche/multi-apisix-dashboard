@@ -25,12 +25,16 @@ import {
   uiGetMonacoEditor,
   uiHasToastMsg,
 } from '@e2e/utils/ui';
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
-import { deleteAllRoutes } from '@/apis/routes';
-import { deleteAllServices } from '@/apis/services';
-import { deleteAllUpstreams } from '@/apis/upstreams';
-import { API_SERVICES, API_UPSTREAMS } from '@/config/constant';
+import { deleteAllRoutes, getRouteReq } from '@/apis/routes';
+import { deleteAllServices, getServiceReq } from '@/apis/services';
+import { deleteAllUpstreams, getUpstreamReq } from '@/apis/upstreams';
+import {
+  API_ROUTES,
+  API_SERVICES,
+  API_UPSTREAMS,
+} from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 test.afterAll(async () => {
@@ -39,403 +43,242 @@ test.afterAll(async () => {
   await deleteAllUpstreams(e2eReq);
 });
 
-test('can create upstream -> service -> route', async ({ page }) => {
-  const selectPluginsBtn = page.getByRole('button', {
-    name: 'Select Plugins',
-  });
+/**
+ * The add pages are multi-step FormWizards (Next per step, Submit on the
+ * Preview step, navigation back to the list after creation), so each
+ * creation drives its wizard and captures the created id from the POST
+ * response. Cross-references (service -> upstream, route -> service) are
+ * verified through the Admin API, which is what the chain is about.
+ */
+
+const wizardNext = (page: Page) =>
+  page.getByRole('button', { name: 'Next', exact: true }).click();
+const wizardSubmit = (page: Page) =>
+  page.getByRole('button', { name: 'Submit', exact: true }).click();
+
+const addPluginWithJson = async (
+  page: Page,
+  pluginName: string,
+  config: string
+) => {
+  await page.getByRole('button', { name: 'Select Plugins' }).click();
   const selectPluginsDialog = page.getByRole('dialog', {
     name: 'Select Plugins',
   });
+  await selectPluginsDialog.getByPlaceholder('Search').fill(pluginName);
+  await selectPluginsDialog
+    .getByTestId(`plugin-${pluginName}`)
+    .getByRole('button', { name: 'Add' })
+    .click();
 
-  /**
-   * 1. Create Upstream
-   * Name: HTTPBIN Server
-   * Node
-   * Host:Port: httpbin.org:443
-   * Scheme: HTTPS
-   */
+  const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
+  // The editor opens in Form mode for plugins with a schema; switch to JSON
+  await addPluginDialog.locator('label:has-text("JSON")').click();
+  const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
+  await uiFillMonacoEditor(page, pluginEditor, config);
+  await addPluginDialog.getByRole('button', { name: 'Add' }).click();
+  await expect(addPluginDialog).toBeHidden();
+};
+
+test('can create upstream -> service -> route', async ({ page }) => {
+  test.slow();
+
   const upstream: Partial<APISIXType['Upstream']> = {
-    // will be set in test
     id: undefined,
     name: randomId('HTTPBIN Server'),
     scheme: 'https',
-    nodes: [{ host: 'httpbin.org', port: 443 }],
+    nodes: [{ host: 'httpbin.org', port: 443, weight: 100 }],
   };
 
   await test.step('create upstream', async () => {
-    // Navigate to the upstream list page
     await upstreamsPom.toIndex(page);
     await upstreamsPom.isIndexPage(page);
-
-    // Click the add upstream button
     await upstreamsPom.getAddUpstreamBtn(page).click();
     await upstreamsPom.isAddPage(page);
 
-    // Fill in basic fields
-    await page.getByLabel('Name', { exact: true }).fill(upstream.name);
+    // Step 1 — Basic
+    await page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first()
+      .fill(upstream.name);
+    await wizardNext(page);
 
-    // Configure nodes section
-    const nodesSection = page.getByRole('group', { name: 'Nodes' });
-    const addNodeBtn = page.getByRole('button', { name: 'Add a Node' });
+    // Step 2 — Nodes (Mantine node editor)
+    await page.getByRole('button', { name: 'Add a Node' }).click();
+    await page
+      .getByPlaceholder('Hostname or IP')
+      .fill(upstream.nodes[0].host);
+    await page
+      .getByPlaceholder('Port')
+      .first()
+      .fill(String(upstream.nodes[0].port));
+    await page.locator('h1').first().click(); // commit on blur
+    await wizardNext(page);
 
-    // Add node
-    await addNodeBtn.click();
-    const rows = nodesSection.locator('tr.ant-table-row');
+    // Step 3 — Connection: scheme https
+    await page.getByLabel('Scheme').first().click();
+    await page
+      .getByRole('option', { name: upstream.scheme, exact: true })
+      .click();
+    await wizardNext(page);
 
-    // Fill host
-    const hostInput = rows.first().locator('input').first();
-    await hostInput.click();
-    await hostInput.fill(upstream.nodes[0].host);
-
-    // Fill port
-    const portInput = rows.first().locator('input').nth(1);
-    await portInput.click();
-    await portInput.fill(upstream.nodes[0].port.toString());
-
-    // Set scheme to HTTPS
-    await page.getByRole('textbox', { name: 'Scheme' }).click();
-    await page.getByRole('option', { name: upstream.scheme }).click();
-
+    // Step 4 — Preview: submit and capture the created id
     const postReq = page.waitForResponse(
       (r) => r.url().includes(API_UPSTREAMS) && r.request().method() === 'POST'
     );
-    // Submit the form
-    await upstreamsPom.getAddBtn(page).click();
-
-    // Intercept the response, get id from response
+    await wizardSubmit(page);
     const res = await postReq;
     const data = (await res.json()) as APISIXType['RespUpstreamDetail']['data'];
     expect(data).toHaveProperty('value.id');
+    upstream.id = data.value.id;
 
-    // Wait for success message
-    await uiHasToastMsg(page, {
-      hasText: 'Add Upstream Successfully',
-    });
-    // Verify automatic redirection to detail page
-    await upstreamsPom.isDetailPage(page);
-
-    // Get id from url
-    const url = page.url();
-    const id = url.split('/').pop();
-    expect(id).toBeDefined();
-    expect(data.value.id).toBe(id);
-
-    // Set id to upstream
-    upstream.id = id;
-
-    // Verify the upstream name
-    const name = page.getByLabel('Name', { exact: true });
-    await expect(name).toHaveValue(upstream.name);
-    await expect(name).toBeDisabled();
-
-    // Verify scheme
-    const schemeField = page.getByRole('textbox', {
-      name: 'Scheme',
-      exact: true,
-    });
-    await expect(schemeField).toHaveValue(upstream.scheme);
-    await expect(schemeField).toBeDisabled();
+    await uiHasToastMsg(page, { hasText: 'Add Upstream Successfully' });
+    // The wizard navigates back to the list after creation
+    await upstreamsPom.isIndexPage(page);
   });
 
-  /**
-   * 2. Create Service
-   * Name: HTTPBIN Service
-   * Upstream: Reference the upstream created above
-   * Plugins: Enable limit-count with custom configuration
-   */
   const servicePluginName = 'limit-count';
-  const service = {
-    // will be set in test
+  const service: { id?: string; name: string } = {
     id: undefined,
     name: randomId('HTTPBIN Service'),
-    upstream_id: upstream.id,
-    plugins: {
-      [servicePluginName]: {
-        count: 10,
-        time_window: 60,
-        rejected_code: 429,
-        key: 'remote_addr',
-        policy: 'local',
-      },
-    },
-  } satisfies Partial<APISIXType['Service']>;
+  };
+  const servicePluginConfig = {
+    count: 10,
+    time_window: 60,
+    rejected_code: 429,
+    key: 'remote_addr',
+    policy: 'local',
+  };
 
   await test.step('create service', async () => {
-    // upstream id should be set
-    expect(service.upstream_id).not.toBeUndefined();
+    expect(upstream.id).not.toBeUndefined();
 
-    // Navigate to the services list page
     await servicesPom.toIndex(page);
     await servicesPom.isIndexPage(page);
-
-    // Click the add service button
     await servicesPom.getAddServiceBtn(page).click();
     await servicesPom.isAddPage(page);
 
-    // Fill in basic fields
-    await page.getByLabel('Name', { exact: true }).first().fill(service.name);
+    // Step 1 — Basic
+    await page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first()
+      .fill(service.name);
+    await wizardNext(page);
 
-    // Select upstream
-    const upstreamSection = page.getByRole('group', {
-      name: 'Upstream',
-      exact: true,
-    });
-
-    // Set upstream id
-    await upstreamSection
-      .locator('input[name="upstream_id"]')
-      .fill(upstream.id);
-
-    // Add plugins
-    await selectPluginsBtn.click();
-
-    // Search for plugin
-    const selectPluginsDialog = page.getByRole('dialog', {
-      name: 'Select Plugins',
-    });
-    const searchInput = selectPluginsDialog.getByPlaceholder('Search');
-    await searchInput.fill(servicePluginName);
-
-    // Add the plugin
-    await selectPluginsDialog
-      .getByTestId(`plugin-${servicePluginName}`)
-      .getByRole('button', { name: 'Add' })
+    // Step 2 — Upstream: reference the created upstream by name
+    await page.getByRole('textbox', { name: 'Upstream', exact: true }).click();
+    await page
+      .getByRole('option', { name: upstream.name, exact: true })
       .click();
+    await wizardNext(page);
 
-    // Configure the plugin
-    const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
-    const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
-
-    // Add plugin configuration
-    await uiFillMonacoEditor(
+    // Step 3 — Plugins
+    await addPluginWithJson(
       page,
-      pluginEditor,
-      JSON.stringify(service.plugins?.[servicePluginName])
+      servicePluginName,
+      JSON.stringify(servicePluginConfig)
     );
+    await wizardNext(page);
 
-    // Add the plugin
-    await addPluginDialog.getByRole('button', { name: 'Add' }).click();
-    await expect(addPluginDialog).toBeHidden();
-
-    // Verify the plugin was added
-    const pluginsSection = page.getByRole('group', { name: 'Plugins' });
-    await expect(
-      pluginsSection.getByTestId(`plugin-${servicePluginName}`)
-    ).toBeVisible();
-
+    // Step 4 — Preview: submit and capture the created id
     const postReq = page.waitForResponse(
       (r) => r.url().includes(API_SERVICES) && r.request().method() === 'POST'
     );
-    // Submit the form
-    await servicesPom.getAddBtn(page).click();
-
-    // intercept the response, get id from response
-    const response = await postReq;
-    const data =
-      (await response.json()) as APISIXType['RespServiceDetail']['data'];
+    await wizardSubmit(page);
+    const res = await postReq;
+    const data = (await res.json()) as APISIXType['RespServiceDetail']['data'];
     expect(data).toHaveProperty('value.id');
+    service.id = data.value.id;
 
-    // Wait for success message
-    await uiHasToastMsg(page, {
-      hasText: 'Add Service Successfully',
-    });
-    // Verify we're on the service detail page
-    await servicesPom.isDetailPage(page);
-
-    // Get id from url
-    const url = page.url();
-    const id = url.split('/').pop();
-    expect(id).toBeDefined();
-    expect(data.value.id).toBe(id);
-
-    // Set id to service
-    service.id = id;
-
-    // Verify the service name
-    const name = page.getByLabel('Name', { exact: true }).first();
-    await expect(name).toHaveValue(service.name);
-    await expect(name).toBeDisabled();
+    await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
+    await servicesPom.isIndexPage(page);
   });
 
-  /**
-   * 3. Create Route
-   * Name: Generate UUID
-   * Uri: /uuid
-   * Methods: GET
-   * Service: Reference the service created above
-   * Plugins: Enable CORS plugin with custom configuration (constraint allow_origins = "httpbin.local")
-   */
   const routePluginName = 'cors';
-  const route: Partial<APISIXType['Route']> = {
+  const route: { id?: string; name: string; uri: string } = {
+    id: undefined,
     name: randomId('Generate UUID'),
     uri: '/uuid',
-    methods: ['GET'],
-    service_id: service.id,
-    plugins: {
-      [routePluginName]: {
-        allow_origins: 'https://httpbin.local:80',
-      },
-    },
   };
+  const routePluginConfig = { allow_origins: 'https://httpbin.local:80' };
 
   await test.step('create route', async () => {
-    // service id should be set
-    expect(route.service_id).not.toBeUndefined();
+    expect(service.id).not.toBeUndefined();
 
-    // Navigate to the route list page
     await routesPom.toIndex(page);
     await routesPom.isIndexPage(page);
-
-    // Click the add route button
     await routesPom.getAddRouteBtn(page).click();
     await routesPom.isAddPage(page);
 
-    // Fill in basic fields
-    await page.getByLabel('Name', { exact: true }).first().fill(route.name);
-    await page.getByLabel('URI', { exact: true }).fill(route.uri);
+    // Step 1 — API info (methods are pre-filled with sensible defaults)
+    await page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first()
+      .fill(route.name);
+    await page.locator('input[name="uri"]').fill(route.uri);
+    await wizardNext(page);
 
-    // Select HTTP methods
-    await page.getByRole('textbox', { name: 'HTTP Methods' }).click();
-    await page.getByRole('option', { name: 'GET' }).click();
-    await page.keyboard.press('Escape');
+    // Step 2 — bind the created service
+    await page.getByText('Bind to Service', { exact: true }).click();
+    await page.getByRole('textbox', { name: 'Service', exact: true }).click();
+    await page.getByRole('option', { name: service.name, exact: true }).click();
+    await wizardNext(page);
 
-    // Select service reference
-    const serviceSection = page.getByRole('group', { name: 'Service' });
-    await serviceSection.locator('input[name="service_id"]').fill(service.id);
+    // Step 3 — Request Override (skip)
+    await wizardNext(page);
 
-    // Add plugins
-    await selectPluginsBtn.click();
-
-    // Search for plugin
-    const searchInput = selectPluginsDialog.getByPlaceholder('Search');
-    await searchInput.fill(routePluginName);
-
-    // Add the plugin
-    await selectPluginsDialog
-      .getByTestId(`plugin-${routePluginName}`)
-      .getByRole('button', { name: 'Add' })
-      .click();
-
-    // Configure the plugin
-    const addPluginDialog = page.getByRole('dialog', { name: 'Add Plugin' });
-    const pluginEditor = await uiGetMonacoEditor(page, addPluginDialog);
-
-    // Add plugin configuration
-    await uiFillMonacoEditor(
+    // Step 4 — Plugins
+    await addPluginWithJson(
       page,
-      pluginEditor,
-      JSON.stringify(route.plugins?.[routePluginName])
+      routePluginName,
+      JSON.stringify(routePluginConfig)
     );
+    await wizardNext(page);
 
-    // Add the plugin
-    await addPluginDialog.getByRole('button', { name: 'Add' }).click();
-    await expect(addPluginDialog).toBeHidden();
+    // Step 5 — Preview: submit and capture the created id
+    const postReq = page.waitForResponse(
+      (r) => r.url().includes(API_ROUTES) && r.request().method() === 'POST'
+    );
+    await wizardSubmit(page);
+    const res = await postReq;
+    const data = (await res.json()) as APISIXType['RespRouteDetail']['data'];
+    expect(data).toHaveProperty('value.id');
+    route.id = data.value.id;
 
-    // Verify the plugin was added
-    const pluginsSection = page.getByRole('group', { name: 'Plugins' });
-    await expect(
-      pluginsSection.getByTestId(`plugin-${routePluginName}`)
-    ).toBeVisible();
-
-    // Submit the form
-    await routesPom.getAddBtn(page).click();
-
-    // Wait for success message
-    await uiHasToastMsg(page, {
-      hasText: 'Add Route Successfully',
-    });
-
-    // Verify we're on the route detail page
-    await routesPom.isDetailPage(page);
-
-    // Verify the route name
-    const name = page.getByLabel('Name', { exact: true }).first();
-    await expect(name).toHaveValue(route.name);
-    await expect(name).toBeDisabled();
+    await uiHasToastMsg(page, { hasText: 'Add Route Successfully' });
+    await routesPom.isIndexPage(page);
   });
 
-  /**
-   * 4. Verification
-   * Ensure all created values exist
-   */
   await test.step('verify all created resources', async () => {
-    // Verify upstream exists in list
+    // Lists show all three resources
     await upstreamsPom.toIndex(page);
     await upstreamsPom.isIndexPage(page);
     await expect(page.getByRole('cell', { name: upstream.name })).toBeVisible();
 
-    // Verify service exists in list
-    await page.getByRole('link', { name: 'Services' }).click();
-    await expect(page.getByRole('heading', { name: 'Services' })).toBeVisible();
+    await servicesPom.toIndex(page);
+    await servicesPom.isIndexPage(page);
     await expect(page.getByRole('cell', { name: service.name })).toBeVisible();
 
-    // Verify route exists in list
     await routesPom.toIndex(page);
     await routesPom.isIndexPage(page);
     await expect(page.getByRole('cell', { name: route.name })).toBeVisible();
 
-    // Navigate to route detail to verify service and plugin
-    await page
-      .getByRole('row', { name: route.name })
-      .getByRole('button', { name: 'View' })
-      .click();
-    await routesPom.isDetailPage(page);
+    // Verify the chain through the Admin API
+    const routeData = await getRouteReq(e2eReq, route.id!);
+    expect(routeData.value.service_id).toBe(service.id);
+    expect(routeData.value.plugins).toHaveProperty(routePluginName);
 
-    // Verify URI
-    const uri = page.getByLabel('URI', { exact: true });
-    await expect(uri).toHaveValue(route.uri);
+    const serviceData = await getServiceReq(e2eReq, service.id!);
+    expect(serviceData.value.upstream_id).toBe(upstream.id);
+    expect(serviceData.value.plugins).toHaveProperty(servicePluginName);
 
-    // Verify HTTP methods
-    const methods = page
-      .getByRole('textbox', { name: 'HTTP Methods' })
-      .locator('..');
-    await expect(methods).toContainText('GET');
-
-    // Verify CORS plugin is present
-    await expect(page.getByText('cors')).toBeVisible();
-
-    // Verify service id is present
-    await expect(page.locator('input[name="service_id"]')).toHaveValue(
-      service.id
-    );
-
-    // Navigate to service detail to verify upstream and plugin
-    await servicesPom.toIndex(page);
-    await servicesPom.isIndexPage(page);
-    await page
-      .getByRole('row', { name: service.name })
-      .getByRole('button', { name: 'View' })
-      .click();
-
-    // Verify limit-count plugin is present
-    await expect(page.getByText(servicePluginName)).toBeVisible();
-
-    // Verify upstream id is present
-    await expect(page.locator('input[name="upstream_id"]').first()).toHaveValue(
-      upstream.id
-    );
-
-    // Verify service name is present
-    await expect(
-      page.getByRole('textbox', { name: 'Name', exact: true }).first()
-    ).toHaveValue(service.name);
-
-    // Navigate to upstream detail to verify nodes
-    await upstreamsPom.toIndex(page);
-    await upstreamsPom.isIndexPage(page);
-    await page
-      .getByRole('row', { name: upstream.name })
-      .getByRole('button', { name: 'View' })
-      .click();
-
-    // Verify nodes are present
-    await expect(
-      page.getByRole('cell', { name: upstream.nodes[0].host })
-    ).toBeVisible();
-
-    // Verify upstream name is present
-    await expect(
-      page.getByRole('textbox', { name: 'Name', exact: true })
-    ).toHaveValue(upstream.name);
+    const upstreamData = await getUpstreamReq(e2eReq, upstream.id!);
+    const nodes = upstreamData.value.nodes;
+    // APISIX may store nodes as an array or a "host:port" keyed object
+    // eslint-disable-next-line playwright/no-conditional-in-test
+    const hosts = Array.isArray(nodes)
+      ? nodes.map((n) => n.host)
+      : Object.keys(nodes || {}).map((k) => k.split(':')[0]);
+    expect(hosts).toContain(upstream.nodes[0].host);
   });
 });

@@ -16,13 +16,31 @@
  */
 import { streamRoutesPom } from '@e2e/pom/stream_routes';
 import { randomId } from '@e2e/utils/common';
+import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import {
   uiCheckStreamRouteRequiredFields,
   uiFillStreamRouteRequiredFields,
+  uiSelectStreamRouteUpstream,
 } from '@e2e/utils/ui/stream_routes';
 import { expect } from '@playwright/test';
+
+import { deleteAllUpstreams, postUpstreamReq } from '@/apis/upstreams';
+
+// The redesigned form references an existing upstream; seed one via the API
+const upstreamName = randomId('sr-req-upstream');
+
+test.beforeAll(async () => {
+  await postUpstreamReq(e2eReq, {
+    name: upstreamName,
+    nodes: [{ host: '127.0.0.2', port: 8080, weight: 1 }],
+  });
+});
+
+test.afterAll(async () => {
+  await deleteAllUpstreams(e2eReq);
+});
 
 test.describe.configure({ mode: 'serial' });
 
@@ -46,27 +64,8 @@ test('CRUD stream route with required fields', async ({ page }) => {
   // Fill required fields
   await uiFillStreamRouteRequiredFields(page, streamRouteData);
 
-  // Fill upstream nodes manually
-  const upstreamSection = page.getByRole('group', { name: 'Upstream', exact: true });
-  const nodesSection = upstreamSection.getByRole('group', { name: 'Nodes' });
-  const addBtn = nodesSection.getByRole('button', { name: 'Add a Node' });
-
-  // Add a node
-  await addBtn.click();
-  const dataRows = nodesSection.locator('tr.ant-table-row');
-  const firstRow = dataRows.first();
-
-  const hostInput = firstRow.locator('input').nth(0);
-  await hostInput.click();
-  await hostInput.fill('127.0.0.2');
-
-  const portInput = firstRow.locator('input').nth(1);
-  await portInput.click();
-  await portInput.fill('8080');
-
-  const weightInput = firstRow.locator('input').nth(2);
-  await weightInput.click();
-  await weightInput.fill('1');
+  // Reference the API-seeded upstream (the form has no inline node editor).
+  await uiSelectStreamRouteUpstream(page, upstreamName);
 
   // Submit and land on detail page
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -116,7 +115,7 @@ test('CRUD stream route with required fields', async ({ page }) => {
   await expect(row.first()).toBeVisible({ timeout: 10000 }); // Longer timeout for parallel tests
 
   // View detail page from the list
-  await row.first().getByRole('button', { name: 'View' }).click();
+  await row.first().getByRole('link', { name: 'View' }).click();
   await streamRoutesPom.isDetailPage(page);
   await uiCheckStreamRouteRequiredFields(page, updatedData);
 

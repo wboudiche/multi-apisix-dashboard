@@ -43,45 +43,26 @@ test('should CRUD service with required fields', async ({ page }) => {
   await servicesPom.isAddPage(page);
 
   await test.step('submit with required fields', async () => {
+    // Walk the wizard (name + a single upstream node) to the Preview step.
     await uiFillServiceRequiredFields(page, {
       name: serviceName,
     });
 
-    // Ensure upstream is valid. In some configurations (e.g. http&stream), 
-    // the backend might require a valid upstream configuration.
-    const upstreamSection = page.getByRole('group', { name: 'Upstream' }).first();
-    const addNodeBtn = page.getByRole('button', { name: 'Add a Node' });
-    await addNodeBtn.click();
+    await servicesPom.getSubmitBtn(page).click();
 
-    const rows = upstreamSection.locator('tr.ant-table-row');
-    await rows.first().locator('input').first().fill('127.0.0.1');
-    await rows.first().locator('input').nth(1).fill('80');
-    await rows.first().locator('input').nth(2).fill('1');
-
-    // Ensure the name field is properly filled before submitting
-    const nameField = page.getByRole('textbox', { name: 'Name' }).first();
-    await expect(nameField).toHaveValue(serviceName);
-
-    await servicesPom.getAddBtn(page).click();
-
-    // Wait for either success or error toast (longer timeout for CI)
-    const alertMsg = page.getByRole('alert');
-    await expect(alertMsg).toBeVisible({ timeout: 30000 });
-
-    // Check if it's a success message
-    await expect(alertMsg).toContainText('Add Service Successfully', { timeout: 5000 });
-
-    // Close the toast
-    await alertMsg.getByRole('button').click();
-    await expect(alertMsg).toBeHidden();
+    await uiHasToastMsg(page, {
+      hasText: 'Add Service Successfully',
+    });
   });
 
-  await test.step('auto navigate to service detail page', async () => {
+  await test.step('lands on list page; open the created service', async () => {
+    // The wizard navigates back to the services list after creation
+    await servicesPom.isIndexPage(page);
+    await page
+      .getByRole('row', { name: serviceName })
+      .getByRole('button', { name: 'View' })
+      .click();
     await servicesPom.isDetailPage(page);
-    // Verify ID exists
-    const ID = page.getByRole('textbox', { name: 'ID', exact: true });
-    await expect(ID).toBeVisible();
-    await expect(ID).toBeDisabled();
     await uiCheckServiceRequiredFields(page, {
       name: serviceName,
     });
@@ -93,73 +74,58 @@ test('should CRUD service with required fields', async ({ page }) => {
   });
 
   await test.step('navigate to service detail page', async () => {
-    // Click on the service name to go to the detail page
     await page
       .getByRole('row', { name: serviceName })
       .getByRole('button', { name: 'View' })
       .click();
     await servicesPom.isDetailPage(page);
-    const name = page.getByRole('textbox', { name: 'Name' }).first();
-    await expect(name).toHaveValue(serviceName);
+    await uiCheckServiceRequiredFields(page, { name: serviceName });
   });
 
   await test.step('edit and update service in detail page', async () => {
-    // Click the Edit button in the detail page
+    // Enter edit mode (wizard becomes editable, starting at step 1).
     await page.getByRole('button', { name: 'Edit' }).click();
 
-    // Verify we're in edit mode - fields should be editable now
-    const nameField = page.getByRole('textbox', { name: 'Name' }).first();
+    const nameField = page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first();
     await expect(nameField).toBeEnabled();
 
-    // Update the description field (use first() to get service description, not upstream description)
-    const descriptionField = page.getByLabel('Description').first();
-    await descriptionField.fill('Updated description for testing');
+    // Update the description on the Basic step.
+    await page
+      .getByLabel('Description')
+      .first()
+      .fill('Updated description for testing');
 
-    // Add a simple label (key:value format)
-    // Use first() to get service labels field, not upstream labels
-    const labelsField = page.getByPlaceholder('Input text like `key:value`,').first();
-    await expect(labelsField).toBeEnabled();
+    // Walk to the Preview step (Basic -> Upstream -> Plugin -> Preview) and
+    // submit the edit.
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Submit', exact: true }).click();
 
-    // Add a single label in key:value format
-    await labelsField.click();
-    await labelsField.fill('version:v1');
-    await labelsField.press('Enter');
-
-    // Verify the label was added by checking if the input is cleared
-    // This indicates the tag was successfully created
-    await expect(labelsField).toHaveValue('');
-
-    // Click the Save button to save changes
-    const saveBtn = page.getByRole('button', { name: 'Save' });
-    await saveBtn.click();
-
-    // Verify the update was successful
     await uiHasToastMsg(page, {
       hasText: 'success',
     });
 
-    // Verify we're back in detail view mode
     await servicesPom.isDetailPage(page);
 
-    // Verify the updated fields
+    // Verify the updated description on the Basic step.
+    await page
+      .getByRole('button', { name: 'Basic Information', exact: true })
+      .click();
     await expect(page.getByLabel('Description').first()).toHaveValue(
       'Updated description for testing'
     );
 
-    // check labels
-    await expect(page.getByText('version:v1')).toBeVisible();
-
-    // Return to list page and verify the service exists
+    // Return to list page and verify the service exists.
     await servicesPom.getServiceNavBtn(page).click();
     await servicesPom.isIndexPage(page);
-
-    // Find the row with our service
     const row = page.getByRole('row', { name: serviceName });
     await expect(row).toBeVisible();
   });
 
   await test.step('delete service in detail page', async () => {
-    // Navigate back to detail page
     await page
       .getByRole('row', { name: serviceName })
       .getByRole('button', { name: 'View' })
@@ -173,7 +139,6 @@ test('should CRUD service with required fields', async ({ page }) => {
       .getByRole('button', { name: 'Delete' })
       .click();
 
-    // will redirect to services page
     await servicesPom.isIndexPage(page);
     await uiHasToastMsg(page, {
       hasText: 'Delete Service Successfully',

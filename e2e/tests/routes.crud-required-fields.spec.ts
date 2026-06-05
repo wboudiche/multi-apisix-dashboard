@@ -19,18 +19,19 @@ import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
-import { uiFillUpstreamRequiredFields } from '@e2e/utils/ui/upstreams';
+import {
+  ROUTE_STEP_API_INFO,
+  uiCreateRouteWithCustomUpstream,
+  uiGotoRouteStep,
+  uiRouteWizardNext,
+  uiRouteWizardSubmit,
+} from '@e2e/utils/ui/routes';
 import { expect } from '@playwright/test';
 
 import { deleteAllRoutes } from '@/apis/routes';
-import type { APISIXType } from '@/types/schema/apisix';
 
 const routeName = randomId('test-route');
 const routeUri = '/test-route';
-const nodes: APISIXType['UpstreamNode'][] = [
-  { host: 'test.com', port: 80, weight: 100 },
-  { host: 'test2.com', port: 80, weight: 100 },
-];
 
 test.beforeAll(async () => {
   await deleteAllRoutes(e2eReq);
@@ -43,105 +44,110 @@ test('should CRUD route with required fields', async ({ page }) => {
   await routesPom.getAddRouteBtn(page).click();
   await routesPom.isAddPage(page);
 
-  await test.step('cannot submit without required fields', async () => {
-    await routesPom.getAddBtn(page).click();
-    await routesPom.isAddPage(page);
-    await uiHasToastMsg(page, {
-      hasText: 'invalid configuration',
-    });
+  await test.step('cannot advance past upstream step without a node', async () => {
+    // The add page pre-fills uri "/*" and methods, but the custom upstream
+    // starts with 0 nodes. Step 1 -> 2 succeeds; step 2 -> 3 is blocked
+    // silently until a node is added (the wizard stays on the Upstream step).
+    await page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first()
+      .fill(routeName);
+    await page.getByLabel('URI', { exact: true }).fill(routeUri);
+    await uiRouteWizardNext(page);
+
+    // On the Upstream step, advancing without a node keeps us here.
+    await uiRouteWizardNext(page);
+    await expect(
+      page.getByRole('button', { name: 'Add a Node' })
+    ).toBeVisible();
   });
 
   await test.step('submit with required fields', async () => {
-    // Fill in the Name field
-    await page.getByLabel('Name', { exact: true }).first().fill(routeName);
-    await page.getByLabel('URI', { exact: true }).fill(routeUri);
+    // Restart from a clean add page to use the shared create helper.
+    await routesPom.toIndex(page);
+    await page.evaluate(() => localStorage.removeItem('apisix-route-draft'));
+    await routesPom.getAddRouteBtn(page).click();
+    await routesPom.isAddPage(page);
 
-    // Select HTTP method
-    await page.getByRole('textbox', { name: 'HTTP Methods' }).click();
-    await page.getByRole('option', { name: 'GET' }).click();
+    await uiCreateRouteWithCustomUpstream(page, {
+      name: routeName,
+      uri: routeUri,
+      methods: ['GET'],
+      nodes: [
+        { host: 'test.com', port: 80 },
+        { host: 'test2.com', port: 80 },
+      ],
+    });
 
-    // Add upstream nodes
-    // Reusing the pattern from upstreams test
-    const upstreamSection = page.getByRole('group', {
-      name: 'Upstream',
-      exact: true,
-    });
-    await uiFillUpstreamRequiredFields(upstreamSection, {
-      nodes,
-      name: 'test-upstream',
-      desc: 'test',
-    });
-    // Submit the form
-    await routesPom.getAddBtn(page).click();
     await uiHasToastMsg(page, {
       hasText: 'Add Route Successfully',
     });
   });
 
-  await test.step('auto navigate to route detail page', async () => {
+  await test.step('open the created route from the list', async () => {
+    // The wizard navigates back to the routes list after creation;
+    // open the detail page via the row Configure action
+    await routesPom.isIndexPage(page);
+    await page
+      .getByRole('row', { name: routeName })
+      .getByRole('button', { name: 'Configure' })
+      .click();
     await routesPom.isDetailPage(page);
 
-    // Verify the route details
-    // Verify ID exists
+    // Step 1 of the read-only detail wizard exposes ID / Name / URI.
     const ID = page.getByRole('textbox', { name: 'ID', exact: true });
     await expect(ID).toBeVisible();
     await expect(ID).toBeDisabled();
 
-    // Verify the route name
-    const name = page.getByLabel('Name', { exact: true }).first();
+    const name = page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first();
     await expect(name).toHaveValue(routeName);
     await expect(name).toBeDisabled();
 
-    // Verify the route URI
     const uri = page.getByLabel('URI', { exact: true });
     await expect(uri).toHaveValue(routeUri);
     await expect(uri).toBeDisabled();
   });
 
   await test.step('edit and update route in detail page', async () => {
-    // Click the Edit button in the detail page
+    // Enter edit mode (wizard becomes editable, starting at step 1).
     await page.getByRole('button', { name: 'Edit' }).click();
 
-    // Verify we're in edit mode - fields should be editable now
-    const nameField = page.getByLabel('Name', { exact: true }).first();
+    const nameField = page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first();
     await expect(nameField).toBeEnabled();
 
-    // Update the description field
-    const descriptionField = page.getByLabel('Description').first();
-    await descriptionField.fill('Updated description for testing');
+    // Update fields on the API-info step.
+    await page.getByLabel('Description').first().fill('Updated description for testing');
+    await page.getByLabel('URI', { exact: true }).fill(`${routeUri}-updated`);
 
-    // Update URI
-    const uriField = page.getByLabel('URI', { exact: true });
-    await uriField.fill(`${routeUri}-updated`);
+    // Walk to the Preview step (4 hops: Upstream, Request Override,
+    // Plugins, Preview) and submit the edit.
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardSubmit(page);
 
-    // Click the Save button to save changes
-    const saveBtn = page.getByRole('button', { name: 'Save' });
-    await saveBtn.click();
-
-    // Verify the update was successful
     await uiHasToastMsg(page, {
       hasText: 'success',
     });
 
-    // Verify we're back in detail view mode
     await routesPom.isDetailPage(page);
 
-    // Verify the updated fields
-    // Verify description
+    // Verify the updated fields on the read-only API-info step.
+    await uiGotoRouteStep(page, ROUTE_STEP_API_INFO);
     await expect(page.getByLabel('Description').first()).toHaveValue(
       'Updated description for testing'
     );
-
-    // Check if the updated URI is visible
     await expect(page.getByLabel('URI', { exact: true })).toHaveValue(
       `${routeUri}-updated`
     );
 
-    // Return to list page and verify the route exists
     await routesPom.getRouteNavBtn(page).click();
     await routesPom.isIndexPage(page);
-
-    // Find the row with our route
     const row = page.getByRole('row', { name: routeName });
     await expect(row).toBeVisible();
   });
@@ -151,18 +157,14 @@ test('should CRUD route with required fields', async ({ page }) => {
     await routesPom.isIndexPage(page);
     await expect(page.getByRole('cell', { name: routeName })).toBeVisible();
 
-    // Click on the route name to go to the detail page
     await page
       .getByRole('row', { name: routeName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await routesPom.isDetailPage(page);
   });
 
   await test.step('delete route in detail page', async () => {
-    // We're already on the detail page from the previous step
-
-    // Delete the route
     await page.getByRole('button', { name: 'Delete' }).click();
 
     await page
@@ -170,7 +172,6 @@ test('should CRUD route with required fields', async ({ page }) => {
       .getByRole('button', { name: 'Delete' })
       .click();
 
-    // Will redirect to routes page
     await routesPom.isIndexPage(page);
     await uiHasToastMsg(page, {
       hasText: 'Delete Route Successfully',
