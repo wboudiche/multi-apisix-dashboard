@@ -166,8 +166,10 @@ export const FormItemEditor = <T extends FieldValues>(
           monacoErrorRef.current = markers?.[0]?.message || null;
           trigger(props.name);
         }}
-        onMount={() => {
-          // Trigger layout once mounted
+        onMount={(editor) => {
+          // Expose the editor instance for e2e tests (uiClearMonacoEditor
+          // reads window.__monacoEditor__ to reset the model value)
+          window.__monacoEditor__ = editor;
         }}
         loading={
           <Skeleton
