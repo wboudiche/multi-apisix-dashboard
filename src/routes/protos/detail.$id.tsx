@@ -57,7 +57,10 @@ const ProtoDetailForm = ({ id, readOnly, setReadOnly }: ProtoFormProps) => {
 
   const form = useForm<APISIXType['Proto']>({
     resolver: zodResolver(APISIX.Proto),
-    shouldUnregister: true,
+    // Keep values of conditionally-rendered fields (the read-only view only
+    // mounts Description/Labels when non-empty; unregistering wiped them on
+    // the readOnly -> edit transition and hid reset values)
+    shouldUnregister: false,
     mode: 'all',
     disabled: readOnly,
   });

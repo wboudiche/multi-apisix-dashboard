@@ -52,7 +52,10 @@ const GlobalRuleDetailForm = (props: Props) => {
 
   const form = useForm({
     resolver: zodResolver(APISIX.GlobalRulePut),
-    shouldUnregister: true,
+    // Keep values of conditionally-rendered fields (the read-only view only
+    // mounts Description/Labels when non-empty; unregistering wiped them on
+    // the readOnly -> edit transition and hid reset values)
+    shouldUnregister: false,
     shouldFocusError: true,
     defaultValues: {},
     mode: 'onChange',

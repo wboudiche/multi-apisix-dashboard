@@ -61,7 +61,10 @@ const CredentialDetailForm = (props: CredentialFormProps) => {
 
   const form = useForm({
     resolver: zodResolver(APISIX.CredentialPut),
-    shouldUnregister: true,
+    // Keep values of conditionally-rendered fields (the read-only view only
+    // mounts Description when non-empty; unregistering wiped it on the
+    // readOnly -> edit transition)
+    shouldUnregister: false,
     shouldFocusError: true,
     mode: 'all',
     disabled: readOnly,
