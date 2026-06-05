@@ -152,7 +152,12 @@ export const Header: FC<HeaderProps> = (props) => {
         const data = await instanceApi.list();
         setInstances(data);
 
-        if (!currentInstanceId && data.length > 0) {
+        // Auto-select when nothing is selected, or when the stored id no
+        // longer matches a known instance (stale localStorage would leave
+        // InstanceGuard stuck on the "no instance" empty state forever)
+        const isStale =
+          currentInstanceId && !data.some((inst) => inst.id === currentInstanceId);
+        if ((!currentInstanceId || isStale) && data.length > 0) {
           setCurrentInstanceId(data[0].id);
         }
 
@@ -254,6 +259,7 @@ export const Header: FC<HeaderProps> = (props) => {
                 onChange={(value) => setCurrentInstanceId(value || '')}
                 style={{ width: 200 }}
                 searchable
+                allowDeselect={false}
                 renderOption={renderOption}
               />
             </Group>
