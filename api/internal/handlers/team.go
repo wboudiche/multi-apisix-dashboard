@@ -38,6 +38,11 @@ func NewTeamHandler(teamService *services.TeamService, ownershipService *service
 
 // ListTeams returns all teams
 func (h *TeamHandler) ListTeams(c *gin.Context) {
+	if middleware.GetRole(c) != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
 	teams, err := h.teamService.ListTeams(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -49,6 +54,11 @@ func (h *TeamHandler) ListTeams(c *gin.Context) {
 
 // GetTeam returns a single team by ID
 func (h *TeamHandler) GetTeam(c *gin.Context) {
+	if middleware.GetRole(c) != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
 	id := c.Param("id")
 	team, err := h.teamService.GetTeam(c.Request.Context(), id)
 	if err != nil {
@@ -116,6 +126,11 @@ func (h *TeamHandler) DeleteTeam(c *gin.Context) {
 
 // GetTeamMembers returns all users assigned to a team across instances
 func (h *TeamHandler) GetTeamMembers(c *gin.Context) {
+	if middleware.GetRole(c) != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
 	id := c.Param("id")
 	members, err := h.authService.ListUsersByTeam(c.Request.Context(), id)
 	if err != nil {

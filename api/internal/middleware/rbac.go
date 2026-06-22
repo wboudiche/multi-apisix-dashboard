@@ -45,6 +45,11 @@ func RBACMiddleware(authService *services.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		// Pin the resolved instance so downstream handlers read the exact value
+		// RBAC authorized against (GetInstanceID checks the context first). This
+		// prevents header/query divergence from targeting a different instance.
+		c.Set(InstanceIDKey, instanceID)
+
 		ui, err := authService.GetUserInstance(c.Request.Context(), userID, instanceID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Authorization check failed"})

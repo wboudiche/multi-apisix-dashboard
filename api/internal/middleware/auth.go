@@ -50,7 +50,7 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 
 		token := strings.TrimPrefix(authHeader, BearerPrefix)
 
-		claims, err := authService.ValidateToken(token)
+		claims, err := authService.ValidateAccessToken(token)
 		if err != nil {
 			if err == services.ErrTokenExpired {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
