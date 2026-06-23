@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -53,18 +54,14 @@ type TestRouteResponse struct {
 	StatusText string            `json:"status_text"`
 	Headers    map[string]string `json:"headers"`
 	Body       string            `json:"body"`
-	DurationMs int64            `json:"duration_ms"`
+	DurationMs int64             `json:"duration_ms"`
 }
 
 // TestRoute forwards a test request to the instance's gateway URL and returns the response
 func (h *RouteTestHandler) TestRoute(c *gin.Context) {
-	instanceID := c.GetHeader("X-Instance-ID")
-	if instanceID == "" {
-		instanceID = c.Query("instance_id")
-	}
-	if instanceID == "" {
-		instanceID = middleware.GetInstanceID(c)
-	}
+	// Resolve the target instance through the single canonical helper so RBAC
+	// and the handlers never disagree on which instance a request targets.
+	instanceID := middleware.GetInstanceID(c)
 
 	if instanceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Instance ID required"})
@@ -88,8 +85,25 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 		return
 	}
 
-	// Construct the target URL from the instance's GatewayURL
+	// Construct the target URL from the instance's GatewayURL. The user-supplied
+	// path must be an absolute path and must not be able to redirect the request
+	// to a different host/scheme (e.g. "@evil.com/" abusing URL userinfo parsing,
+	// which would turn this into a readable SSRF against internal services).
+	if !strings.HasPrefix(req.Path, "/") || strings.HasPrefix(req.Path, "//") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path must be an absolute path beginning with '/'"})
+		return
+	}
+	base, err := url.Parse(strings.TrimRight(instance.GatewayURL, "/"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "instance gateway_url is invalid"})
+		return
+	}
 	targetURL := strings.TrimRight(instance.GatewayURL, "/") + req.Path
+	if parsed, perr := url.Parse(targetURL); perr != nil ||
+		parsed.Scheme != base.Scheme || parsed.Host != base.Host || parsed.User != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid path"})
+		return
+	}
 	if req.Query != "" {
 		targetURL += "?" + req.Query
 	}

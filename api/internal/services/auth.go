@@ -36,6 +36,15 @@ var (
 	ErrTokenExpired       = errors.New("token expired")
 )
 
+// Token types distinguish a short-lived access token from a long-lived refresh
+// token. Both are HS256-signed with the same secret, so without this claim a
+// 7-day refresh token would be accepted anywhere an access token is — a
+// privilege/lifetime escalation. The type is enforced at the point of use.
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+)
+
 type AuthService struct {
 	etcd       *EtcdClient
 	jwtCfg     config.JWTConfig
@@ -49,9 +58,10 @@ type TokenPair struct {
 }
 
 type Claims struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID    string `json:"user_id"`
+	Username  string `json:"username"`
+	Role      string `json:"role"`
+	TokenType string `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
@@ -81,9 +91,10 @@ func (s *AuthService) GenerateTokens(user *models.User) (*TokenPair, error) {
 
 	// Access token
 	accessClaims := Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		Role:     user.Role,
+		UserID:    user.ID,
+		Username:  user.Username,
+		Role:      user.Role,
+		TokenType: TokenTypeAccess,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.jwtCfg.AccessExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -98,9 +109,10 @@ func (s *AuthService) GenerateTokens(user *models.User) (*TokenPair, error) {
 
 	// Refresh token
 	refreshClaims := Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		Role:     user.Role,
+		UserID:    user.ID,
+		Username:  user.Username,
+		Role:      user.Role,
+		TokenType: TokenTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.jwtCfg.RefreshExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -140,10 +152,28 @@ func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
+// ValidateAccessToken validates a token and additionally requires it to be an
+// access token, rejecting refresh tokens presented as bearer credentials.
+func (s *AuthService) ValidateAccessToken(tokenString string) (*Claims, error) {
+	claims, err := s.ValidateToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+	if claims.TokenType != TokenTypeAccess {
+		return nil, ErrInvalidToken
+	}
+	return claims, nil
+}
+
 func (s *AuthService) RefreshTokens(refreshToken string) (*TokenPair, error) {
 	claims, err := s.ValidateToken(refreshToken)
 	if err != nil {
 		return nil, err
+	}
+	// Only a refresh token may be exchanged for a new token pair; an access
+	// token presented here is rejected.
+	if claims.TokenType != TokenTypeRefresh {
+		return nil, ErrInvalidToken
 	}
 
 	// Get user from etcd to ensure they still exist

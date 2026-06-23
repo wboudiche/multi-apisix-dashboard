@@ -39,6 +39,19 @@ var proxyClient = &http.Client{
 	},
 }
 
+// teamScopedResources are the APISIX resource types whose objects are owned by
+// a team (tracked in the ownership store). Reads of these must be filtered to
+// the caller's team for non-admins. Catalog endpoints like plugins/labels are
+// not team-owned and are intentionally excluded so they are never filtered.
+var teamScopedResources = map[string]bool{
+	"routes":          true,
+	"services":        true,
+	"upstreams":       true,
+	"consumers":       true,
+	"consumer_groups": true,
+	"stream_routes":   true,
+}
+
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
@@ -101,13 +114,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		effectiveTeamID = ui.TeamID
 	}
 
-	instanceID := c.GetHeader("X-Instance-ID")
-	if instanceID == "" {
-		instanceID = c.Query("instance_id")
-	}
-	if instanceID == "" {
-		instanceID = middleware.GetInstanceID(c)
-	}
+	// Resolve the target instance through the same canonical helper RBACMiddleware
+	// uses. Resolving it differently here (e.g. header-first vs RBAC's query-first)
+	// would let a caller pass RBAC against one instance while the request executes
+	// against another — a cross-instance privilege escalation.
+	instanceID := middleware.GetInstanceID(c)
 
 	if instanceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Instance ID required"})
@@ -125,6 +136,19 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		path = c.Request.URL.Path
 	}
 	path = strings.TrimPrefix(path, "/api/v1/apisix")
+
+	// Reject path traversal. The RBAC decision below is derived from the leading
+	// path segment via getResourceMetadata, but the raw path is forwarded to
+	// APISIX, which collapses "..". Without this guard a developer could send
+	// "/routes/../ssls/<id>" — passing the routes permission check while the
+	// request actually lands on the forbidden ssls resource.
+	for _, seg := range strings.Split(path, "/") {
+		if seg == ".." || seg == "." {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
+			c.Abort()
+			return
+		}
+	}
 
 	resourceType, resourceID := h.getResourceMetadata(path)
 
@@ -213,10 +237,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 	}
 
-	// 4. GET: Enrich list responses with __team_id and filter for non-admins
-	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK {
-		isList := strings.HasSuffix(path, "/routes") || strings.HasSuffix(path, "/services") || strings.HasSuffix(path, "/upstreams")
-		isSingle := resourceID != "" && (strings.Contains(path, "/routes/") || strings.Contains(path, "/services/") || strings.Contains(path, "/upstreams/"))
+	// 4. GET: Enrich list responses with __team_id and filter for non-admins.
+	// Applies to every team-owned resource type — not just routes/services/
+	// upstreams — so a non-admin cannot read another team's consumers,
+	// consumer_groups or stream_routes.
+	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK && teamScopedResources[resourceType] {
+		isList := resourceID == ""
 
 		if isList {
 			var resources struct {
@@ -231,7 +257,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				for _, r := range resources.List {
 					val, ok := r["value"].(map[string]interface{})
 					if ok {
+						// Consumers are keyed by username; everything else by id.
 						id, _ := val["id"].(string)
+						if id == "" {
+							id, _ = val["username"].(string)
+						}
 						ownerTeamID := ownerMap[id]
 
 						// Inject __team_id for all users
@@ -250,7 +280,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				resources.List = filtered
 				respBody, _ = json.Marshal(resources)
 			}
-		} else if isSingle && !isAdmin {
+		} else if !isAdmin {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 			if effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
 				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this resource"})
@@ -282,7 +312,7 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 		return
 	}
 
-	instanceID := c.GetHeader("X-Instance-ID")
+	instanceID := middleware.GetInstanceID(c)
 	if instanceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Instance ID required"})
 		return
