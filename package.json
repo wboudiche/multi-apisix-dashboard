@@ -10,7 +10,8 @@
     "lint:fix": "pnpm lint --fix",
     "preview": "vite preview",
     "prepare": "husky",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ant-design/pro-components": "^2.8.7",
@@ -29,9 +30,11 @@
     "dayjs": "^1.11.13",
     "dotenv": "^16.5.0",
     "fast-clean": "^1.4.0",
+    "fast-xml-parser": "^5.9.3",
     "i18next": "^25.0.1",
     "immer": "^10.1.1",
     "jotai": "^2.12.5",
+    "jszip": "^3.10.1",
     "mobx": "^6.13.7",
     "mobx-persist-store": "^1.1.8",
     "mobx-react-lite": "^4.1.0",
@@ -91,6 +94,7 @@
     "unplugin-info": "^1.2.2",
     "vite": "^6.3.6",
     "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.9",
     "yaml": "^2.7.1"
   },
   "lint-staged": {
