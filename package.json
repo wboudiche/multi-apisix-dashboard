@@ -95,7 +95,7 @@
     "vite": "^6.3.6",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.9",
-    "yaml": "^2.7.1"
+    "yaml": "^2.9.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
