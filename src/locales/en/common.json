@@ -148,7 +148,9 @@
       "warningsTitle": "Warnings",
       "import": "Create {{count}} route(s)",
       "successCount": "{{count}} route(s) created from WSDL",
-      "failedCount": "{{count}} route(s) failed to create"
+      "failedCount": "{{count}} route(s) failed to create",
+      "readError": "Failed to read file",
+      "fetchError": "Failed to fetch WSDL"
     },
     "routeTest": {
       "title": "Test Route",

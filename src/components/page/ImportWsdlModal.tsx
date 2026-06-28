@@ -113,7 +113,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
         setBundle({ entry: 'main', docs: { main: text } });
       }
     } catch (err: unknown) {
-      setParseError((err as { message?: string })?.message ?? 'Failed to read file');
+      setParseError((err as { message?: string })?.message ?? t('form.importWsdl.readError'));
     }
   };
 
@@ -127,9 +127,9 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
       setContent(`[URL] ${urlValue.trim()} — ${Object.keys(out.docs).length} document(s)`);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } }; message?: string };
-      setParseError(e?.response?.data?.error ?? e?.message ?? 'Failed to fetch WSDL');
+      setParseError(e?.response?.data?.error ?? e?.message ?? t('form.importWsdl.fetchError'));
     }
-  }, [urlValue]);
+  }, [urlValue, t]);
 
   const effectiveBundle = (): Bundle | null => {
     if (bundle) return bundle;
