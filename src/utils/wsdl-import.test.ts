@@ -76,3 +76,39 @@ describe('parseWsdlString — per-operation, SOAP 1.1', () => {
     });
   });
 });
+
+describe('parseWsdlString — soapAction edge cases', () => {
+  const xml = (a1: string, a2: string) => `<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" name="S">
+  <wsdl:binding name="B" type="tns:P">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="Op1"><soap:operation soapAction="${a1}"/></wsdl:operation>
+    <wsdl:operation name="Op2"><soap:operation soapAction="${a2}"/></wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="S">
+    <wsdl:port name="P" binding="tns:B">
+      <soap:address location="http://h:8080/svc"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>`;
+
+  it('skips operations with empty SOAPAction in per-operation mode', () => {
+    const r = parseWsdlString(xml('urn:Op1', ''), {
+      mode: 'per-operation',
+      upstream: { kind: 'auto' },
+    });
+    expect(r.routes).toHaveLength(1);
+    expect(r.routes[0].name).toBe('S.Op1');
+    expect(r.warnings.some((w) => w.includes('Op2') && w.includes('SOAPAction'))).toBe(true);
+  });
+
+  it('warns on duplicate SOAPAction values', () => {
+    const r = parseWsdlString(xml('urn:Dup', 'urn:Dup'), {
+      mode: 'per-operation',
+      upstream: { kind: 'auto' },
+    });
+    expect(r.routes).toHaveLength(2);
+    expect(r.warnings.some((w) => w.toLowerCase().includes('duplicate'))).toBe(true);
+  });
+});

@@ -222,8 +222,21 @@ export const parseWsdlBundle = (
       warnings.push(`Service '${svc.name}': binding '${svc.bindingLocal}' not found.`);
       continue;
     }
+    const seenActions = new Set<string>();
     for (const op of binding.operations) {
       operationCount++;
+      if (!op.soapAction) {
+        warnings.push(
+          `Service '${svc.name}': operation '${op.name}' has an empty SOAPAction and cannot be matched per-operation; it was skipped (use passthrough mode to include it).`,
+        );
+        continue;
+      }
+      if (seenActions.has(op.soapAction)) {
+        warnings.push(
+          `Service '${svc.name}': duplicate SOAPAction '${op.soapAction}' — generated routes will collide on the same URI.`,
+        );
+      }
+      seenActions.add(op.soapAction);
       const versionLabel = soapVersion === 'unknown' ? '' : `SOAP ${soapVersion} `;
       const route: GeneratedRoute = {
         name: `${svc.name}.${op.name}`,
