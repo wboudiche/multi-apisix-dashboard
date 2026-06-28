@@ -71,6 +71,7 @@ func main() {
 	upstreamHandler := handlers.NewUpstreamHandler()
 	routeTestHandler := handlers.NewRouteTestHandler(instanceService)
 	labelHandler := handlers.NewLabelHandler(labelService, authService)
+	wsdlHandler := handlers.NewWsdlHandler()
 
 	// Check for default admin creation
 	if etcdClient != nil {
@@ -80,7 +81,7 @@ func main() {
 	}
 
 	// Setup router
-	router := setupRouter(authService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler)
+	router := setupRouter(authService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -94,7 +95,7 @@ func main() {
 	}
 }
 
-func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler) *gin.Engine {
+func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler) *gin.Engine {
 	router := gin.Default()
 
 	// CORS
@@ -143,6 +144,9 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 
 			// Route testing via gateway
 			protected.POST("/test-route", routeTestHandler.TestRoute)
+
+			// WSDL fetch (server-side, SSRF-guarded) for the WSDL importer
+			protected.GET("/wsdl/fetch", wsdlHandler.Fetch)
 
 			// Label taxonomy
 			protected.GET("/labels", labelHandler.ListLabels)

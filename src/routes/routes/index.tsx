@@ -48,6 +48,7 @@ import { RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
+import { ImportWsdlModal } from '@/components/page/ImportWsdlModal';
 import { LabelFilter } from '@/components/page/LabelFilter';
 import PageHeader from '@/components/page/PageHeader';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
@@ -538,6 +539,7 @@ function RouteComponent() {
   const [appliedLabels, setAppliedLabels] = useState<string[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [wsdlModalOpen, setWsdlModalOpen] = useState(false);
 
   const filteredData = useMemo(() => {
     if (!data || appliedLabels.length === 0) return data;
@@ -634,6 +636,16 @@ function RouteComponent() {
                 {t('form.import.title')}
               </Button>
             )}
+            {canEdit && (
+              <Button
+                variant="default"
+                size="sm"
+                leftSection={<IconUpload width="16" height="16" />}
+                onClick={() => setWsdlModalOpen(true)}
+              >
+                {t('form.importWsdl.title')}
+              </Button>
+            )}
             <ActionIcon variant="subtle" color="gray" size="md" onClick={() => refetch()}><IconRefresh width="18" height="18" /></ActionIcon>
             <Popover width={200} position="bottom-end" withArrow shadow="md">
               <Popover.Target>
@@ -694,6 +706,11 @@ function RouteComponent() {
       <ImportRoutesModal
         opened={importModalOpen}
         onClose={() => setImportModalOpen(false)}
+        onSuccess={refetch}
+      />
+      <ImportWsdlModal
+        opened={wsdlModalOpen}
+        onClose={() => setWsdlModalOpen(false)}
         onSuccess={refetch}
       />
     </Box>
