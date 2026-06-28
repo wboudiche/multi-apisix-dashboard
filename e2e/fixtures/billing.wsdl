@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" name="BillingService">
+  <wsdl:binding name="BillingBinding" type="tns:BillingPort">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="GetInvoice">
+      <soap:operation soapAction="urn:GetInvoice"/>
+    </wsdl:operation>
+    <wsdl:operation name="PayInvoice">
+      <soap:operation soapAction="urn:PayInvoice"/>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="BillingService">
+    <wsdl:port name="BillingPort" binding="tns:BillingBinding">
+      <soap:address location="http://billing-soap:8080/services/Billing"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
