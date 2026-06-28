@@ -150,7 +150,9 @@
       "successCount": "{{count}} route(s) created from WSDL",
       "failedCount": "{{count}} route(s) failed to create",
       "readError": "Failed to read file",
-      "fetchError": "Failed to fetch WSDL"
+      "fetchError": "Failed to fetch WSDL",
+      "upstreamRequired": "Enter an existing upstream ID, or choose auto-create from the WSDL address",
+      "unknownError": "Unknown error"
     },
     "routeTest": {
       "title": "Test Route",

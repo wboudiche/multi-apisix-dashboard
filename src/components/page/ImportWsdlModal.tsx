@@ -66,6 +66,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   const [upstreamId, setUpstreamId] = useState('');
   const [parseResult, setParseResult] = useState<WsdlParseResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [sourceWarnings, setSourceWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +81,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
     setUpstreamId('');
     setParseResult(null);
     setParseError(null);
+    setSourceWarnings([]);
     setImporting(false);
     setImportResults(null);
   };
@@ -92,6 +94,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   const clearDerived = () => {
     setParseResult(null);
     setParseError(null);
+    setSourceWarnings([]);
     setImportResults(null);
   };
 
@@ -124,6 +127,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
       const out = await fetchWsdl(urlValue.trim());
       setBundle({ entry: out.entry, docs: out.docs });
       setSourceUrl(urlValue.trim());
+      setSourceWarnings(out.warnings ?? []);
       setContent(`[URL] ${urlValue.trim()} — ${Object.keys(out.docs).length} document(s)`);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } }; message?: string };
@@ -142,6 +146,10 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
     const b = effectiveBundle();
     if (!b) {
       setParseError(t('form.importWsdl.noServices'));
+      return;
+    }
+    if (upstreamKind === 'existing' && !upstreamId.trim()) {
+      setParseError(t('form.importWsdl.upstreamRequired'));
       return;
     }
     try {
@@ -178,13 +186,13 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
       } catch (err: unknown) {
         failed++;
         const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
-        errors.push(`${route.name ?? route.uri}: ${e?.response?.data?.error_msg ?? e?.message ?? 'Unknown error'}`);
+        errors.push(`${route.name ?? route.uri}: ${e?.response?.data?.error_msg ?? e?.message ?? t('form.importWsdl.unknownError')}`);
       }
     }
     setImportResults({ success, failed, errors });
     setImporting(false);
     if (success > 0) onSuccess();
-  }, [parseResult, onSuccess]);
+  }, [parseResult, onSuccess, t]);
 
   return (
     <Modal
@@ -290,6 +298,17 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
         {parseError && (
           <Alert variant="light" color="red" icon={<IconError width="16" height="16" />}>
             <Text size="sm">{parseError}</Text>
+          </Alert>
+        )}
+
+        {sourceWarnings.length > 0 && (
+          <Alert variant="light" color="yellow">
+            <Text size="sm" fw={500}>{t('form.importWsdl.warningsTitle')}</Text>
+            <List size="xs">
+              {sourceWarnings.map((w, i) => (
+                <List.Item key={i}>{w}</List.Item>
+              ))}
+            </List>
           </Alert>
         )}
 
