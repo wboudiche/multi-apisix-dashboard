@@ -17,7 +17,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { parseWsdlString } from '@/utils/wsdl-import';
+import { parseWsdlBundle, parseWsdlString } from '@/utils/wsdl-import';
 
 const SOAP11 = `<?xml version="1.0"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
@@ -110,5 +110,43 @@ describe('parseWsdlString — soapAction edge cases', () => {
     });
     expect(r.routes).toHaveLength(2);
     expect(r.warnings.some((w) => w.toLowerCase().includes('duplicate'))).toBe(true);
+  });
+});
+
+describe('parseWsdlBundle — multi-file', () => {
+  const concrete = `<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" name="S">
+  <wsdl:import namespace="urn:abstract" location="abstract.wsdl"/>
+  <wsdl:service name="S">
+    <wsdl:port name="P" binding="tns:B">
+      <soap:address location="http://h:8080/svc"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>`;
+  const abstract = `<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" name="S">
+  <wsdl:binding name="B" type="tns:P">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="Op1"><soap:operation soapAction="urn:Op1"/></wsdl:operation>
+  </wsdl:binding>
+</wsdl:definitions>`;
+
+  it('resolves binding from an imported document', () => {
+    const r = parseWsdlBundle(
+      { entry: 'service.wsdl', docs: { 'service.wsdl': concrete, 'abstract.wsdl': abstract } },
+      { mode: 'per-operation', upstream: { kind: 'auto' } },
+    );
+    expect(r.routes).toHaveLength(1);
+    expect(r.routes[0].name).toBe('S.Op1');
+  });
+
+  it('warns when an import cannot be resolved', () => {
+    const r = parseWsdlBundle(
+      { entry: 'service.wsdl', docs: { 'service.wsdl': concrete } },
+      { mode: 'passthrough', upstream: { kind: 'auto' } },
+    );
+    expect(r.warnings.some((w) => w.includes('abstract.wsdl'))).toBe(true);
   });
 });

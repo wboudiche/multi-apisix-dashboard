@@ -101,9 +101,35 @@ export const parseWsdlBundle = (
 ): WsdlParseResult => {
   const warnings: string[] = [];
 
-  // Task 4 replaces this with import-following; for now merge every doc.
-  const docKeys = Object.keys(bundle.docs);
-  const rawDocs = docKeys.map((k) => bundle.docs[k]);
+  const basename = (k: string): string => k.split(/[\\/]/).pop() ?? k;
+  const resolveImport = (location: string): string | undefined => {
+    if (bundle.docs[location] !== undefined) return location;
+    const base = basename(location);
+    return Object.keys(bundle.docs).find((k) => basename(k) === base);
+  };
+
+  const visited = new Set<string>();
+  const rawDocs: string[] = [];
+  const queue: string[] = [bundle.entry];
+  while (queue.length > 0) {
+    const key = queue.shift()!;
+    if (visited.has(key)) continue;
+    visited.add(key);
+    const xmlDoc = bundle.docs[key];
+    if (xmlDoc === undefined) continue;
+    rawDocs.push(xmlDoc);
+    const root = parser.parse(xmlDoc) as Record<string, unknown>;
+    const defs = (root.definitions ?? {}) as Record<string, unknown>;
+    for (const imp of asArray<Record<string, unknown>>(
+      defs['import'] as Record<string, unknown> | Record<string, unknown>[] | undefined,
+    )) {
+      const location = String(imp['@_location'] ?? '');
+      if (!location) continue;
+      const resolved = resolveImport(location);
+      if (resolved) queue.push(resolved);
+      else warnings.push(`Unresolved wsdl:import '${location}' — supply it in the ZIP/URL bundle.`);
+    }
+  }
   const soapVersion = detectSoapVersion(rawDocs);
 
   // Gather bindings and services across all docs.
