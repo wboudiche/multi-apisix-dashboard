@@ -18,9 +18,15 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { routesPom } from '@e2e/pom/routes';
+import { randomId } from '@e2e/utils/common';
+import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 import JSZip from 'jszip';
+
+import { postUpstreamReq } from '@/apis/upstreams';
+import { API_ROUTES } from '@/config/constant';
+import type { APISIXType } from '@/types/schema/apisix';
 
 const readFixture = (name: string): string =>
   readFileSync(fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url)), 'utf8');
@@ -95,6 +101,49 @@ test('blocks parse when an existing upstream is chosen but left blank', async ({
   await expect(
     page.getByText('Enter an existing upstream ID, or choose auto-create from the WSDL address'),
   ).toBeVisible();
+});
+
+test('existing-upstream mode links imported routes by upstream_id', async ({ page }) => {
+  // Provision a real upstream through the Admin API; the importer should
+  // reference it by id instead of embedding an inline upstream.
+  const upstreamRes = await postUpstreamReq(e2eReq, {
+    name: randomId('wsdl-existing-upstream'),
+    nodes: [{ host: 'billing-soap', port: 8080, weight: 1 }],
+  });
+  const upstreamId = upstreamRes.data.value.id;
+
+  await openImporter(page);
+
+  await page.getByPlaceholder('Paste WSDL XML here…').fill(wsdl);
+  // "Use existing upstream ID" is the default backend, but select it
+  // explicitly so the test does not depend on the initial state.
+  await page.getByLabel('Use existing upstream ID').check();
+  await page.getByPlaceholder('upstream id').fill(upstreamId);
+  await page.getByRole('button', { name: 'Parse' }).click();
+
+  await expect(page.getByText('1 service(s), 2 operation(s)')).toBeVisible();
+
+  await page.getByRole('button', { name: /Create 2 route\(s\)/ }).click();
+  await expect(page.getByText('2 route(s) created from WSDL')).toBeVisible({
+    timeout: 15000,
+  });
+
+  // Both routes reference the upstream by id and carry no inline upstream.
+  const res = await e2eReq.get<
+    unknown,
+    { data: { list: { value: APISIXType['Route'] }[] } }
+  >(API_ROUTES);
+  const created = res.data.list.filter(
+    (r) => r.value.upstream_id === upstreamId
+  );
+  expect(created).toHaveLength(2);
+  expect(created.map((r) => r.value.name).sort()).toEqual([
+    'BillingService.GetInvoice',
+    'BillingService.PayInvoice',
+  ]);
+  for (const r of created) {
+    expect(r.value.upstream).toBeUndefined();
+  }
 });
 
 test('expands a multi-file WSDL ZIP and follows wsdl:import', async ({ page }, testInfo) => {
