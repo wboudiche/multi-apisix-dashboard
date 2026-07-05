@@ -49,7 +49,9 @@ async function adminFetch<T>(path: string, options: FetchOptions = {}): Promise<
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '(no body)');
-    throw new Error(`[admin-api] ${options.method ?? 'GET'} ${path} → ${res.status}: ${text}`);
+    const err = new Error(`[admin-api] ${options.method ?? 'GET'} ${path} → ${res.status}: ${text}`);
+    (err as Error & { status?: number }).status = res.status;
+    throw err;
   }
   const text = await res.text();
   return (text.length > 0 ? JSON.parse(text) : null) as T;
@@ -74,8 +76,12 @@ export const getOverview = () => adminFetch<OverviewData>('/api/v1/overview');
 const deleteQuietly = async (path: string) => {
   try {
     await adminFetch(path, { method: 'DELETE' });
-  } catch {
-    // already gone — cleanup must be idempotent
+  } catch (err) {
+    // already gone — cleanup must be idempotent (tolerate 404 only)
+    const status = (err as Error & { status?: number }).status;
+    if (status !== 404) {
+      throw err;
+    }
   }
 };
 
