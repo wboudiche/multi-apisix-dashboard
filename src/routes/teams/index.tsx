@@ -83,6 +83,14 @@ const TeamsPage = () => {
   }
 
   const handleSubmit = async () => {
+    if (!formData.name?.trim()) {
+      notifications.show({
+        title: 'Error',
+        message: 'Team name is required',
+        color: 'red',
+      });
+      return;
+    }
     try {
       await teamApi.create(formData);
       notifications.show({
