@@ -23,6 +23,24 @@ import { expect } from '@playwright/test';
 
 import { API_ROUTES } from '@/config/constant';
 
+const PREFIX = randomId('adm-overview-probe');
+
+test.afterAll(async () => {
+  const res = await e2eReq.get<
+    unknown,
+    { data: { list: { value: { id: string; name?: string } }[] } }
+  >(API_ROUTES);
+  const leaked = res.data.list.filter((r) => r.value.name?.startsWith(PREFIX));
+  for (const route of leaked) {
+    try {
+      await e2eReq.delete(`${API_ROUTES}/${route.value.id}`);
+    } catch {
+      // best-effort sweep — a route already removed by the test's own
+      // `finally` block is not an error here.
+    }
+  }
+});
+
 test('gateway health widget shows live instance counts', async ({ page }) => {
   await adminPom.toOverview(page);
   await adminPom.isOverviewPage(page);
@@ -43,7 +61,7 @@ test('gateway health widget shows live instance counts', async ({ page }) => {
 });
 
 test('resource matrix reflects a route created via the API', async ({ page }) => {
-  const routeName = randomId('adm-overview-probe');
+  const routeName = `${PREFIX}-route`;
   const created = await e2eReq.post<
     unknown,
     { data: { value: { id: string } } }
@@ -54,11 +72,11 @@ test('resource matrix reflects a route created via the API', async ({ page }) =>
   });
 
   try {
-    // The backend caches overview data for 30s; poll until the refresh
-    // has aggregated at least our route.
+    // The backend caches overview data for 30s; force a server-side
+    // recompute on each poll instead of waiting out the cache TTL.
     await expect
-      .poll(async () => (await getOverview()).global_stats.routes, {
-        timeout: 45000,
+      .poll(async () => (await getOverview({ refresh: true })).global_stats.routes, {
+        timeout: 15000,
         intervals: [2000],
       })
       .toBeGreaterThanOrEqual(1);

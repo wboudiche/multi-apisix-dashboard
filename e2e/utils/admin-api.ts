@@ -71,7 +71,10 @@ export type OverviewData = {
   };
 };
 
-export const getOverview = () => adminFetch<OverviewData>('/api/v1/overview');
+export const getOverview = (opts?: { refresh?: boolean }) =>
+  adminFetch<OverviewData>(
+    opts?.refresh ? '/api/v1/overview?refresh=true' : '/api/v1/overview'
+  );
 
 const deleteQuietly = async (path: string) => {
   try {
