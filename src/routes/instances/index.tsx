@@ -296,9 +296,10 @@ const InstancesPage = () => {
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Group gap="xs" justify="flex-end">
                       <Tooltip label="Test Connection">
-                        <ActionIcon 
-                          variant="light" 
-                          color="blue" 
+                        <ActionIcon
+                          variant="light"
+                          color="blue"
+                          aria-label="Test Connection"
                           onClick={() => handleTestConnection(instance.id)}
                           loading={testingId === instance.id}
                         >
@@ -306,12 +307,12 @@ const InstancesPage = () => {
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Edit">
-                        <ActionIcon variant="light" color="yellow" onClick={() => openEditModal(instance)}>
+                        <ActionIcon variant="light" color="yellow" aria-label="Edit" onClick={() => openEditModal(instance)}>
                           <IconEdit width="18" height="18" />
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Delete">
-                        <ActionIcon variant="light" color="red" onClick={() => handleDelete(instance.id)}>
+                        <ActionIcon variant="light" color="red" aria-label="Delete" onClick={() => handleDelete(instance.id)}>
                           <IconDelete width="18" height="18" />
                         </ActionIcon>
                       </Tooltip>

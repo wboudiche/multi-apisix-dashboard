@@ -151,7 +151,7 @@ const UsersPage = () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, role: formData.role === 'user' ? '' : formData.role }),
         });
 
         if (!response.ok) {
@@ -269,7 +269,7 @@ const UsersPage = () => {
       username: user.username,
       password: '',
       email: user.email,
-      role: user.role,
+      role: user.role === '' ? 'user' : user.role,
     });
     // Load existing instance assignments
     const assignments = userAssignments[user.id] || [];

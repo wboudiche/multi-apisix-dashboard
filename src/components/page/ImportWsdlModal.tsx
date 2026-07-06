@@ -200,6 +200,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
       onClose={handleClose}
       title={<Text fw={600}>{t('form.importWsdl.title')}</Text>}
       size="lg"
+      scrollAreaComponent={ScrollArea.Autosize}
     >
       <Stack gap="md">
         <Text size="sm" c="dimmed">{t('form.importWsdl.description')}</Text>

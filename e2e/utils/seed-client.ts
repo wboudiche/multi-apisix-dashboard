@@ -64,12 +64,22 @@ export type UserInstance = {
 
 type JsonBody = Record<string, unknown>;
 
-type FetchOptions = {
+export type FetchOptions = {
   method?: string;
   json?: JsonBody;
 };
 
-async function apiFetch(
+/** Error thrown by apiFetch on a non-2xx response, carrying the HTTP status. */
+export class HttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+export async function apiFetch(
   path: string,
   token: string,
   options: FetchOptions = {},
@@ -85,7 +95,10 @@ async function apiFetch(
 
   if (!res.ok) {
     const text = await res.text().catch(() => '(no body)');
-    throw new Error(`[seed] ${options.method ?? 'GET'} ${path} → ${res.status}: ${text}`);
+    throw new HttpError(
+      `[api] ${options.method ?? 'GET'} ${path} → ${res.status}: ${text}`,
+      res.status,
+    );
   }
 
   const text = await res.text();
