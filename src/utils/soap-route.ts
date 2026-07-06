@@ -15,6 +15,12 @@
  * limitations under the License.
  */
 
+// The APISIX `vars` builtin that carries the request's SOAPAction header. This
+// is the single source of truth shared by the writer (the WSDL importer, which
+// builds the per-operation match) and the reader below — keep them coupled so
+// the routes cannot silently stop round-tripping.
+export const SOAP_ACTION_VAR = 'http_soapaction';
+
 /**
  * Read the SOAPAction a per-operation SOAP route matches on.
  *
@@ -30,15 +36,12 @@
  */
 export const extractSoapAction = (vars: unknown): string | undefined => {
   if (!Array.isArray(vars)) return undefined;
-  for (const entry of vars) {
-    if (
+  const match = vars.find(
+    (entry) =>
       Array.isArray(entry) &&
-      entry[0] === 'http_soapaction' &&
+      entry[0] === SOAP_ACTION_VAR &&
       entry[1] === '==' &&
       typeof entry[2] === 'string'
-    ) {
-      return entry[2];
-    }
-  }
-  return undefined;
+  );
+  return match ? (match[2] as string) : undefined;
 };

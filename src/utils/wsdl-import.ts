@@ -17,6 +17,8 @@
 
 import { XMLParser } from 'fast-xml-parser';
 
+import { SOAP_ACTION_VAR } from '@/utils/soap-route';
+
 export type WsdlImportMode = 'per-operation' | 'passthrough';
 
 export type UpstreamBinding =
@@ -270,7 +272,7 @@ export const parseWsdlBundle = (
         uri,
         methods: ['POST'],
         labels: { ...labels },
-        vars: [['http_soapaction', '==', `"${op.soapAction}"`]],
+        vars: [[SOAP_ACTION_VAR, '==', `"${op.soapAction}"`]],
         status: 1,
       };
       applyUpstream(route);

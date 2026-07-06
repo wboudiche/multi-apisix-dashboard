@@ -60,6 +60,7 @@ import { API_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { type APISIXType } from '@/types/schema/apisix';
+import { extractSoapAction } from '@/utils/soap-route';
 import IconCode from '~icons/material-symbols/code';
 import IconGroup from '~icons/material-symbols/group';
 import IconPlayArrow from '~icons/material-symbols/play-arrow';
@@ -270,6 +271,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const routeUri = rawJson?.uri as string || (rawJson?.uris as string[])?.[0] || '/';
   const routeMethod = (rawJson?.methods as string[])?.[0] || 'GET';
   const routeHost = rawJson?.host as string || (rawJson?.hosts as string[])?.[0] || undefined;
+  const routeSoapAction = extractSoapAction(rawJson?.vars);
   const currentTeamId = (rawJson as Record<string, unknown> | null)?.__team_id as string | undefined;
 
   const handleJsonSave = useCallback(async (data: Record<string, unknown>) => {
@@ -363,6 +365,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
         defaultPath={routeUri}
         defaultMethod={routeMethod}
         defaultHost={routeHost}
+        defaultSoapAction={routeSoapAction}
       />
       <ReassignTeamModal
         opened={reassignOpen}

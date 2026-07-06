@@ -33,7 +33,7 @@ import {
   Textarea,
   TextInput,
 } from '@mantine/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type RouteTestResponse, testRoute } from '@/apis/route-test';
@@ -93,39 +93,29 @@ export const RouteTestDrawer = ({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('headers');
   const [responseTab, setResponseTab] = useState<string | null>('body');
-  const headersRef = useRef(headers);
-  headersRef.current = headers;
 
   useEffect(() => {
-    if (opened) {
-      setPath(defaultPath);
-      setMethod(defaultMethod);
-      setResponse(null);
-      setError(null);
-      if (defaultHost) {
-        const existing = headersRef.current.find((h) => h.key.toLowerCase() === 'host');
-        if (!existing) {
-          setHeaders((prev) => [...prev, { key: 'Host', value: defaultHost }]);
-        }
-      }
-      if (defaultSoapAction) {
-        // A per-operation SOAP route is selected purely by SOAPAction, so seed
-        // that header (the routing discriminator) plus the SOAP 1.1 content
-        // type — otherwise the request falls through to a sibling operation or
-        // 404s. Leave any values the user already set untouched.
-        setHeaders((prev) => {
-          const next = prev.map((h) =>
-            h.key.toLowerCase() === 'content-type'
-              ? { ...h, value: 'text/xml' }
-              : h
-          );
-          if (!next.some((h) => h.key.toLowerCase() === 'soapaction')) {
-            next.push({ key: 'SOAPAction', value: defaultSoapAction });
-          }
-          return next;
-        });
-      }
+    if (!opened) return;
+    setPath(defaultPath);
+    setMethod(defaultMethod);
+    setResponse(null);
+    setError(null);
+    // The drawer stays mounted between opens, so headers are rebuilt for the
+    // route it was (re)opened on — otherwise a previous route's Host/SOAPAction
+    // (and a content type ratcheted to text/xml) would leak into the next test.
+    // A per-operation SOAP route is matched purely on SOAPAction, so seed that
+    // header (the routing discriminator) plus SOAP 1.1's text/xml content type.
+    const seeded: HeaderRow[] = [
+      {
+        key: 'Content-Type',
+        value: defaultSoapAction ? 'text/xml' : 'application/json',
+      },
+    ];
+    if (defaultHost) seeded.push({ key: 'Host', value: defaultHost });
+    if (defaultSoapAction) {
+      seeded.push({ key: 'SOAPAction', value: defaultSoapAction });
     }
+    setHeaders(seeded);
   }, [opened, defaultPath, defaultMethod, defaultHost, defaultSoapAction]);
 
   const handleSend = useCallback(async () => {
