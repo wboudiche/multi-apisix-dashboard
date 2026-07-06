@@ -51,6 +51,10 @@ type RouteTestDrawerProps = {
   defaultPath?: string;
   defaultMethod?: string;
   defaultHost?: string;
+  // For SOAP routes that match per-operation on the SOAPAction header
+  // (e.g. WSDL-imported routes), the value APISIX compares against — passed
+  // through verbatim, quotes included, exactly as a SOAP 1.1 client sends it.
+  defaultSoapAction?: string;
 };
 
 const statusColor = (status: number): string => {
@@ -74,6 +78,7 @@ export const RouteTestDrawer = ({
   defaultPath = '/',
   defaultMethod = 'GET',
   defaultHost,
+  defaultSoapAction,
 }: RouteTestDrawerProps) => {
   const { t } = useTranslation();
   const [method, setMethod] = useState(defaultMethod);
@@ -103,8 +108,25 @@ export const RouteTestDrawer = ({
           setHeaders((prev) => [...prev, { key: 'Host', value: defaultHost }]);
         }
       }
+      if (defaultSoapAction) {
+        // A per-operation SOAP route is selected purely by SOAPAction, so seed
+        // that header (the routing discriminator) plus the SOAP 1.1 content
+        // type — otherwise the request falls through to a sibling operation or
+        // 404s. Leave any values the user already set untouched.
+        setHeaders((prev) => {
+          const next = prev.map((h) =>
+            h.key.toLowerCase() === 'content-type'
+              ? { ...h, value: 'text/xml' }
+              : h
+          );
+          if (!next.some((h) => h.key.toLowerCase() === 'soapaction')) {
+            next.push({ key: 'SOAPAction', value: defaultSoapAction });
+          }
+          return next;
+        });
+      }
     }
-  }, [opened, defaultPath, defaultMethod, defaultHost]);
+  }, [opened, defaultPath, defaultMethod, defaultHost, defaultSoapAction]);
 
   const handleSend = useCallback(async () => {
     setLoading(true);

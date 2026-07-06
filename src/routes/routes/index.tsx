@@ -60,6 +60,7 @@ import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
+import { extractSoapAction } from '@/utils/soap-route';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
@@ -96,7 +97,7 @@ export const RouteList = (props: RouteListProps) => {
   const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
   const [jsonSaving, setJsonSaving] = useState(false);
   const [testDrawerOpen, setTestDrawerOpen] = useState(false);
-  const [testDrawerRoute, setTestDrawerRoute] = useState<{ path: string; method: string; host?: string } | null>(null);
+  const [testDrawerRoute, setTestDrawerRoute] = useState<{ path: string; method: string; host?: string; soapAction?: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: teams } = useQuery({
@@ -147,7 +148,12 @@ export const RouteList = (props: RouteListProps) => {
     const uri = (record.uri as string) || (record.uris as string[])?.[0] || '/';
     const method = (record.methods as string[])?.[0] || 'GET';
     const host = (record.host as string) || (record.hosts as string[])?.[0] || undefined;
-    setTestDrawerRoute({ path: uri, method, host });
+    setTestDrawerRoute({
+      path: uri,
+      method,
+      host,
+      soapAction: extractSoapAction(record.vars),
+    });
     setTestDrawerOpen(true);
   };
 
@@ -499,6 +505,7 @@ export const RouteList = (props: RouteListProps) => {
         defaultPath={testDrawerRoute?.path}
         defaultMethod={testDrawerRoute?.method}
         defaultHost={testDrawerRoute?.host}
+        defaultSoapAction={testDrawerRoute?.soapAction}
       />
     </Paper >
   );
