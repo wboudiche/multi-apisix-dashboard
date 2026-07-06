@@ -14,19 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { headerSelect } from '@e2e/pom/permission';
 import { uiGoto } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
 const locator = {
   rowByText: (page: Page, text: string) =>
     page.getByRole('row').filter({ hasText: text }),
-  // Same header Select the permission POM targets (placeholder or searchbox).
-  headerInstanceSelect: (page: Page) =>
-    page
-      .locator('header')
-      .getByPlaceholder('Select instance')
-      .or(page.locator('header').getByRole('searchbox'))
-      .first(),
+  headerInstanceSelect: headerSelect,
 };
 
 const assert = {

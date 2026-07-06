@@ -15,46 +15,34 @@
  * limitations under the License.
  */
 import {
+  apiFetch,
+  type FetchOptions,
+  HttpError,
   type Instance,
   loginAdmin,
   type Team,
   type User,
 } from './seed-client';
 
-const API_URL = process.env['E2E_API_URL'] ?? 'http://127.0.0.1:8086';
+// Access tokens expire after 15 minutes; re-login well before that so a
+// long-running CI worker (one process runs a whole shard of spec files,
+// sharing this module's cache) never carries a stale token into a later
+// spec's beforeAll/afterAll.
+const TOKEN_TTL_MS = 10 * 60 * 1000;
 
 let cachedToken: string | null = null;
+let tokenMintedAt = 0;
 
 export async function adminToken(): Promise<string> {
-  if (cachedToken === null) {
+  if (cachedToken === null || Date.now() - tokenMintedAt > TOKEN_TTL_MS) {
     cachedToken = await loginAdmin();
+    tokenMintedAt = Date.now();
   }
   return cachedToken;
 }
 
-type FetchOptions = {
-  method?: string;
-  json?: Record<string, unknown>;
-};
-
 async function adminFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
-  const token = await adminToken();
-  const res = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: options.json !== undefined ? JSON.stringify(options.json) : undefined,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '(no body)');
-    const err = new Error(`[admin-api] ${options.method ?? 'GET'} ${path} → ${res.status}: ${text}`);
-    (err as Error & { status?: number }).status = res.status;
-    throw err;
-  }
-  const text = await res.text();
-  return (text.length > 0 ? JSON.parse(text) : null) as T;
+  return (await apiFetch(path, await adminToken(), options)) as T;
 }
 
 export const listTeams = () => adminFetch<Team[]>('/api/v1/teams');
@@ -81,30 +69,28 @@ const deleteQuietly = async (path: string) => {
     await adminFetch(path, { method: 'DELETE' });
   } catch (err) {
     // already gone — cleanup must be idempotent (tolerate 404 only)
-    const status = (err as Error & { status?: number }).status;
-    if (status !== 404) {
+    if (!(err instanceof HttpError) || err.status !== 404) {
       throw err;
     }
   }
 };
 
-export async function deleteTeamsByPrefix(prefix: string): Promise<void> {
-  const teams = await listTeams();
-  for (const team of teams.filter((t) => t.name.startsWith(prefix))) {
-    await deleteQuietly(`/api/v1/teams/${team.id}`);
-  }
-}
+const deleteByPrefix = async <T>(
+  list: () => Promise<T[]>,
+  nameOf: (item: T) => string,
+  idOf: (item: T) => string,
+  basePath: string,
+  prefix: string,
+): Promise<void> => {
+  const matched = (await list()).filter((item) => nameOf(item).startsWith(prefix));
+  await Promise.all(matched.map((item) => deleteQuietly(`${basePath}/${idOf(item)}`)));
+};
 
-export async function deleteUsersByPrefix(prefix: string): Promise<void> {
-  const users = await listUsers();
-  for (const user of users.filter((u) => u.username.startsWith(prefix))) {
-    await deleteQuietly(`/api/v1/users/${user.id}`);
-  }
-}
-
-export async function deleteInstancesByPrefix(prefix: string): Promise<void> {
-  const instances = await listInstances();
-  for (const inst of instances.filter((i) => i.name.startsWith(prefix))) {
-    await deleteQuietly(`/api/v1/instances/${inst.id}`);
-  }
-}
+// Callers that clean up users AND teams must delete users first — removing a
+// user also removes the user_instances records that reference the team.
+export const deleteTeamsByPrefix = (prefix: string) =>
+  deleteByPrefix(listTeams, (t) => t.name, (t) => t.id, '/api/v1/teams', prefix);
+export const deleteUsersByPrefix = (prefix: string) =>
+  deleteByPrefix(listUsers, (u) => u.username, (u) => u.id, '/api/v1/users', prefix);
+export const deleteInstancesByPrefix = (prefix: string) =>
+  deleteByPrefix(listInstances, (i) => i.name, (i) => i.id, '/api/v1/instances', prefix);

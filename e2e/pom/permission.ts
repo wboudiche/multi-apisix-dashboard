@@ -20,7 +20,8 @@ import { expect, type Page } from '@playwright/test';
 
 const dashboardBase = () => env.E2E_TARGET_URL.replace(/\/$/, '');
 
-const headerSelect = (page: Page) =>
+/** The header's APISIX-instance Select (shared with adminPom). */
+export const headerSelect = (page: Page) =>
   page
     .locator('header')
     .getByPlaceholder('Select instance')
