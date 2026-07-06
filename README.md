@@ -9,13 +9,14 @@ A multi-tenant control plane for [Apache APISIX](https://github.com/apache/apisi
 Where the upstream dashboard is a single-page app that talks directly to one APISIX Admin API using a shared admin key, this fork adds a **Go backend** in front that provides:
 
 - **User accounts** with bcrypt-hashed passwords and JWT-based login (no more sharing the admin key with everyone).
-- **Multiple APISIX instances** registered through the UI — one dashboard, N gateways (staging, prod, per-region, …).
-- **Teams** as the tenancy unit, with per-resource ownership.
-- **Per-instance roles**: `super_admin`, `instance_admin`, `developer`, `viewer`. The same user can be admin on staging and viewer on prod.
-- **Label-based classification** for routes and other resources, with backend-enforced validation.
-- **OpenAPI import/export** for routes.
-- **Live route tester** (curl-style) and **upstream connection tester** directly from the UI.
-- **Overview dashboard** with gateway health and consolidated counts across instances.
+- **Multiple APISIX instances** registered through the UI — one dashboard, N gateways (staging, prod, per-region, …), each with a built-in **connection tester**.
+- **Teams** as the tenancy unit, with per-resource ownership and one-click **team reassignment**.
+- **Per-instance roles** — `super_admin`, `instance_admin`, `developer`, `viewer`. The same user can be admin on staging and viewer on prod; the UI gates writes and hides resources accordingly.
+- **Label-based classification** for routes and other resources, with backend-enforced key/value validation and label filtering.
+- **Route import** from **OpenAPI** and from **WSDL** — the WSDL importer turns a SOAP service into one route per operation (matched on the `SOAPAction` header) or a single passthrough route, and handles multi-file ZIP bundles that follow `wsdl:import`.
+- **Built-in route testing** — a curl-style request drawer that pre-fills method, path, and host, and for per-operation SOAP routes also seeds the `SOAPAction` header and `text/xml` content type, so any route is testable in one click.
+- **Bulk & convenience actions** — batch delete, route duplication, and raw-JSON view/edit for every resource.
+- **Overview dashboard** with gateway health and consolidated route/service/upstream counts across all accessible instances.
 
 The frontend (React + TanStack Router + Mantine + Ant Design Pro) and most of the resource forms come from upstream; the `api/` directory and the new top-level pages (`login`, `overview`, `instances`, `teams`, `users`) are the multi-tenant additions.
 
