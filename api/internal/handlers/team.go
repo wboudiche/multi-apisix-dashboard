@@ -18,6 +18,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
@@ -83,6 +84,11 @@ func (h *TeamHandler) CreateTeam(c *gin.Context) {
 	var team models.Team
 	if err := c.ShouldBindJSON(&team); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if strings.TrimSpace(team.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Team name is required"})
 		return
 	}
 
