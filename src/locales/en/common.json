@@ -587,6 +587,15 @@
   },
   "noData": "No Data",
   "or": "OR",
+  "passwordRules": {
+    "title": "Password must:",
+    "min_length": "Be at least {{min}} characters",
+    "max_length": "Be at most {{max}} characters",
+    "missing_uppercase": "Contain an uppercase letter",
+    "missing_lowercase": "Contain a lowercase letter",
+    "missing_digit": "Contain a digit",
+    "missing_symbol": "Contain a symbol"
+  },
   "pluginConfigs": {
     "singular": "Plugin Config"
   },
@@ -633,7 +642,22 @@
     "singular": "Service"
   },
   "settings": {
-    "title": "Settings"
+    "title": "Settings",
+    "passwordPolicy": "Password policy",
+    "minLength": "Minimum length",
+    "maxLength": "Maximum length",
+    "requireUppercase": "Require an uppercase letter",
+    "requireLowercase": "Require a lowercase letter",
+    "requireDigit": "Require a digit",
+    "requireSymbol": "Require a symbol",
+    "historyDepth": "Passwords remembered (no reuse)",
+    "expiryDays": "Expire after (days, 0 = never)",
+    "lockoutThreshold": "Lock after failed attempts (0 = off)",
+    "lockoutWindowMinutes": "Lockout duration (minutes)",
+    "save": "Save policy",
+    "saved": "Password policy saved",
+    "saveError": "Failed to save policy",
+    "accessDenied": "Only Super Admins can edit settings."
   },
   "sources": {
     "consumerGroups": "Consumer Groups",
@@ -648,6 +672,7 @@
     "routes": "Routes",
     "secrets": "Secrets",
     "services": "Services",
+    "settings": "Settings",
     "ssls": "SSLs",
     "streamRoutes": "Stream Routes",
     "teams": "Teams",

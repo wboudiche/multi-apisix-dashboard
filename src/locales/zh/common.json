@@ -354,6 +354,15 @@
   },
   "noData": "无数据",
   "or": "OR",
+  "passwordRules": {
+    "title": "密码必须:",
+    "min_length": "至少 {{min}} 个字符",
+    "max_length": "最多 {{max}} 个字符",
+    "missing_uppercase": "包含一个大写字母",
+    "missing_lowercase": "包含一个小写字母",
+    "missing_digit": "包含一个数字",
+    "missing_symbol": "包含一个符号"
+  },
   "pluginConfigs": {
     "singular": "插件配置"
   },
@@ -400,7 +409,22 @@
     "singular": "服务"
   },
   "settings": {
-    "title": "设置"
+    "title": "设置",
+    "passwordPolicy": "密码策略",
+    "minLength": "最小长度",
+    "maxLength": "最大长度",
+    "requireUppercase": "需要大写字母",
+    "requireLowercase": "需要小写字母",
+    "requireDigit": "需要数字",
+    "requireSymbol": "需要符号",
+    "historyDepth": "记住的密码数（禁止重复使用）",
+    "expiryDays": "过期时间（天，0 = 永不过期）",
+    "lockoutThreshold": "失败尝试次数后锁定（0 = 关闭）",
+    "lockoutWindowMinutes": "锁定时长（分钟）",
+    "save": "保存策略",
+    "saved": "密码策略已保存",
+    "saveError": "保存策略失败",
+    "accessDenied": "只有超级管理员可以编辑设置。"
   },
   "sources": {
     "consumerGroups": "消费者组",
@@ -413,6 +437,7 @@
     "routes": "路由",
     "secrets": "Secrets",
     "services": "服务",
+    "settings": "设置",
     "ssls": "SSLs",
     "streamRoutes": "流路由",
     "upstreams": "上游"
