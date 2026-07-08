@@ -45,6 +45,7 @@ export const PasswordRequirements = ({ password }: { password: string }) => {
       {rules.map((r) => (
         <List.Item
           key={r.text}
+          data-met={r.ok ? 'true' : 'false'}
           icon={
             <ThemeIcon color={r.ok ? 'green' : 'gray'} size={18} radius="xl" variant="light">
               {r.ok ? <IconCheck width={14} height={14} /> : <IconDot width={14} height={14} />}

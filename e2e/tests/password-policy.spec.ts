@@ -20,20 +20,9 @@ import { test } from '@e2e/utils/test';
 import { uiGoto, uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
-const API = process.env.E2E_API_URL ?? 'http://127.0.0.1:8086';
+import type { PasswordPolicy } from '@/apis/policy';
 
-type PasswordPolicy = {
-  min_length: number;
-  max_length: number;
-  require_uppercase: boolean;
-  require_lowercase: boolean;
-  require_digit: boolean;
-  require_symbol: boolean;
-  history_depth: number;
-  expiry_days: number;
-  lockout_threshold: number;
-  lockout_window_minutes: number;
-};
+const API = process.env.E2E_API_URL ?? 'http://127.0.0.1:8086';
 
 async function getPolicy(token: string): Promise<PasswordPolicy> {
   const res = await fetch(`${API}/api/v1/settings/password-policy`, {
@@ -85,12 +74,15 @@ test('raising the min length in Settings is reflected live in the create-user ch
 
   // A weak (too-short) password: the checklist renders the unmet
   // min-length rule mirroring the policy just saved above.
+  const minLengthRule = page
+    .locator('[data-met]')
+    .filter({ hasText: 'Be at least 20 characters' });
   await page.getByLabel('Password').fill('abc');
-  await expect(page.getByText('Be at least 20 characters')).toBeVisible();
+  await expect(minLengthRule).toHaveAttribute('data-met', 'false');
 
   // Satisfying the length requirement flips that rule to met.
   await page.getByLabel('Password').fill('a'.repeat(20));
-  await expect(page.getByText('Be at least 20 characters')).toBeVisible();
+  await expect(minLengthRule).toHaveAttribute('data-met', 'true');
 
   await page.getByRole('button', { name: 'Cancel' }).click();
 });
