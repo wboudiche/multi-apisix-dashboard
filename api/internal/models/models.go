@@ -129,6 +129,7 @@ func HasResourcePermission(role, resourceType, action string) bool {
 const (
 	ConfigKeyAdminInitialized = "config/admin_initialized"
 	ConfigKeyDefaultPassword  = "config/default_password"
+	ConfigKeyPasswordPolicy   = "config/password_policy"
 )
 
 // KeyPrefix constants
@@ -178,4 +179,36 @@ type OverviewData struct {
 	CurrentInstance *InstanceHealth  `json:"current_instance,omitempty"`
 	InstanceStats   ResourceStats    `json:"instance_stats,omitempty"`
 	AllInstances    []InstanceHealth `json:"all_instances"`
+}
+
+// PasswordPolicy is the admin-editable password policy, stored in etcd at
+// ConfigKeyPasswordPolicy. Phase 1 enforces only the complexity fields; the
+// history/expiry/lockout fields are stored but inert until later phases.
+type PasswordPolicy struct {
+	MinLength            int  `json:"min_length"`
+	MaxLength            int  `json:"max_length"`
+	RequireUppercase     bool `json:"require_uppercase"`
+	RequireLowercase     bool `json:"require_lowercase"`
+	RequireDigit         bool `json:"require_digit"`
+	RequireSymbol        bool `json:"require_symbol"`
+	HistoryDepth         int  `json:"history_depth"`
+	ExpiryDays           int  `json:"expiry_days"`
+	LockoutThreshold     int  `json:"lockout_threshold"`
+	LockoutWindowMinutes int  `json:"lockout_window_minutes"`
+}
+
+// DefaultPasswordPolicy returns the built-in policy used when none is stored.
+func DefaultPasswordPolicy() PasswordPolicy {
+	return PasswordPolicy{
+		MinLength:            12,
+		MaxLength:            72,
+		RequireUppercase:     true,
+		RequireLowercase:     true,
+		RequireDigit:         true,
+		RequireSymbol:        true,
+		HistoryDepth:         5,
+		ExpiryDays:           90,
+		LockoutThreshold:     5,
+		LockoutWindowMinutes: 15,
+	}
 }
