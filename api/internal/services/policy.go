@@ -16,6 +16,8 @@
 package services
 
 import (
+	"context"
+	"fmt"
 	"unicode"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
@@ -67,4 +69,56 @@ func ValidatePassword(policy models.PasswordPolicy, pw string, history []string)
 		vs = append(vs, Violation{Code: "missing_symbol"})
 	}
 	return vs
+}
+
+// ErrInvalidPolicy is returned when a proposed policy config is out of bounds.
+var ErrInvalidPolicy = fmt.Errorf("invalid password policy")
+
+// PolicyService owns the password policy config in etcd.
+type PolicyService struct {
+	etcd *EtcdClient
+}
+
+func NewPolicyService(etcd *EtcdClient) *PolicyService {
+	return &PolicyService{etcd: etcd}
+}
+
+// LoadPolicy returns the stored policy, or the built-in defaults if none exists.
+func (s *PolicyService) LoadPolicy(ctx context.Context) (models.PasswordPolicy, error) {
+	p := models.DefaultPasswordPolicy()
+	if err := s.etcd.GetJSON(ctx, models.ConfigKeyPasswordPolicy, &p); err != nil {
+		return models.DefaultPasswordPolicy(), err
+	}
+	return p, nil
+}
+
+// SavePolicy validates and persists a policy.
+func (s *PolicyService) SavePolicy(ctx context.Context, p models.PasswordPolicy) error {
+	if err := s.validateConfig(p); err != nil {
+		return err
+	}
+	return s.etcd.PutJSON(ctx, models.ConfigKeyPasswordPolicy, p)
+}
+
+// Validate loads the current policy and checks pw against it.
+func (s *PolicyService) Validate(ctx context.Context, pw string, history []string) ([]Violation, error) {
+	p, err := s.LoadPolicy(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ValidatePassword(p, pw, history), nil
+}
+
+func (s *PolicyService) validateConfig(p models.PasswordPolicy) error {
+	switch {
+	case p.MinLength < 8:
+		return fmt.Errorf("%w: min_length must be >= 8", ErrInvalidPolicy)
+	case p.MaxLength > 72:
+		return fmt.Errorf("%w: max_length must be <= 72 (bcrypt limit)", ErrInvalidPolicy)
+	case p.MaxLength < p.MinLength:
+		return fmt.Errorf("%w: max_length must be >= min_length", ErrInvalidPolicy)
+	case p.HistoryDepth < 0 || p.ExpiryDays < 0 || p.LockoutThreshold < 0 || p.LockoutWindowMinutes < 0:
+		return fmt.Errorf("%w: numeric fields must be non-negative", ErrInvalidPolicy)
+	}
+	return nil
 }

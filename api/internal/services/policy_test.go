@@ -75,3 +75,21 @@ func TestValidatePasswordDisabledClasses(t *testing.T) {
 		t.Errorf("expected no violations when classes disabled, got %v", vs)
 	}
 }
+
+func TestSavePolicyRejectsInsane(t *testing.T) {
+	s := &PolicyService{} // etcd not needed; validation happens before any write
+	bad := []models.PasswordPolicy{
+		{MinLength: 4, MaxLength: 72},   // below floor 8
+		{MinLength: 12, MaxLength: 100}, // above bcrypt cap 72
+		{MinLength: 40, MaxLength: 20},  // max < min
+		{MinLength: 12, MaxLength: 72, HistoryDepth: -1},
+	}
+	for i, p := range bad {
+		if err := s.validateConfig(p); err == nil {
+			t.Errorf("case %d: expected error for insane policy %+v", i, p)
+		}
+	}
+	if err := s.validateConfig(models.DefaultPasswordPolicy()); err != nil {
+		t.Errorf("default policy should be valid, got %v", err)
+	}
+}
