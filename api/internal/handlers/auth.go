@@ -27,12 +27,13 @@ import (
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
-	teamService *services.TeamService
+	authService   *services.AuthService
+	teamService   *services.TeamService
+	policyService *services.PolicyService
 }
 
-func NewAuthHandler(authService *services.AuthService, teamService *services.TeamService) *AuthHandler {
-	return &AuthHandler{authService: authService, teamService: teamService}
+func NewAuthHandler(authService *services.AuthService, teamService *services.TeamService, policyService *services.PolicyService) *AuthHandler {
+	return &AuthHandler{authService: authService, teamService: teamService, policyService: policyService}
 }
 
 type LoginRequest struct {
@@ -162,6 +163,14 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
+	if violations, err := h.policyService.Validate(c.Request.Context(), req.Password, nil); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load password policy"})
+		return
+	} else if len(violations) > 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Password does not meet policy", "violations": violations})
+		return
+	}
+
 	// Hash password
 	hash, err := h.authService.HashPassword(req.Password)
 	if err != nil {
@@ -284,6 +293,14 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	// Verify old password
 	if !h.authService.CheckPassword(req.OldPassword, user.PasswordHash) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid old password"})
+		return
+	}
+
+	if violations, err := h.policyService.Validate(c.Request.Context(), req.NewPassword, nil); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load password policy"})
+		return
+	} else if len(violations) > 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Password does not meet policy", "violations": violations})
 		return
 	}
 

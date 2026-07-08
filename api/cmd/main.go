@@ -61,9 +61,10 @@ func main() {
 	ownershipService := services.NewOwnershipService(etcdClient)
 	labelService := services.NewLabelService(etcdClient)
 	overviewService := services.NewOverviewService(instanceService, ownershipService)
+	policyService := services.NewPolicyService(etcdClient)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(authService, teamService)
+	authHandler := handlers.NewAuthHandler(authService, teamService, policyService)
 	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService)
 	teamHandler := handlers.NewTeamHandler(teamService, ownershipService, authService)
 	overviewHandler := handlers.NewOverviewHandler(overviewService)
