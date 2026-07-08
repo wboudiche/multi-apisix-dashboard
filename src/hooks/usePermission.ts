@@ -28,7 +28,7 @@ const DEVELOPER_RESOURCES = new Set([
 ]);
 
 // Resources that require super_admin
-const SUPER_ADMIN_ONLY = new Set(['/users', '/instances', '/teams']);
+const SUPER_ADMIN_ONLY = new Set(['/users', '/instances', '/teams', '/settings']);
 
 export type Permissions = {
   role: Role | undefined;
