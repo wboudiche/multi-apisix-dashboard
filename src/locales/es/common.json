@@ -354,6 +354,15 @@
   },
   "noData": "Sin Datos",
   "or": "O",
+  "passwordRules": {
+    "title": "La contraseña debe:",
+    "min_length": "Tener al menos {{min}} caracteres",
+    "max_length": "Tener como máximo {{max}} caracteres",
+    "missing_uppercase": "Contener una letra mayúscula",
+    "missing_lowercase": "Contener una letra minúscula",
+    "missing_digit": "Contener un dígito",
+    "missing_symbol": "Contener un símbolo"
+  },
   "pluginConfigs": {
     "singular": "Configuración de Plugin"
   },
@@ -400,7 +409,22 @@
     "singular": "Servicio"
   },
   "settings": {
-    "title": "Configuraciones"
+    "title": "Configuraciones",
+    "passwordPolicy": "Política de contraseñas",
+    "minLength": "Longitud mínima",
+    "maxLength": "Longitud máxima",
+    "requireUppercase": "Requerir una letra mayúscula",
+    "requireLowercase": "Requerir una letra minúscula",
+    "requireDigit": "Requerir un dígito",
+    "requireSymbol": "Requerir un símbolo",
+    "historyDepth": "Contraseñas recordadas (sin reutilización)",
+    "expiryDays": "Expira después de (días, 0 = nunca)",
+    "lockoutThreshold": "Bloquear tras intentos fallidos (0 = desactivado)",
+    "lockoutWindowMinutes": "Duración del bloqueo (minutos)",
+    "save": "Guardar política",
+    "saved": "Política de contraseñas guardada",
+    "saveError": "Error al guardar la política",
+    "accessDenied": "Solo los Super Administradores pueden editar la configuración."
   },
   "sources": {
     "consumerGroups": "Grupos de Consumidores",
@@ -413,6 +437,7 @@
     "routes": "Rutas",
     "secrets": "Secretos",
     "services": "Servicios",
+    "settings": "Configuraciones",
     "ssls": "SSLs",
     "streamRoutes": "Rutas de Stream",
     "upstreams": "Upstreams"

@@ -354,6 +354,15 @@
   },
   "noData": "Keine Daten",
   "or": "ODER",
+  "passwordRules": {
+    "title": "Das Passwort muss:",
+    "min_length": "Mindestens {{min}} Zeichen lang sein",
+    "max_length": "Höchstens {{max}} Zeichen lang sein",
+    "missing_uppercase": "Einen Großbuchstaben enthalten",
+    "missing_lowercase": "Einen Kleinbuchstaben enthalten",
+    "missing_digit": "Eine Ziffer enthalten",
+    "missing_symbol": "Ein Sonderzeichen enthalten"
+  },
   "pluginConfigs": {
     "singular": "Plugin Konfiguration"
   },
@@ -400,7 +409,22 @@
     "singular": "Service"
   },
   "settings": {
-    "title": "Einstellungen"
+    "title": "Einstellungen",
+    "passwordPolicy": "Passwortrichtlinie",
+    "minLength": "Mindestlänge",
+    "maxLength": "Maximallänge",
+    "requireUppercase": "Einen Großbuchstaben erfordern",
+    "requireLowercase": "Einen Kleinbuchstaben erfordern",
+    "requireDigit": "Eine Ziffer erfordern",
+    "requireSymbol": "Ein Sonderzeichen erfordern",
+    "historyDepth": "Gespeicherte Passwörter (keine Wiederverwendung)",
+    "expiryDays": "Ablauf nach (Tagen, 0 = nie)",
+    "lockoutThreshold": "Sperren nach fehlgeschlagenen Versuchen (0 = aus)",
+    "lockoutWindowMinutes": "Sperrdauer (Minuten)",
+    "save": "Richtlinie speichern",
+    "saved": "Passwortrichtlinie gespeichert",
+    "saveError": "Richtlinie konnte nicht gespeichert werden",
+    "accessDenied": "Nur Super-Admins können Einstellungen bearbeiten."
   },
   "sources": {
     "consumerGroups": "Konsumenten-Gruppen",
@@ -413,6 +437,7 @@
     "routes": "Routen",
     "secrets": "Secrets",
     "services": "Services",
+    "settings": "Einstellungen",
     "ssls": "SSLs",
     "streamRoutes": "Stream Routen",
     "upstreams": "Upstreams"

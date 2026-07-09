@@ -354,6 +354,15 @@
   },
   "noData": "Veri Yok",
   "or": "VEYA",
+  "passwordRules": {
+    "title": "Şifre şu şartları sağlamalı:",
+    "min_length": "En az {{min}} karakter olmalı",
+    "max_length": "En fazla {{max}} karakter olmalı",
+    "missing_uppercase": "Bir büyük harf içermeli",
+    "missing_lowercase": "Bir küçük harf içermeli",
+    "missing_digit": "Bir rakam içermeli",
+    "missing_symbol": "Bir sembol içermeli"
+  },
   "pluginConfigs": {
     "singular": "Plugin Config"
   },
@@ -400,7 +409,22 @@
     "singular": "Service"
   },
   "settings": {
-    "title": "Ayarlar"
+    "title": "Ayarlar",
+    "passwordPolicy": "Şifre politikası",
+    "minLength": "Minimum uzunluk",
+    "maxLength": "Maksimum uzunluk",
+    "requireUppercase": "Bir büyük harf gerektir",
+    "requireLowercase": "Bir küçük harf gerektir",
+    "requireDigit": "Bir rakam gerektir",
+    "requireSymbol": "Bir sembol gerektir",
+    "historyDepth": "Hatırlanan şifreler (yeniden kullanım yok)",
+    "expiryDays": "Şu kadar sonra sona ersin (gün, 0 = asla)",
+    "lockoutThreshold": "Başarısız denemeden sonra kilitle (0 = kapalı)",
+    "lockoutWindowMinutes": "Kilitleme süresi (dakika)",
+    "save": "Politikayı kaydet",
+    "saved": "Şifre politikası kaydedildi",
+    "saveError": "Politika kaydedilemedi",
+    "accessDenied": "Ayarları yalnızca Süper Adminler düzenleyebilir."
   },
   "sources": {
     "consumerGroups": "Consumer Grupları",
@@ -413,6 +437,7 @@
     "routes": "Route'lar",
     "secrets": "Secret'lar",
     "services": "Service'ler",
+    "settings": "Ayarlar",
     "ssls": "SSL'ler",
     "streamRoutes": "Stream Route'lar",
     "upstreams": "Upstream'ler"

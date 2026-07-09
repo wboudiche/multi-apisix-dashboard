@@ -103,4 +103,9 @@ export const navRoutes: NavRoute[] = [
     label: 'protos',
     icon: 'api',
   },
+  {
+    to: '/settings',
+    label: 'settings',
+    icon: 'settings',
+  },
 ];

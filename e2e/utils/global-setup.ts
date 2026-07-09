@@ -103,17 +103,17 @@ export default async function globalSetup(): Promise<void> {
 
   const devUser = await ensureUser(token, {
     username: 'dev_user',
-    password: 'dev123',
+    password: 'Dev-User123!',
   });
 
   const frontendUser = await ensureUser(token, {
     username: 'frontend_dev',
-    password: 'front123',
+    password: 'Front-Dev123!',
   });
 
   const viewerUser = await ensureUser(token, {
     username: 'viewer_user',
-    password: 'view123',
+    password: 'View-User123!',
   });
 
   // ------------------------------------------------------------------
@@ -150,9 +150,9 @@ export default async function globalSetup(): Promise<void> {
     viewersTeamId: viewersTeam.id,
     users: {
       admin: { id: adminUser.id, username: adminUser.username, password: 'admin' },
-      dev: { id: devUser.id, username: devUser.username, password: 'dev123' },
-      frontend: { id: frontendUser.id, username: frontendUser.username, password: 'front123' },
-      viewer: { id: viewerUser.id, username: viewerUser.username, password: 'view123' },
+      dev: { id: devUser.id, username: devUser.username, password: 'Dev-User123!' },
+      frontend: { id: frontendUser.id, username: frontendUser.username, password: 'Front-Dev123!' },
+      viewer: { id: viewerUser.id, username: viewerUser.username, password: 'View-User123!' },
     },
   };
 

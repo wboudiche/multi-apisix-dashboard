@@ -40,6 +40,7 @@ import { type User } from '@/apis/auth';
 import { instanceApi, type UserInstanceRole } from '@/apis/instances';
 import { type Team,teamApi } from '@/apis/teams';
 import PageHeader from '@/components/page/PageHeader';
+import { PasswordRequirements } from '@/components/PasswordRequirements';
 import { currentUserAtom } from '@/stores/auth';
 import { instancesAtom } from '@/stores/instance';
 import IconPlus from '~icons/material-symbols/add';
@@ -456,6 +457,7 @@ const UsersPage = () => {
                   leftSection={<IconKey width="16" height="16" />}
                 />
               )}
+              {!editingUser && <PasswordRequirements password={formData.password} />}
               <Select
                 label="Global Role"
                 description="Super Admins have full access to all instances. Regular users need per-instance role assignments."
