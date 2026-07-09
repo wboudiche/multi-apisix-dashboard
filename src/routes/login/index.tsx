@@ -207,7 +207,7 @@ const Login = () => {
         {/* Footer */}
         <Center mt="lg">
           <Text size="sm" c="dimmed">
-            Default credentials: admin / admin
+            Licensed under the Apache License, Version 2.0
           </Text>
         </Center>
       </Container>
