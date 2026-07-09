@@ -24,6 +24,24 @@ import type { PasswordPolicy } from '@/apis/policy';
 
 const API = process.env.E2E_API_URL ?? 'http://127.0.0.1:8086';
 
+const TEST_USER = 'e2e-pwpolicy-user';
+
+// A deterministic complexity policy the create-user tests rely on, independent
+// of whatever the checklist test or other specs left behind: min 12 with every
+// character class required; history/expiry/lockout disabled (inert in phase 1).
+const KNOWN_POLICY: PasswordPolicy = {
+  min_length: 12,
+  max_length: 72,
+  require_uppercase: true,
+  require_lowercase: true,
+  require_digit: true,
+  require_symbol: true,
+  history_depth: 0,
+  expiry_days: 0,
+  lockout_threshold: 0,
+  lockout_window_minutes: 0,
+};
+
 async function getPolicy(token: string): Promise<PasswordPolicy> {
   const res = await fetch(`${API}/api/v1/settings/password-policy`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -42,17 +60,36 @@ async function setPolicy(token: string, policy: PasswordPolicy) {
   });
 }
 
+async function deleteUserByName(token: string, username: string) {
+  const res = await fetch(`${API}/api/v1/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const users = (await res.json()) as { id: string; username: string }[];
+  const match = users.find((u) => u.username === username);
+  if (match) {
+    await fetch(`${API}/api/v1/users/${match.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+}
+
 // The policy is a single global record (not per-instance/per-team), so this
 // spec restores whatever was in place before it ran to avoid bleeding a
 // stricter policy into other specs that create users concurrently.
 let originalPolicy: PasswordPolicy;
 
 test.beforeAll(async () => {
-  originalPolicy = await getPolicy(await adminToken());
+  const token = await adminToken();
+  originalPolicy = await getPolicy(token);
+  // Clean up any leftover test user from a previous interrupted run.
+  await deleteUserByName(token, TEST_USER);
 });
 
 test.afterAll(async () => {
-  await setPolicy(await adminToken(), originalPolicy);
+  const token = await adminToken();
+  await deleteUserByName(token, TEST_USER);
+  await setPolicy(token, originalPolicy);
 });
 
 test('raising the min length in Settings is reflected live in the create-user checklist', async ({
@@ -85,4 +122,57 @@ test('raising the min length in Settings is reflected live in the create-user ch
   await expect(minLengthRule).toHaveAttribute('data-met', 'true');
 
   await page.getByRole('button', { name: 'Cancel' }).click();
+});
+
+test('the create-user form rejects a policy-violating password and accepts a compliant one', async ({
+  page,
+}) => {
+  // Pin a known policy so this test is deterministic regardless of order.
+  await setPolicy(await adminToken(), KNOWN_POLICY);
+
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+  await page.getByRole('button', { name: 'Add User' }).click();
+  await expect(page.getByText('Add New User')).toBeVisible();
+
+  await page.getByLabel('Username').fill(TEST_USER);
+  await page.getByLabel('Email').fill('e2e-pwpolicy@example.com');
+
+  // Weak password (too short, missing classes) -> server rejects with 422,
+  // the form surfaces the policy error and does NOT create the user.
+  await page.getByLabel('Password').fill('weak');
+  await page.getByRole('button', { name: 'Create User' }).click();
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Password does not meet policy' })
+  ).toBeVisible();
+  // Modal is still open (creation was blocked).
+  await expect(page.getByText('Add New User')).toBeVisible();
+
+  // Compliant password -> user is created. Assert the durable outcome (modal
+  // closes, the row appears) rather than the transient success toast.
+  await page.getByLabel('Password').fill('Abcdef123!xyz');
+  await page.getByRole('button', { name: 'Create User' }).click();
+  await expect(page.getByText('Add New User')).toBeHidden();
+  // The username cell's accessible name also includes the email, so match the
+  // username as a substring rather than exactly.
+  await expect(page.getByRole('cell', { name: TEST_USER })).toBeVisible();
+});
+
+test('a saved policy persists across a Settings page reload', async ({ page }) => {
+  await uiGoto(page, '/settings');
+  await expect(
+    page.getByRole('heading', { name: 'Password policy' })
+  ).toBeVisible();
+
+  await page.getByLabel('Minimum length', { exact: true }).fill('15');
+  await page.getByRole('button', { name: 'Save policy' }).click();
+  await uiHasToastMsg(page, { hasText: 'Password policy saved' });
+
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Password policy' })
+  ).toBeVisible();
+  await expect(
+    page.getByLabel('Minimum length', { exact: true })
+  ).toHaveValue('15');
 });
