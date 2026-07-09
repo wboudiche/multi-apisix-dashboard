@@ -39,7 +39,10 @@ func ValidatePassword(policy models.PasswordPolicy, pw string, history []string)
 	if policy.MinLength > 0 && len([]rune(pw)) < policy.MinLength {
 		vs = append(vs, Violation{Code: "min_length", Params: map[string]any{"min": policy.MinLength}})
 	}
-	if policy.MaxLength > 0 && len([]rune(pw)) > policy.MaxLength {
+	// Max length is checked in BYTES, not runes: bcrypt only hashes the first 72
+	// bytes, so the cap must mirror that truncation. (MinLength stays rune-based
+	// above — it is about how many characters the user actually typed.)
+	if policy.MaxLength > 0 && len(pw) > policy.MaxLength {
 		vs = append(vs, Violation{Code: "max_length", Params: map[string]any{"max": policy.MaxLength}})
 	}
 

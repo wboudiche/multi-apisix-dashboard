@@ -18,6 +18,7 @@ import { Button, Container, Group, NumberInput, Paper, Stack, Switch, Text, Titl
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -41,7 +42,14 @@ const Settings = () => {
       queryClient.invalidateQueries({ queryKey: ['password-policy'] });
       notifications.show({ message: t('settings.saved'), color: 'green' });
     },
-    onError: () => notifications.show({ message: t('settings.saveError'), color: 'red' }),
+    onError: (error) => {
+      // Surface the server's specific reason (e.g. "min_length must be >= 8")
+      // instead of a generic failure message.
+      const serverMsg = axios.isAxiosError(error)
+        ? (error.response?.data as { error?: string } | undefined)?.error
+        : undefined;
+      notifications.show({ message: serverMsg ?? t('settings.saveError'), color: 'red' });
+    },
   });
 
   if (!isSuperAdmin) {
