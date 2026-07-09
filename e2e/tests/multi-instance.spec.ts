@@ -114,7 +114,7 @@ test.describe('User Management', () => {
   });
 
   test('non-admin cannot list users', async () => {
-    const devToken = await login('dev_user', 'dev123');
+    const devToken = await login('dev_user', 'Dev-User123!');
     const res = await fetch(`${API}/api/v1/users`, {
       headers: headers(devToken),
     });
@@ -122,7 +122,7 @@ test.describe('User Management', () => {
   });
 
   test('non-admin cannot create users', async () => {
-    const devToken = await login('dev_user', 'dev123');
+    const devToken = await login('dev_user', 'Dev-User123!');
     const res = await fetch(`${API}/api/v1/users`, {
       method: 'POST',
       headers: headers(devToken),
@@ -137,8 +137,8 @@ test.describe('RBAC - Role Based Access Control', () => {
   let viewerToken: string;
 
   test.beforeAll(async () => {
-    devToken = await login('dev_user', 'dev123');
-    viewerToken = await login('viewer_user', 'view123');
+    devToken = await login('dev_user', 'Dev-User123!');
+    viewerToken = await login('viewer_user', 'View-User123!');
   });
 
   test('developer can list routes', async () => {
@@ -187,7 +187,7 @@ test.describe('Multi-Instance', () => {
 
   test.beforeAll(async () => {
     adminToken = await login('admin', 'admin');
-    viewerToken = await login('viewer_user', 'view123');
+    viewerToken = await login('viewer_user', 'View-User123!');
   });
 
   test('admin sees all instances', async () => {
@@ -223,7 +223,7 @@ test.describe('Teams', () => {
 
   test.beforeAll(async () => {
     adminToken = await login('admin', 'admin');
-    devToken = await login('dev_user', 'dev123');
+    devToken = await login('dev_user', 'Dev-User123!');
   });
 
   test('list teams', async () => {
@@ -269,9 +269,9 @@ test.describe('Team Ownership', () => {
 
   test.beforeAll(async () => {
     adminToken = await login('admin', 'admin');
-    devToken = await login('dev_user', 'dev123');
-    frontToken = await login('frontend_dev', 'front123');
-    viewerToken = await login('viewer_user', 'view123');
+    devToken = await login('dev_user', 'Dev-User123!');
+    frontToken = await login('frontend_dev', 'Front-Dev123!');
+    viewerToken = await login('viewer_user', 'View-User123!');
   });
 
   test.afterAll(async () => {
