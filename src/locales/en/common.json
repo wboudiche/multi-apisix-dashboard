@@ -19,6 +19,22 @@
       "message": "Pick an APISIX instance from the selector in the header above to view this page."
     }
   },
+  "login": {
+    "badge": "Multi-instance management",
+    "failedTitle": "Login failed",
+    "invalidCredentials": "Invalid username or password.",
+    "license": "Licensed under the Apache License, Version 2.0",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign in",
+    "subtitle": "Sign in to your control plane.",
+    "successTitle": "Login successful",
+    "tagline": "Every gateway, one control plane.",
+    "taglineSub": "Routes, upstreams and access across all your APISIX instances — managed from a single console.",
+    "username": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "welcome": "Welcome, {{username}}!"
+  },
   "proxyError": {
     "title": "Cannot reach {{name}}",
     "message": "The dashboard couldn't connect to this gateway. The APISIX instance may be down, unreachable from the dashboard server, or the admin key may be wrong.",

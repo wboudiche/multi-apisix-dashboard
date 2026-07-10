@@ -19,6 +19,22 @@
       "message": "从顶部选择器中选择一个 APISIX 实例以查看此页面。"
     }
   },
+  "login": {
+    "badge": "多实例管理",
+    "failedTitle": "登录失败",
+    "invalidCredentials": "用户名或密码无效。",
+    "license": "基于 Apache License 2.0 许可发布",
+    "password": "密码",
+    "passwordPlaceholder": "请输入密码",
+    "signIn": "登录",
+    "subtitle": "登录您的控制平面。",
+    "successTitle": "登录成功",
+    "tagline": "所有网关，一个控制平面。",
+    "taglineSub": "跨所有 APISIX 实例管理路由、上游和访问权限 —— 尽在一个控制台。",
+    "username": "用户名",
+    "usernamePlaceholder": "请输入用户名",
+    "welcome": "欢迎，{{username}}！"
+  },
   "proxyError": {
     "title": "无法连接到 {{name}}",
     "message": "Dashboard 无法连接到该网关。APISIX 实例可能已关闭、无法从 Dashboard 服务器访问，或管理密钥错误。",

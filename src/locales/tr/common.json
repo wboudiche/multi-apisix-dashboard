@@ -19,6 +19,22 @@
       "message": "Bu sayfayı görüntülemek için üst kısımdaki seçiciden bir APISIX örneği seçin."
     }
   },
+  "login": {
+    "badge": "Çoklu örnek yönetimi",
+    "failedTitle": "Giriş başarısız",
+    "invalidCredentials": "Geçersiz kullanıcı adı veya parola.",
+    "license": "Apache Lisansı, Sürüm 2.0 kapsamında lisanslanmıştır",
+    "password": "Parola",
+    "passwordPlaceholder": "Parolanızı girin",
+    "signIn": "Giriş yap",
+    "subtitle": "Kontrol düzleminize giriş yapın.",
+    "successTitle": "Giriş başarılı",
+    "tagline": "Her gateway, tek kontrol düzlemi.",
+    "taglineSub": "Tüm APISIX örneklerinizdeki rotalar, upstream'ler ve erişim — tek bir konsoldan yönetilir.",
+    "username": "Kullanıcı adı",
+    "usernamePlaceholder": "Kullanıcı adınızı girin",
+    "welcome": "Hoş geldiniz, {{username}}!"
+  },
   "proxyError": {
     "title": "{{name}} erişilemiyor",
     "message": "Dashboard bu ağ geçidine bağlanamadı. APISIX örneği kapalı, dashboard sunucusundan erişilemiyor veya admin anahtarı yanlış olabilir.",

@@ -19,6 +19,22 @@
       "message": "Wähle oben im Kopfbereich eine APISIX-Instanz aus, um diese Seite anzuzeigen."
     }
   },
+  "login": {
+    "badge": "Multi-Instanz-Verwaltung",
+    "failedTitle": "Anmeldung fehlgeschlagen",
+    "invalidCredentials": "Ungültiger Benutzername oder ungültiges Passwort.",
+    "license": "Lizenziert unter der Apache License, Version 2.0",
+    "password": "Passwort",
+    "passwordPlaceholder": "Passwort eingeben",
+    "signIn": "Anmelden",
+    "subtitle": "Melden Sie sich bei Ihrer Control Plane an.",
+    "successTitle": "Anmeldung erfolgreich",
+    "tagline": "Jedes Gateway, eine Control Plane.",
+    "taglineSub": "Routen, Upstreams und Zugriffe über alle Ihre APISIX-Instanzen — verwaltet über eine einzige Konsole.",
+    "username": "Benutzername",
+    "usernamePlaceholder": "Benutzernamen eingeben",
+    "welcome": "Willkommen, {{username}}!"
+  },
   "proxyError": {
     "title": "Verbindung zu {{name}} fehlgeschlagen",
     "message": "Das Dashboard konnte das Gateway nicht erreichen. Die APISIX-Instanz ist möglicherweise offline, vom Dashboard-Server nicht erreichbar, oder der Admin-Schlüssel ist falsch.",

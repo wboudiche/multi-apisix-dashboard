@@ -19,6 +19,22 @@
       "message": "Elige una instancia de APISIX en el selector de la cabecera para ver esta página."
     }
   },
+  "login": {
+    "badge": "Gestión multiinstancia",
+    "failedTitle": "Error al iniciar sesión",
+    "invalidCredentials": "Nombre de usuario o contraseña no válidos.",
+    "license": "Distribuido bajo la Licencia Apache, Versión 2.0",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Introduce tu contraseña",
+    "signIn": "Iniciar sesión",
+    "subtitle": "Inicia sesión en tu plano de control.",
+    "successTitle": "Inicio de sesión correcto",
+    "tagline": "Cada gateway, un solo plano de control.",
+    "taglineSub": "Rutas, upstreams y accesos de todas tus instancias de APISIX — gestionados desde una única consola.",
+    "username": "Nombre de usuario",
+    "usernamePlaceholder": "Introduce tu nombre de usuario",
+    "welcome": "¡Bienvenido, {{username}}!"
+  },
   "proxyError": {
     "title": "No se puede contactar con {{name}}",
     "message": "El panel no pudo conectarse a esta pasarela. La instancia de APISIX puede estar caída, inaccesible desde el servidor del panel, o la clave de administrador puede ser incorrecta.",
