@@ -36,26 +36,34 @@ async function deleteUserByName(token: string, username: string) {
   }
 }
 
-// Each test provisions its own uniquely-named account (the two tests may run
-// in parallel workers, so they must not share state). The admin creates it
-// without opting out of the forced change: must_change_password defaults on.
-async function createMustChangeUser(username: string) {
+// Each test provisions its own uniquely-named account (the tests may run in
+// parallel workers, so they must not share state). Unless opted out, the
+// admin-created account defaults to must_change_password on.
+async function createUser(
+  username: string,
+  opts: { mustChange?: boolean } = {}
+): Promise<{ id: string }> {
   const token = await adminToken();
   await deleteUserByName(token, username);
+  const body: Record<string, unknown> = { username, password: TEMP_PASSWORD };
+  if (opts.mustChange === false) {
+    body.must_change_password = false;
+  }
   const res = await fetch(`${API}/api/v1/users`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({ username, password: TEMP_PASSWORD }),
+    body: JSON.stringify(body),
   });
   expect(res.status).toBe(201);
+  return (await res.json()) as { id: string };
 }
 
 test('the API gates a must-change user until the password is changed', async () => {
   const TEST_USER = 'e2e-forcechange-api';
-  await createMustChangeUser(TEST_USER);
+  await createUser(TEST_USER);
 
   const loginRes = await fetch(`${API}/api/v1/login`, {
     method: 'POST',
@@ -114,7 +122,7 @@ test('the UI walks a must-change user through the dedicated screen', async ({
   page,
 }) => {
   const TEST_USER = 'e2e-forcechange-ui';
-  await createMustChangeUser(TEST_USER);
+  await createUser(TEST_USER);
 
   const base = process.env.E2E_TARGET_URL ?? 'http://localhost:9180/ui/';
   await page.goto(`${base.replace(/\/$/, '')}/login`);
@@ -146,6 +154,73 @@ test('the UI walks a must-change user through the dedicated screen', async ({
 
   // Through to the app.
   await expect(page).toHaveURL(/\/(overview)?$/);
+
+  await deleteUserByName(await adminToken(), TEST_USER);
+});
+
+test('an admin password reset re-arms the forced change', async () => {
+  const TEST_USER = 'e2e-forcechange-reset';
+  const RESET_PASSWORD = 'Reset-By!Admin#3';
+  const { id } = await createUser(TEST_USER, { mustChange: false });
+  const admin = await adminToken();
+
+  // Fresh account without the flag uses the API freely.
+  const login = await fetch(`${API}/api/v1/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: TEST_USER, password: TEMP_PASSWORD }),
+  });
+  expect(
+    ((await login.json()) as { must_change_password: boolean })
+      .must_change_password
+  ).toBe(false);
+
+  // The reset endpoint enforces the password policy…
+  const weak = await fetch(`${API}/api/v1/users/${id}/password`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${admin}`,
+    },
+    body: JSON.stringify({ password: 'weak' }),
+  });
+  expect(weak.status).toBe(422);
+
+  // …and a compliant temporary password lands with the flag re-armed.
+  const reset = await fetch(`${API}/api/v1/users/${id}/password`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${admin}`,
+    },
+    body: JSON.stringify({ password: RESET_PASSWORD }),
+  });
+  expect(reset.status).toBe(200);
+
+  // The old password is dead, the temporary one carries the forced change.
+  const oldLogin = await fetch(`${API}/api/v1/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: TEST_USER, password: TEMP_PASSWORD }),
+  });
+  expect(oldLogin.status).toBe(401);
+
+  const newLogin = await fetch(`${API}/api/v1/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: TEST_USER, password: RESET_PASSWORD }),
+  });
+  expect(newLogin.status).toBe(200);
+  const fresh = (await newLogin.json()) as {
+    access_token: string;
+    must_change_password: boolean;
+  };
+  expect(fresh.must_change_password).toBe(true);
+
+  const gated = await fetch(`${API}/api/v1/overview`, {
+    headers: { Authorization: `Bearer ${fresh.access_token}` },
+  });
+  expect(gated.status).toBe(403);
 
   await deleteUserByName(await adminToken(), TEST_USER);
 });

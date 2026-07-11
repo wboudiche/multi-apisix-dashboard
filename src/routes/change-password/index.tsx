@@ -48,6 +48,10 @@ const ChangePassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // The screen serves two flows: the forced first-login change (locked in by
+  // the router guard) and a voluntary change from the account menu.
+  const isForced = currentUser?.must_change_password === true;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -97,7 +101,9 @@ const ChangePassword = () => {
             {t('changePassword.title')}
           </Title>
           <Text c="dimmed" size="sm" mt={8}>
-            {t('changePassword.subtitle')}
+            {isForced
+              ? t('changePassword.subtitle')
+              : t('changePassword.subtitleVoluntary')}
           </Text>
         </Box>
         <Paper withBorder p="xl" radius="lg">
@@ -138,9 +144,19 @@ const ChangePassword = () => {
               <Button type="submit" fullWidth loading={loading}>
                 {t('changePassword.submit')}
               </Button>
-              <Button variant="subtle" color="gray" onClick={handleSignOut}>
-                {t('changePassword.signOut')}
-              </Button>
+              {isForced ? (
+                <Button variant="subtle" color="gray" onClick={handleSignOut}>
+                  {t('changePassword.signOut')}
+                </Button>
+              ) : (
+                <Button
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => navigate({ to: '/' })}
+                >
+                  {t('form.btn.back')}
+                </Button>
+              )}
             </Stack>
           </form>
         </Paper>

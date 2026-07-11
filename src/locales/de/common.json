@@ -18,6 +18,7 @@
     "signOut": "Abmelden",
     "submit": "Passwort aktualisieren",
     "subtitle": "Ihr Administrator verlangt, dass Sie ein neues Passwort festlegen, bevor Sie fortfahren.",
+    "subtitleVoluntary": "Legen Sie ein neues Passwort für Ihr Konto fest.",
     "success": "Passwort aktualisiert",
     "successMessage": "Ihr Passwort wurde geändert.",
     "title": "Neues Passwort festlegen"
@@ -26,6 +27,12 @@
     "loading": "Dashboard wird geladen…",
     "errorTitle": "Dashboard-Fehler",
     "errorMessage": "Das Dashboard konnte nicht geladen werden. Bitte erneut versuchen."
+  },
+  "header": {
+    "account": "Konto",
+    "changePassword": "Passwort ändern",
+    "logout": "Abmelden",
+    "role": "Rolle: {{role}}"
   },
   "instanceGuard": {
     "noInstances": {
@@ -504,8 +511,15 @@
     "noUsersHint": "Erstellen Sie Ihr erstes Teammitglied für die Zusammenarbeit.",
     "pageTitle": "Benutzerverwaltung",
     "permissions": "Berechtigungen",
+    "resetFailed": "Passwort konnte nicht zurückgesetzt werden",
+    "resetHint": "Legen Sie ein temporäres Passwort für {{username}} fest. Bei der nächsten Anmeldung muss ein neues Passwort gewählt werden.",
+    "resetPassword": "Passwort zurücksetzen",
+    "resetSuccess": "Passwort zurückgesetzt",
+    "resetSuccessMessage": "Für {{username}} wurde ein temporäres Passwort festgelegt.",
     "tabAccess": "Instanzzugriff",
     "tabBasic": "Basisdaten",
+    "tempPassword": "Temporäres Passwort",
+    "tempPasswordPlaceholder": "Temporäres Passwort eingeben",
     "thActions": "Aktionen",
     "thCreated": "Erstellt",
     "thInstances": "Instanzen",

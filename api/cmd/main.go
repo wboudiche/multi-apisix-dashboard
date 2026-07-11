@@ -173,6 +173,7 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 				admin.POST("/users", authHandler.CreateUser)
 				admin.GET("/users", authHandler.ListUsers)
 				admin.PUT("/users/:id", authHandler.UpdateUser)
+				admin.PUT("/users/:id/password", authHandler.ResetPassword)
 				admin.DELETE("/users/:id", authHandler.DeleteUser)
 
 				// User-Instance role management

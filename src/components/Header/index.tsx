@@ -168,11 +168,12 @@ export const Header: FC<HeaderProps> = (props) => {
           const teamData = await teamApi.list();
           setTeams(teamData);
         }
-      } catch (error) {
-        console.error('Failed to load header data:', error);
+      } catch {
+        // Silently fail — the shell still renders; pages surface their own errors
       }
     };
     loadHeaderData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, currentInstanceId]);
 
   // Poll instance health every 30 seconds
@@ -296,16 +297,19 @@ export const Header: FC<HeaderProps> = (props) => {
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>Account</Menu.Label>
+              <Menu.Label>{t('header.account')}</Menu.Label>
               <Menu.Item>
                 {currentUser?.email}
               </Menu.Item>
               <Menu.Item>
-                Role: {currentUser?.role?.replace('_', ' ')}
+                {t('header.role', { role: currentUser?.role?.replace('_', ' ') })}
               </Menu.Item>
               <Menu.Divider />
+              <Menu.Item onClick={() => navigate({ to: '/change-password' })}>
+                {t('header.changePassword')}
+              </Menu.Item>
               <Menu.Item color="red" onClick={handleLogout}>
-                Logout
+                {t('header.logout')}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>

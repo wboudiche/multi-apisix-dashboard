@@ -18,6 +18,7 @@
     "signOut": "Cerrar sesión",
     "submit": "Actualizar contraseña",
     "subtitle": "Tu administrador requiere que establezcas una nueva contraseña antes de continuar.",
+    "subtitleVoluntary": "Establece una nueva contraseña para tu cuenta.",
     "success": "Contraseña actualizada",
     "successMessage": "Tu contraseña ha sido cambiada.",
     "title": "Elige una nueva contraseña"
@@ -26,6 +27,12 @@
     "loading": "Cargando panel…",
     "errorTitle": "Error del panel",
     "errorMessage": "No se pudo cargar el panel. Inténtalo de nuevo."
+  },
+  "header": {
+    "account": "Cuenta",
+    "changePassword": "Cambiar contraseña",
+    "logout": "Cerrar sesión",
+    "role": "Rol: {{role}}"
   },
   "instanceGuard": {
     "noInstances": {
@@ -504,8 +511,15 @@
     "noUsersHint": "Crea tu primer miembro del equipo para colaborar.",
     "pageTitle": "Gestión de usuarios",
     "permissions": "Permisos",
+    "resetFailed": "No se pudo restablecer la contraseña",
+    "resetHint": "Establece una contraseña temporal para {{username}}. Deberá elegir una nueva en su próximo inicio de sesión.",
+    "resetPassword": "Restablecer contraseña",
+    "resetSuccess": "Contraseña restablecida",
+    "resetSuccessMessage": "Se ha establecido una contraseña temporal para {{username}}.",
     "tabAccess": "Acceso a instancias",
     "tabBasic": "Información básica",
+    "tempPassword": "Contraseña temporal",
+    "tempPasswordPlaceholder": "Introduce una contraseña temporal",
     "thActions": "Acciones",
     "thCreated": "Creado",
     "thInstances": "Instancias",

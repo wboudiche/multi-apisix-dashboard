@@ -23,6 +23,7 @@ import {
   Group,
   Modal,
   Paper,
+  PasswordInput,
   Select,
   Stack,
   Table,
@@ -69,6 +70,9 @@ const UsersPage = () => {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('basic');
   
   const [formData, setFormData] = useState<CreateUserRequest>({
@@ -207,6 +211,53 @@ const UsersPage = () => {
         message: editingUser ? 'Failed to update permissions' : 'Failed to create user',
         color: 'red',
       });
+    }
+  };
+
+  const openResetModal = (user: User) => {
+    setResetUser(user);
+    setResetPassword('');
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    setResetLoading(true);
+    try {
+      const token = localStorage.getItem('auth:access_token');
+      const response = await fetch(`/api/v1/users/${resetUser.id}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: resetPassword }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        notifications.show({
+          title: t('users.resetFailed'),
+          message: error.error || t('users.resetFailed'),
+          color: 'red',
+        });
+        return;
+      }
+
+      notifications.show({
+        title: t('users.resetSuccess'),
+        message: t('users.resetSuccessMessage', { username: resetUser.username }),
+        color: 'green',
+      });
+      setResetUser(null);
+      setResetPassword('');
+    } catch {
+      notifications.show({
+        title: t('users.resetFailed'),
+        message: t('users.resetFailed'),
+        color: 'red',
+      });
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -400,6 +451,11 @@ const UsersPage = () => {
                       {t('users.permissions')}
                     </Button>
                     {user.id !== currentUser?.id && (
+                      <Button size="xs" variant="light" color="orange" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openResetModal(user)}>
+                        {t('users.resetPassword')}
+                      </Button>
+                    )}
+                    {user.id !== currentUser?.id && (
                       <Button size="xs" variant="filled" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(user.id)}>
                         {t('form.btn.delete')}
                       </Button>
@@ -561,6 +617,38 @@ const UsersPage = () => {
           <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>{t('form.btn.cancel')}</Button>
           <Button onClick={handleSubmit}>{editingUser ? 'Save Changes' : 'Create User'}</Button>
         </Group>
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        opened={!!resetUser}
+        onClose={() => setResetUser(null)}
+        title={t('users.resetPassword')}
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            {t('users.resetHint', { username: resetUser?.username ?? '' })}
+          </Text>
+          <PasswordInput
+            label={t('users.tempPassword')}
+            placeholder={t('users.tempPasswordPlaceholder')}
+            required
+            data-autofocus
+            value={resetPassword}
+            onChange={(e) => setResetPassword(e.target.value)}
+            leftSection={<IconKey width="16" height="16" />}
+          />
+          <PasswordRequirements password={resetPassword} />
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={() => setResetUser(null)}>
+              {t('form.btn.cancel')}
+            </Button>
+            <Button color="orange" loading={resetLoading} onClick={handleResetPassword}>
+              {t('users.resetPassword')}
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </>
   );

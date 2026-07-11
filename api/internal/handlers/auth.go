@@ -71,6 +71,10 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required"`
 }
 
+type ResetPasswordRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
 // Login handles user login
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
@@ -336,4 +340,50 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+}
+
+// ResetPassword lets a super_admin set a temporary password on any account.
+// The temporary password must satisfy the policy, and the forced-change flag
+// is re-armed so the user has to pick their own password at next login.
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.authService.GetUser(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if violations, err := h.policyService.Validate(c.Request.Context(), req.Password, nil); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load password policy"})
+		return
+	} else if len(violations) > 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Password does not meet policy", "violations": violations})
+		return
+	}
+
+	hash, err := h.authService.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	user.PasswordHash = hash
+	user.MustChangePassword = true
+	if err := h.authService.UpdateUser(c.Request.Context(), user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
 }

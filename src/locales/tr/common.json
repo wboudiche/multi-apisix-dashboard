@@ -18,6 +18,7 @@
     "signOut": "Oturumu kapat",
     "submit": "Parolayı güncelle",
     "subtitle": "Yöneticiniz devam etmeden önce yeni bir parola belirlemenizi istiyor.",
+    "subtitleVoluntary": "Hesabınız için yeni bir parola belirleyin.",
     "success": "Parola güncellendi",
     "successMessage": "Parolanız değiştirildi.",
     "title": "Yeni bir parola seçin"
@@ -26,6 +27,12 @@
     "loading": "Dashboard yükleniyor…",
     "errorTitle": "Dashboard Hatası",
     "errorMessage": "Dashboard yüklenemedi. Lütfen tekrar deneyin."
+  },
+  "header": {
+    "account": "Hesap",
+    "changePassword": "Parolayı değiştir",
+    "logout": "Oturumu kapat",
+    "role": "Rol: {{role}}"
   },
   "instanceGuard": {
     "noInstances": {
@@ -504,8 +511,15 @@
     "noUsersHint": "İş birliği için ilk takım üyenizi oluşturun.",
     "pageTitle": "Kullanıcı yönetimi",
     "permissions": "İzinler",
+    "resetFailed": "Parola sıfırlanamadı",
+    "resetHint": "{{username}} için geçici bir parola belirleyin. Bir sonraki oturum açışında yeni bir parola seçmesi gerekecek.",
+    "resetPassword": "Parolayı sıfırla",
+    "resetSuccess": "Parola sıfırlandı",
+    "resetSuccessMessage": "{{username}} için geçici bir parola belirlendi.",
     "tabAccess": "Örnek erişimi",
     "tabBasic": "Temel bilgiler",
+    "tempPassword": "Geçici parola",
+    "tempPasswordPlaceholder": "Geçici bir parola girin",
     "thActions": "İşlemler",
     "thCreated": "Oluşturulma",
     "thInstances": "Örnekler",

@@ -18,6 +18,7 @@
     "signOut": "Sign out",
     "submit": "Update password",
     "subtitle": "Your administrator requires you to set a new password before continuing.",
+    "subtitleVoluntary": "Set a new password for your account.",
     "success": "Password updated",
     "successMessage": "Your password has been changed.",
     "title": "Choose a new password"
@@ -26,6 +27,12 @@
     "loading": "Loading dashboard…",
     "errorTitle": "Dashboard Error",
     "errorMessage": "Failed to load the dashboard. Please try again."
+  },
+  "header": {
+    "account": "Account",
+    "changePassword": "Change password",
+    "logout": "Logout",
+    "role": "Role: {{role}}"
   },
   "instanceGuard": {
     "noInstances": {
@@ -741,8 +748,15 @@
     "noUsersHint": "Create your first team member to collaborate.",
     "pageTitle": "User Management",
     "permissions": "Permissions",
+    "resetFailed": "Failed to reset password",
+    "resetHint": "Set a temporary password for {{username}}. They will be required to choose a new one at their next sign-in.",
+    "resetPassword": "Reset password",
+    "resetSuccess": "Password reset",
+    "resetSuccessMessage": "A temporary password is set for {{username}}.",
     "tabAccess": "Instance Access",
     "tabBasic": "Basic Info",
+    "tempPassword": "Temporary password",
+    "tempPasswordPlaceholder": "Enter a temporary password",
     "thActions": "Actions",
     "thCreated": "Created",
     "thInstances": "Instances",
