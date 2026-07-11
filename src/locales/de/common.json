@@ -3,10 +3,36 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "changePassword": {
+    "confirm": "Neues Passwort bestätigen",
+    "confirmPlaceholder": "Neues Passwort erneut eingeben",
+    "current": "Aktuelles Passwort",
+    "currentPlaceholder": "Aktuelles Passwort eingeben",
+    "failed": "Passwort konnte nicht geändert werden",
+    "invalidOld": "Das aktuelle Passwort ist falsch.",
+    "mismatch": "Die Passwörter stimmen nicht überein.",
+    "new": "Neues Passwort",
+    "newPlaceholder": "Neues Passwort eingeben",
+    "policyNotMet": "Das neue Passwort erfüllt die Passwort-Richtlinie nicht.",
+    "requireOnFirstLogin": "Passwortänderung bei der ersten Anmeldung verlangen",
+    "signOut": "Abmelden",
+    "submit": "Passwort aktualisieren",
+    "subtitle": "Ihr Administrator verlangt, dass Sie ein neues Passwort festlegen, bevor Sie fortfahren.",
+    "subtitleVoluntary": "Legen Sie ein neues Passwort für Ihr Konto fest.",
+    "success": "Passwort aktualisiert",
+    "successMessage": "Ihr Passwort wurde geändert.",
+    "title": "Neues Passwort festlegen"
+  },
   "dashboard": {
     "loading": "Dashboard wird geladen…",
     "errorTitle": "Dashboard-Fehler",
     "errorMessage": "Das Dashboard konnte nicht geladen werden. Bitte erneut versuchen."
+  },
+  "header": {
+    "account": "Konto",
+    "changePassword": "Passwort ändern",
+    "logout": "Abmelden",
+    "role": "Rolle: {{role}}"
   },
   "instanceGuard": {
     "noInstances": {
@@ -18,6 +44,37 @@
       "title": "Keine Instanz ausgewählt",
       "message": "Wähle oben im Kopfbereich eine APISIX-Instanz aus, um diese Seite anzuzeigen."
     }
+  },
+  "login": {
+    "adminNote": "Konten werden von Ihrem Administrator angelegt.",
+    "brandKicker": "Multi-Instanz-Dashboard",
+    "brandName": "APISIX",
+    "brandPill": "open source · Apache-2.0",
+    "builtOn": "Basiert auf Apache APISIX®",
+    "capsLock": "Feststelltaste ist aktiviert",
+    "failedTitle": "Anmeldung fehlgeschlagen",
+    "featInstancesDesc": "Staging- und Produktions-Gateways in einer Konsole.",
+    "featInstancesTitle": "Multi-Instanz-Steuerung",
+    "featRolesDesc": "<chip>admin</chip> auf Staging, <chip>viewer</chip> auf Prod.",
+    "featRolesTitle": "Rollen pro Instanz",
+    "featTeamsDesc": "Teameigene Routen, Upstreams und begrenzter Zugriff.",
+    "featTeamsTitle": "Team-Eigentum",
+    "forgot": "Passwort vergessen?",
+    "forgotHint": "Bitten Sie Ihren Administrator um ein Zurücksetzen — Sie erhalten ein temporäres Passwort, das Sie bei der nächsten Anmeldung ändern.",
+    "hidePassword": "Passwort verbergen",
+    "invalidCredentials": "Ungültiger Benutzername oder ungültiges Passwort.",
+    "license": "Lizenziert unter der Apache License, Version 2.0",
+    "password": "Passwort",
+    "passwordPlaceholder": "Passwort eingeben",
+    "showPassword": "Passwort anzeigen",
+    "signIn": "Anmelden",
+    "successTitle": "Anmeldung erfolgreich",
+    "tagline": "Jedes Gateway, eine Control Plane.",
+    "taglineSub": "Routen, Upstreams und Zugriffe über alle Ihre APISIX-Instanzen — verwaltet über eine einzige Konsole.",
+    "username": "Benutzername",
+    "usernamePlaceholder": "Benutzernamen eingeben",
+    "welcome": "Willkommen, {{username}}!",
+    "welcomeBack": "Willkommen zurück"
   },
   "proxyError": {
     "title": "Verbindung zu {{name}} fehlgeschlagen",
@@ -455,5 +512,34 @@
   },
   "upstreams": {
     "singular": "Upstream"
+  },
+  "users": {
+    "accessDenied": "Zugriff verweigert",
+    "accessDeniedMessage": "Nur Super-Admins können Benutzer und RBAC-Rollen verwalten.",
+    "addUser": "Benutzer hinzufügen",
+    "allInstances": "Alle Instanzen",
+    "allTeams": "Alle Teams",
+    "assignHint": "Weisen Sie diesen Benutzer APISIX-Instanzen mit einer bestimmten Rolle und einem Team zu.",
+    "assigned": "Zugewiesen",
+    "noInstances": "Keine Instanzen zum Zuweisen verfügbar.",
+    "noUsers": "Keine Benutzer gefunden",
+    "noUsersHint": "Erstellen Sie Ihr erstes Teammitglied für die Zusammenarbeit.",
+    "pageTitle": "Benutzerverwaltung",
+    "permissions": "Berechtigungen",
+    "resetFailed": "Passwort konnte nicht zurückgesetzt werden",
+    "resetHint": "Legen Sie ein temporäres Passwort für {{username}} fest. Bei der nächsten Anmeldung muss ein neues Passwort gewählt werden.",
+    "resetPassword": "Passwort zurücksetzen",
+    "resetSuccess": "Passwort zurückgesetzt",
+    "resetSuccessMessage": "Für {{username}} wurde ein temporäres Passwort festgelegt.",
+    "tabAccess": "Instanzzugriff",
+    "tabBasic": "Basisdaten",
+    "tempPassword": "Temporäres Passwort",
+    "tempPasswordPlaceholder": "Temporäres Passwort eingeben",
+    "thActions": "Aktionen",
+    "thCreated": "Erstellt",
+    "thInstances": "Instanzen",
+    "thRole": "Rolle",
+    "thTeams": "Teams",
+    "thUser": "Benutzer"
   }
 }

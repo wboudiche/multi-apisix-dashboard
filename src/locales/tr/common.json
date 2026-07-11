@@ -3,10 +3,36 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "changePassword": {
+    "confirm": "Yeni parolayı onayla",
+    "confirmPlaceholder": "Yeni parolanızı tekrar girin",
+    "current": "Mevcut parola",
+    "currentPlaceholder": "Mevcut parolanızı girin",
+    "failed": "Parola değiştirilemedi",
+    "invalidOld": "Mevcut parola yanlış.",
+    "mismatch": "Parolalar eşleşmiyor.",
+    "new": "Yeni parola",
+    "newPlaceholder": "Yeni parolanızı girin",
+    "policyNotMet": "Yeni parola, parola politikasını karşılamıyor.",
+    "requireOnFirstLogin": "İlk oturum açmada parola değişikliği iste",
+    "signOut": "Oturumu kapat",
+    "submit": "Parolayı güncelle",
+    "subtitle": "Yöneticiniz devam etmeden önce yeni bir parola belirlemenizi istiyor.",
+    "subtitleVoluntary": "Hesabınız için yeni bir parola belirleyin.",
+    "success": "Parola güncellendi",
+    "successMessage": "Parolanız değiştirildi.",
+    "title": "Yeni bir parola seçin"
+  },
   "dashboard": {
     "loading": "Dashboard yükleniyor…",
     "errorTitle": "Dashboard Hatası",
     "errorMessage": "Dashboard yüklenemedi. Lütfen tekrar deneyin."
+  },
+  "header": {
+    "account": "Hesap",
+    "changePassword": "Parolayı değiştir",
+    "logout": "Oturumu kapat",
+    "role": "Rol: {{role}}"
   },
   "instanceGuard": {
     "noInstances": {
@@ -18,6 +44,37 @@
       "title": "Örnek seçilmedi",
       "message": "Bu sayfayı görüntülemek için üst kısımdaki seçiciden bir APISIX örneği seçin."
     }
+  },
+  "login": {
+    "adminNote": "Hesaplar yöneticiniz tarafından oluşturulur.",
+    "brandKicker": "Çoklu örnek panosu",
+    "brandName": "APISIX",
+    "brandPill": "open source · Apache-2.0",
+    "builtOn": "Apache APISIX® üzerine kuruludur",
+    "capsLock": "Caps Lock açık",
+    "failedTitle": "Giriş başarısız",
+    "featInstancesDesc": "Staging ve üretim gateway'leri tek konsolda.",
+    "featInstancesTitle": "Çoklu örnek kontrolü",
+    "featRolesDesc": "Staging'de <chip>admin</chip>, üretimde <chip>viewer</chip> olun.",
+    "featRolesTitle": "Örnek başına roller",
+    "featTeamsDesc": "Takıma ait rotalar, upstream'ler ve kapsamlı erişim.",
+    "featTeamsTitle": "Takım sahipliği",
+    "forgot": "Parolanızı mı unuttunuz?",
+    "forgotHint": "Yöneticinizden sıfırlamasını isteyin — bir sonraki oturum açışınızda değiştireceğiniz geçici bir parola alacaksınız.",
+    "hidePassword": "Parolayı gizle",
+    "invalidCredentials": "Geçersiz kullanıcı adı veya parola.",
+    "license": "Apache Lisansı, Sürüm 2.0 kapsamında lisanslanmıştır",
+    "password": "Parola",
+    "passwordPlaceholder": "Parolanızı girin",
+    "showPassword": "Parolayı göster",
+    "signIn": "Giriş yap",
+    "successTitle": "Giriş başarılı",
+    "tagline": "Her gateway, tek kontrol düzlemi.",
+    "taglineSub": "Tüm APISIX örneklerinizdeki rotalar, upstream'ler ve erişim — tek bir konsoldan yönetilir.",
+    "username": "Kullanıcı adı",
+    "usernamePlaceholder": "Kullanıcı adınızı girin",
+    "welcome": "Hoş geldiniz, {{username}}!",
+    "welcomeBack": "Tekrar hoş geldiniz"
   },
   "proxyError": {
     "title": "{{name}} erişilemiyor",
@@ -455,5 +512,34 @@
   },
   "upstreams": {
     "singular": "Upstream"
+  },
+  "users": {
+    "accessDenied": "Erişim reddedildi",
+    "accessDeniedMessage": "Yalnızca süper yöneticiler kullanıcıları ve RBAC rollerini yönetebilir.",
+    "addUser": "Kullanıcı ekle",
+    "allInstances": "Tüm örnekler",
+    "allTeams": "Tüm takımlar",
+    "assignHint": "Bu kullanıcıyı belirli bir rol ve takımla APISIX örneklerine atayın.",
+    "assigned": "Atandı",
+    "noInstances": "Atanacak örnek yok.",
+    "noUsers": "Kullanıcı bulunamadı",
+    "noUsersHint": "İş birliği için ilk takım üyenizi oluşturun.",
+    "pageTitle": "Kullanıcı yönetimi",
+    "permissions": "İzinler",
+    "resetFailed": "Parola sıfırlanamadı",
+    "resetHint": "{{username}} için geçici bir parola belirleyin. Bir sonraki oturum açışında yeni bir parola seçmesi gerekecek.",
+    "resetPassword": "Parolayı sıfırla",
+    "resetSuccess": "Parola sıfırlandı",
+    "resetSuccessMessage": "{{username}} için geçici bir parola belirlendi.",
+    "tabAccess": "Örnek erişimi",
+    "tabBasic": "Temel bilgiler",
+    "tempPassword": "Geçici parola",
+    "tempPasswordPlaceholder": "Geçici bir parola girin",
+    "thActions": "İşlemler",
+    "thCreated": "Oluşturulma",
+    "thInstances": "Örnekler",
+    "thRole": "Rol",
+    "thTeams": "Takımlar",
+    "thUser": "Kullanıcı"
   }
 }

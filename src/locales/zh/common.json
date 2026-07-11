@@ -3,10 +3,36 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "changePassword": {
+    "confirm": "确认新密码",
+    "confirmPlaceholder": "请再次输入新密码",
+    "current": "当前密码",
+    "currentPlaceholder": "请输入当前密码",
+    "failed": "修改密码失败",
+    "invalidOld": "当前密码不正确。",
+    "mismatch": "两次输入的密码不一致。",
+    "new": "新密码",
+    "newPlaceholder": "请输入新密码",
+    "policyNotMet": "新密码不符合密码策略。",
+    "requireOnFirstLogin": "要求首次登录时修改密码",
+    "signOut": "退出登录",
+    "submit": "更新密码",
+    "subtitle": "管理员要求您先设置新密码才能继续。",
+    "subtitleVoluntary": "为您的账户设置新密码。",
+    "success": "密码已更新",
+    "successMessage": "您的密码已修改。",
+    "title": "设置新密码"
+  },
   "dashboard": {
     "loading": "正在加载 Dashboard…",
     "errorTitle": "Dashboard 错误",
     "errorMessage": "无法加载 Dashboard，请重试。"
+  },
+  "header": {
+    "account": "账户",
+    "changePassword": "修改密码",
+    "logout": "退出登录",
+    "role": "角色：{{role}}"
   },
   "instanceGuard": {
     "noInstances": {
@@ -18,6 +44,37 @@
       "title": "未选择实例",
       "message": "从顶部选择器中选择一个 APISIX 实例以查看此页面。"
     }
+  },
+  "login": {
+    "adminNote": "账户由您的管理员创建。",
+    "brandKicker": "多实例控制台",
+    "brandName": "APISIX",
+    "brandPill": "open source · Apache-2.0",
+    "builtOn": "基于 Apache APISIX® 构建",
+    "capsLock": "大写锁定已开启",
+    "failedTitle": "登录失败",
+    "featInstancesDesc": "在一个控制台管理测试与生产网关。",
+    "featInstancesTitle": "多实例管控",
+    "featRolesDesc": "在测试环境是 <chip>admin</chip>，在生产环境是 <chip>viewer</chip>。",
+    "featRolesTitle": "按实例分配角色",
+    "featTeamsDesc": "路由与上游归团队所有，访问范围受控。",
+    "featTeamsTitle": "团队所有权",
+    "forgot": "忘记密码？",
+    "forgotHint": "请联系管理员重置 — 您将获得一个临时密码，并在下次登录时修改。",
+    "hidePassword": "隐藏密码",
+    "invalidCredentials": "用户名或密码无效。",
+    "license": "基于 Apache License 2.0 许可发布",
+    "password": "密码",
+    "passwordPlaceholder": "请输入密码",
+    "showPassword": "显示密码",
+    "signIn": "登录",
+    "successTitle": "登录成功",
+    "tagline": "所有网关，一个控制平面。",
+    "taglineSub": "跨所有 APISIX 实例管理路由、上游和访问权限 —— 尽在一个控制台。",
+    "username": "用户名",
+    "usernamePlaceholder": "请输入用户名",
+    "welcome": "欢迎，{{username}}！",
+    "welcomeBack": "欢迎回来"
   },
   "proxyError": {
     "title": "无法连接到 {{name}}",
@@ -455,5 +512,34 @@
   },
   "upstreams": {
     "singular": "上游"
+  },
+  "users": {
+    "accessDenied": "拒绝访问",
+    "accessDeniedMessage": "只有超级管理员可以管理用户和 RBAC 角色。",
+    "addUser": "添加用户",
+    "allInstances": "所有实例",
+    "allTeams": "所有团队",
+    "assignHint": "为该用户分配 APISIX 实例，并指定角色和团队。",
+    "assigned": "已分配",
+    "noInstances": "没有可分配的实例。",
+    "noUsers": "未找到用户",
+    "noUsersHint": "创建您的第一个团队成员以开始协作。",
+    "pageTitle": "用户管理",
+    "permissions": "权限",
+    "resetFailed": "重置密码失败",
+    "resetHint": "为 {{username}} 设置一个临时密码。该用户下次登录时必须选择新密码。",
+    "resetPassword": "重置密码",
+    "resetSuccess": "密码已重置",
+    "resetSuccessMessage": "已为 {{username}} 设置临时密码。",
+    "tabAccess": "实例访问",
+    "tabBasic": "基本信息",
+    "tempPassword": "临时密码",
+    "tempPasswordPlaceholder": "请输入临时密码",
+    "thActions": "操作",
+    "thCreated": "创建时间",
+    "thInstances": "实例",
+    "thRole": "角色",
+    "thTeams": "团队",
+    "thUser": "用户"
   }
 }

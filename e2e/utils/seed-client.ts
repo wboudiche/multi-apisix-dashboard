@@ -209,6 +209,9 @@ export async function ensureUser(token: string, input: CreateUserInput): Promise
       password: input.password,
       email: input.email ?? '',
       role: input.role ?? '',
+      // Seeded accounts log straight in from specs; opt out of the forced
+      // first-login password change that admin-created users default to.
+      must_change_password: false,
     },
   });
   return created as User;

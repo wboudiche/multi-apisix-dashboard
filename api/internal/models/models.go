@@ -35,13 +35,18 @@ type Instance struct {
 
 // User represents a dashboard user
 type User struct {
-	ID           string    `json:"id"`
-	Username     string    `json:"username"`
-	PasswordHash string    `json:"password_hash"`
-	Email        string    `json:"email"`
-	Role         string    `json:"role"` // super_admin only
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           string `json:"id"`
+	Username     string `json:"username"`
+	PasswordHash string `json:"password_hash"`
+	Email        string `json:"email"`
+	Role         string `json:"role"` // super_admin only
+	// MustChangePassword forces the user through a password change before
+	// they can use the rest of the API; set on admin-created accounts,
+	// cleared by ChangePassword. Records written before this field existed
+	// unmarshal to false, so existing users are never forced.
+	MustChangePassword bool      `json:"must_change_password"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // Team represents a group of users

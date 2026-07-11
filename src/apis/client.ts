@@ -60,6 +60,17 @@ apiClient.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
+        // The backend gates every endpoint behind a pending password change;
+        // send the user to the dedicated screen instead of surfacing 403s.
+        if (
+            error.response?.status === 403 &&
+            error.response?.data?.code === 'password_change_required' &&
+            !window.location.pathname.endsWith('/change-password')
+        ) {
+            window.location.href = '/ui/change-password';
+            return Promise.reject(error);
+        }
+
         if (error.response?.status === 401 && !originalRequest._retry) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
