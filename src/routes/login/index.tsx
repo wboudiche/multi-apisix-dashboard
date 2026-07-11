@@ -15,24 +15,15 @@
  * limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  PasswordInput,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { clsx } from 'clsx';
 import { useSetAtom } from 'jotai';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { authApi } from '@/apis/auth';
+import apisixLogo from '@/assets/apisix-logo.svg';
 import {
   accessTokenAtom,
   currentUserAtom,
@@ -42,113 +33,84 @@ import {
 
 import classes from './style.module.css';
 
+const EyeOpenIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.4 5.2A9.6 9.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.3 3.9M6.1 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 3-.5" />
+  </svg>
+);
+
 const BrandPanel = () => {
   const { t } = useTranslation();
   return (
-    <Box className={classes.brand}>
-      <svg
-        className={classes.flow}
-        viewBox="0 0 900 1000"
-        preserveAspectRatio="xMidYMid slice"
-        aria-hidden="true"
-      >
-        <defs>
-          <radialGradient id="login-halo" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.16" />
-            <stop offset="0.55" stopColor="#FFFFFF" stopOpacity="0.05" />
-            <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="login-vignette" cx="0.5" cy="0.47" r="0.8">
-            <stop offset="0.55" stopColor="#000000" stopOpacity="0" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0.3" />
-          </radialGradient>
-          <pattern
-            id="login-dotgrid"
-            width="34"
-            height="34"
-            patternUnits="userSpaceOnUse"
-          >
-            <circle cx="1.2" cy="1.2" r="1.2" fill="#FFFFFF" opacity="0.05" />
-          </pattern>
-        </defs>
-        <rect width="900" height="1000" fill="url(#login-dotgrid)" />
-        <ellipse cx="450" cy="460" rx="340" ry="340" fill="url(#login-halo)" />
-        <g fill="none" stroke="#FFFFFF">
-          <circle cx="450" cy="460" r="150" opacity="0.16" />
-          <circle cx="450" cy="460" r="235" opacity="0.09" />
-          <circle cx="450" cy="460" r="330" opacity="0.05" />
-        </g>
-        <path
-          d="M450 190 L748 700 H152 Z"
-          fill="none"
-          stroke="#FFFFFF"
-          strokeWidth="1.2"
-          opacity="0.07"
-        />
-        <g className={classes.lines}>
-          <path
-            className={clsx(classes.a1, classes.thick)}
-            d="M-30 90 C 200 170, 330 300, 442 448"
-          />
-          <path d="M-30 330 C 190 350, 330 400, 440 456" />
-          <path className={classes.a2} d="M-30 585 C 210 555, 350 520, 438 470" />
-          <path className={classes.thick} d="M-30 800 C 230 730, 360 600, 442 482" />
-          <path
-            className={clsx(classes.a2, classes.thick)}
-            d="M930 60 C 690 150, 560 300, 458 448"
-          />
-          <path d="M930 320 C 700 350, 570 405, 460 458" />
-          <path className={classes.a1} d="M930 600 C 700 565, 565 525, 462 472" />
-          <path className={classes.thick} d="M930 850 C 690 750, 560 610, 458 486" />
-          <path className={classes.a1} d="M140 1030 C 270 850, 380 660, 446 492" />
-          <path d="M760 1030 C 640 860, 530 660, 454 492" />
-          <path className={classes.a2} d="M300 -30 C 340 120, 400 300, 446 440" />
-          <path d="M620 -30 C 580 130, 500 310, 454 440" />
-        </g>
-        <g fill="#FFFFFF">
-          <circle cx="240" cy="250" r="2.6" opacity="0.4" />
-          <circle cx="250" cy="372" r="2" opacity="0.3" />
-          <circle cx="262" cy="540" r="2.2" opacity="0.34" />
-          <circle cx="292" cy="690" r="2" opacity="0.28" />
-          <circle cx="655" cy="242" r="2.6" opacity="0.4" />
-          <circle cx="662" cy="382" r="2" opacity="0.3" />
-          <circle cx="655" cy="542" r="2.2" opacity="0.34" />
-          <circle cx="632" cy="712" r="2" opacity="0.28" />
-          <circle cx="356" cy="180" r="1.5" opacity="0.26" />
-          <circle cx="540" cy="170" r="1.5" opacity="0.26" />
-          <circle cx="352" cy="770" r="1.5" opacity="0.24" />
-          <circle cx="556" cy="782" r="1.5" opacity="0.24" />
-        </g>
-        <rect width="900" height="1000" fill="url(#login-vignette)" />
-      </svg>
-      <div className={classes.badge}>
-        <span>{t('login.badge')}</span>
+    <aside className={classes.brand}>
+      <div className={classes.wordmark}>
+        <span className={classes.tile}>
+          <img src={apisixLogo} alt={t('apisix.logo')} />
+        </span>
+        <span className={classes.name}>
+          <b>{t('login.brandName')}</b>
+          <span>{t('login.brandKicker')}</span>
+        </span>
       </div>
-      <div className={classes.markWrap}>
-        <svg
-          className={classes.mark}
-          viewBox="0 0 185 156"
-          role="img"
-          aria-label={t('apisix.logo')}
-        >
-          <path d="M0 155.5L94 0L185 155.5H140L94 83L42.5 155.5H0Z" fill="#FFFFFF" />
-          <path
-            d="M94 82.5L42.5 155H0L76.5 57L94 82.5Z"
-            fill="#FFFFFF"
-            opacity="0.55"
-          />
-          <path
-            d="M140 155.5H185L94 0L140 155.5Z"
-            fill="#FFFFFF"
-            opacity="0.78"
-          />
-        </svg>
-      </div>
-      <div className={classes.tagline}>
-        <h2>{t('login.tagline')}</h2>
-        <p>{t('login.taglineSub')}</p>
-      </div>
-    </Box>
+
+      <div className={classes.status}>{t('login.brandPill')}</div>
+
+      <h1>{t('login.tagline')}</h1>
+      <p className={classes.sub}>{t('login.taglineSub')}</p>
+
+      <ul className={classes.features}>
+        <li>
+          <span className={classes.featIcon}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="7" rx="2" />
+              <rect x="3" y="14" width="18" height="7" rx="2" />
+              <path d="M7 7.5h.01M7 17.5h.01" />
+            </svg>
+          </span>
+          <div>
+            <b>{t('login.featInstancesTitle')}</b>
+            <p>{t('login.featInstancesDesc')}</p>
+          </div>
+        </li>
+        <li>
+          <span className={classes.featIcon}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6l7-3Z" />
+              <path d="M9.2 12l2 2 3.6-4" />
+            </svg>
+          </span>
+          <div>
+            <b>{t('login.featRolesTitle')}</b>
+            <p>
+              <Trans i18nKey="login.featRolesDesc" components={{ chip: <code /> }} />
+            </p>
+          </div>
+        </li>
+        <li>
+          <span className={classes.featIcon}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="8.5" r="3.2" />
+              <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+              <circle cx="17" cy="9.5" r="2.4" />
+              <path d="M15.5 14.6a4.6 4.6 0 0 1 5 4.4" />
+            </svg>
+          </span>
+          <div>
+            <b>{t('login.featTeamsTitle')}</b>
+            <p>{t('login.featTeamsDesc')}</p>
+          </div>
+        </li>
+      </ul>
+
+      <p className={classes.foot}>{t('login.builtOn')}</p>
+    </aside>
   );
 };
 
@@ -159,11 +121,18 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const setAccessToken = useSetAtom(accessTokenAtom);
   const setRefreshToken = useSetAtom(refreshTokenAtom);
   const setTokenExpiry = useSetAtom(tokenExpiryAtom);
   const setCurrentUser = useSetAtom(currentUserAtom);
+
+  const checkCapsLock = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    setCapsLock(e.getModifierState('CapsLock'));
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,54 +183,94 @@ const Login = () => {
   };
 
   return (
-    <Box className={classes.stage}>
-      <Box className={classes.formCol}>
-        <Box className={classes.formInner}>
-          <Box mb={32}>
-            <Title order={1} fz="1.7rem" lts="-0.015em">
-              {t('apisix.dashboard')}
-            </Title>
-            <Text c="dimmed" size="sm" mt={8}>
-              {t('login.subtitle')}
-            </Text>
-          </Box>
-          <form onSubmit={handleLogin}>
-            <Stack gap="lg">
-              <TextInput
-                label={t('login.username')}
-                placeholder={t('login.usernamePlaceholder')}
-                required
-                size="md"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-              <PasswordInput
-                label={t('login.password')}
-                placeholder={t('login.passwordPlaceholder')}
-                required
-                size="md"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-
-              {error && (
-                <Text c="red" size="sm">
-                  {error}
-                </Text>
-              )}
-
-              <Button type="submit" fullWidth loading={loading} size="md">
-                {t('login.signIn')}
-              </Button>
-            </Stack>
-          </form>
-          <Text size="xs" c="dimmed" className={classes.license}>
-            {t('login.license')}
-          </Text>
-        </Box>
-      </Box>
+    <div className={classes.stage}>
       <BrandPanel />
-    </Box>
+
+      <div className={classes.formCol}>
+        <div className={classes.container}>
+          <div className={classes.head}>
+            <h1>{t('login.welcomeBack')}</h1>
+            <p>{t('login.adminNote')}</p>
+          </div>
+          <form className={classes.form} onSubmit={handleLogin}>
+            <div className={classes.field}>
+              <label htmlFor="login-username">{t('login.username')}</label>
+              <div className={classes.row}>
+                <input
+                  id="login-username"
+                  className={classes.input}
+                  type="text"
+                  placeholder={t('login.usernamePlaceholder')}
+                  required
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className={classes.field}>
+              <label htmlFor="login-password">{t('login.password')}</label>
+              <div className={classes.row}>
+                <input
+                  id="login-password"
+                  className={`${classes.input} ${classes.pw}`}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={t('login.passwordPlaceholder')}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={checkCapsLock}
+                  onKeyUp={checkCapsLock}
+                  onBlur={() => setCapsLock(false)}
+                />
+                <button
+                  type="button"
+                  className={classes.eye}
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeOpenIcon />}
+                </button>
+              </div>
+              {capsLock && (
+                <div className={classes.capslock}>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 4 4 12h5v5h6v-5h5L12 4Z" />
+                  </svg>
+                  {t('login.capsLock')}
+                </div>
+              )}
+            </div>
+            <div className={classes.aids}>
+              <button
+                type="button"
+                className={classes.forgot}
+                aria-expanded={forgotOpen}
+                onClick={() => setForgotOpen((v) => !v)}
+              >
+                {t('login.forgot')}
+              </button>
+            </div>
+            {forgotOpen && <p className={classes.forgotHint}>{t('login.forgotHint')}</p>}
+            {error && (
+              <div className={classes.error} role="alert">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v6M12 16h.01" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+            <button type="submit" className={classes.submit} disabled={loading}>
+              {loading && <span className={classes.spinner} />}
+              {t('login.signIn')}
+            </button>
+          </form>
+          <p className={classes.legal}>{t('login.license')}</p>
+        </div>
+      </div>
+    </div>
   );
 };
 
