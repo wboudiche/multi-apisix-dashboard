@@ -50,6 +50,16 @@ type CreateUserRequest struct {
 	Password string `json:"password" binding:"required"`
 	Email    string `json:"email"`
 	Role     string `json:"role"`
+	// MustChangePassword is a pointer so "omitted" is distinguishable from
+	// an explicit false: admin-created accounts default to a forced change.
+	MustChangePassword *bool `json:"must_change_password"`
+}
+
+// resolveMustChangePassword applies the create-user default: a temporary
+// password handed out by an admin must be changed unless explicitly opted
+// out.
+func resolveMustChangePassword(v *bool) bool {
+	return v == nil || *v
 }
 
 type UpdateUserRequest struct {
@@ -69,13 +79,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authService.Login(c.Request.Context(), req.Username, req.Password)
+	tokens, user, err := h.authService.Login(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	c.JSON(http.StatusOK, tokens)
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":         tokens.AccessToken,
+		"refresh_token":        tokens.RefreshToken,
+		"expires_in":           tokens.ExpiresIn,
+		"must_change_password": user.MustChangePassword,
+	})
 }
 
 // Refresh handles token refresh
@@ -120,10 +135,11 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 	}
 
 	resp := gin.H{
-		"id":       user.ID,
-		"username": user.Username,
-		"email":    user.Email,
-		"role":     effectiveRole,
+		"id":                   user.ID,
+		"username":             user.Username,
+		"email":                user.Email,
+		"role":                 effectiveRole,
+		"must_change_password": user.MustChangePassword,
 	}
 
 	instanceID := c.GetHeader("X-Instance-ID")
@@ -179,11 +195,12 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 	}
 
 	user := &models.User{
-		ID:           uuid.New().String(),
-		Username:     req.Username,
-		PasswordHash: hash,
-		Email:        req.Email,
-		Role:         req.Role,
+		ID:                 uuid.New().String(),
+		Username:           req.Username,
+		PasswordHash:       hash,
+		Email:              req.Email,
+		Role:               req.Role,
+		MustChangePassword: resolveMustChangePassword(req.MustChangePassword),
 	}
 
 	if err := h.authService.CreateUser(c.Request.Context(), user); err != nil {
@@ -312,6 +329,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	}
 
 	user.PasswordHash = hash
+	user.MustChangePassword = false
 	if err := h.authService.UpdateUser(c.Request.Context(), user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

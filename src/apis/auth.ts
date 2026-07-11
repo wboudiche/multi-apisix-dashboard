@@ -28,6 +28,7 @@ export type LoginResponse = {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+  must_change_password?: boolean;
 };
 
 export type RefreshRequest = {
@@ -39,6 +40,7 @@ export type User = {
   username: string;
   email: string;
   role: string;
+  must_change_password?: boolean;
   created_at: string;
 };
 

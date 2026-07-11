@@ -114,11 +114,11 @@ test('raising the min length in Settings is reflected live in the create-user ch
   const minLengthRule = page
     .locator('[data-met]')
     .filter({ hasText: 'Be at least 20 characters' });
-  await page.getByLabel('Password').fill('abc');
+  await page.getByRole('textbox', { name: 'Password' }).fill('abc');
   await expect(minLengthRule).toHaveAttribute('data-met', 'false');
 
   // Satisfying the length requirement flips that rule to met.
-  await page.getByLabel('Password').fill('a'.repeat(20));
+  await page.getByRole('textbox', { name: 'Password' }).fill('a'.repeat(20));
   await expect(minLengthRule).toHaveAttribute('data-met', 'true');
 
   await page.getByRole('button', { name: 'Cancel' }).click();
@@ -140,7 +140,7 @@ test('the create-user form rejects a policy-violating password and accepts a com
 
   // Weak password (too short, missing classes) -> server rejects with 422,
   // the form surfaces the policy error and does NOT create the user.
-  await page.getByLabel('Password').fill('weak');
+  await page.getByRole('textbox', { name: 'Password' }).fill('weak');
   await page.getByRole('button', { name: 'Create User' }).click();
   await expect(
     page.getByRole('alert').filter({ hasText: 'Password does not meet policy' })
@@ -150,7 +150,7 @@ test('the create-user form rejects a policy-violating password and accepts a com
 
   // Compliant password -> user is created. Assert the durable outcome (modal
   // closes, the row appears) rather than the transient success toast.
-  await page.getByLabel('Password').fill('Abcdef123!xyz');
+  await page.getByRole('textbox', { name: 'Password' }).fill('Abcdef123!xyz');
   await page.getByRole('button', { name: 'Create User' }).click();
   await expect(page.getByText('Add New User')).toBeHidden();
   // The username cell's accessible name also includes the email, so match the

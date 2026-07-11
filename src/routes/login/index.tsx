@@ -188,7 +188,13 @@ const Login = () => {
         color: 'green',
       });
 
-      navigate({ to: '/' });
+      // Admin-created accounts must set their own password before anything
+      // else; the backend rejects every other endpoint until they do.
+      if (response.must_change_password) {
+        navigate({ to: '/change-password' });
+      } else {
+        navigate({ to: '/' });
+      }
     } catch (err: unknown) {
       const message =
         isAxiosError(err) && err.response?.status === 401

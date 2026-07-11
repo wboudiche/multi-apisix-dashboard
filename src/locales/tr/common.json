@@ -3,6 +3,25 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "changePassword": {
+    "confirm": "Yeni parolayı onayla",
+    "confirmPlaceholder": "Yeni parolanızı tekrar girin",
+    "current": "Mevcut parola",
+    "currentPlaceholder": "Mevcut parolanızı girin",
+    "failed": "Parola değiştirilemedi",
+    "invalidOld": "Mevcut parola yanlış.",
+    "mismatch": "Parolalar eşleşmiyor.",
+    "new": "Yeni parola",
+    "newPlaceholder": "Yeni parolanızı girin",
+    "policyNotMet": "Yeni parola, parola politikasını karşılamıyor.",
+    "requireOnFirstLogin": "İlk oturum açmada parola değişikliği iste",
+    "signOut": "Oturumu kapat",
+    "submit": "Parolayı güncelle",
+    "subtitle": "Yöneticiniz devam etmeden önce yeni bir parola belirlemenizi istiyor.",
+    "success": "Parola güncellendi",
+    "successMessage": "Parolanız değiştirildi.",
+    "title": "Yeni bir parola seçin"
+  },
   "dashboard": {
     "loading": "Dashboard yükleniyor…",
     "errorTitle": "Dashboard Hatası",
@@ -471,5 +490,27 @@
   },
   "upstreams": {
     "singular": "Upstream"
+  },
+  "users": {
+    "accessDenied": "Erişim reddedildi",
+    "accessDeniedMessage": "Yalnızca süper yöneticiler kullanıcıları ve RBAC rollerini yönetebilir.",
+    "addUser": "Kullanıcı ekle",
+    "allInstances": "Tüm örnekler",
+    "allTeams": "Tüm takımlar",
+    "assignHint": "Bu kullanıcıyı belirli bir rol ve takımla APISIX örneklerine atayın.",
+    "assigned": "Atandı",
+    "noInstances": "Atanacak örnek yok.",
+    "noUsers": "Kullanıcı bulunamadı",
+    "noUsersHint": "İş birliği için ilk takım üyenizi oluşturun.",
+    "pageTitle": "Kullanıcı yönetimi",
+    "permissions": "İzinler",
+    "tabAccess": "Örnek erişimi",
+    "tabBasic": "Temel bilgiler",
+    "thActions": "İşlemler",
+    "thCreated": "Oluşturulma",
+    "thInstances": "Örnekler",
+    "thRole": "Rol",
+    "thTeams": "Takımlar",
+    "thUser": "Kullanıcı"
   }
 }

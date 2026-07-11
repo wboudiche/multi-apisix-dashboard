@@ -133,6 +133,13 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 		// Protected routes
 		protected := v1.Group("/")
 		protected.Use(middleware.AuthMiddleware(authService))
+		protected.Use(middleware.ForcePasswordChange(func(ctx context.Context, userID string) (bool, error) {
+			user, err := authService.GetUser(ctx, userID)
+			if err != nil {
+				return false, err
+			}
+			return user.MustChangePassword, nil
+		}))
 		{
 			protected.POST("/logout", authHandler.Logout)
 			protected.GET("/user", authHandler.GetCurrentUser)

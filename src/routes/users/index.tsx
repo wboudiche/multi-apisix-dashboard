@@ -18,6 +18,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Container,
   Group,
   Modal,
@@ -35,6 +36,7 @@ import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtom } from 'jotai';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { type User } from '@/apis/auth';
 import { instanceApi, type UserInstanceRole } from '@/apis/instances';
@@ -55,9 +57,11 @@ type CreateUserRequest = {
   password: string;
   email: string;
   role: string;
+  must_change_password: boolean;
 };
 
 const UsersPage = () => {
+  const { t } = useTranslation();
   const [currentUser] = useAtom(currentUserAtom);
   const [availableInstances] = useAtom(instancesAtom);
   const [users, setUsers] = useState<User[]>([]);
@@ -72,6 +76,7 @@ const UsersPage = () => {
     password: '',
     email: '',
     role: 'user',
+    must_change_password: true,
   });
 
   const [userAssignments, setUserAssignments] = useState<Record<string, UserInstanceRole[]>>({});
@@ -125,6 +130,7 @@ const UsersPage = () => {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
 
   const handleSubmit = async () => {
@@ -237,6 +243,7 @@ const UsersPage = () => {
       password: '',
       email: '',
       role: 'user',
+      must_change_password: true,
     });
     setActiveTab('basic');
   };
@@ -255,9 +262,9 @@ const UsersPage = () => {
       <Container size="xl">
         <Paper p="xl" withBorder className="Card-root" ta="center">
           <IconShield width="48" height="48" color="var(--brand)" />
-          <Title order={2} mt="md">Access Denied</Title>
+          <Title order={2} mt="md">{t('users.accessDenied')}</Title>
           <Text c="dimmed" mt="sm">
-            Only Super Admins can manage users and RBAC roles.
+            {t('users.accessDeniedMessage')}
           </Text>
         </Paper>
       </Container>
@@ -271,6 +278,7 @@ const UsersPage = () => {
       password: '',
       email: user.email,
       role: user.role === '' ? 'user' : user.role,
+      must_change_password: false,
     });
     // Load existing instance assignments
     const assignments = userAssignments[user.id] || [];
@@ -292,13 +300,13 @@ const UsersPage = () => {
   return (
     <>
       <PageHeader
-        title="User Management"
+        title={t('users.pageTitle')}
         extra={
           <Button
             leftSection={<IconPlus width="18" height="18" />}
             onClick={() => { resetForm(); setModalOpen(true); }}
           >
-            Add User
+            {t('users.addUser')}
           </Button>
         }
       />
@@ -307,12 +315,12 @@ const UsersPage = () => {
         <Table horizontalSpacing="lg" verticalSpacing="md">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>User</Table.Th>
-              <Table.Th>Role</Table.Th>
-              <Table.Th>Instances</Table.Th>
-              <Table.Th>Teams</Table.Th>
-              <Table.Th>Created</Table.Th>
-              <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
+              <Table.Th>{t('users.thUser')}</Table.Th>
+              <Table.Th>{t('users.thRole')}</Table.Th>
+              <Table.Th>{t('users.thInstances')}</Table.Th>
+              <Table.Th>{t('users.thTeams')}</Table.Th>
+              <Table.Th>{t('users.thCreated')}</Table.Th>
+              <Table.Th style={{ textAlign: 'right' }}>{t('users.thActions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -347,7 +355,7 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td>
                   {user.role === 'super_admin' ? (
-                    <Text size="xs" c="dimmed" fs="italic">All instances</Text>
+                    <Text size="xs" c="dimmed" fs="italic">{t('users.allInstances')}</Text>
                   ) : assignments.length === 0 ? (
                     <Text size="xs" c="dimmed">—</Text>
                   ) : (
@@ -367,7 +375,7 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td>
                   {user.role === 'super_admin' ? (
-                    <Text size="xs" c="dimmed" fs="italic">All teams</Text>
+                    <Text size="xs" c="dimmed" fs="italic">{t('users.allTeams')}</Text>
                   ) : uniqueTeams.length === 0 ? (
                     <Text size="xs" c="dimmed">—</Text>
                   ) : (
@@ -389,11 +397,11 @@ const UsersPage = () => {
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Group gap="xs" justify="flex-end">
                     <Button size="xs" variant="filled" color="blue" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openEditModal(user)}>
-                      Permissions
+                      {t('users.permissions')}
                     </Button>
                     {user.id !== currentUser?.id && (
                       <Button size="xs" variant="filled" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(user.id)}>
-                        Delete
+                        {t('form.btn.delete')}
                       </Button>
                     )}
                   </Group>
@@ -406,8 +414,8 @@ const UsersPage = () => {
                 <Table.Td colSpan={6}>
                   <Box className="EmptyState-root" ta="center">
                     <IconUser width="48" height="48" color="var(--text-tertiary)" />
-                    <Text fw={600} size="lg" mt="md">No users found</Text>
-                    <Text c="dimmed" size="sm">Create your first team member to collaborate.</Text>
+                    <Text fw={600} size="lg" mt="md">{t('users.noUsers')}</Text>
+                    <Text c="dimmed" size="sm">{t('users.noUsersHint')}</Text>
                   </Box>
                 </Table.Td>
               </Table.Tr>
@@ -424,8 +432,8 @@ const UsersPage = () => {
       >
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List mb="lg" grow>
-            <Tabs.Tab value="basic" leftSection={<IconUser width="16" height="16" />}>Basic Info</Tabs.Tab>
-            <Tabs.Tab value="access" leftSection={<IconInstance width="16" height="16" />} disabled={formData.role === 'super_admin'}>Instance Access</Tabs.Tab>
+            <Tabs.Tab value="basic" leftSection={<IconUser width="16" height="16" />}>{t('users.tabBasic')}</Tabs.Tab>
+            <Tabs.Tab value="access" leftSection={<IconInstance width="16" height="16" />} disabled={formData.role === 'super_admin'}>{t('users.tabAccess')}</Tabs.Tab>
 
           </Tabs.List>
 
@@ -458,6 +466,15 @@ const UsersPage = () => {
                 />
               )}
               {!editingUser && <PasswordRequirements password={formData.password} />}
+              {!editingUser && (
+                <Checkbox
+                  label={t('changePassword.requireOnFirstLogin')}
+                  checked={formData.must_change_password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, must_change_password: e.currentTarget.checked })
+                  }
+                />
+              )}
               <Select
                 label="Global Role"
                 description="Super Admins have full access to all instances. Regular users need per-instance role assignments."
@@ -474,12 +491,12 @@ const UsersPage = () => {
           <Tabs.Panel value="access">
             <Stack gap="md">
               <Text size="sm" c="dimmed">
-                Assign this user to APISIX instances with a specific role and team.
+                {t('users.assignHint')}
               </Text>
 
               {availableInstances.length === 0 ? (
                 <Paper p="md" withBorder ta="center" bg="var(--surface-1)">
-                  <Text size="sm">No instances available to assign.</Text>
+                  <Text size="sm">{t('users.noInstances')}</Text>
                 </Paper>
               ) : (
                 <Stack gap="sm">
@@ -494,7 +511,7 @@ const UsersPage = () => {
                               <Text size="xs" c="dimmed">{inst.admin_api_url}</Text>
                             </Box>
                             {config?.role && (
-                              <Badge size="xs" variant="light" color="blue">Assigned</Badge>
+                              <Badge size="xs" variant="light" color="blue">{t('users.assigned')}</Badge>
                             )}
                           </Group>
                           <Group gap="sm" grow>
@@ -541,7 +558,7 @@ const UsersPage = () => {
         </Tabs>
 
         <Group justify="flex-end" mt="xl">
-          <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>Cancel</Button>
+          <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>{t('form.btn.cancel')}</Button>
           <Button onClick={handleSubmit}>{editingUser ? 'Save Changes' : 'Create User'}</Button>
         </Group>
       </Modal>

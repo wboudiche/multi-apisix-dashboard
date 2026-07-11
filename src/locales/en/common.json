@@ -3,6 +3,25 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "changePassword": {
+    "confirm": "Confirm new password",
+    "confirmPlaceholder": "Re-enter your new password",
+    "current": "Current password",
+    "currentPlaceholder": "Enter your current password",
+    "failed": "Failed to change password",
+    "invalidOld": "Current password is incorrect.",
+    "mismatch": "Passwords do not match.",
+    "new": "New password",
+    "newPlaceholder": "Enter your new password",
+    "policyNotMet": "The new password does not meet the password policy.",
+    "requireOnFirstLogin": "Require a password change at first sign-in",
+    "signOut": "Sign out",
+    "submit": "Update password",
+    "subtitle": "Your administrator requires you to set a new password before continuing.",
+    "success": "Password updated",
+    "successMessage": "Your password has been changed.",
+    "title": "Choose a new password"
+  },
   "dashboard": {
     "loading": "Loading dashboard…",
     "errorTitle": "Dashboard Error",
@@ -708,5 +727,27 @@
   },
   "upstreams": {
     "singular": "Upstream"
+  },
+  "users": {
+    "accessDenied": "Access Denied",
+    "accessDeniedMessage": "Only Super Admins can manage users and RBAC roles.",
+    "addUser": "Add User",
+    "allInstances": "All instances",
+    "allTeams": "All teams",
+    "assignHint": "Assign this user to APISIX instances with a specific role and team.",
+    "assigned": "Assigned",
+    "noInstances": "No instances available to assign.",
+    "noUsers": "No users found",
+    "noUsersHint": "Create your first team member to collaborate.",
+    "pageTitle": "User Management",
+    "permissions": "Permissions",
+    "tabAccess": "Instance Access",
+    "tabBasic": "Basic Info",
+    "thActions": "Actions",
+    "thCreated": "Created",
+    "thInstances": "Instances",
+    "thRole": "Role",
+    "thTeams": "Teams",
+    "thUser": "User"
   }
 }

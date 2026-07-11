@@ -28,6 +28,7 @@ import { Route as InstancesIndexRouteImport } from './routes/instances/index'
 import { Route as Global_rulesIndexRouteImport } from './routes/global_rules/index'
 import { Route as ConsumersIndexRouteImport } from './routes/consumers/index'
 import { Route as Consumer_groupsIndexRouteImport } from './routes/consumer_groups/index'
+import { Route as ChangePasswordIndexRouteImport } from './routes/change-password/index'
 import { Route as UpstreamsAddRouteImport } from './routes/upstreams/add'
 import { Route as Stream_routesAddRouteImport } from './routes/stream_routes/add'
 import { Route as SslsAddRouteImport } from './routes/ssls/add'
@@ -155,6 +156,11 @@ const ConsumersIndexRoute = ConsumersIndexRouteImport.update({
 const Consumer_groupsIndexRoute = Consumer_groupsIndexRouteImport.update({
   id: '/consumer_groups/',
   path: '/consumer_groups/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangePasswordIndexRoute = ChangePasswordIndexRouteImport.update({
+  id: '/change-password/',
+  path: '/change-password/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UpstreamsAddRoute = UpstreamsAddRouteImport.update({
@@ -346,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/ssls/add': typeof SslsAddRoute
   '/stream_routes/add': typeof Stream_routesAddRoute
   '/upstreams/add': typeof UpstreamsAddRoute
+  '/change-password/': typeof ChangePasswordIndexRoute
   '/consumer_groups/': typeof Consumer_groupsIndexRoute
   '/consumers/': typeof ConsumersIndexRoute
   '/global_rules/': typeof Global_rulesIndexRoute
@@ -400,6 +407,7 @@ export interface FileRoutesByTo {
   '/ssls/add': typeof SslsAddRoute
   '/stream_routes/add': typeof Stream_routesAddRoute
   '/upstreams/add': typeof UpstreamsAddRoute
+  '/change-password': typeof ChangePasswordIndexRoute
   '/consumer_groups': typeof Consumer_groupsIndexRoute
   '/consumers': typeof ConsumersIndexRoute
   '/global_rules': typeof Global_rulesIndexRoute
@@ -453,6 +461,7 @@ export interface FileRoutesById {
   '/ssls/add': typeof SslsAddRoute
   '/stream_routes/add': typeof Stream_routesAddRoute
   '/upstreams/add': typeof UpstreamsAddRoute
+  '/change-password/': typeof ChangePasswordIndexRoute
   '/consumer_groups/': typeof Consumer_groupsIndexRoute
   '/consumers/': typeof ConsumersIndexRoute
   '/global_rules/': typeof Global_rulesIndexRoute
@@ -509,6 +518,7 @@ export interface FileRouteTypes {
     | '/ssls/add'
     | '/stream_routes/add'
     | '/upstreams/add'
+    | '/change-password/'
     | '/consumer_groups/'
     | '/consumers/'
     | '/global_rules/'
@@ -563,6 +573,7 @@ export interface FileRouteTypes {
     | '/ssls/add'
     | '/stream_routes/add'
     | '/upstreams/add'
+    | '/change-password'
     | '/consumer_groups'
     | '/consumers'
     | '/global_rules'
@@ -615,6 +626,7 @@ export interface FileRouteTypes {
     | '/ssls/add'
     | '/stream_routes/add'
     | '/upstreams/add'
+    | '/change-password/'
     | '/consumer_groups/'
     | '/consumers/'
     | '/global_rules/'
@@ -670,6 +682,7 @@ export interface RootRouteChildren {
   SslsAddRoute: typeof SslsAddRoute
   Stream_routesAddRoute: typeof Stream_routesAddRoute
   UpstreamsAddRoute: typeof UpstreamsAddRoute
+  ChangePasswordIndexRoute: typeof ChangePasswordIndexRoute
   Consumer_groupsIndexRoute: typeof Consumer_groupsIndexRoute
   ConsumersIndexRoute: typeof ConsumersIndexRoute
   Global_rulesIndexRoute: typeof Global_rulesIndexRoute
@@ -834,6 +847,13 @@ declare module '@tanstack/react-router' {
       path: '/consumer_groups'
       fullPath: '/consumer_groups/'
       preLoaderRoute: typeof Consumer_groupsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-password/': {
+      id: '/change-password/'
+      path: '/change-password'
+      fullPath: '/change-password/'
+      preLoaderRoute: typeof ChangePasswordIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/upstreams/add': {
@@ -1132,6 +1152,7 @@ const rootRouteChildren: RootRouteChildren = {
   SslsAddRoute: SslsAddRoute,
   Stream_routesAddRoute: Stream_routesAddRoute,
   UpstreamsAddRoute: UpstreamsAddRoute,
+  ChangePasswordIndexRoute: ChangePasswordIndexRoute,
   Consumer_groupsIndexRoute: Consumer_groupsIndexRoute,
   ConsumersIndexRoute: ConsumersIndexRoute,
   Global_rulesIndexRoute: Global_rulesIndexRoute,

@@ -3,6 +3,25 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "changePassword": {
+    "confirm": "Neues Passwort bestätigen",
+    "confirmPlaceholder": "Neues Passwort erneut eingeben",
+    "current": "Aktuelles Passwort",
+    "currentPlaceholder": "Aktuelles Passwort eingeben",
+    "failed": "Passwort konnte nicht geändert werden",
+    "invalidOld": "Das aktuelle Passwort ist falsch.",
+    "mismatch": "Die Passwörter stimmen nicht überein.",
+    "new": "Neues Passwort",
+    "newPlaceholder": "Neues Passwort eingeben",
+    "policyNotMet": "Das neue Passwort erfüllt die Passwort-Richtlinie nicht.",
+    "requireOnFirstLogin": "Passwortänderung bei der ersten Anmeldung verlangen",
+    "signOut": "Abmelden",
+    "submit": "Passwort aktualisieren",
+    "subtitle": "Ihr Administrator verlangt, dass Sie ein neues Passwort festlegen, bevor Sie fortfahren.",
+    "success": "Passwort aktualisiert",
+    "successMessage": "Ihr Passwort wurde geändert.",
+    "title": "Neues Passwort festlegen"
+  },
   "dashboard": {
     "loading": "Dashboard wird geladen…",
     "errorTitle": "Dashboard-Fehler",
@@ -471,5 +490,27 @@
   },
   "upstreams": {
     "singular": "Upstream"
+  },
+  "users": {
+    "accessDenied": "Zugriff verweigert",
+    "accessDeniedMessage": "Nur Super-Admins können Benutzer und RBAC-Rollen verwalten.",
+    "addUser": "Benutzer hinzufügen",
+    "allInstances": "Alle Instanzen",
+    "allTeams": "Alle Teams",
+    "assignHint": "Weisen Sie diesen Benutzer APISIX-Instanzen mit einer bestimmten Rolle und einem Team zu.",
+    "assigned": "Zugewiesen",
+    "noInstances": "Keine Instanzen zum Zuweisen verfügbar.",
+    "noUsers": "Keine Benutzer gefunden",
+    "noUsersHint": "Erstellen Sie Ihr erstes Teammitglied für die Zusammenarbeit.",
+    "pageTitle": "Benutzerverwaltung",
+    "permissions": "Berechtigungen",
+    "tabAccess": "Instanzzugriff",
+    "tabBasic": "Basisdaten",
+    "thActions": "Aktionen",
+    "thCreated": "Erstellt",
+    "thInstances": "Instanzen",
+    "thRole": "Rolle",
+    "thTeams": "Teams",
+    "thUser": "Benutzer"
   }
 }

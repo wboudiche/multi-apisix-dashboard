@@ -3,6 +3,25 @@
     "dashboard": "Panel de APISIX",
     "logo": "Logo de APISIX"
   },
+  "changePassword": {
+    "confirm": "Confirmar nueva contraseña",
+    "confirmPlaceholder": "Vuelve a introducir tu nueva contraseña",
+    "current": "Contraseña actual",
+    "currentPlaceholder": "Introduce tu contraseña actual",
+    "failed": "No se pudo cambiar la contraseña",
+    "invalidOld": "La contraseña actual es incorrecta.",
+    "mismatch": "Las contraseñas no coinciden.",
+    "new": "Nueva contraseña",
+    "newPlaceholder": "Introduce tu nueva contraseña",
+    "policyNotMet": "La nueva contraseña no cumple la política de contraseñas.",
+    "requireOnFirstLogin": "Exigir cambio de contraseña en el primer inicio de sesión",
+    "signOut": "Cerrar sesión",
+    "submit": "Actualizar contraseña",
+    "subtitle": "Tu administrador requiere que establezcas una nueva contraseña antes de continuar.",
+    "success": "Contraseña actualizada",
+    "successMessage": "Tu contraseña ha sido cambiada.",
+    "title": "Elige una nueva contraseña"
+  },
   "dashboard": {
     "loading": "Cargando panel…",
     "errorTitle": "Error del panel",
@@ -471,5 +490,27 @@
   },
   "upstreams": {
     "singular": "Upstream"
+  },
+  "users": {
+    "accessDenied": "Acceso denegado",
+    "accessDeniedMessage": "Solo los superadministradores pueden gestionar usuarios y roles RBAC.",
+    "addUser": "Añadir usuario",
+    "allInstances": "Todas las instancias",
+    "allTeams": "Todos los equipos",
+    "assignHint": "Asigna este usuario a instancias de APISIX con un rol y un equipo específicos.",
+    "assigned": "Asignado",
+    "noInstances": "No hay instancias disponibles para asignar.",
+    "noUsers": "No se encontraron usuarios",
+    "noUsersHint": "Crea tu primer miembro del equipo para colaborar.",
+    "pageTitle": "Gestión de usuarios",
+    "permissions": "Permisos",
+    "tabAccess": "Acceso a instancias",
+    "tabBasic": "Información básica",
+    "thActions": "Acciones",
+    "thCreated": "Creado",
+    "thInstances": "Instancias",
+    "thRole": "Rol",
+    "thTeams": "Equipos",
+    "thUser": "Usuario"
   }
 }

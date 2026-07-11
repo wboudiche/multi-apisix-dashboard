@@ -3,6 +3,25 @@
     "dashboard": "APISIX Dashboard",
     "logo": "APISIX Logo"
   },
+  "changePassword": {
+    "confirm": "确认新密码",
+    "confirmPlaceholder": "请再次输入新密码",
+    "current": "当前密码",
+    "currentPlaceholder": "请输入当前密码",
+    "failed": "修改密码失败",
+    "invalidOld": "当前密码不正确。",
+    "mismatch": "两次输入的密码不一致。",
+    "new": "新密码",
+    "newPlaceholder": "请输入新密码",
+    "policyNotMet": "新密码不符合密码策略。",
+    "requireOnFirstLogin": "要求首次登录时修改密码",
+    "signOut": "退出登录",
+    "submit": "更新密码",
+    "subtitle": "管理员要求您先设置新密码才能继续。",
+    "success": "密码已更新",
+    "successMessage": "您的密码已修改。",
+    "title": "设置新密码"
+  },
   "dashboard": {
     "loading": "正在加载 Dashboard…",
     "errorTitle": "Dashboard 错误",
@@ -471,5 +490,27 @@
   },
   "upstreams": {
     "singular": "上游"
+  },
+  "users": {
+    "accessDenied": "拒绝访问",
+    "accessDeniedMessage": "只有超级管理员可以管理用户和 RBAC 角色。",
+    "addUser": "添加用户",
+    "allInstances": "所有实例",
+    "allTeams": "所有团队",
+    "assignHint": "为该用户分配 APISIX 实例，并指定角色和团队。",
+    "assigned": "已分配",
+    "noInstances": "没有可分配的实例。",
+    "noUsers": "未找到用户",
+    "noUsersHint": "创建您的第一个团队成员以开始协作。",
+    "pageTitle": "用户管理",
+    "permissions": "权限",
+    "tabAccess": "实例访问",
+    "tabBasic": "基本信息",
+    "thActions": "操作",
+    "thCreated": "创建时间",
+    "thInstances": "实例",
+    "thRole": "角色",
+    "thTeams": "团队",
+    "thUser": "用户"
   }
 }
