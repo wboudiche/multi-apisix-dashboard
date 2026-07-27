@@ -46,6 +46,93 @@ test('creates an instance via the Add Instance modal', async ({ page }) => {
   await page.getByLabel('Admin Key').fill(STAGING_ADMIN_KEY);
   await page.getByRole('button', { name: 'Create Instance' }).click();
 
+  // The global fixture already registered this gateway, so the duplicate-URL
+  // warning fires. Sharing a gateway is allowed once explicitly confirmed.
+  await expect(page.getByText('Admin API URL already in use')).toBeVisible();
+  await page.getByRole('button', { name: 'Save anyway' }).click();
+
+  await expect(adminPom.rowByText(page, name)).toBeVisible();
+});
+
+test('rejects an instance whose name is already taken', async ({ page }) => {
+  const name = `${PREFIX}-dup-name`;
+  await ensureInstance(await adminToken(), {
+    name,
+    admin_api_url: STAGING_ADMIN_URL,
+    admin_key: STAGING_ADMIN_KEY,
+  });
+
+  await adminPom.toInstances(page);
+  await adminPom.isInstancesPage(page);
+
+  await page.getByRole('button', { name: 'Add Instance' }).click();
+  // Different case: names must collide case-insensitively, so the list can never
+  // show two rows that look identical.
+  await page.getByLabel('Name').fill(name.toUpperCase());
+  await page.getByLabel('Admin API URL').fill('http://127.0.0.1:9999');
+  await page.getByLabel('Admin Key').fill('irrelevant');
+  await page.getByRole('button', { name: 'Create Instance' }).click();
+
+  await expect(page.getByText(/already exists/)).toBeVisible();
+  // Rejected, not silently created: the modal is still open and no row was added.
+  await expect(page.getByText('Add New Instance')).toBeVisible();
+  await expect(adminPom.rowByText(page, name.toUpperCase())).toHaveCount(0);
+});
+
+test('shows an unreachable instance as Unreachable, not Active', async ({ page }) => {
+  const name = `${PREFIX}-status`;
+  await ensureInstance(await adminToken(), {
+    name,
+    admin_api_url: 'http://127.0.0.1:1',
+    admin_key: 'irrelevant',
+    is_active: true,
+  });
+
+  await adminPom.toInstances(page);
+  await adminPom.isInstancesPage(page);
+
+  const row = adminPom.rowByText(page, name);
+  // is_active is an admin flag and stays Enabled; connectivity is measured
+  // separately and must not report a dead gateway as healthy.
+  await expect(row.getByText('Enabled')).toBeVisible();
+  await expect(row.getByText('Unreachable')).toBeVisible();
+  await expect(row.getByText('Connected')).toHaveCount(0);
+});
+
+test('warns that saving an unreachable instance did not connect', async ({ page }) => {
+  const name = `${PREFIX}-warn`;
+  await adminPom.toInstances(page);
+  await adminPom.isInstancesPage(page);
+
+  await page.getByRole('button', { name: 'Add Instance' }).click();
+  await page.getByLabel('Name').fill(name);
+  await page.getByLabel('Admin API URL').fill('http://127.0.0.1:1');
+  await page.getByLabel('Admin Key').fill('irrelevant');
+  await page.getByRole('button', { name: 'Create Instance' }).click();
+
+  // Saved, but never reported as a clean success.
+  await uiHasToastMsg(page, { hasText: 'Saved, but unreachable' });
+  await expect(adminPom.rowByText(page, name)).toBeVisible();
+});
+
+test('lists attached resources before deleting an instance', async ({ page }) => {
+  const name = `${PREFIX}-deps`;
+  await ensureInstance(await adminToken(), {
+    name,
+    admin_api_url: STAGING_ADMIN_URL,
+    admin_key: STAGING_ADMIN_KEY,
+  });
+
+  await adminPom.toInstances(page);
+  await adminPom.isInstancesPage(page);
+  await adminPom.rowByText(page, name).getByRole('button', { name: 'Delete' }).click();
+
+  // The gateway is shared with other fixtures, so it always has resources on it.
+  await expect(page.getByText(`Delete instance "${name}"?`)).toBeVisible();
+  await expect(page.getByText(/stay live on the APISIX gateway/)).toBeVisible();
+
+  // Dismissing must leave the instance alone.
+  await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(adminPom.rowByText(page, name)).toBeVisible();
 });
 
@@ -103,11 +190,15 @@ test('edits and deletes an instance', async ({ page }) => {
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(adminPom.rowByText(page, renamed)).toBeVisible();
 
-  page.on('dialog', (dialog) => void dialog.accept());
   await adminPom
     .rowByText(page, renamed)
     .getByRole('button', { name: 'Delete' })
     .click();
+  // Deletion is confirmed in a modal that spells out what it would orphan,
+  // no longer a bare native confirm().
+  await expect(page.getByText(`Delete instance "${renamed}"?`)).toBeVisible();
+  await page.getByRole('button', { name: 'Delete anyway' }).click();
+
   await uiHasToastMsg(page, { hasText: 'Instance deleted successfully' });
   await expect(adminPom.rowByText(page, renamed)).toHaveCount(0);
 });

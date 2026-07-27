@@ -143,7 +143,9 @@ export async function ensureInstance(token: string, input: CreateInstanceInput):
     return existing;
   }
 
-  const created = await apiFetch('/api/v1/instances', token, {
+  // force=true: several fixtures deliberately point at the same gateway, which the
+  // API only warns about. A fixture's job is to make the instance exist.
+  const created = await apiFetch('/api/v1/instances?force=true', token, {
     method: 'POST',
     json: {
       name: input.name,
