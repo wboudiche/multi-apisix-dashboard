@@ -52,6 +52,44 @@ var teamScopedResources = map[string]bool{
 	"stream_routes":   true,
 }
 
+// dashboardFieldPrefix marks fields the dashboard adds to APISIX resources for
+// its own use (currently __team_id). APISIX rejects unknown properties, so these
+// must never reach it. Anything the proxy injects into a response must carry
+// this prefix to be stripped back out on the way in.
+const dashboardFieldPrefix = "__"
+
+// stripDashboardFields removes the dashboard's own fields from a request body
+// bound for APISIX. A body that is not a JSON object is returned untouched.
+func stripDashboardFields(body []byte) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	var resource map[string]any
+	if err := json.Unmarshal(body, &resource); err != nil || resource == nil {
+		// Not a JSON object (an array, a scalar, or malformed). Forward it
+		// verbatim and let APISIX be the judge.
+		return body
+	}
+
+	stripped := false
+	for key := range resource {
+		if strings.HasPrefix(key, dashboardFieldPrefix) {
+			delete(resource, key)
+			stripped = true
+		}
+	}
+	if !stripped {
+		return body
+	}
+
+	cleaned, err := json.Marshal(resource)
+	if err != nil {
+		return body
+	}
+	return cleaned
+}
+
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
@@ -182,6 +220,16 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	var bodyBytes []byte
 	if c.Request.Body != nil {
 		bodyBytes, _ = io.ReadAll(c.Request.Body)
+	}
+
+	// The dashboard injects its own fields into GET responses (see step 4). A
+	// client that round-trips a resource it just read - duplicating a route,
+	// saving the JSON editor - would send them straight back, and APISIX rejects
+	// unknown properties. Strip them here, at the same boundary that added them,
+	// so every write path is covered rather than each caller remembering to.
+	if c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut ||
+		c.Request.Method == http.MethodPatch {
+		bodyBytes = stripDashboardFields(bodyBytes)
 	}
 
 	proxyReq, _ := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(bodyBytes))
