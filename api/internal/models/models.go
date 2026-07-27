@@ -164,6 +164,49 @@ type InstanceHealth struct {
 	Error      string    `json:"error,omitempty"`
 }
 
+// InstanceDependencies describes everything that still references an instance.
+// It is reported to the caller before an instance is deleted so the deletion's
+// blast radius is explicit rather than silent.
+//
+// The gateway counts (Routes..StreamRoutes) come from the instance's Admin API
+// and are only meaningful when Reachable is true; the etcd-backed counts
+// (UserAssignments, OwnershipRecords) are always accurate.
+type InstanceDependencies struct {
+	Routes       int `json:"routes"`
+	Services     int `json:"services"`
+	Upstreams    int `json:"upstreams"`
+	Consumers    int `json:"consumers"`
+	StreamRoutes int `json:"stream_routes"`
+
+	// UserAssignments counts /user_instances/<userID>/<instanceID> records that
+	// would be orphaned by the deletion.
+	UserAssignments int `json:"user_assignments"`
+	// OwnershipRecords counts /ownership/<instanceID>/... records that would be
+	// orphaned by the deletion.
+	OwnershipRecords int `json:"ownership_records"`
+
+	// Reachable reports whether the Admin API answered. When false the gateway
+	// counts are unknown, not zero.
+	Reachable bool `json:"reachable"`
+}
+
+// TotalGatewayResources returns how many resources still live on the gateway
+// itself. Only meaningful when Reachable is true.
+func (d InstanceDependencies) TotalGatewayResources() int {
+	return d.Routes + d.Services + d.Upstreams + d.Consumers + d.StreamRoutes
+}
+
+// RequiresConfirmation reports whether deleting the instance would orphan
+// something, and therefore must not proceed without an explicit force.
+// An unreachable instance always requires confirmation: its gateway resource
+// counts are unknown, so "nothing attached" cannot be established.
+func (d InstanceDependencies) RequiresConfirmation() bool {
+	if !d.Reachable {
+		return true
+	}
+	return d.TotalGatewayResources() > 0 || d.UserAssignments > 0 || d.OwnershipRecords > 0
+}
+
 // ResourceStats contains counts for APISIX resources
 type ResourceStats struct {
 	Routes    int `json:"routes"`

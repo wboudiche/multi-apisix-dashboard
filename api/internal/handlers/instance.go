@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -24,6 +25,14 @@ import (
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
 
 	"github.com/gin-gonic/gin"
+)
+
+// Machine-readable codes on 409 responses, so the UI can tell a hard rejection
+// from a conflict the operator is allowed to confirm past.
+const (
+	duplicateInstanceNameCode   = "duplicate_instance_name"
+	duplicateAdminAPIURLCode    = "duplicate_admin_api_url"
+	instanceHasDependenciesCode = "instance_has_dependencies"
 )
 
 type InstanceHandler struct {
@@ -64,6 +73,32 @@ type SetUserInstanceRoleRequest struct {
 	Scope  *models.Scope `json:"scope"`
 }
 
+// InstanceResponse is an instance plus any non-fatal advisory about it. The
+// instance fields are inlined, so existing clients see the shape they always saw.
+type InstanceResponse struct {
+	*models.Instance
+	// ConnectionWarning is set when the instance was saved but its Admin API did
+	// not answer, so the caller can say so instead of reporting a clean success.
+	ConnectionWarning string `json:"connection_warning,omitempty"`
+}
+
+// isForced reports whether the caller explicitly confirmed an operation that
+// would otherwise be held back by a conflict or dependency check.
+func isForced(c *gin.Context) bool {
+	return c.Query("force") == "true"
+}
+
+// connectionWarning probes the instance's Admin API and returns a human-readable
+// warning when it cannot be reached. An unreachable gateway does not block the
+// save - operators legitimately register an instance before it is running - but
+// it must never be reported as a clean success.
+func (h *InstanceHandler) connectionWarning(c *gin.Context, instance *models.Instance) string {
+	if err := h.instanceService.TestConnection(c.Request.Context(), instance); err != nil {
+		return "Instance saved, but its Admin API could not be reached: " + err.Error()
+	}
+	return ""
+}
+
 // CreateInstance creates a new APISIX instance (super_admin only)
 func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 	role := middleware.GetRole(c)
@@ -78,6 +113,40 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 		return
 	}
 
+	// A duplicate name is a hard rejection, so report it before the Admin API URL
+	// warning - otherwise the operator confirms past the warning only to be
+	// stopped by the name anyway. CreateInstance re-checks this authoritatively.
+	nameConflict, err := h.instanceService.FindNameConflict(c.Request.Context(), req.Name, "")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if nameConflict != nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"error": services.ErrDuplicateInstanceName.Error(),
+			"code":  duplicateInstanceNameCode,
+		})
+		return
+	}
+
+	// Two instances may legitimately address one gateway with different admin
+	// keys, so a shared Admin API URL is a warning the caller confirms, not an error.
+	if !isForced(c) {
+		conflict, err := h.instanceService.FindAdminAPIURLConflict(c.Request.Context(), req.AdminAPIURL, "")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if conflict != nil {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":                "Another instance already uses this Admin API URL",
+				"code":                 duplicateAdminAPIURLCode,
+				"conflicting_instance": conflict.Name,
+			})
+			return
+		}
+	}
+
 	instance := &models.Instance{
 		Name:        req.Name,
 		Description: req.Description,
@@ -88,13 +157,19 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 	}
 
 	if err := h.instanceService.CreateInstance(c.Request.Context(), instance); err != nil {
+		if errors.Is(err, services.ErrDuplicateInstanceName) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error(), "code": duplicateInstanceNameCode})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	warning := h.connectionWarning(c, instance)
+
 	// Don't return admin key in response
 	instance.AdminKey = ""
-	c.JSON(http.StatusCreated, instance)
+	c.JSON(http.StatusCreated, InstanceResponse{Instance: instance, ConnectionWarning: warning})
 }
 
 // ListInstances lists all instances
@@ -192,6 +267,37 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	}
 
 	if req.Name != "" {
+		nameConflict, err := h.instanceService.FindNameConflict(c.Request.Context(), req.Name, instanceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if nameConflict != nil {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": services.ErrDuplicateInstanceName.Error(),
+				"code":  duplicateInstanceNameCode,
+			})
+			return
+		}
+	}
+
+	if req.AdminAPIURL != "" && !isForced(c) {
+		conflict, err := h.instanceService.FindAdminAPIURLConflict(c.Request.Context(), req.AdminAPIURL, instanceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if conflict != nil {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":                "Another instance already uses this Admin API URL",
+				"code":                 duplicateAdminAPIURLCode,
+				"conflicting_instance": conflict.Name,
+			})
+			return
+		}
+	}
+
+	if req.Name != "" {
 		instance.Name = req.Name
 	}
 	if req.Description != "" {
@@ -209,12 +315,47 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	instance.IsActive = req.IsActive
 
 	if err := h.instanceService.UpdateInstance(c.Request.Context(), instance); err != nil {
+		if errors.Is(err, services.ErrDuplicateInstanceName) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error(), "code": duplicateInstanceNameCode})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	warning := h.connectionWarning(c, instance)
+
 	instance.AdminKey = ""
-	c.JSON(http.StatusOK, instance)
+	c.JSON(http.StatusOK, InstanceResponse{Instance: instance, ConnectionWarning: warning})
+}
+
+// GetInstanceDependencies reports what still references an instance, so the UI
+// can show the blast radius before asking the operator to confirm a delete
+// (super_admin only)
+func (h *InstanceHandler) GetInstanceDependencies(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	instance, err := h.instanceService.GetInstance(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if instance == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
+		return
+	}
+
+	deps, err := h.instanceService.GetInstanceDependencies(c.Request.Context(), instance)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, deps)
 }
 
 // DeleteInstance deletes an instance (super_admin only)
@@ -226,6 +367,34 @@ func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 	}
 
 	instanceID := c.Param("id")
+
+	instance, err := h.instanceService.GetInstance(c.Request.Context(), instanceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if instance == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
+		return
+	}
+
+	// Report the blast radius before destroying anything. The caller retries with
+	// ?force=true once the operator has seen what would be orphaned.
+	if !isForced(c) {
+		deps, err := h.instanceService.GetInstanceDependencies(c.Request.Context(), instance)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if deps.RequiresConfirmation() {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":        "Instance still has attached resources",
+				"code":         instanceHasDependenciesCode,
+				"dependencies": deps,
+			})
+			return
+		}
+	}
 
 	if err := h.instanceService.DeleteInstance(c.Request.Context(), instanceID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

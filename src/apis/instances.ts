@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import axios from 'axios';
+
 import { apiClient } from './client';
 
 export type Instance = {
@@ -27,6 +29,51 @@ export type Instance = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  /**
+   * Set by create/update when the instance was saved but its Admin API did not
+   * answer. Never present on a listed instance.
+   */
+  connection_warning?: string;
+};
+
+/**
+ * What still references an instance, reported by the backend when a delete is
+ * held back. Gateway counts are only meaningful when `reachable` is true.
+ */
+export type InstanceDependencies = {
+  routes: number;
+  services: number;
+  upstreams: number;
+  consumers: number;
+  stream_routes: number;
+  user_assignments: number;
+  ownership_records: number;
+  reachable: boolean;
+};
+
+/** Machine-readable codes the backend puts on its 409 responses. */
+export const INSTANCE_CONFLICT = {
+  duplicateName: 'duplicate_instance_name',
+  duplicateAdminAPIURL: 'duplicate_admin_api_url',
+  hasDependencies: 'instance_has_dependencies',
+} as const;
+
+export type InstanceConflict = {
+  code?: string;
+  error?: string;
+  conflicting_instance?: string;
+  dependencies?: InstanceDependencies;
+};
+
+/**
+ * Extracts the backend's structured conflict payload from a rejected request,
+ * or null when the failure was something else.
+ */
+export const getInstanceConflict = (error: unknown): InstanceConflict | null => {
+  if (!axios.isAxiosError(error) || error.response?.status !== 409) {
+    return null;
+  }
+  return (error.response.data as InstanceConflict) ?? null;
 };
 
 export type InstanceHealth = {
@@ -78,21 +125,39 @@ export const instanceApi = {
     return response.data;
   },
 
-  // Create a new instance
-  create: async (data: CreateInstanceRequest): Promise<Instance> => {
-    const response = await apiClient.post<Instance>('/api/v1/instances', data);
+  // Create a new instance. `force` confirms past a duplicate Admin API URL.
+  create: async (data: CreateInstanceRequest, force = false): Promise<Instance> => {
+    const response = await apiClient.post<Instance>('/api/v1/instances', data, {
+      params: force ? { force: true } : undefined,
+    });
     return response.data;
   },
 
-  // Update an instance
-  update: async (id: string, data: Partial<CreateInstanceRequest>): Promise<Instance> => {
-    const response = await apiClient.put<Instance>(`/api/v1/instances/${id}`, data);
+  // Update an instance. `force` confirms past a duplicate Admin API URL.
+  update: async (
+    id: string,
+    data: Partial<CreateInstanceRequest>,
+    force = false
+  ): Promise<Instance> => {
+    const response = await apiClient.put<Instance>(`/api/v1/instances/${id}`, data, {
+      params: force ? { force: true } : undefined,
+    });
     return response.data;
   },
 
-  // Delete an instance
-  delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/api/v1/instances/${id}`);
+  // What still references an instance — shown before confirming a delete
+  dependencies: async (id: string): Promise<InstanceDependencies> => {
+    const response = await apiClient.get<InstanceDependencies>(
+      `/api/v1/instances/${id}/dependencies`
+    );
+    return response.data;
+  },
+
+  // Delete an instance. `force` confirms past the dependency check.
+  delete: async (id: string, force = false): Promise<void> => {
+    await apiClient.delete(`/api/v1/instances/${id}`, {
+      params: force ? { force: true } : undefined,
+    });
   },
 
   // Test connection to an instance

@@ -17,11 +17,14 @@
 
 import {
   ActionIcon,
+  Alert,
   Badge,
   Box,
   Button,
   Container,
   Group,
+  List,
+  Loader,
   Modal,
   Paper,
   ScrollArea,
@@ -38,9 +41,18 @@ import {
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtom } from 'jotai';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { type CreateInstanceRequest,type Instance, instanceApi } from '@/apis/instances';
+import {
+  type CreateInstanceRequest,
+  getInstanceConflict,
+  type Instance,
+  INSTANCE_CONFLICT,
+  instanceApi,
+  type InstanceDependencies,
+  type InstanceHealth,
+} from '@/apis/instances';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom,instancesAtom, instancesLoadingAtom } from '@/stores/instance';
 import IconPlus from '~icons/material-symbols/add';
@@ -50,7 +62,125 @@ import IconServer from '~icons/material-symbols/dns-outline';
 import IconEdit from '~icons/material-symbols/edit-outline';
 import IconPlugConnected from '~icons/material-symbols/wifi-tethering';
 
+/**
+ * Reports whether the gateway actually answered. Deliberately independent of
+ * `is_active`, which only records whether an admin enabled the instance.
+ */
+const ConnectivityBadge = ({
+  health,
+  loaded,
+}: {
+  health?: InstanceHealth;
+  loaded: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  if (!loaded || !health) {
+    return (
+      <Badge color="gray" variant="outline">
+        {t('instances.checking')}
+      </Badge>
+    );
+  }
+
+  const connected = health.status === 'Connected';
+  return (
+    <Tooltip label={health.error} disabled={!health.error}>
+      <Badge color={connected ? 'green' : 'red'} variant="light">
+        {connected ? t('instances.connected') : t('instances.unreachable')}
+      </Badge>
+    </Tooltip>
+  );
+};
+
+/** Resources that live on the gateway and survive the instance's deletion. */
+const GATEWAY_RESOURCES = [
+  { key: 'routes', label: 'instances.resourceRoutes' },
+  { key: 'services', label: 'instances.resourceServices' },
+  { key: 'upstreams', label: 'instances.resourceUpstreams' },
+  { key: 'consumers', label: 'instances.resourceConsumers' },
+  { key: 'stream_routes', label: 'instances.resourceStreamRoutes' },
+] as const;
+
+/** Dashboard-owned records that the deletion discards. */
+const DASHBOARD_RECORDS = [
+  { key: 'user_assignments', label: 'instances.resourceUserAssignments' },
+  { key: 'ownership_records', label: 'instances.resourceOwnershipRecords' },
+] as const;
+
+/** The countable fields of InstanceDependencies (i.e. everything but `reachable`). */
+type CountableDependency = {
+  [K in keyof InstanceDependencies]: InstanceDependencies[K] extends number ? K : never;
+}[keyof InstanceDependencies];
+
+type ImpactLabel =
+  | (typeof GATEWAY_RESOURCES)[number]['label']
+  | (typeof DASHBOARD_RECORDS)[number]['label'];
+
+type ImpactCount = { label: ImpactLabel; count: number };
+
+/**
+ * Spells out exactly what a deletion would orphan, so it can never be the silent
+ * no-op it used to be.
+ */
+const DeleteImpact = ({ dependencies }: { dependencies: InstanceDependencies }) => {
+  const { t } = useTranslation();
+
+  const countsFor = (
+    group: readonly { key: CountableDependency; label: ImpactLabel }[]
+  ): ImpactCount[] =>
+    group
+      .map((entry) => ({ label: entry.label, count: dependencies[entry.key] }))
+      .filter((entry) => entry.count > 0);
+
+  const attached = countsFor(GATEWAY_RESOURCES);
+  const records = countsFor(DASHBOARD_RECORDS);
+
+  const renderCounts = (entries: ImpactCount[]) => (
+    <List size="sm" spacing={4} withPadding>
+      {entries.map((entry) => (
+        <List.Item key={entry.label}>
+          {entry.count} {t(entry.label)}
+        </List.Item>
+      ))}
+    </List>
+  );
+
+  if (dependencies.reachable && attached.length === 0 && records.length === 0) {
+    return <Text size="sm">{t('instances.deleteEmpty')}</Text>;
+  }
+
+  return (
+    <Stack gap="sm">
+      {!dependencies.reachable && (
+        <Alert color="orange" variant="light">
+          {t('instances.deleteUnreachable')}
+        </Alert>
+      )}
+      {attached.length > 0 && (
+        <Box>
+          <Text size="sm">{t('instances.deleteAttachedIntro')}</Text>
+          {renderCounts(attached)}
+        </Box>
+      )}
+      {records.length > 0 && (
+        <Box>
+          <Text size="sm">{t('instances.deleteOrphanIntro')}</Text>
+          {renderCounts(records)}
+        </Box>
+      )}
+    </Stack>
+  );
+};
+
+/** A delete awaiting confirmation. `dependencies` is null while still loading. */
+type PendingDelete = {
+  instance: Instance;
+  dependencies: InstanceDependencies | null;
+};
+
 const InstancesPage = () => {
+  const { t } = useTranslation();
   const { isSuperAdmin } = usePermission();
   const [instances, setInstances] = useAtom(instancesAtom);
   const [loading, setLoading] = useAtom(instancesLoadingAtom);
@@ -58,6 +188,14 @@ const InstancesPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInstance, setEditingInstance] = useState<Instance | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [health, setHealth] = useState<Record<string, InstanceHealth>>({});
+  const [healthLoaded, setHealthLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  // Name of the instance already using the submitted Admin API URL, awaiting confirmation.
+  const [urlConflict, setUrlConflict] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState<CreateInstanceRequest>({
     name: '',
     description: '',
@@ -67,7 +205,7 @@ const InstancesPage = () => {
     is_active: true,
   });
 
-  const loadInstances = async () => {
+  const loadInstances = useCallback(async () => {
     setLoading(true);
     try {
       const data = await instanceApi.list();
@@ -81,58 +219,127 @@ const InstancesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setInstances, setLoading]);
+
+  /**
+   * Connectivity is a live property of the gateway, not of the stored record, so
+   * it is fetched separately and never inferred from `is_active`.
+   */
+  const loadHealth = useCallback(async () => {
+    try {
+      const results = await instanceApi.listHealth();
+      setHealth(Object.fromEntries(results.map((entry) => [entry.instance_id, entry])));
+    } catch {
+      setHealth({});
+    } finally {
+      setHealthLoaded(true);
+    }
+  }, []);
 
   useEffect(() => {
     loadInstances();
-  }, []);
+    loadHealth();
+  }, [loadInstances, loadHealth]);
 
   if (!isSuperAdmin) {
     return (
       <Container size="xl">
         <Paper p="xl" withBorder ta="center">
-          <Title order={2} mt="md">Access Denied</Title>
+          <Title order={2} mt="md">{t('instances.accessDeniedTitle')}</Title>
           <Text c="dimmed" mt="sm">
-            Only Super Admins can manage instances.
+            {t('instances.accessDeniedBody')}
           </Text>
         </Paper>
       </Container>
     );
   }
 
-  const handleSubmit = async () => {
+  /**
+   * Saves the instance. `force` is set only after the operator has confirmed a
+   * warned-about conflict, so an unconfirmed duplicate can never slip through.
+   */
+  const submitInstance = async (force: boolean) => {
+    setSaving(true);
+    setNameError(null);
     try {
-      if (editingInstance) {
-        await instanceApi.update(editingInstance.id, formData);
+      const saved = editingInstance
+        ? await instanceApi.update(editingInstance.id, formData, force)
+        : await instanceApi.create(formData, force);
+
+      setModalOpen(false);
+      setUrlConflict(null);
+      resetForm();
+
+      if (saved.connection_warning) {
+        // Saved, but reporting it as a plain success would repeat the bug this fixes.
         notifications.show({
-          title: 'Success',
-          message: 'Instance updated successfully',
-          color: 'green',
+          title: t('instances.saveWarningTitle'),
+          message: saved.connection_warning,
+          color: 'yellow',
         });
       } else {
-        await instanceApi.create(formData);
         notifications.show({
           title: 'Success',
-          message: 'Instance created successfully',
+          message: editingInstance
+            ? 'Instance updated successfully'
+            : 'Instance created successfully',
           color: 'green',
         });
       }
-      setModalOpen(false);
-      resetForm();
+
       loadInstances();
-    } catch {
+      loadHealth();
+    } catch (error) {
+      const conflict = getInstanceConflict(error);
+
+      if (conflict?.code === INSTANCE_CONFLICT.duplicateName) {
+        setNameError(t('instances.duplicateName', { name: formData.name.trim() }));
+        return;
+      }
+
+      if (conflict?.code === INSTANCE_CONFLICT.duplicateAdminAPIURL) {
+        setUrlConflict(conflict.conflicting_instance ?? '');
+        return;
+      }
+
       notifications.show({
         title: 'Error',
         message: 'Failed to save instance',
         color: 'red',
       });
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this instance?')) return;
+  const handleSubmit = () => submitInstance(false);
+
+  /**
+   * Opens the delete confirmation and loads what the deletion would orphan. The
+   * instance is not touched until the operator confirms.
+   */
+  const openDeleteModal = async (instance: Instance) => {
+    setPendingDelete({ instance, dependencies: null });
     try {
-      await instanceApi.delete(id);
+      const dependencies = await instanceApi.dependencies(instance.id);
+      setPendingDelete({ instance, dependencies });
+    } catch {
+      setPendingDelete(null);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to check what depends on this instance',
+        color: 'red',
+      });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete.instance;
+
+    setDeleting(true);
+    try {
+      await instanceApi.delete(id, true);
       notifications.show({
         title: 'Success',
         message: 'Instance deleted successfully',
@@ -141,13 +348,17 @@ const InstancesPage = () => {
       if (currentInstanceId === id) {
         setCurrentInstanceId('');
       }
+      setPendingDelete(null);
       loadInstances();
+      loadHealth();
     } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to delete instance',
         color: 'red',
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -169,6 +380,8 @@ const InstancesPage = () => {
       });
     } finally {
       setTestingId(null);
+      // Keep the Connectivity column consistent with what the test just reported.
+      loadHealth();
     }
   };
 
@@ -183,6 +396,8 @@ const InstancesPage = () => {
 
   const resetForm = () => {
     setEditingInstance(null);
+    setNameError(null);
+    setUrlConflict(null);
     setFormData({
       name: '',
       description: '',
@@ -211,9 +426,9 @@ const InstancesPage = () => {
       <Box className="PageTitle-root" mb="xl">
         <Group justify="space-between">
           <Box>
-            <Title order={1}>Instances</Title>
+            <Title order={1}>{t('sources.instances')}</Title>
             <Text c="dimmed" mt={4}>
-              Manage connections to your Apache APISIX gateways
+              {t('instances.subtitle')}
             </Text>
           </Box>
           {instances.length > 0 && (
@@ -222,7 +437,7 @@ const InstancesPage = () => {
               onClick={() => { resetForm(); setModalOpen(true); }}
               className="animate-pulse-hover"
             >
-              Add Instance
+              {t('instances.addInstance')}
             </Button>
           )}
         </Group>
@@ -232,11 +447,20 @@ const InstancesPage = () => {
         <Table horizontalSpacing="lg" verticalSpacing="md">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Admin API URL</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Active Manager</Table.Th>
-              <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
+              <Table.Th>{t('instances.columnName')}</Table.Th>
+              <Table.Th>{t('instances.columnAdminUrl')}</Table.Th>
+              <Table.Th>
+                <Tooltip label={t('instances.enabledHint')}>
+                  <span>{t('instances.columnEnabled')}</span>
+                </Tooltip>
+              </Table.Th>
+              <Table.Th>
+                <Tooltip label={t('instances.connectivityHint')}>
+                  <span>{t('instances.columnConnectivity')}</span>
+                </Tooltip>
+              </Table.Th>
+              <Table.Th>{t('instances.columnActiveManager')}</Table.Th>
+              <Table.Th style={{ textAlign: 'right' }}>{t('table.actions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -278,12 +502,15 @@ const InstancesPage = () => {
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Badge 
+                    <Badge
                       color={instance.is_active ? 'green' : 'gray'}
                       variant={instance.is_active ? 'light' : 'outline'}
                     >
-                      {instance.is_active ? 'Active' : 'Inactive'}
+                      {instance.is_active ? t('instances.enabled') : t('instances.disabled')}
                     </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <ConnectivityBadge health={health[instance.id]} loaded={healthLoaded} />
                   </Table.Td>
                   <Table.Td>
                     <Switch
@@ -312,7 +539,7 @@ const InstancesPage = () => {
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Delete">
-                        <ActionIcon variant="light" color="red" aria-label="Delete" onClick={() => handleDelete(instance.id)}>
+                        <ActionIcon variant="light" color="red" aria-label="Delete" onClick={() => openDeleteModal(instance)}>
                           <IconDelete width="18" height="18" />
                         </ActionIcon>
                       </Tooltip>
@@ -324,20 +551,20 @@ const InstancesPage = () => {
             
             {instances.length === 0 && !loading && (
               <Table.Tr>
-                <Table.Td colSpan={5}>
+                <Table.Td colSpan={6}>
                   <Box className="EmptyState-root" ta="center">
                     <IconServer width="48" height="48" color="var(--text-tertiary)" />
                     <Text fw={600} size="lg" mt="md" c="var(--text-primary)">
-                      No instances found
+                      {t('instances.emptyTitle')}
                     </Text>
                     <Text c="dimmed" size="sm" mt="xs" mb="lg">
-                      Get started by connecting to your first APISIX instance.
+                      {t('instances.emptyBody')}
                     </Text>
-                    <Button 
+                    <Button
                       leftSection={<IconPlus width="16" height="16" />}
                       onClick={() => { resetForm(); setModalOpen(true); }}
                     >
-                      Add Instance
+                      {t('instances.addInstance')}
                     </Button>
                   </Box>
                 </Table.Td>
@@ -365,7 +592,11 @@ const InstancesPage = () => {
             placeholder="e.g., Production Cluster"
             required
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            error={nameError}
+            onChange={(e) => {
+              setNameError(null);
+              setFormData({ ...formData, name: e.target.value });
+            }}
             data-autofocus
           />
           <Textarea
@@ -403,8 +634,8 @@ const InstancesPage = () => {
           <Paper p="md" withBorder bg="var(--surface-1)" mt="sm">
             <Group justify="space-between">
               <Box>
-                <Text fw={500} size="sm">Active Status</Text>
-                <Text size="xs" c="dimmed">Inactive instances cannot be selected or modified</Text>
+                <Text fw={500} size="sm">{t('instances.enabledFieldLabel')}</Text>
+                <Text size="xs" c="dimmed">{t('instances.enabledFieldHint')}</Text>
               </Box>
               <Switch
                 checked={formData.is_active}
@@ -416,10 +647,64 @@ const InstancesPage = () => {
 
           <Group justify="flex-end" mt="xl">
             <Button variant="subtle" color="gray" onClick={() => { setModalOpen(false); resetForm(); }}>
-              Cancel
+              {t('form.btn.cancel')}
             </Button>
-            <Button onClick={handleSubmit}>
-              {editingInstance ? 'Save Changes' : 'Create Instance'}
+            <Button onClick={handleSubmit} loading={saving}>
+              {editingInstance ? t('instances.saveChanges') : t('instances.createInstance')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={urlConflict !== null}
+        onClose={() => setUrlConflict(null)}
+        title={t('instances.duplicateUrlTitle')}
+        size="md"
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            {t('instances.duplicateUrlBody', { name: urlConflict ?? '' })}
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={() => setUrlConflict(null)}>
+              {t('form.btn.cancel')}
+            </Button>
+            <Button color="yellow" loading={saving} onClick={() => submitInstance(true)}>
+              {t('instances.saveAnyway')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        title={t('instances.deleteTitle', { name: pendingDelete?.instance.name ?? '' })}
+        size="md"
+      >
+        <Stack gap="md">
+          {pendingDelete?.dependencies ? (
+            <DeleteImpact dependencies={pendingDelete.dependencies} />
+          ) : (
+            <Group gap="sm">
+              <Loader size="sm" />
+              <Text size="sm" c="dimmed">
+                {t('instances.checking')}
+              </Text>
+            </Group>
+          )}
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={() => setPendingDelete(null)}>
+              {t('form.btn.cancel')}
+            </Button>
+            <Button
+              color="red"
+              loading={deleting}
+              disabled={!pendingDelete?.dependencies}
+              onClick={confirmDelete}
+            >
+              {t('instances.deleteConfirm')}
             </Button>
           </Group>
         </Stack>
