@@ -281,7 +281,13 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 		}
 	}
 
-	if req.AdminAPIURL != "" && !isForced(c) {
+	// Only an edit that actually changes the URL can introduce a new collision.
+	// Re-warning about an unchanged URL would block every unrelated edit to an
+	// instance that already shares a gateway - a conflict already confirmed once.
+	urlChanged := req.AdminAPIURL != "" &&
+		services.NormalizeAdminAPIURL(req.AdminAPIURL) != services.NormalizeAdminAPIURL(instance.AdminAPIURL)
+
+	if urlChanged && !isForced(c) {
 		conflict, err := h.instanceService.FindAdminAPIURLConflict(c.Request.Context(), req.AdminAPIURL, instanceID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

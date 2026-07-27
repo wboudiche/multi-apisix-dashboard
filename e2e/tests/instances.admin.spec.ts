@@ -28,6 +28,14 @@ const PREFIX = randomId('adm-inst');
 // Real second APISIX from e2e/server/docker-compose.yml; key from apisix_conf_2.yml.
 const STAGING_ADMIN_URL = 'http://127.0.0.1:9181';
 const STAGING_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
+// Ports nothing listens on. Each unreachable fixture needs its own, otherwise
+// they collide on the duplicate-Admin-API-URL check and never reach the
+// behaviour under test.
+const DEAD_URLS = {
+  connectionTest: 'http://127.0.0.1:1',
+  status: 'http://127.0.0.1:2',
+  saveWarning: 'http://127.0.0.1:3',
+} as const;
 
 test.afterAll(async () => {
   await deleteInstancesByPrefix(PREFIX);
@@ -74,16 +82,18 @@ test('rejects an instance whose name is already taken', async ({ page }) => {
   await page.getByRole('button', { name: 'Create Instance' }).click();
 
   await expect(page.getByText(/already exists/)).toBeVisible();
-  // Rejected, not silently created: the modal is still open and no row was added.
+  // Rejected, not silently created: the modal is still open and the name still
+  // matches exactly one row. (hasText matches case-insensitively, so counting
+  // the uppercase spelling would find the original row and prove nothing.)
   await expect(page.getByText('Add New Instance')).toBeVisible();
-  await expect(adminPom.rowByText(page, name.toUpperCase())).toHaveCount(0);
+  await expect(adminPom.rowByText(page, name)).toHaveCount(1);
 });
 
 test('shows an unreachable instance as Unreachable, not Active', async ({ page }) => {
   const name = `${PREFIX}-status`;
   await ensureInstance(await adminToken(), {
     name,
-    admin_api_url: 'http://127.0.0.1:1',
+    admin_api_url: DEAD_URLS.status,
     admin_key: 'irrelevant',
     is_active: true,
   });
@@ -106,7 +116,7 @@ test('warns that saving an unreachable instance did not connect', async ({ page 
 
   await page.getByRole('button', { name: 'Add Instance' }).click();
   await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Admin API URL').fill('http://127.0.0.1:1');
+  await page.getByLabel('Admin API URL').fill(DEAD_URLS.saveWarning);
   await page.getByLabel('Admin Key').fill('irrelevant');
   await page.getByRole('button', { name: 'Create Instance' }).click();
 
@@ -158,7 +168,7 @@ test('Connection test fails against an unreachable instance', async ({ page }) =
   const name = `${PREFIX}-unreachable`;
   await ensureInstance(await adminToken(), {
     name,
-    admin_api_url: 'http://127.0.0.1:1',
+    admin_api_url: DEAD_URLS.connectionTest,
     admin_key: 'irrelevant',
   });
 
