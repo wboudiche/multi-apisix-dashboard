@@ -364,11 +364,60 @@ func (h *InstanceHandler) hasAccess(c *gin.Context, instanceID string) bool {
 }
 
 // ListInstancesHealth returns the health status of all accessible instances
+// filterAllowedInstances keeps only the instances whose ID is in allowed.
+func filterAllowedInstances(instances []*models.Instance, allowed map[string]bool) []*models.Instance {
+	filtered := make([]*models.Instance, 0, len(instances))
+	for _, instance := range instances {
+		if instance != nil && allowed[instance.ID] {
+			filtered = append(filtered, instance)
+		}
+	}
+	return filtered
+}
+
+// healthErrorDetail renders a failed probe for the caller.
+//
+// The probe error quotes the URL it dialled, so handing it to everyone would
+// publish each gateway's internal Admin API address. Only a super_admin — who
+// can read the address off the instance record anyway — gets the full reason.
+func healthErrorDetail(probeErr error, isSuperAdmin bool) string {
+	if probeErr == nil {
+		return ""
+	}
+	if isSuperAdmin {
+		return probeErr.Error()
+	}
+	return "The dashboard could not reach this gateway's Admin API"
+}
+
+// ListInstancesHealth returns the connectivity status of the instances the
+// caller may see: everything for a super_admin, and otherwise only the
+// instances they hold a role on — the same rule ListInstances applies. The
+// header polls this for every user to badge the instance switcher, so an
+// unassigned user gets an empty list rather than a 403.
 func (h *InstanceHandler) ListInstancesHealth(c *gin.Context) {
+	isSuperAdmin := middleware.GetRole(c) == models.RoleSuperAdmin
+
 	instances, err := h.instanceService.ListInstances(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if !isSuperAdmin {
+		userInstances, err := h.authService.GetUserInstances(c.Request.Context(), middleware.GetUserID(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		allowed := make(map[string]bool, len(userInstances))
+		for _, ui := range userInstances {
+			allowed[ui.InstanceID] = true
+		}
+		// Filter before probing, not after: probing an instance the caller
+		// cannot see would both leak its existence through timing and spend up
+		// to 5s per gateway on a request that must not report it.
+		instances = filterAllowedInstances(instances, allowed)
 	}
 
 	healthResults := make([]models.InstanceHealth, 0, len(instances))
@@ -381,7 +430,7 @@ func (h *InstanceHandler) ListInstancesHealth(c *gin.Context) {
 
 		if err := h.instanceService.TestConnection(c.Request.Context(), inst); err != nil {
 			health.Status = "Disconnected"
-			health.Error = err.Error()
+			health.Error = healthErrorDetail(err, isSuperAdmin)
 		} else {
 			health.Status = "Connected"
 		}
