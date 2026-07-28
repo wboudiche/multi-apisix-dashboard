@@ -50,6 +50,40 @@ export const produceRmDoubleUnderscoreKeys = produce((draft) => {
   rmDoubleUnderscoreKeys(draft);
 });
 
+type WithPlugins = { plugins?: Record<string, unknown> };
+
+/**
+ * Names of the plugins configured with an empty object.
+ *
+ * `{"key-auth": {}}` enables a plugin with its defaults — that is how most auth
+ * plugins are switched on — but an empty object is indistinguishable from
+ * leftover noise to the deep cleaner below, which drops the entry and makes the
+ * plugin silently vanish from the payload.
+ */
+const emptyConfigPluginNames = (value: unknown): string[] => {
+  const plugins = (value as WithPlugins | null | undefined)?.plugins;
+  if (!plugins || typeof plugins !== 'object') return [];
+  return Object.entries(plugins)
+    .filter(
+      ([, config]) =>
+        !!config &&
+        typeof config === 'object' &&
+        Object.keys(config as object).length === 0
+    )
+    .map(([name]) => name);
+};
+
+/** Puts back the empty-config plugins the deep cleaner removed. */
+const restoreEmptyConfigPlugins = (value: unknown, names: string[]) => {
+  if (names.length === 0) return value;
+  const target = value as WithPlugins;
+  if (!target.plugins) target.plugins = {};
+  for (const name of names) {
+    if (!(name in target.plugins)) target.plugins[name] = {};
+  }
+  return value;
+};
+
 /**
  * FIXME: type error
  */
@@ -58,13 +92,17 @@ export const pipeProduce = (...funcs: ((a: any) => unknown)[]) => {
   return <T>(val: T) =>
     produce(val, (draft) => {
       const fs = funcs;
-      return pipe(
+      const piped = pipe(
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
         ...fs,
         produceRmDoubleUnderscoreKeys,
-        produceTime,
-        produceDeepCleanEmptyKeys()
-      )(draft) as never;
+        produceTime
+      )(draft);
+      // Record these before cleaning, restore after: the cleaner has no way to
+      // tell a deliberately empty plugin config from an empty leftover.
+      const emptyPlugins = emptyConfigPluginNames(piped);
+      const cleaned = produceDeepCleanEmptyKeys()(piped);
+      return restoreEmptyConfigPlugins(cleaned, emptyPlugins) as never;
     }) as T;
 };
