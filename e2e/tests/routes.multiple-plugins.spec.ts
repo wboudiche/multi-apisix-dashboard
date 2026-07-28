@@ -47,11 +47,15 @@ test.afterEach(async () => {
   await e2eReq.delete(`${API_ROUTES}/${ROUTE_ID}`);
 });
 
-/** Walks the edit wizard from step 1 to the Plugins step. */
+// The route wizard's Plugins step is the 4th of five, so three Next clicks from
+// step 1. Asserted below rather than assumed: if a step is ever inserted, the
+// failure should name the wizard rather than surface as a stray locator error.
+const STEPS_TO_PLUGINS = 3;
+
 const openPluginsStep = async (page: Page) => {
   await page.goto(DETAIL_URL);
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < STEPS_TO_PLUGINS; i++) {
     await page.getByRole('button', { name: 'Next' }).click();
   }
   await expect(page.getByRole('button', { name: 'Select Plugins' })).toBeVisible();
@@ -68,6 +72,9 @@ test('adds a second plugin without dropping the one already configured', async (
   await page.getByRole('button', { name: 'Select Plugins' }).click();
   const selectDrawer = page.locator('[role="dialog"]');
   await selectDrawer.locator('input[placeholder="Search"]').fill('basic-auth');
+  // Wait for the search to narrow before clicking, otherwise the first Add
+  // button belongs to whichever plugin happened to be at the top of the list.
+  await expect(selectDrawer.getByText('basic-auth')).toBeVisible();
   await selectDrawer.getByRole('button', { name: 'Add' }).first().click();
 
   // Confirm in the plugin editor drawer that opens on top.

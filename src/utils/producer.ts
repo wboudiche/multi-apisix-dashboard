@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { clean,type ICleanerOptions } from 'fast-clean';
-import { produce } from 'immer';
+import { current, isDraft, produce } from 'immer';
 import { pipe } from 'rambdax';
 
 import { produceTime } from './form-producer';
@@ -53,35 +53,25 @@ export const produceRmDoubleUnderscoreKeys = produce((draft) => {
 type WithPlugins = { plugins?: Record<string, unknown> };
 
 /**
- * Names of the plugins configured with an empty object.
+ * Returns a payload's plugin map as a plain (non-draft) value, so it can be put
+ * back untouched after the deep clean has run over everything else.
  *
- * `{"key-auth": {}}` enables a plugin with its defaults — that is how most auth
- * plugins are switched on — but an empty object is indistinguishable from
- * leftover noise to the deep cleaner below, which drops the entry and makes the
- * plugin silently vanish from the payload.
+ * Inside a plugin map an empty object is meaningful data, not leftover noise:
+ * `{"key-auth": {}}` enables a plugin with its defaults, and multi-auth's
+ * `{"auth_plugins": [{"basic-auth": {}}, {"key-auth": {}}]}` is nothing but
+ * such objects. produceDeepCleanEmptyKeys cannot tell those apart from a blank
+ * form field, so it deletes them — and once a config is emptied the plugin
+ * itself goes, silently stripping authentication from the route.
+ *
+ * Nothing is lost by skipping the clean here: PluginSchemaForm already drops a
+ * field as soon as it is blank (see its handleFieldChange), so plugin configs
+ * do not collect the empty leaves the cleaner exists to remove.
  */
-const emptyConfigPluginNames = (value: unknown): string[] => {
+const snapshotPlugins = (value: unknown): Record<string, unknown> | undefined => {
   const plugins = (value as WithPlugins | null | undefined)?.plugins;
-  if (!plugins || typeof plugins !== 'object') return [];
-  return Object.entries(plugins)
-    .filter(
-      ([, config]) =>
-        !!config &&
-        typeof config === 'object' &&
-        Object.keys(config as object).length === 0
-    )
-    .map(([name]) => name);
-};
-
-/** Puts back the empty-config plugins the deep cleaner removed. */
-const restoreEmptyConfigPlugins = (value: unknown, names: string[]) => {
-  if (names.length === 0) return value;
-  const target = value as WithPlugins;
-  if (!target.plugins) target.plugins = {};
-  for (const name of names) {
-    if (!(name in target.plugins)) target.plugins[name] = {};
-  }
-  return value;
+  if (!plugins || typeof plugins !== 'object') return undefined;
+  // current() detaches the draft so the snapshot survives the clean untouched.
+  return (isDraft(plugins) ? current(plugins) : plugins) as Record<string, unknown>;
 };
 
 /**
@@ -99,10 +89,20 @@ export const pipeProduce = (...funcs: ((a: any) => unknown)[]) => {
         produceRmDoubleUnderscoreKeys,
         produceTime
       )(draft);
-      // Record these before cleaning, restore after: the cleaner has no way to
-      // tell a deliberately empty plugin config from an empty leftover.
-      const emptyPlugins = emptyConfigPluginNames(piped);
+
+      // Snapshot before the clean, overwrite after: whatever the cleaner did to
+      // the plugin map is discarded in favour of what the operator configured.
+      // Only re-attach when a plugin actually remains — an empty map means they
+      // removed them all, and the key should go.
+      const plugins = snapshotPlugins(piped);
       const cleaned = produceDeepCleanEmptyKeys()(piped);
-      return restoreEmptyConfigPlugins(cleaned, emptyPlugins) as never;
+      if (plugins && Object.keys(plugins).length > 0) {
+        // Safe to assign: `cleaned` is the result of a produce nested inside
+        // this one, so immer has not finalized (and frozen) it yet. Mutating
+        // `piped` instead would trip immer's "returned a new value *and*
+        // modified its draft" guard.
+        (cleaned as WithPlugins).plugins = plugins;
+      }
+      return cleaned as never;
     }) as T;
 };

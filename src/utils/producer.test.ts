@@ -64,6 +64,54 @@ describe('pipeProduce', () => {
     ]);
   });
 
+  // A config that is not empty on the way in but cleans down to nothing used to
+  // be dropped: only configs that were already `{}` were protected.
+  it('keeps a plugin whose config only becomes empty while cleaning', () => {
+    const result = produceBody({
+      name: 'r',
+      plugins: { 'key-auth': { header: '' } },
+    });
+
+    expect(Object.keys(result.plugins ?? {})).toEqual(['key-auth']);
+  });
+
+  it('keeps a plugin config whose nested values are all empty objects', () => {
+    // The shipped multi-auth template. Every leaf is `{}` — each one enabling a
+    // sub-plugin with its defaults — so a cleaner that prunes empty objects
+    // destroys the whole plugin and leaves the route unauthenticated.
+    const authPlugins = [{ 'basic-auth': {} }, { 'key-auth': {} }];
+    const result = produceBody({
+      name: 'r',
+      plugins: { 'multi-auth': { auth_plugins: authPlugins } },
+    });
+
+    expect(result.plugins?.['multi-auth']).toEqual({ auth_plugins: authPlugins });
+  });
+
+  it('keeps a configured plugin alongside one that cleans down to nothing', () => {
+    const result = produceBody({
+      name: 'r',
+      plugins: {
+        'key-auth': {},
+        'ip-restriction': { whitelist: [] },
+        'limit-count': { count: 10 },
+      },
+    });
+
+    expect(Object.keys(result.plugins!).sort()).toEqual([
+      'ip-restriction',
+      'key-auth',
+      'limit-count',
+    ]);
+    expect(result.plugins!['limit-count']).toEqual({ count: 10 });
+  });
+
+  it('drops the plugins key when every plugin was removed', () => {
+    const result = produceBody({ name: 'r', uri: '/r', plugins: {} });
+
+    expect(result.plugins).toBeUndefined();
+  });
+
   it('still strips empty values elsewhere in the payload', () => {
     const result = produceBody({
       name: 'r',
