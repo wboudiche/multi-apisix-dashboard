@@ -174,3 +174,31 @@ func TestInstanceDependenciesTotalGatewayResources(t *testing.T) {
 		t.Errorf("TotalGatewayResources() = %d, want %d", got, want)
 	}
 }
+
+func TestFindInstanceByID(t *testing.T) {
+	existing := []*models.Instance{
+		{ID: "id-1", Name: "One"},
+		nil,
+		{ID: "id-2", Name: "Two"},
+	}
+
+	if got := FindInstanceByID(existing, "id-2"); got == nil || got.Name != "Two" {
+		t.Errorf("FindInstanceByID(id-2) = %v, want the instance named Two", got)
+	}
+	if got := FindInstanceByID(existing, "missing"); got != nil {
+		t.Errorf("FindInstanceByID(missing) = %v, want nil", got)
+	}
+}
+
+// A blank name normalizes to "" and is then exempt from every comparison, so it
+// must be rejected at the boundary rather than silently stored.
+func TestNormalizeInstanceNameRejectsBlank(t *testing.T) {
+	for _, name := range []string{"", "   ", "\t", "\n ", "  \t\n  "} {
+		if got := NormalizeInstanceName(name); got != "" {
+			t.Errorf("NormalizeInstanceName(%q) = %q, want %q", name, got, "")
+		}
+	}
+	if got := NormalizeInstanceName("  Prod  "); got != "prod" {
+		t.Errorf("NormalizeInstanceName(\"  Prod  \") = %q, want %q", got, "prod")
+	}
+}

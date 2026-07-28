@@ -59,7 +59,13 @@
     "enabledFieldLabel": "Enabled",
     "enabledFieldHint": "Disabled instances cannot be selected or managed",
     "createInstance": "Create Instance",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "connectivityUnknown": "Unknown",
+    "connectivityUnknownHint": "The dashboard could not determine this gateway’s status",
+    "saveFailed": "Failed to save instance",
+    "deleteFailed": "Failed to delete instance",
+    "dependencyCheckFailed": "Failed to check what depends on this instance",
+    "deleteUnreachableReason": "Reason: {{reason}}"
   },
   "proxyError": {
     "title": "Cannot reach {{name}}",

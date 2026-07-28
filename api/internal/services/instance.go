@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -94,6 +95,16 @@ func FindInstanceByName(instances []*models.Instance, candidate string, excludeI
 	return nil
 }
 
+// FindInstanceByID returns the instance with the given ID, or nil.
+func FindInstanceByID(instances []*models.Instance, id string) *models.Instance {
+	for _, instance := range instances {
+		if instance != nil && instance.ID == id {
+			return instance
+		}
+	}
+	return nil
+}
+
 // FindInstanceByAdminAPIURL returns the instance already pointing at the same
 // Admin API endpoint as candidate, or nil. Unlike names this is not an error -
 // two instances may legitimately address one gateway with different admin keys -
@@ -135,9 +146,12 @@ func (s *InstanceService) FindAdminAPIURLConflict(ctx context.Context, adminAPIU
 
 // CreateInstance persists a new instance, rejecting a name already in use.
 //
-// The uniqueness check is read-then-write rather than an etcd transaction. Only
-// super_admins create instances, so a racing duplicate is unlikely; if that ever
-// changes this needs a compare-and-swap on a name-index key.
+// The uniqueness check is read-then-write rather than an etcd transaction, here
+// and in UpdateInstance. Only super_admins create instances, so a racing
+// duplicate is unlikely, and the consequence is cosmetic: nothing is keyed on
+// the name. If that ever changes, both need a compare-and-swap on a name-index
+// key — and note UpdateInstance already tolerates pre-existing duplicates on
+// purpose, so it cannot simply start rejecting them.
 func (s *InstanceService) CreateInstance(ctx context.Context, instance *models.Instance) error {
 	existing, err := s.ListInstances(ctx)
 	if err != nil {
@@ -186,13 +200,25 @@ func (s *InstanceService) ListInstances(ctx context.Context) ([]*models.Instance
 
 // UpdateInstance persists changes to an instance, rejecting a rename onto a
 // name another instance already holds.
+//
+// A save that leaves the name as it was is never rejected, even when the name
+// does collide: uniqueness is newer than the data, so colliding records can
+// already exist, and refusing to save them would leave them permanently
+// un-editable with no way out. See the matching note in the update handler.
 func (s *InstanceService) UpdateInstance(ctx context.Context, instance *models.Instance) error {
 	existing, err := s.ListInstances(ctx)
 	if err != nil {
 		return err
 	}
-	if conflict := FindInstanceByName(existing, instance.Name, instance.ID); conflict != nil {
-		return ErrDuplicateInstanceName
+
+	stored := FindInstanceByID(existing, instance.ID)
+	renaming := stored == nil ||
+		NormalizeInstanceName(stored.Name) != NormalizeInstanceName(instance.Name)
+
+	if renaming {
+		if conflict := FindInstanceByName(existing, instance.Name, instance.ID); conflict != nil {
+			return ErrDuplicateInstanceName
+		}
 	}
 
 	instance.Name = strings.TrimSpace(instance.Name)
@@ -206,23 +232,37 @@ func (s *InstanceService) UpdateInstance(ctx context.Context, instance *models.I
 func (s *InstanceService) GetInstanceDependencies(ctx context.Context, instance *models.Instance) (*models.InstanceDependencies, error) {
 	deps := &models.InstanceDependencies{}
 
-	// Gateway-side resources. A single failing probe means the Admin API is not
-	// answering, so every count is unknown rather than zero.
-	counts := map[string]*int{
-		"routes":        &deps.Routes,
-		"services":      &deps.Services,
-		"upstreams":     &deps.Upstreams,
-		"consumers":     &deps.Consumers,
-		"stream_routes": &deps.StreamRoutes,
+	// Gateway-side resources. A single failing probe means the counts cannot be
+	// trusted, so all of them are reported as unknown rather than zero - a zero
+	// here would tell the operator the instance is safe to delete.
+	//
+	// The probe order is fixed rather than ranging over the map: map iteration is
+	// random, so a failure would otherwise report a different resource type (and
+	// a different error) on each run.
+	counts := []struct {
+		resource string
+		target   *int
+	}{
+		{"routes", &deps.Routes},
+		{"services", &deps.Services},
+		{"upstreams", &deps.Upstreams},
+		{"consumers", &deps.Consumers},
+		{"stream_routes", &deps.StreamRoutes},
 	}
 	deps.Reachable = true
-	for resource, target := range counts {
-		count, err := s.countAdminResource(ctx, instance, resource)
+	for _, c := range counts {
+		count, err := s.countAdminResource(ctx, instance, c.resource)
 		if err != nil {
 			deps.Reachable = false
+			// Keep the reason: "connection refused", "status 401" and "status
+			// 404" lead an operator to completely different actions, and
+			// collapsing them into a bare false has them guessing.
+			deps.Error = fmt.Sprintf("%s: %v", c.resource, err)
+			log.Printf("[instance %s] dependency probe failed against %s: %v",
+				instance.ID, instance.AdminAPIURL, deps.Error)
 			break
 		}
-		*target = count
+		*c.target = count
 	}
 	if !deps.Reachable {
 		deps.Routes, deps.Services, deps.Upstreams, deps.Consumers, deps.StreamRoutes = 0, 0, 0, 0, 0
@@ -272,15 +312,22 @@ func (s *InstanceService) countAdminResource(ctx context.Context, instance *mode
 		return 0, fmt.Errorf("APISIX returned status %d for %s", resp.StatusCode, resource)
 	}
 
+	// A body we cannot read a total out of must be an error, never a zero. The
+	// caller turns any error into "counts unknown"; returning 0 instead would
+	// tell the operator that nothing references the instance and let an
+	// unforced delete through - the silent deletion this whole check prevents.
+	// *total is a pointer so a response that simply omits the field is caught
+	// too, not just one that fails to decode.
 	var body struct {
-		Total int `json:"total"`
+		Total *int `json:"total"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		// The endpoint answered, so the instance is reachable; treat an
-		// unreadable body as "no resources of this type".
-		return 0, nil
+		return 0, fmt.Errorf("unreadable %s response from the Admin API: %w", resource, err)
 	}
-	return body.Total, nil
+	if body.Total == nil {
+		return 0, fmt.Errorf("%s response from the Admin API carried no total", resource)
+	}
+	return *body.Total, nil
 }
 
 // DeleteInstance removes the instance together with the dashboard records that
@@ -290,24 +337,43 @@ func (s *InstanceService) countAdminResource(ctx context.Context, instance *mode
 // Resources on the gateway itself are deliberately left alone - they stay live
 // on APISIX and are not the dashboard's to destroy. Callers are expected to have
 // surfaced GetInstanceDependencies to the operator first.
+// The three deletes are not a transaction, so the order matters: the instance
+// record goes FIRST, because it is what makes the instance usable at all.
+//
+// Deleting the ownership records first would be actively dangerous. The proxy
+// authorizes a non-admin write with
+//
+//	if ownerTeamID != "" && ownerTeamID != effectiveTeamID { deny }
+//
+// so a resource with no ownership record is writable by every team. If the
+// cascade failed after wiping ownership but before removing the instance, the
+// instance would still be live and selectable with every resource on it
+// unowned — any developer could then edit or delete another team's routes.
+// Removing the instance record first makes the same partial failure inert: the
+// proxy rejects the instance outright, and the leftover keys are harmless
+// orphans that a retry cleans up.
 func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error {
-	if err := s.etcd.DeletePrefix(ctx, models.KeyPrefixOwnership+id+"/"); err != nil {
+	if err := s.etcd.Delete(ctx, models.KeyPrefixInstances+id); err != nil {
 		return err
+	}
+
+	if err := s.etcd.DeletePrefix(ctx, models.KeyPrefixOwnership+id+"/"); err != nil {
+		return fmt.Errorf("instance %s deleted, but its ownership records remain: %w", id, err)
 	}
 
 	userAssignments, err := s.etcd.List(ctx, models.KeyPrefixUserInstances)
 	if err != nil {
-		return err
+		return fmt.Errorf("instance %s deleted, but its user assignments remain: %w", id, err)
 	}
 	for key := range userAssignments {
 		if strings.HasSuffix(key, "/"+id) {
 			if err := s.etcd.Delete(ctx, key); err != nil {
-				return err
+				return fmt.Errorf("instance %s deleted, but user assignment %s remains: %w", id, key, err)
 			}
 		}
 	}
 
-	return s.etcd.Delete(ctx, models.KeyPrefixInstances+id)
+	return nil
 }
 
 // TestConnection tests if an instance is reachable via Admin API

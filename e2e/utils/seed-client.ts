@@ -143,8 +143,9 @@ export async function ensureInstance(token: string, input: CreateInstanceInput):
     return existing;
   }
 
-  // force=true: several fixtures deliberately point at the same gateway, which the
-  // API only warns about. A fixture's job is to make the instance exist.
+  // force=true skips the duplicate-Admin-API-URL warning (the name check still
+  // applies, and still rejects). Several fixtures deliberately point at the same
+  // gateway, and a fixture's job is to make the instance exist.
   const created = await apiFetch('/api/v1/instances?force=true', token, {
     method: 'POST',
     json: {

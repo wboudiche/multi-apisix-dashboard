@@ -169,8 +169,12 @@ type InstanceHealth struct {
 // blast radius is explicit rather than silent.
 //
 // The gateway counts (Routes..StreamRoutes) come from the instance's Admin API
-// and are only meaningful when Reachable is true; the etcd-backed counts
-// (UserAssignments, OwnershipRecords) are always accurate.
+// and carry a number only when Reachable is true. "Reachable" here means every
+// probe answered AND its response could be read as a count: a reply the
+// dashboard cannot make sense of is reported as unknown, never as zero, because
+// a zero tells the operator that deleting is harmless.
+//
+// The etcd-backed counts (UserAssignments, OwnershipRecords) are always exact.
 type InstanceDependencies struct {
 	Routes       int `json:"routes"`
 	Services     int `json:"services"`
@@ -185,19 +189,27 @@ type InstanceDependencies struct {
 	// orphaned by the deletion.
 	OwnershipRecords int `json:"ownership_records"`
 
-	// Reachable reports whether the Admin API answered. When false the gateway
-	// counts are unknown, not zero.
+	// Reachable reports whether every gateway count could be established. When
+	// false the counts above are unknown, not zero.
 	Reachable bool `json:"reachable"`
+	// Error explains why the gateway could not be counted, when Reachable is
+	// false. "connection refused" and "status 401" call for entirely different
+	// actions from the operator, so the reason is carried rather than collapsed
+	// into the bool.
+	Error string `json:"error,omitempty"`
 }
 
 // TotalGatewayResources returns how many resources still live on the gateway
-// itself. Only meaningful when Reachable is true.
+// itself. Meaningful only when Reachable is true — when it is false this is 0
+// because the counts are unknown, so never read it as "nothing is attached".
+// Use RequiresConfirmation for that question; it handles the unknown case.
 func (d InstanceDependencies) TotalGatewayResources() int {
 	return d.Routes + d.Services + d.Upstreams + d.Consumers + d.StreamRoutes
 }
 
-// RequiresConfirmation reports whether deleting the instance would orphan
-// something, and therefore must not proceed without an explicit force.
+// RequiresConfirmation reports whether deleting the instance would discard
+// dashboard records or strand live gateway resources, and therefore must not
+// proceed without an explicit force.
 // An unreachable instance always requires confirmation: its gateway resource
 // counts are unknown, so "nothing attached" cannot be established.
 func (d InstanceDependencies) RequiresConfirmation() bool {

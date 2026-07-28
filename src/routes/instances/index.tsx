@@ -41,11 +41,12 @@ import {
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtom } from 'jotai';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
   type CreateInstanceRequest,
+  describeError,
   getInstanceConflict,
   type Instance,
   INSTANCE_CONFLICT,
@@ -69,17 +70,32 @@ import IconPlugConnected from '~icons/material-symbols/wifi-tethering';
 const ConnectivityBadge = ({
   health,
   loaded,
+  failed,
 }: {
   health?: InstanceHealth;
   loaded: boolean;
+  failed: boolean;
 }) => {
   const { t } = useTranslation();
 
-  if (!loaded || !health) {
+  if (!loaded) {
     return (
       <Badge color="gray" variant="outline">
         {t('instances.checking')}
       </Badge>
+    );
+  }
+
+  // Loaded but nothing to show: the probe itself failed, or reported nothing for
+  // this instance. Either way the state is unknown, and saying so is the point —
+  // an indefinite "Checking…" reads as healthy.
+  if (failed || !health) {
+    return (
+      <Tooltip label={t('instances.connectivityUnknownHint')}>
+        <Badge color="orange" variant="light">
+          {t('instances.connectivityUnknown')}
+        </Badge>
+      </Tooltip>
     );
   }
 
@@ -95,42 +111,59 @@ const ConnectivityBadge = ({
 
 /** Resources that live on the gateway and survive the instance's deletion. */
 const GATEWAY_RESOURCES = [
-  { key: 'routes', label: 'instances.resourceRoutes' },
-  { key: 'services', label: 'instances.resourceServices' },
-  { key: 'upstreams', label: 'instances.resourceUpstreams' },
-  { key: 'consumers', label: 'instances.resourceConsumers' },
-  { key: 'stream_routes', label: 'instances.resourceStreamRoutes' },
+  'routes',
+  'services',
+  'upstreams',
+  'consumers',
+  'stream_routes',
 ] as const;
 
 /** Dashboard-owned records that the deletion discards. */
-const DASHBOARD_RECORDS = [
-  { key: 'user_assignments', label: 'instances.resourceUserAssignments' },
-  { key: 'ownership_records', label: 'instances.resourceOwnershipRecords' },
-] as const;
+const DASHBOARD_RECORDS = ['user_assignments', 'ownership_records'] as const;
 
-/** The countable fields of InstanceDependencies (i.e. everything but `reachable`). */
+/**
+ * The countable fields of InstanceDependencies — everything but `reachable` and
+ * `error`. `-?` strips optionality, which would otherwise leak `undefined` into
+ * the union and make it unusable as an index.
+ */
 type CountableDependency = {
-  [K in keyof InstanceDependencies]: InstanceDependencies[K] extends number ? K : never;
+  [K in keyof InstanceDependencies]-?: InstanceDependencies[K] extends number ? K : never;
 }[keyof InstanceDependencies];
 
-type ImpactLabel =
-  | (typeof GATEWAY_RESOURCES)[number]['label']
-  | (typeof DASHBOARD_RECORDS)[number]['label'];
+/**
+ * Label for every countable dependency. `satisfies Record<CountableDependency,
+ * ...>` makes this fail to compile the moment the backend adds a count —
+ * landing the developer right here, next to the two display groups they also
+ * need to add it to. Silently omitting a count would understate the blast
+ * radius, which is the failure this dialog exists to prevent. `as const` keeps
+ * the literal key types so they still typecheck against t().
+ */
+const DEPENDENCY_LABELS = {
+  routes: 'instances.resourceRoutes',
+  services: 'instances.resourceServices',
+  upstreams: 'instances.resourceUpstreams',
+  consumers: 'instances.resourceConsumers',
+  stream_routes: 'instances.resourceStreamRoutes',
+  user_assignments: 'instances.resourceUserAssignments',
+  ownership_records: 'instances.resourceOwnershipRecords',
+} as const satisfies Record<CountableDependency, string>;
+
+type ImpactLabel = (typeof DEPENDENCY_LABELS)[CountableDependency];
 
 type ImpactCount = { label: ImpactLabel; count: number };
 
 /**
- * Spells out exactly what a deletion would orphan, so it can never be the silent
- * no-op it used to be.
+ * Spells out what the deletion discards and what it leaves behind on the
+ * gateway. Replaces a bare confirm() that deleted the instance record and
+ * reported success while silently orphaning its ownership and role-assignment
+ * keys.
  */
 const DeleteImpact = ({ dependencies }: { dependencies: InstanceDependencies }) => {
   const { t } = useTranslation();
 
-  const countsFor = (
-    group: readonly { key: CountableDependency; label: ImpactLabel }[]
-  ): ImpactCount[] =>
+  const countsFor = (group: readonly CountableDependency[]): ImpactCount[] =>
     group
-      .map((entry) => ({ label: entry.label, count: dependencies[entry.key] }))
+      .map((key) => ({ label: DEPENDENCY_LABELS[key], count: dependencies[key] }))
       .filter((entry) => entry.count > 0);
 
   const attached = countsFor(GATEWAY_RESOURCES);
@@ -154,7 +187,14 @@ const DeleteImpact = ({ dependencies }: { dependencies: InstanceDependencies }) 
     <Stack gap="sm">
       {!dependencies.reachable && (
         <Alert color="orange" variant="light">
-          {t('instances.deleteUnreachable')}
+          <Text size="sm">{t('instances.deleteUnreachable')}</Text>
+          {/* The probe's reason distinguishes a dead gateway from a rejected
+              admin key — deleting is the right call for one and not the other. */}
+          {dependencies.error && (
+            <Text size="xs" mt={4}>
+              {t('instances.deleteUnreachableReason', { reason: dependencies.error })}
+            </Text>
+          )}
         </Alert>
       )}
       {attached.length > 0 && (
@@ -190,12 +230,15 @@ const InstancesPage = () => {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [health, setHealth] = useState<Record<string, InstanceHealth>>({});
   const [healthLoaded, setHealthLoaded] = useState(false);
+  const [healthError, setHealthError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   // Name of the instance already using the submitted Admin API URL, awaiting confirmation.
   const [urlConflict, setUrlConflict] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Generation counter for dependency probes; see openDeleteModal.
+  const deleteRequestRef = useRef(0);
   const [formData, setFormData] = useState<CreateInstanceRequest>({
     name: '',
     description: '',
@@ -210,10 +253,10 @@ const InstancesPage = () => {
     try {
       const data = await instanceApi.list();
       setInstances(data);
-    } catch {
+    } catch (error) {
       notifications.show({
         title: 'Error',
-        message: 'Failed to load instances',
+        message: describeError(error, 'Failed to load instances'),
         color: 'red',
       });
     } finally {
@@ -229,8 +272,12 @@ const InstancesPage = () => {
     try {
       const results = await instanceApi.listHealth();
       setHealth(Object.fromEntries(results.map((entry) => [entry.instance_id, entry])));
+      setHealthError(false);
     } catch {
+      // Never leave the column resting on "Checking…": an unreachable gateway
+      // that reads as "still loading" is the exact confusion this page fixes.
       setHealth({});
+      setHealthError(true);
     } finally {
       setHealthLoaded(true);
     }
@@ -304,7 +351,7 @@ const InstancesPage = () => {
 
       notifications.show({
         title: 'Error',
-        message: 'Failed to save instance',
+        message: describeError(error, t('instances.saveFailed')),
         color: 'red',
       });
     } finally {
@@ -319,22 +366,34 @@ const InstancesPage = () => {
    * instance is not touched until the operator confirms.
    */
   const openDeleteModal = async (instance: Instance) => {
+    // The probe walks five Admin API endpoints at up to 5s each, so it can
+    // outlive the operator's patience. Tag the request and drop its result if
+    // they closed the dialog or moved to another instance meanwhile — otherwise
+    // the modal reopens itself minutes later with the confirm button armed.
+    const requestId = deleteRequestRef.current + 1;
+    deleteRequestRef.current = requestId;
+
     setPendingDelete({ instance, dependencies: null });
     try {
       const dependencies = await instanceApi.dependencies(instance.id);
+      if (deleteRequestRef.current !== requestId) return;
       setPendingDelete({ instance, dependencies });
-    } catch {
+    } catch (error) {
+      if (deleteRequestRef.current !== requestId) return;
       setPendingDelete(null);
       notifications.show({
         title: 'Error',
-        message: 'Failed to check what depends on this instance',
+        message: describeError(error, t('instances.dependencyCheckFailed')),
         color: 'red',
       });
     }
   };
 
   const confirmDelete = async () => {
-    if (!pendingDelete) return;
+    // Guarded here and not only by the button's disabled state: forcing a delete
+    // before the blast radius has been shown is the one thing this dialog exists
+    // to prevent, and a second trigger (Enter, a form submit) must not bypass it.
+    if (!pendingDelete?.dependencies) return;
     const { id } = pendingDelete.instance;
 
     setDeleting(true);
@@ -351,10 +410,10 @@ const InstancesPage = () => {
       setPendingDelete(null);
       loadInstances();
       loadHealth();
-    } catch {
+    } catch (error) {
       notifications.show({
         title: 'Error',
-        message: 'Failed to delete instance',
+        message: describeError(error, t('instances.deleteFailed')),
         color: 'red',
       });
     } finally {
@@ -510,7 +569,11 @@ const InstancesPage = () => {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <ConnectivityBadge health={health[instance.id]} loaded={healthLoaded} />
+                    <ConnectivityBadge
+                      health={health[instance.id]}
+                      loaded={healthLoaded}
+                      failed={healthError}
+                    />
                   </Table.Td>
                   <Table.Td>
                     <Switch

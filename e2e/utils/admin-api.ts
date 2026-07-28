@@ -93,8 +93,10 @@ export const deleteTeamsByPrefix = (prefix: string) =>
   deleteByPrefix(listTeams, (t) => t.name, (t) => t.id, '/api/v1/teams', prefix);
 export const deleteUsersByPrefix = (prefix: string) =>
   deleteByPrefix(listUsers, (u) => u.username, (u) => u.id, '/api/v1/users', prefix);
-// force=true: deleting an instance that still has resources on its gateway is
-// refused without an explicit confirmation, which cleanup always intends to give.
+// force=true: the API holds back any delete that would leave something behind —
+// gateway resources, user role assignments, ownership records — and always holds
+// back an instance it cannot reach, which most fixtures deliberately are.
+// Cleanup always means to confirm.
 export const deleteInstancesByPrefix = (prefix: string) =>
   deleteByPrefix(
     listInstances,

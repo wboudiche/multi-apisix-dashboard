@@ -113,6 +113,14 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 		return
 	}
 
+	// binding:"required" rejects "" but accepts "   ", which normalizes to empty
+	// and is then exempt from every name comparison - so blank-named instances
+	// would stack up as indistinguishable rows and never collide with anything.
+	if services.NormalizeInstanceName(req.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name must not be blank"})
+		return
+	}
+
 	// A duplicate name is a hard rejection, so report it before the Admin API URL
 	// warning - otherwise the operator confirms past the warning only to be
 	// stopped by the name anyway. CreateInstance re-checks this authoritatively.
@@ -267,17 +275,34 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	}
 
 	if req.Name != "" {
-		nameConflict, err := h.instanceService.FindNameConflict(c.Request.Context(), req.Name, instanceID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if services.NormalizeInstanceName(req.Name) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Name must not be blank"})
 			return
 		}
-		if nameConflict != nil {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": services.ErrDuplicateInstanceName.Error(),
-				"code":  duplicateInstanceNameCode,
-			})
-			return
+
+		// Uniqueness is new, so etcd may already hold instances that collide -
+		// created before this check existed, or by two admins racing. The edit
+		// form resubmits the instance's own name on every save, so without this
+		// exemption both of those instances become permanently un-editable:
+		// changing an admin key would be refused because of a *different* row,
+		// and unlike the URL check there is no force to get past it. A rename
+		// that does not actually change the name cannot make things worse.
+		renaming := services.NormalizeInstanceName(req.Name) !=
+			services.NormalizeInstanceName(instance.Name)
+
+		if renaming {
+			nameConflict, err := h.instanceService.FindNameConflict(c.Request.Context(), req.Name, instanceID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if nameConflict != nil {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": services.ErrDuplicateInstanceName.Error(),
+					"code":  duplicateInstanceNameCode,
+				})
+				return
+			}
 		}
 	}
 

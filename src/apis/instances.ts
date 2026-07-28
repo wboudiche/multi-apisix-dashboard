@@ -49,6 +49,8 @@ export type InstanceDependencies = {
   user_assignments: number;
   ownership_records: number;
   reachable: boolean;
+  /** Why the gateway could not be counted; present only when reachable is false. */
+  error?: string;
 };
 
 /** Machine-readable codes the backend puts on its 409 responses. */
@@ -74,6 +76,23 @@ export const getInstanceConflict = (error: unknown): InstanceConflict | null => 
     return null;
   }
   return (error.response.data as InstanceConflict) ?? null;
+};
+
+/**
+ * The reason the backend gave for a failure, falling back to `fallback` only
+ * when there is nothing to report.
+ *
+ * Every instance handler answers with `{"error": "<reason>"}`, so collapsing a
+ * 403, a binding error and an etcd outage into one generic message throws away
+ * the only thing that tells the operator what to do next.
+ */
+export const describeError = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError(error)) {
+    const reason = (error.response?.data as { error?: string } | undefined)?.error;
+    if (reason) return reason;
+    if (error.message) return error.message;
+  }
+  return fallback;
 };
 
 export type InstanceHealth = {

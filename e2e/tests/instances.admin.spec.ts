@@ -23,14 +23,25 @@ import { ensureInstance } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
+import axios from 'axios';
 
 const PREFIX = randomId('adm-inst');
 // Real second APISIX from e2e/server/docker-compose.yml; key from apisix_conf_2.yml.
-const STAGING_ADMIN_URL = 'http://127.0.0.1:9181';
+// Read from the same env var global-setup uses: hardcoding it would silently
+// decouple this spec from the instance the fixture actually registered.
+const STAGING_ADMIN_URL =
+  process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.0.0.1:9181';
 const STAGING_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
-// Ports nothing listens on. Each unreachable fixture needs its own, otherwise
-// they collide on the duplicate-Admin-API-URL check and never reach the
-// behaviour under test.
+
+/** Talks to the staging gateway's Admin API directly, to seed resources on it. */
+const stagingReq = axios.create({
+  baseURL: `${STAGING_ADMIN_URL}/apisix/admin`,
+  headers: { 'X-API-KEY': STAGING_ADMIN_KEY },
+});
+// Ports nothing listens on, one per fixture. Only the UI-created instance is
+// subject to the duplicate-Admin-API-URL check (seeded fixtures pass
+// ?force=true, see ensureInstance), but distinct URLs also keep each test's row
+// unambiguous and stop one fixture's connectivity state describing another's.
 const DEAD_URLS = {
   connectionTest: 'http://127.0.0.1:1',
   status: 'http://127.0.0.1:2',
@@ -133,17 +144,31 @@ test('lists attached resources before deleting an instance', async ({ page }) =>
     admin_key: STAGING_ADMIN_KEY,
   });
 
-  await adminPom.toInstances(page);
-  await adminPom.isInstancesPage(page);
-  await adminPom.rowByText(page, name).getByRole('button', { name: 'Delete' }).click();
+  // Seed the resource this test asserts on rather than relying on whatever
+  // another spec happened to leave on the shared gateway: run this file alone
+  // and the gateway is empty, so the dialog would show its "nothing attached"
+  // branch and the assertion below would fail for the wrong reason.
+  const routeId = `${PREFIX}-attached-route`;
+  await stagingReq.put(`/routes/${routeId}`, {
+    name: routeId,
+    uri: `/${routeId}`,
+    upstream: { type: 'roundrobin', nodes: [{ host: '127.0.0.1', port: 80, weight: 1 }] },
+  });
 
-  // The gateway is shared with other fixtures, so it always has resources on it.
-  await expect(page.getByText(`Delete instance "${name}"?`)).toBeVisible();
-  await expect(page.getByText(/stay live on the APISIX gateway/)).toBeVisible();
+  try {
+    await adminPom.toInstances(page);
+    await adminPom.isInstancesPage(page);
+    await adminPom.rowByText(page, name).getByRole('button', { name: 'Delete' }).click();
 
-  // Dismissing must leave the instance alone.
-  await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(adminPom.rowByText(page, name)).toBeVisible();
+    await expect(page.getByText(`Delete instance "${name}"?`)).toBeVisible();
+    await expect(page.getByText(/stay live on the APISIX gateway/)).toBeVisible();
+
+    // Dismissing must leave the instance alone.
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(adminPom.rowByText(page, name)).toBeVisible();
+  } finally {
+    await stagingReq.delete(`/routes/${routeId}`);
+  }
 });
 
 test('Connection test succeeds against a reachable instance', async ({ page }) => {
