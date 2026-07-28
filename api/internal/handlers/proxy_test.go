@@ -17,6 +17,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -53,6 +54,18 @@ func TestStripDashboardFields(t *testing.T) {
 			want: map[string]any{"uri": "/test", "_team_id": "keep", "team__id": "keep"},
 		},
 		{
+			// The strip is deliberately shallow: it only has to undo the
+			// proxy's own top-level injection. Pinned here so the limitation is
+			// a decision rather than an accident — the frontend's equivalent
+			// (rmDoubleUnderscoreKeys) does recurse.
+			name: "leaves a nested dashboard-prefixed key alone",
+			body: `{"uri":"/test","__team_id":"t","upstream":{"__team_id":"nested"}}`,
+			want: map[string]any{
+				"uri":      "/test",
+				"upstream": map[string]any{"__team_id": "nested"},
+			},
+		},
+		{
 			name: "preserves nested structures",
 			body: `{"uri":"/test","__team_id":"t","upstream":{"nodes":{"a:80":1}},"labels":{"env":"prod"}}`,
 			want: map[string]any{
@@ -81,9 +94,10 @@ func TestStripDashboardFields(t *testing.T) {
 	}
 }
 
-// A body that is not a JSON object must be forwarded byte-for-byte: APISIX
-// accepts non-object payloads on some endpoints, and rewriting them would
-// corrupt the request.
+// A body this function cannot read as a JSON object is forwarded byte-for-byte.
+// The proxy is not the schema validator here — rewriting or rejecting a payload
+// it does not understand would corrupt requests APISIX may well accept, and
+// APISIX's own error is a better one than anything the proxy could invent.
 func TestStripDashboardFieldsPassesThroughNonObjects(t *testing.T) {
 	passthrough := []string{
 		"",
@@ -101,5 +115,23 @@ func TestStripDashboardFieldsPassesThroughNonObjects(t *testing.T) {
 				t.Errorf("stripDashboardFields(%q) = %q, want it unchanged", body, got)
 			}
 		})
+	}
+}
+
+// Numbers must survive the strip's decode/re-encode round trip exactly. Decoding
+// into map[string]any without UseNumber turns them into float64, which silently
+// rewrites large integers.
+func TestStripDashboardFieldsPreservesNumberPrecision(t *testing.T) {
+	body := `{"id":9007199254740993,"count":10,"ratio":1.5,"__team_id":"t"}`
+
+	got := string(stripDashboardFields([]byte(body)))
+
+	for _, want := range []string{`"id":9007199254740993`, `"count":10`, `"ratio":1.5`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("stripDashboardFields(%s) = %s, want it to contain %s", body, got, want)
+		}
+	}
+	if strings.Contains(got, "__team_id") {
+		t.Errorf("stripDashboardFields(%s) = %s, want __team_id removed", body, got)
 	}
 }
