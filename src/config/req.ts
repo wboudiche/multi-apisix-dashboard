@@ -27,6 +27,16 @@ import {
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
 
+/**
+ * Marks a PUT as a create that must not overwrite anything.
+ *
+ * APISIX's PUT is an upsert, so an Add form submitting an id that already exists
+ * silently replaces that record and still reports success. Add flows pass this;
+ * Edit flows do not, because overwriting is what editing is. The Go proxy
+ * enforces it — see createOnlyRequested in handlers/proxy.go.
+ */
+export const CREATE_ONLY = { headers: { 'If-None-Match': '*' } } as const;
+
 export const req = axios.create();
 
 req.interceptors.request.use((conf) => {

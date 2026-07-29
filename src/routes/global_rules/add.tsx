@@ -30,7 +30,7 @@ import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartGlobalRules } from '@/components/form-slice/FormPartGlobalRules';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import PageHeader from '@/components/page/PageHeader';
-import { req } from '@/config/req';
+import { CREATE_ONLY, req } from '@/config/req';
 import type { APISIXType } from '@/types/schema/apisix';
 import { APISIX } from '@/types/schema/apisix';
 
@@ -39,7 +39,7 @@ const GlobalRuleAddForm = () => {
   const router = useReactRouter();
 
   const putGlobalRule = useMutation({
-    mutationFn: (d: APISIXType['GlobalRulePut']) => putGlobalRuleReq(req, d),
+    mutationFn: (d: APISIXType['GlobalRulePut']) => putGlobalRuleReq(req, d, CREATE_ONLY),
     async onSuccess(res) {
       notifications.show({
         id: 'add-global_rule',

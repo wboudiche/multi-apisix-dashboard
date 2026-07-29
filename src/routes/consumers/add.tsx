@@ -25,7 +25,7 @@ import { putConsumerReq } from '@/apis/consumers';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartConsumer } from '@/components/form-slice/FormPartConsumer';
 import PageHeader from '@/components/page/PageHeader';
-import { req } from '@/config/req';
+import { CREATE_ONLY, req } from '@/config/req';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
 
@@ -34,7 +34,7 @@ const ConsumerAddForm = () => {
   const router = useRouter();
 
   const putConsumer = useMutation({
-    mutationFn: (d: APISIXType['ConsumerPut']) => putConsumerReq(req, d),
+    mutationFn: (d: APISIXType['ConsumerPut']) => putConsumerReq(req, d, CREATE_ONLY),
     async onSuccess(_, res) {
       notifications.show({
         message: t('info.add.success', { name: t('consumers.singular') }),

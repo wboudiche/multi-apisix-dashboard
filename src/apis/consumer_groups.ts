@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 import {
   API_CONSUMER_GROUPS,
@@ -43,13 +43,15 @@ export const getConsumerGroupReq = (req: AxiosInstance, id: string) =>
 
 export const putConsumerGroupReq = (
   req: AxiosInstance,
-  data: APISIXType['ConsumerGroupPut']
+  data: APISIXType['ConsumerGroupPut'],
+  config?: AxiosRequestConfig
 ) => {
   const { id, ...rest } = data;
   return req.put<
     APISIXType['ConsumerGroupPut'],
     APISIXType['RespConsumerGroupDetail']
-  >(`${API_CONSUMER_GROUPS}/${id}`, rest);
+  >(`${API_CONSUMER_GROUPS}/${id}`, rest,
+    config);
 };
 
 export const deleteAllConsumerGroups = async (req: AxiosInstance) => {

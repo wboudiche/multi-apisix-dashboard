@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 import { API_SECRETS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -63,11 +63,13 @@ export const getSecretReq = (
 
 export const putSecretReq = (
   req: AxiosInstance,
-  data: APISIXType['Secret']
+  data: APISIXType['Secret'],
+  config?: AxiosRequestConfig
 ) => {
   const { manager, id, ...rest } = data;
   return req.put<APISIXType['Secret'], APISIXType['RespSecretDetail']>(
     `${API_SECRETS}/${manager}/${id}`,
-    rest
+    rest,
+    config
   );
 };

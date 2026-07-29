@@ -59,9 +59,28 @@ var teamScopedResources = map[string]bool{
 // operator at an admin rather than at a team that does not exist.
 const unassignedResourceCode = "resource_not_assigned"
 
+// alreadyExistsCode marks a create refused because the id is taken, so the UI
+// can point at the field rather than show a generic failure.
+const alreadyExistsCode = "resource_already_exists"
+
+// createOnlyRequested reports whether the caller asked for a create that must
+// not overwrite anything.
+//
+// APISIX's PUT is an upsert, so an "Add" form that PUTs an id the user already
+// used replaces the existing record and reports success. The Add flows cannot be
+// told apart from the Edit flows at this layer - both PUT the same path - so
+// they declare their intent with If-None-Match: *, the standard way to ask that
+// a request apply only when nothing is there. Edits send no such header and keep
+// overwriting, which is what editing is.
+func createOnlyRequested(method, ifNoneMatch string) bool {
+	return method == http.MethodPut && strings.TrimSpace(ifNoneMatch) == "*"
+}
+
 // Messages for the proxy's authorization refusals.
 const (
 	unassignedResourceMsg = "This resource is not assigned to a team. Ask an admin to assign it before editing."
+	alreadyExistsMsg      = "A resource with this name or ID already exists. Choose a different one, or edit the existing resource."
+	couldNotVerifyMsg     = "Could not verify the resource before writing to it"
 	otherTeamMsg          = "Resource owned by another team"
 	accessDeniedMsg       = "Access denied to this resource"
 )
@@ -231,6 +250,37 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
+	// An Add flow declares that it means to create. APISIX would happily upsert,
+	// replacing whatever is already at that id and returning a success the UI
+	// reports as "Add ... Successfully" - the only trace being a changed
+	// update_time on a row the user thought they were adding.
+	//
+	// resourceID is only used here to confirm the request targets a specific
+	// resource rather than a collection; the existence check uses the whole
+	// path, which is what makes this work for secrets too - they are addressed
+	// as /secrets/{manager}/{id}, where getResourceMetadata reports the manager
+	// as the id.
+	if createOnlyRequested(c.Request.Method, c.GetHeader("If-None-Match")) && resourceID != "" {
+		exists, err := h.resourceExists(c.Request.Context(), instance, path)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{
+				"error":     couldNotVerifyMsg,
+				"error_msg": couldNotVerifyMsg,
+			})
+			c.Abort()
+			return
+		}
+		if exists {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":     alreadyExistsMsg,
+				"error_msg": alreadyExistsMsg,
+				"code":      alreadyExistsCode,
+			})
+			c.Abort()
+			return
+		}
+	}
+
 	if !isAdmin {
 		if (c.Request.Method == http.MethodPut || c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) && resourceID != "" {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
@@ -244,7 +294,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				if err != nil {
 					// Fail closed: an unverifiable target is not a licence to
 					// overwrite it.
-					c.JSON(http.StatusBadGateway, gin.H{"error": "Could not verify the resource before writing to it"})
+					c.JSON(http.StatusBadGateway, gin.H{
+						"error":     couldNotVerifyMsg,
+						"error_msg": couldNotVerifyMsg,
+					})
 					c.Abort()
 					return
 				}
@@ -284,7 +337,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 	proxyReq, _ := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(bodyBytes))
 	for key, values := range c.Request.Header {
-		if key != "Host" && key != "Authorization" {
+		// If-None-Match is a contract between the dashboard and this proxy
+		// (see createOnlyRequested); APISIX has no business acting on it.
+		if key != "Host" && key != "Authorization" && key != "If-None-Match" {
 			for _, v := range values {
 				proxyReq.Header.Add(key, v)
 			}

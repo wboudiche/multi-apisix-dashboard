@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -36,11 +36,13 @@ export const getPluginConfigReq = (req: AxiosInstance, id: string) =>
 
 export const putPluginConfigReq = (
   req: AxiosInstance,
-  data: APISIXType['PluginConfigPut']
+  data: APISIXType['PluginConfigPut'],
+  config?: AxiosRequestConfig
 ) => {
   const { id, ...rest } = data;
   return req.put<
     APISIXType['PluginConfigPut'],
     APISIXType['RespPluginConfigDetail']
-  >(`${API_PLUGIN_CONFIGS}/${id}`, rest);
+  >(`${API_PLUGIN_CONFIGS}/${id}`, rest,
+    config);
 };

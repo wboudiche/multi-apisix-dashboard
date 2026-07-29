@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 import { API_GLOBAL_RULES } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -34,11 +34,13 @@ export const getGlobalRuleReq = (req: AxiosInstance, id: string) =>
 
 export const putGlobalRuleReq = (
   req: AxiosInstance,
-  data: APISIXType['GlobalRulePut']
+  data: APISIXType['GlobalRulePut'],
+  config?: AxiosRequestConfig
 ) => {
   const { id, ...rest } = data;
   return req.put<
     APISIXType['GlobalRulePut'],
     APISIXType['RespGlobalRuleDetail']
-  >(`${API_GLOBAL_RULES}/${id}`, rest);
+  >(`${API_GLOBAL_RULES}/${id}`, rest,
+    config);
 };
