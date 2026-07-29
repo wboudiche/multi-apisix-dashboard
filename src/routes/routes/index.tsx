@@ -92,7 +92,7 @@ export const RouteList = (props: RouteListProps) => {
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
-  const { canEdit, canDelete } = usePermission();
+  const { canEdit, canDelete, isAdmin } = usePermission();
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
   const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
   const [jsonSaving, setJsonSaving] = useState(false);
@@ -473,7 +473,18 @@ export const RouteList = (props: RouteListProps) => {
             <Table.Tr>
               <Table.Td colSpan={visibleColumns.length + 1}>
                 <Center py="xl">
-                  <Text c="dimmed">{t('noData')}</Text>
+                  <Stack gap={4} align="center">
+                    <Text c="dimmed">{t('noData')}</Text>
+                    {/* An empty table is ambiguous for a non-admin: the gateway
+                        may hold plenty of routes that are simply owned by
+                        another team, or by no team at all. Saying so beats
+                        letting them conclude their own route vanished. */}
+                    {!isAdmin && (
+                      <Text c="dimmed" size="xs" ta="center" maw={460}>
+                        {t('routes.list.emptyOwnershipHint')}
+                      </Text>
+                    )}
+                  </Stack>
                 </Center>
               </Table.Td>
             </Table.Tr>

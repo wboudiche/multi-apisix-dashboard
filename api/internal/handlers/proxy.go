@@ -17,7 +17,9 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -52,6 +54,43 @@ var teamScopedResources = map[string]bool{
 	"stream_routes":   true,
 }
 
+// unassignedResourceCode marks a refusal caused by the resource having no team,
+// so the UI can tell it apart from "owned by another team" and point the
+// operator at an admin rather than at a team that does not exist.
+const unassignedResourceCode = "resource_not_assigned"
+
+// Messages for the proxy's authorization refusals.
+const (
+	unassignedResourceMsg = "This resource is not assigned to a team. Ask an admin to assign it before editing."
+	otherTeamMsg          = "Resource owned by another team"
+	accessDeniedMsg       = "Access denied to this resource"
+)
+
+// nonAdminMayAccess reports whether a non-admin whose team is callerTeamID may
+// see or modify a resource owned by ownerTeamID.
+//
+// A resource with no team is administrative territory: it is invisible and
+// unwritable to non-admins until an admin assigns it (see ReassignOwnership).
+// Resources predating the dashboard, or created directly against the Admin API,
+// arrive in exactly that state.
+//
+// A caller with no team of their own passes nothing: they own no resources, and
+// unowned resources must not become a free-for-all for teamless accounts.
+func nonAdminMayAccess(ownerTeamID, callerTeamID string) bool {
+	return ownerTeamID != "" && ownerTeamID == callerTeamID
+}
+
+// unownedWriteDenied decides a write against a resource carrying no ownership
+// record, given whether that resource already exists on the gateway.
+//
+// The absence of an ownership record is ambiguous. A PUT to an id that does not
+// exist yet is a create - which is how consumers and consumer_groups are made,
+// keyed by username - and ordinary work for a developer. A write to an id that
+// does exist is a write to somebody's unassigned resource, which is admin-only.
+func unownedWriteDenied(resourceExists bool) bool {
+	return resourceExists
+}
+
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
@@ -61,6 +100,36 @@ func NewProxyHandler(instanceService *services.InstanceService, ownershipService
 	return &ProxyHandler{
 		instanceService:  instanceService,
 		ownershipService: ownershipService,
+	}
+}
+
+// resourceExists asks the instance's Admin API whether the resource at path is
+// already there. Used to tell a creating PUT apart from a write against an
+// existing but unassigned resource.
+func (h *ProxyHandler) resourceExists(ctx context.Context, instance *models.Instance, path string) (bool, error) {
+	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin" + path
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return false, err
+	}
+	if instance.AdminKey != "" {
+		req.Header.Set("X-API-Key", instance.AdminKey)
+	}
+
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	switch {
+	case resp.StatusCode == http.StatusNotFound:
+		return false, nil
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return true, nil
+	default:
+		return false, fmt.Errorf("admin API returned status %d", resp.StatusCode)
 	}
 }
 
@@ -165,8 +234,37 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	if !isAdmin {
 		if (c.Request.Method == http.MethodPut || c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) && resourceID != "" {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
-			if ownerTeamID != "" && ownerTeamID != effectiveTeamID {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Resource owned by another team"})
+
+			if ownerTeamID == "" {
+				// No ownership record. Either this creates something new - a PUT
+				// to an id that does not exist yet, which is how consumers and
+				// consumer_groups are made - or it targets a resource that
+				// exists without a team, which only an admin may change.
+				exists, err := h.resourceExists(c.Request.Context(), instance, path)
+				if err != nil {
+					// Fail closed: an unverifiable target is not a licence to
+					// overwrite it.
+					c.JSON(http.StatusBadGateway, gin.H{"error": "Could not verify the resource before writing to it"})
+					c.Abort()
+					return
+				}
+				if unownedWriteDenied(exists) {
+					// error_msg as well as error: `req` (the APISIX admin
+					// client) renders a failure from error_msg/message, so a
+					// refusal carrying only `error` shows the user a blank toast.
+					c.JSON(http.StatusForbidden, gin.H{
+						"error":     unassignedResourceMsg,
+						"error_msg": unassignedResourceMsg,
+						"code":      unassignedResourceCode,
+					})
+					c.Abort()
+					return
+				}
+			} else if !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error":     otherTeamMsg,
+					"error_msg": otherTeamMsg,
+				})
 				c.Abort()
 				return
 			}
@@ -267,8 +365,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						// Inject __team_id for all users
 						val["__team_id"] = ownerTeamID
 
-						// Filter for non-admin users
-						if !isAdmin && effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
+						// Filter for non-admin users. Unowned resources are
+						// admin-only, so they are hidden here too — the same
+						// rule the write guard above applies.
+						if !isAdmin && !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
 							continue
 						}
 					}
@@ -282,8 +382,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			}
 		} else if !isAdmin {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
-			if effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this resource"})
+			if !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error":     accessDeniedMsg,
+					"error_msg": accessDeniedMsg,
+				})
 				return
 			}
 		}

@@ -67,6 +67,8 @@ type JsonBody = Record<string, unknown>;
 export type FetchOptions = {
   method?: string;
   json?: JsonBody;
+  /** Extra headers, e.g. X-Instance-ID for requests that go through the proxy. */
+  headers?: Record<string, string>;
 };
 
 /** Error thrown by apiFetch on a non-2xx response, carrying the HTTP status. */
@@ -89,6 +91,7 @@ export async function apiFetch(
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      ...options.headers,
     },
     body: options.json !== undefined ? JSON.stringify(options.json) : undefined,
   });
