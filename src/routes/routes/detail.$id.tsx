@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Group, Modal, Select, Skeleton, Text } from '@mantine/core';
+import { Alert, Button, Group, Modal, Select, Skeleton, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
@@ -190,10 +190,15 @@ type ReassignTeamModalProps = {
   currentTeamId?: string;
 };
 
+// Sentinel for the "belongs to no team" choice. A Select option needs a value,
+// and the empty string is not usable as one, so the intent is carried by this
+// constant and translated back to the empty team_id the API expects on save.
+const NO_TEAM = '__no_team__';
+
 const ReassignTeamModal = (props: ReassignTeamModalProps) => {
   const { opened, onClose, onSaved, resourceType, resourceId, currentTeamId } = props;
   const { t } = useTranslation();
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(currentTeamId || null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(currentTeamId || NO_TEAM);
   const [saving, setSaving] = useState(false);
 
   const { data: teams = [] } = useQuery({
@@ -204,26 +209,50 @@ const ReassignTeamModal = (props: ReassignTeamModalProps) => {
   });
 
   useEffect(() => {
-    if (opened) setSelectedTeamId(currentTeamId || null);
+    if (opened) setSelectedTeamId(currentTeamId || NO_TEAM);
   }, [opened, currentTeamId]);
 
+  // "No team" is offered as an ordinary option rather than hidden behind a
+  // clear icon: detaching is a deliberate choice with consequences, so it
+  // should be as visible and as reachable by keyboard as picking a team.
   const teamOptions = useMemo(
-    () => teams.map((tm) => ({ value: tm.id, label: tm.name })),
-    [teams]
+    () => [
+      { value: NO_TEAM, label: t('form.reassignTeam.noTeam') },
+      ...teams.map((tm) => ({ value: tm.id, label: tm.name })),
+    ],
+    [teams, t]
   );
 
   const currentTeamName = teams.find((tm) => tm.id === currentTeamId)?.name;
 
+  const isUnassigning = selectedTeamId === NO_TEAM;
+  const unchanged = selectedTeamId === (currentTeamId || NO_TEAM);
+
   const handleSave = async () => {
-    if (!selectedTeamId) return;
+    if (unchanged) return;
     setSaving(true);
     try {
-      await teamApi.reassignOwnership(resourceType, resourceId, selectedTeamId);
-      notifications.show({ message: t('form.reassignTeam.success'), color: 'green' });
+      // An empty team_id is what the API reads as a detach.
+      await teamApi.reassignOwnership(
+        resourceType,
+        resourceId,
+        isUnassigning ? '' : selectedTeamId
+      );
+      notifications.show({
+        message: isUnassigning
+          ? t('form.reassignTeam.unassignSuccess')
+          : t('form.reassignTeam.success'),
+        color: 'green',
+      });
       onSaved();
       onClose();
     } catch {
-      notifications.show({ message: t('form.reassignTeam.error'), color: 'red' });
+      notifications.show({
+        message: isUnassigning
+          ? t('form.reassignTeam.unassignError')
+          : t('form.reassignTeam.error'),
+        color: 'red',
+      });
     } finally {
       setSaving(false);
     }
@@ -240,13 +269,26 @@ const ReassignTeamModal = (props: ReassignTeamModalProps) => {
         label={t('form.reassignTeam.selectTeam')}
         data={teamOptions}
         value={selectedTeamId}
-        onChange={setSelectedTeamId}
+        onChange={(value) => setSelectedTeamId(value ?? NO_TEAM)}
+        allowDeselect={false}
         searchable
       />
+      {isUnassigning && currentTeamId && (
+        <Alert color="yellow" mt="sm" variant="light">
+          {t('form.reassignTeam.unassignWarning')}
+        </Alert>
+      )}
       <Group justify="flex-end" mt="md">
         <Button variant="outline" color="gray" onClick={onClose}>{t('form.btn.cancel')}</Button>
-        <Button onClick={handleSave} loading={saving} disabled={!selectedTeamId || selectedTeamId === currentTeamId}>
-          {t('form.reassignTeam.confirm')}
+        <Button
+          onClick={handleSave}
+          loading={saving}
+          disabled={unchanged}
+          color={isUnassigning ? 'yellow' : undefined}
+        >
+          {isUnassigning
+            ? t('form.reassignTeam.unassignConfirm')
+            : t('form.reassignTeam.confirm')}
         </Button>
       </Group>
     </Modal>
@@ -260,7 +302,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const { id, onDeleteSuccess } = props;
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
+  const { canEdit, isAdmin } = usePermission();
   const [jsonDrawerOpen, setJsonDrawerOpen] = useBoolean(false);
   const [testDrawerOpen, setTestDrawerOpen] = useBoolean(false);
   const [reassignOpen, setReassignOpen] = useBoolean(false);
@@ -319,7 +361,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
               >
                 {t('form.json.viewRaw')}
               </Button>
-              {canEdit && (
+              {isAdmin && (
                 <Button
                   onClick={() => setReassignOpen(true)}
                   size="compact-sm"
