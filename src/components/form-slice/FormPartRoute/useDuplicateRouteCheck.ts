@@ -17,41 +17,59 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { useFormContext, useWatch } from 'react-hook-form';
+import { type Control, useWatch } from 'react-hook-form';
 
 import { getRouteListQueryOptions } from '@/apis/hooks';
+import { PAGE_SIZE_MAX } from '@/config/constant';
+import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
 
-export const useDuplicateRouteCheck = () => {
-  const { formState } = useFormContext();
-  const uri = useWatch({ name: 'uri' }) || '';
-  const watchedMethods = useWatch({ name: 'methods' });
+/**
+ * Reports existing routes that clash with the one being filled in, by name or by
+ * path. Advisory only: APISIX serves many routes on one path and chooses by
+ * priority and `vars`, so a clash is usually unintended but never invalid.
+ *
+ * `excludeID` lets an edit ignore the route being edited.
+ *
+ * Pass `control` when calling this from the component that *renders* the
+ * FormProvider rather than from inside it — there is no form context to read
+ * from at that point, and useWatch would throw on a null control.
+ */
+export const useDuplicateRouteCheck = (opts?: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control?: Control<any>;
+  excludeID?: string;
+}) => {
+  const { control, excludeID } = opts ?? {};
+  const name = useWatch({ control, name: 'name' }) || '';
+  const uri = useWatch({ control, name: 'uri' }) || '';
+  const uris = useWatch({ control, name: 'uris' });
+  const watchedMethods = useWatch({ control, name: 'methods' });
+  const [debouncedName] = useDebouncedValue(name, 500);
   const [debouncedUri] = useDebouncedValue(uri, 500);
 
+  const hasSomethingToCompare = !!debouncedUri || !!debouncedName || !!uris?.length;
+
   const { data: routes } = useQuery({
-    ...getRouteListQueryOptions({ page: 1, page_size: 100 }),
-    enabled: !!debouncedUri && !!formState.dirtyFields.uri,
+    // The whole list, not the first page: a duplicate hiding on page two is the
+    // one most likely to be missed by a human, so it must not be missed here.
+    ...getRouteListQueryOptions({ page: 1, page_size: PAGE_SIZE_MAX }),
+    enabled: hasSomethingToCompare,
   });
 
   const duplicates = useMemo(() => {
-    const methods: string[] = watchedMethods || [];
-    if (!routes?.list || !debouncedUri) return [];
-    return routes.list.filter((route) => {
-      const r = route.value;
-      const uriMatch = r.uri === debouncedUri || r.uris?.includes(debouncedUri);
-      if (!uriMatch) return false;
-      if (methods.length === 0 || !r.methods || r.methods.length === 0) return uriMatch;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return methods.some((m) => r.methods?.includes(m as any));
-    });
-  }, [routes, debouncedUri, watchedMethods]);
+    if (!routes?.list || !hasSomethingToCompare) return [];
+    const existing: ComparableRoute[] = routes.list.map((route) => route.value);
+    return findRouteDuplicates(
+      existing,
+      {
+        name: debouncedName,
+        uri: debouncedUri,
+        uris: uris ?? undefined,
+        methods: watchedMethods ?? undefined,
+      },
+      excludeID
+    );
+  }, [routes, debouncedName, debouncedUri, uris, watchedMethods, excludeID, hasSomethingToCompare]);
 
-  return {
-    isDuplicate: duplicates.length > 0,
-    duplicates: duplicates.map((d) => ({
-      id: d.value.id,
-      name: d.value.name || d.value.id,
-      uri: d.value.uri,
-      methods: d.value.methods,
-    })),
-  };
+  return { isDuplicate: duplicates.length > 0, duplicates };
 };

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Badge, Button, Group, Text } from '@mantine/core';
+import { Alert, Badge, Button, Group, List, Modal, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -122,6 +122,13 @@ export const RouteAddForm = (props: Props) => {
       });
     }
   }, [t]);
+
+  // A clash is legal in APISIX — it resolves by priority and `vars` — so the
+  // operator confirms rather than being blocked. But it must be confirmed at
+  // submit: the step-1 banner alone was scrolled past, which is how identical
+  // routes got created without anyone noticing.
+  const { isDuplicate, duplicates } = useDuplicateRouteCheck({ control: form.control });
+  const [pendingDuplicate, setPendingDuplicate] = useState<RoutePostType | null>(null);
 
   const postRoute = useMutation({
     mutationFn: (d: RoutePostType) => postRouteReq(req, produceRoute(d)),
@@ -231,12 +238,56 @@ export const RouteAddForm = (props: Props) => {
         steps={steps}
         onComplete={form.handleSubmit((d) => {
           setSubmitError(null);
+          if (isDuplicate) {
+            setPendingDuplicate(d);
+            return Promise.resolve();
+          }
           return postRoute.mutateAsync(d);
         })}
         loading={postRoute.isPending}
         onCancel={() => nav({ to: '/routes' })}
         error={submitError}
       />
+      <Modal
+        opened={pendingDuplicate !== null}
+        onClose={() => setPendingDuplicate(null)}
+        title={t('form.routes.duplicateConfirmTitle')}
+        size="lg"
+      >
+        <Stack gap="md">
+          <Text size="sm">{t('form.routes.duplicateConfirmBody')}</Text>
+          <List size="sm" spacing={4} withPadding>
+            {duplicates.map((d) => (
+              <List.Item key={`${d.id}-${d.reasons.join()}`}>
+                {t(
+                  d.reasons.includes('name') && d.reasons.includes('path')
+                    ? 'form.routes.duplicateReasonBoth'
+                    : d.reasons.includes('name')
+                      ? 'form.routes.duplicateReasonName'
+                      : 'form.routes.duplicateReasonPath',
+                  { name: d.name, uri: d.uri }
+                )}
+              </List.Item>
+            ))}
+          </List>
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={() => setPendingDuplicate(null)}>
+              {t('form.btn.cancel')}
+            </Button>
+            <Button
+              color="yellow"
+              loading={postRoute.isPending}
+              onClick={() => {
+                const d = pendingDuplicate;
+                setPendingDuplicate(null);
+                if (d) postRoute.mutateAsync(d);
+              }}
+            >
+              {t('form.routes.duplicateConfirmAction')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </FormProvider>
   );
 };

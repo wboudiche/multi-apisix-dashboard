@@ -32,12 +32,19 @@ import {
   Textarea,
   TextInput,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { getRouteListReq } from '@/apis/routes';
 import { fetchWsdl } from '@/apis/wsdl';
-import { API_ROUTES } from '@/config/constant';
+import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import { req } from '@/config/req';
+import {
+  type ComparableRoute,
+  findRouteDuplicates,
+  type RouteDuplicate,
+} from '@/utils/route-duplicates';
 import {
   parseWsdlBundle,
   type WsdlImportMode,
@@ -69,6 +76,11 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   const [sourceWarnings, setSourceWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  // Set once the operator has seen the clashes, so a second click proceeds.
+  const [clashesAcknowledged, setClashesAcknowledged] = useState(false);
+  const [clashes, setClashes] = useState<
+    { route: ComparableRoute; clashes: RouteDuplicate[] }[]
+  >([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
@@ -81,6 +93,8 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
     setUpstreamId('');
     setParseResult(null);
     setParseError(null);
+    setClashesAcknowledged(false);
+    setClashes([]);
     setSourceWarnings([]);
     setImporting(false);
     setImportResults(null);
@@ -94,6 +108,8 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   const clearDerived = () => {
     setParseResult(null);
     setParseError(null);
+    setClashesAcknowledged(false);
+    setClashes([]);
     setSourceWarnings([]);
     setImportResults(null);
   };
@@ -174,6 +190,40 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
 
   const handleImport = useCallback(async () => {
     if (!parseResult) return;
+
+    // Importing the same WSDL twice used to add a second copy of every
+    // operation, silently. Show what already exists before writing anything; a
+    // clash is legal in APISIX, so a second click goes ahead.
+    if (!clashesAcknowledged) {
+      setImporting(true);
+      try {
+        const existing = await getRouteListReq(req, { page: 1, page_size: PAGE_SIZE_MAX });
+        const found = (parseResult.routes as ComparableRoute[])
+          .map((route) => ({
+            route,
+            clashes: findRouteDuplicates(
+              existing.list.map((r) => r.value as ComparableRoute),
+              route
+            ),
+          }))
+          .filter((entry) => entry.clashes.length > 0);
+        setClashesAcknowledged(true);
+        if (found.length > 0) {
+          setClashes(found);
+          setImporting(false);
+          return;
+        }
+      } catch {
+        setClashesAcknowledged(true);
+        setImporting(false);
+        notifications.show({
+          message: t('form.import.duplicateCheckFailed'),
+          color: 'yellow',
+        });
+        return;
+      }
+    }
+
     setImporting(true);
     setImportResults(null);
     let success = 0;
@@ -192,7 +242,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
     setImportResults({ success, failed, errors });
     setImporting(false);
     if (success > 0) onSuccess();
-  }, [parseResult, onSuccess, t]);
+  }, [parseResult, onSuccess, t, clashesAcknowledged]);
 
   return (
     <Modal
@@ -353,6 +403,27 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
               </Table>
             </ScrollArea.Autosize>
           </Stack>
+        )}
+
+        {clashes.length > 0 && !importResults && (
+          <Alert variant="light" color="yellow">
+            <Text size="sm" fw={500}>
+              {t('form.import.duplicateTitle', { count: clashes.length })}
+            </Text>
+            <List size="sm" spacing={2} withPadding mt={4}>
+              {clashes.map((entry) => (
+                <List.Item key={entry.route.name || entry.route.uri}>
+                  {t('form.import.duplicateItem', {
+                    name: entry.route.name || entry.route.uri,
+                    existing: entry.clashes.map((c) => c.name).join(', '),
+                  })}
+                </List.Item>
+              ))}
+            </List>
+            <Text size="xs" mt={6}>
+              {t('form.import.duplicateHint')}
+            </Text>
+          </Alert>
         )}
 
         {importResults && (
