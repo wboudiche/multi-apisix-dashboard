@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Drawer, Group } from '@mantine/core';
+import { Alert, Drawer, Group } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { toJS } from 'mobx';
@@ -126,7 +126,8 @@ export const PluginMetadata = () => {
     },
   }));
 
-  const { pluginInfoMap, hasConfigNames, isLoading } = getMetadataListReq;
+  const { pluginInfoMap, hasConfigNames, isLoading, isForbidden } =
+    getMetadataListReq;
   // init the selected plugins
   useDeepCompareEffect(() => {
     if (isLoading) return;
@@ -135,6 +136,11 @@ export const PluginMetadata = () => {
 
   return (
     <Drawer.Stack>
+      {isForbidden && (
+        <Alert color="yellow" variant="light" mb="md">
+          {t('pluginMetadata.forbidden')}
+        </Alert>
+      )}
       <Group>
         <PluginCardListSearch
           search={pluginsOb.search}
