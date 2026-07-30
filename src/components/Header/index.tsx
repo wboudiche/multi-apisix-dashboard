@@ -225,7 +225,7 @@ export const Header: FC<HeaderProps> = (props) => {
   // Current selection display with health dot
   const currentHealth = healthMap[currentInstanceId];
 
-  const { isAdmin } = usePermission();
+  const { isAdmin, role: effectiveRole } = usePermission();
 
   return (
     <AppShell.Header>
@@ -296,16 +296,20 @@ export const Header: FC<HeaderProps> = (props) => {
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>Account</Menu.Label>
+              <Menu.Label>{t('header.account')}</Menu.Label>
               <Menu.Item>
                 {currentUser?.email}
               </Menu.Item>
-              <Menu.Item>
-                Role: {currentUser?.role?.replace('_', ' ')}
-              </Menu.Item>
+              {effectiveRole && (
+                <Menu.Item>
+                  {t('header.accountRole', {
+                    role: effectiveRole.replace('_', ' '),
+                  })}
+                </Menu.Item>
+              )}
               <Menu.Divider />
               <Menu.Item color="red" onClick={handleLogout}>
-                Logout
+                {t('header.logout')}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
