@@ -114,6 +114,41 @@ func stripDashboardFields(body []byte) []byte {
 	return cleaned
 }
 
+// injectTeamID adds the owning team to a single-resource Admin API response,
+// under the same field the list path uses.
+//
+// The body is returned untouched if it is not the {"key":…,"value":{…}} shape
+// this expects, so an unexpected payload is forwarded rather than mangled.
+func injectTeamID(body []byte, ownerTeamID string) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	// UseNumber for the same reason stripDashboardFields needs it: decoding into
+	// map[string]any would turn every number into a float64, and re-marshalling
+	// would rewrite an id beyond 2^53 to a neighbouring value.
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+
+	var single map[string]any
+	if err := decoder.Decode(&single); err != nil {
+		return body
+	}
+	value, ok := single["value"].(map[string]any)
+	if !ok {
+		return body
+	}
+
+	value[dashboardTeamIDField] = ownerTeamID
+	enriched, err := json.Marshal(single)
+	if err != nil {
+		// Unreachable in practice; forwarding the original just means the UI
+		// falls back to not knowing the team, which is how it behaved before.
+		return body
+	}
+	return enriched
+}
+
 // unassignedResourceCode marks a refusal caused by the resource having no team,
 // so the UI can tell it apart from "owned by another team" and point the
 // operator at an admin rather than at a team that does not exist.
@@ -552,15 +587,21 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				resources.List = paginateRows(filtered, page, pageSize)
 				respBody, _ = json.Marshal(resources)
 			}
-		} else if !isAdmin {
+		} else {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
-			if !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+			if !isAdmin && !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error":     accessDeniedMsg,
 					"error_msg": accessDeniedMsg,
 				})
 				return
 			}
+
+			// Inject __team_id here as well as into list rows: a detail view has
+			// only this response to go on, and without it the reassign dialog
+			// cannot name the current team — nor tell a route that is already
+			// unowned from one the operator is about to detach.
+			respBody = injectTeamID(respBody, ownerTeamID)
 		}
 	}
 
@@ -575,6 +616,36 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 func (h *ProxyHandler) ListRoutes(c *gin.Context)    { h.ProxyRequest(c) }
 func (h *ProxyHandler) ListServices(c *gin.Context)  { h.ProxyRequest(c) }
 func (h *ProxyHandler) ListUpstreams(c *gin.Context) { h.ProxyRequest(c) }
+
+// ownershipAction is what a reassign request is asking for.
+type ownershipAction int
+
+const (
+	// ownershipInvalid means the caller sent no team_id at all.
+	ownershipInvalid ownershipAction = iota
+	// ownershipDetach means the caller sent an empty team_id, i.e. asked for
+	// the resource to belong to no team.
+	ownershipDetach
+	// ownershipAssign means the caller named a team.
+	ownershipAssign
+)
+
+// ownershipActionFor reads the intent behind a reassign body's team_id.
+//
+// The distinction that matters is nil vs empty: leaving the field out is a
+// malformed request, while sending "" is a deliberate request to detach. Only
+// a pointer can carry that difference, since an absent JSON string and an empty
+// one both decode to "".
+func ownershipActionFor(teamID *string) ownershipAction {
+	switch {
+	case teamID == nil:
+		return ownershipInvalid
+	case *teamID == "":
+		return ownershipDetach
+	default:
+		return ownershipAssign
+	}
+}
 
 // ReassignOwnership changes the team owner of a resource (admin only)
 func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
@@ -596,11 +667,39 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 	resourceType := c.Param("resource_type")
 	resourceID := c.Param("resource_id")
 
+	// A pointer, so that an omitted team_id (nil) stays an error while an
+	// explicitly empty one means "detach this resource from its team". A plain
+	// string with binding:"required" cannot tell those two apart.
 	var body struct {
-		TeamID string `json:"team_id" binding:"required"`
+		TeamID *string `json:"team_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required"})
+		return
+	}
+
+	action := ownershipActionFor(body.TeamID)
+	if action == ownershipInvalid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required"})
+		return
+	}
+
+	// Detaching leaves the resource unowned, which puts it out of reach of
+	// every non-admin until an admin assigns it again — see nonAdminMayAccess.
+	if action == ownershipDetach {
+		if err := h.ownershipService.DeleteOwner(
+			c.Request.Context(), instanceID, resourceType, resourceID,
+		); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unassign: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":       "Ownership removed",
+			"resource_type": resourceType,
+			"resource_id":   resourceID,
+			"team_id":       "",
+		})
 		return
 	}
 
@@ -608,7 +707,7 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 		InstanceID:   instanceID,
 		ResourceType: resourceType,
 		ResourceID:   resourceID,
-		TeamID:       body.TeamID,
+		TeamID:       *body.TeamID,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reassign: " + err.Error()})
@@ -619,6 +718,6 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 		"message":       "Ownership reassigned",
 		"resource_type": resourceType,
 		"resource_id":   resourceID,
-		"team_id":       body.TeamID,
+		"team_id":       *body.TeamID,
 	})
 }

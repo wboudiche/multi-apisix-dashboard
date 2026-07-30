@@ -43,6 +43,17 @@ export const teamApi = {
     return response.data;
   },
 
+  // Rename a team or edit its description.
+  // Membership is not editable here: a user's team is stored per
+  // (user, instance), so it is assigned from the Users screen instead.
+  update: async (
+    id: string,
+    data: Pick<Team, 'name' | 'description'>
+  ): Promise<Team> => {
+    const response = await apiClient.put<Team>(`/api/v1/teams/${id}`, data);
+    return response.data;
+  },
+
   // Delete a team
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/api/v1/teams/${id}`);
@@ -60,7 +71,9 @@ export const teamApi = {
     return response.data.list || [];
   },
 
-  // Reassign resource ownership to a different team
+  // Reassign resource ownership to a different team.
+  // An empty teamId detaches the resource, leaving it owned by no team — which
+  // hides it from every non-admin until an admin assigns it again.
   reassignOwnership: async (resourceType: string, resourceId: string, teamId: string): Promise<void> => {
     await apiClient.put(`/api/v1/apisix/ownership/${resourceType}/${resourceId}`, { team_id: teamId });
   },

@@ -31,51 +31,56 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { type Team,teamApi } from '@/apis/teams';
 import PageHeader from '@/components/page/PageHeader';
 import { usePermission } from '@/hooks/usePermission';
 import IconPlus from '~icons/material-symbols/add';
+import IconEdit from '~icons/material-symbols/edit-outline';
 import IconGroup from '~icons/material-symbols/group-outline';
 
 const TeamsPage = () => {
+  const { t } = useTranslation();
   const { isSuperAdmin } = usePermission();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // null while adding; the team's id while editing it.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Team>>({
     name: '',
     description: '',
   });
 
-  const loadTeams = async () => {
+  const loadTeams = useCallback(async () => {
     setLoading(true);
     try {
       const data = await teamApi.list();
       setTeams(data);
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to load teams',
+        title: t('teams.errorTitle'),
+        message: t('teams.loadFailed'),
         color: 'red',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadTeams();
-  }, []);
+  }, [loadTeams]);
 
   if (!isSuperAdmin) {
     return (
       <Container size="xl">
         <Paper p="xl" withBorder ta="center">
-          <Title order={2} mt="md">Access Denied</Title>
+          <Title order={2} mt="md">{t('teams.accessDenied')}</Title>
           <Text c="dimmed" mt="sm">
-            Only Super Admins can manage teams.
+            {t('teams.accessDeniedMessage')}
           </Text>
         </Paper>
       </Container>
@@ -85,17 +90,25 @@ const TeamsPage = () => {
   const handleSubmit = async () => {
     if (!formData.name?.trim()) {
       notifications.show({
-        title: 'Error',
-        message: 'Team name is required',
+        title: t('teams.errorTitle'),
+        message: t('teams.nameRequired'),
         color: 'red',
       });
       return;
     }
+    const isEdit = editingId !== null;
     try {
-      await teamApi.create(formData);
+      if (isEdit) {
+        await teamApi.update(editingId, {
+          name: formData.name,
+          description: formData.description ?? '',
+        });
+      } else {
+        await teamApi.create(formData);
+      }
       notifications.show({
-        title: 'Success',
-        message: 'Team created successfully',
+        title: t('teams.successTitle'),
+        message: isEdit ? t('teams.updated') : t('teams.created'),
         color: 'green',
       });
       setModalOpen(false);
@@ -103,33 +116,50 @@ const TeamsPage = () => {
       loadTeams();
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to create team',
+        title: t('teams.errorTitle'),
+        message: isEdit ? t('teams.updateFailed') : t('teams.createFailed'),
         color: 'red',
       });
     }
   };
 
+  const openEdit = (team: Team) => {
+    setEditingId(team.id);
+    setFormData({ name: team.name, description: team.description });
+    setModalOpen(true);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    resetForm();
+  };
+
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this team?')) return;
+    if (!confirm(t('teams.confirmDelete'))) return;
     try {
       await teamApi.delete(id);
       notifications.show({
-        title: 'Success',
-        message: 'Team deleted successfully',
+        title: t('teams.successTitle'),
+        message: t('teams.deleted'),
         color: 'green',
       });
       loadTeams();
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to delete team',
+        title: t('teams.errorTitle'),
+        message: t('teams.deleteFailed'),
         color: 'red',
       });
     }
   };
 
   const resetForm = () => {
+    setEditingId(null);
     setFormData({
       name: '',
       description: '',
@@ -139,13 +169,13 @@ const TeamsPage = () => {
   return (
     <>
       <PageHeader
-        title="Teams"
+        title={t('teams.title')}
         extra={
           <Button
             leftSection={<IconPlus width="18" height="18" />}
-            onClick={() => { resetForm(); setModalOpen(true); }}
+            onClick={openCreate}
           >
-            Add Team
+            {t('teams.add')}
           </Button>
         }
       />
@@ -154,9 +184,9 @@ const TeamsPage = () => {
         <Table horizontalSpacing="lg" verticalSpacing="md">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Team Name</Table.Th>
-              <Table.Th>Description</Table.Th>
-              <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
+              <Table.Th>{t('teams.headerName')}</Table.Th>
+              <Table.Th>{t('teams.headerDescription')}</Table.Th>
+              <Table.Th style={{ textAlign: 'right' }}>{t('teams.headerActions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -171,12 +201,22 @@ const TeamsPage = () => {
                   </Group>
                 </Table.Td>
                 <Table.Td>
-                  <Text size="sm" c="dimmed">{team.description || 'No description provided'}</Text>
+                  <Text size="sm" c="dimmed">{team.description || t('teams.noDescription')}</Text>
                 </Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Group gap="xs" justify="flex-end">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      radius="sm"
+                      leftSection={<IconEdit width="14" height="14" />}
+                      styles={{ root: { padding: '0 12px' } }}
+                      onClick={() => openEdit(team)}
+                    >
+                      {t('teams.edit')}
+                    </Button>
                     <Button size="xs" variant="filled" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(team.id)}>
-                      Delete
+                      {t('teams.delete')}
                     </Button>
                   </Group>
                 </Table.Td>
@@ -187,8 +227,8 @@ const TeamsPage = () => {
                 <Table.Td colSpan={3}>
                   <Box className="EmptyState-root" ta="center">
                     <IconGroup width="48" height="48" color="var(--text-tertiary)" />
-                    <Text fw={600} size="lg" mt="md">No teams found</Text>
-                    <Text c="dimmed" size="sm">Define your first team to start managing scoped resources.</Text>
+                    <Text fw={600} size="lg" mt="md">{t('teams.emptyTitle')}</Text>
+                    <Text c="dimmed" size="sm">{t('teams.emptyMessage')}</Text>
                   </Box>
                 </Table.Td>
               </Table.Tr>
@@ -199,30 +239,34 @@ const TeamsPage = () => {
 
       <Modal
         opened={modalOpen}
-        onClose={() => { setModalOpen(false); resetForm(); }}
-        title="Add New Team"
+        onClose={closeModal}
+        title={editingId ? t('teams.editTitle') : t('teams.addTitle')}
         size="md"
       >
         <Stack gap="md" mt="md">
           <TextInput
-            label="Team Name"
-            placeholder="e.g. Payments Team"
+            label={t('teams.nameLabel')}
+            placeholder={t('teams.namePlaceholder')}
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             data-autofocus
           />
           <Textarea
-            label="Description"
-            placeholder="What does this team manage?"
+            label={t('teams.descriptionLabel')}
+            placeholder={t('teams.descriptionPlaceholder')}
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
           />
           
           <Group justify="flex-end" mt="xl">
-            <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit}>Create Team</Button>
+            <Button variant="subtle" color="gray" onClick={closeModal}>
+              {t('teams.cancel')}
+            </Button>
+            <Button onClick={handleSubmit}>
+              {editingId ? t('teams.saveSubmit') : t('teams.createSubmit')}
+            </Button>
           </Group>
         </Stack>
       </Modal>

@@ -100,6 +100,60 @@ func (h *TeamHandler) CreateTeam(c *gin.Context) {
 	c.JSON(http.StatusCreated, team)
 }
 
+// UpdateTeam renames a team or edits its description (super_admin only).
+//
+// Membership is deliberately not editable here. A user's team is stored per
+// (user, instance) in user_instances rather than on the Team record — the same
+// user can sit in different teams on staging and prod — so it is managed from
+// the Users screen, which has the instance context this one does not.
+func (h *TeamHandler) UpdateTeam(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	id := c.Param("id")
+
+	// UpdateTeam in the service layer is a blind write, so an unknown id would
+	// silently create a team rather than report that there is nothing to edit.
+	existing, err := h.teamService.GetTeam(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if existing == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Team not found"})
+		return
+	}
+
+	var body models.Team
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if strings.TrimSpace(body.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Team name is required"})
+		return
+	}
+
+	// The id comes from the URL and never from the payload: a body carrying a
+	// different id would otherwise write this team's fields over another one.
+	updated := &models.Team{
+		ID:          existing.ID,
+		Name:        body.Name,
+		Description: body.Description,
+	}
+
+	if err := h.teamService.UpdateTeam(c.Request.Context(), updated); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, updated)
+}
+
 // DeleteTeam removes a team (super_admin only), blocked if team owns resources
 func (h *TeamHandler) DeleteTeam(c *gin.Context) {
 	role := middleware.GetRole(c)
