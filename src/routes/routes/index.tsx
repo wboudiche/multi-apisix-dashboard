@@ -282,9 +282,19 @@ export const RouteList = (props: RouteListProps) => {
               </Table.Td>
               {isVisible('name') && (
                 <Table.Td>
-                  <Text fw={600} size="sm">
-                    {record.value.name || '-'}
-                  </Text>
+                  {record.value.name ? (
+                    <Text fw={600} size="sm">
+                      {record.value.name}
+                    </Text>
+                  ) : (
+                    // A name is optional in APISIX. Pinning this column would
+                    // guarantee nothing if it rendered a dash for the routes
+                    // that have none, so fall back to the id — always present,
+                    // and styled like the ID column so it does not read as one.
+                    <Text size="xs" ff="monospace" c="dimmed">
+                      {record.value.id}
+                    </Text>
+                  )}
                 </Table.Td>
               )}
               {isVisible('id') && (
@@ -572,8 +582,12 @@ function RouteComponent() {
     return { ...data, list: filtered, total: filtered.length };
   }, [data, appliedLabels]);
 
+  // Name is not in this list on purpose. Every column here can be switched
+  // off, and switching all of them off used to leave a table of nothing but
+  // action buttons — rows with no way to tell which route each one was. Keeping
+  // the identifying column out of the toggleable set makes that unreachable by
+  // construction, rather than relying on a "keep at least one" check.
   const ALL_COLUMNS = [
-    { label: 'Name', value: 'name' },
     { label: 'ID', value: 'id' },
     { label: 'Host', value: 'host' },
     { label: 'Path', value: 'path' },
@@ -667,7 +681,14 @@ function RouteComponent() {
             <ActionIcon variant="subtle" color="gray" size="md" onClick={() => refetch()}><IconRefresh width="18" height="18" /></ActionIcon>
             <Popover width={200} position="bottom-end" withArrow shadow="md">
               <Popover.Target>
-                <ActionIcon variant="subtle" color="gray" size="md"><IconSettings width="18" height="18" /></ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="md"
+                  aria-label={t('routes.list.columnsTitle')}
+                >
+                  <IconSettings width="18" height="18" />
+                </ActionIcon>
               </Popover.Target>
               <Popover.Dropdown p="xs">
                 <Group justify="space-between" mb="xs">
@@ -675,6 +696,16 @@ function RouteComponent() {
                   <Anchor size="xs" component="button" onClick={() => setVisibleColumns(DEFAULT_COLUMNS)}>{t('routes.list.columnsReset')}</Anchor>
                 </Group>
 
+                <Text size="xs" c="dimmed" mb={4}>{t('routes.list.columnsFixed')}</Text>
+                <Checkbox
+                  size="xs"
+                  label={t('form.basic.name')}
+                  checked
+                  disabled
+                  description={t('routes.list.columnsNameAlwaysShown')}
+                />
+
+                <Divider my="xs" />
                 <Text size="xs" c="dimmed" mb={4}>{t('routes.list.columnsNotFixed')}</Text>
                 <Stack gap={4}>
                   {ALL_COLUMNS.map(col => (
