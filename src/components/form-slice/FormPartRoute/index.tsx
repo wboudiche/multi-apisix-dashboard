@@ -14,13 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Divider, InputWrapper } from '@mantine/core';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { Divider, InputWrapper, Text } from '@mantine/core';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import {
+  getPluginConfigListQueryOptions,
   getServiceListQueryOptions,
   getUpstreamListQueryOptions,
 } from '@/apis/hooks';
@@ -224,13 +225,69 @@ export const FormSectionUpstream = (
 export const FormSectionPlugins = () => {
   const { t } = useTranslation();
   const { control } = useFormContext<RoutePostType>();
+
+  // Not useSuspenseQuery, unlike the service and upstream selects above: a
+  // developer has no plugin_configs permission at all (see RolePermissions in
+  // api/internal/models/models.go), so listing them 403s for that role.
+  // Suspending on it would take the whole route form down rather than just
+  // this one field.
+  const { data: pluginConfigs, isError } = useQuery({
+    ...getPluginConfigListQueryOptions({ page: 1, page_size: 500 }),
+    retry: false,
+  });
+
+  const pluginConfigOptions = useMemo(
+    () =>
+      pluginConfigs?.list?.map((v) => ({
+        value: v.value.id,
+        label: v.value.name || v.value.id,
+      })) || [],
+    [pluginConfigs]
+  );
+
+  // What each config actually bundles, so the choice can be made on something
+  // more meaningful than an opaque id.
+  const pluginConfigHints = useMemo(() => {
+    const hints: Record<string, string> = {};
+    pluginConfigs?.list?.forEach((v) => {
+      const plugins = Object.keys(v.value.plugins || {});
+      hints[v.value.id] = v.value.desc || plugins.join(', ');
+    });
+    return hints;
+  }, [pluginConfigs]);
+
   return (
     <FormSection legend={t('form.plugins.label')}>
-      <FormItemTextInput
-        control={control}
-        name="plugin_config_id"
-        label={t('form.plugins.configId')}
-      />
+      {isError ? (
+        // The list could not be read — most likely this role may not see it.
+        // Fall back to the free-text id rather than offering an empty dropdown
+        // that would take away the ability to set the field at all.
+        <FormItemTextInput
+          control={control}
+          name="plugin_config_id"
+          label={t('form.plugins.configId')}
+        />
+      ) : (
+        <FormItemSelect
+          control={control}
+          name="plugin_config_id"
+          label={t('form.plugins.configId')}
+          data={pluginConfigOptions}
+          searchable
+          clearable
+          nothingFoundMessage={t('form.plugins.noConfigs')}
+          renderOption={({ option }) => (
+            <div>
+              <div>{option.label}</div>
+              {pluginConfigHints[option.value] && (
+                <Text size="xs" c="dimmed">
+                  {pluginConfigHints[option.value]}
+                </Text>
+              )}
+            </div>
+          )}
+        />
+      )}
       <Divider my="xs" label={t('or')} />
       <FormItemPlugins name="plugins" />
     </FormSection>

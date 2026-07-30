@@ -251,7 +251,8 @@
       "editorMode": {
         "form": "Form",
         "json": "JSON"
-      }
+      },
+      "noConfigs": "No plugin configs on this gateway yet"
     },
     "protos": {
       "content": "Content",
