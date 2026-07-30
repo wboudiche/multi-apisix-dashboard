@@ -52,6 +52,64 @@ var teamScopedResources = map[string]bool{
 	"stream_routes":   true,
 }
 
+// dashboardFieldPrefix marks fields the dashboard adds to APISIX resources for
+// its own use. APISIX rejects unknown properties, so these must never reach it.
+//
+// To be stripped back out, an injected field must carry this prefix AND sit at
+// the top level of whatever a client sends back: the strip below is deliberately
+// shallow. That is enough today because the only injection is __team_id on a
+// list row's "value" (see dashboardTeamIDField), and clients round-trip that
+// "value" object itself. A nested injection would need the strip to recurse.
+const dashboardFieldPrefix = "__"
+
+// dashboardTeamIDField is injected into list responses so the UI can show team
+// ownership. Named here rather than written literally at the injection site so
+// it cannot drift away from the prefix the strip looks for.
+const dashboardTeamIDField = dashboardFieldPrefix + "team_id"
+
+// stripDashboardFields removes the dashboard's own fields from a request body
+// bound for APISIX. A body that is not a JSON object is returned untouched.
+func stripDashboardFields(body []byte) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	// UseNumber keeps integers exact. Decoding into map[string]any otherwise
+	// turns every number into a float64, and re-marshalling would silently
+	// rewrite an ID beyond 2^53 to a neighbouring value.
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+
+	var resource map[string]any
+	if err := decoder.Decode(&resource); err != nil || resource == nil {
+		// Not a JSON object (an array, a scalar, or malformed). Forward it
+		// verbatim and let APISIX be the judge.
+		return body
+	}
+
+	stripped := false
+	for key := range resource {
+		if strings.HasPrefix(key, dashboardFieldPrefix) {
+			delete(resource, key)
+			stripped = true
+		}
+	}
+	if !stripped {
+		// Nothing to remove, so forward the original bytes rather than a
+		// re-serialized copy.
+		return body
+	}
+
+	cleaned, err := json.Marshal(resource)
+	if err != nil {
+		// Unreachable in practice: a map decoded from JSON always re-marshals.
+		// Forwarding the original means the dashboard field reaches APISIX and
+		// is rejected with a clear error, which beats dropping the request.
+		return body
+	}
+	return cleaned
+}
+
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
@@ -184,6 +242,16 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		bodyBytes, _ = io.ReadAll(c.Request.Body)
 	}
 
+	// The dashboard injects its own fields into GET responses (see step 4). A
+	// client that round-trips a resource it just read - duplicating a route,
+	// saving the JSON editor - would send them straight back, and APISIX rejects
+	// unknown properties. Strip them here, at the same boundary that added them,
+	// so every write path is covered rather than each caller remembering to.
+	if c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut ||
+		c.Request.Method == http.MethodPatch {
+		bodyBytes = stripDashboardFields(bodyBytes)
+	}
+
 	proxyReq, _ := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(bodyBytes))
 	for key, values := range c.Request.Header {
 		if key != "Host" && key != "Authorization" {
@@ -265,7 +333,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						ownerTeamID := ownerMap[id]
 
 						// Inject __team_id for all users
-						val["__team_id"] = ownerTeamID
+						val[dashboardTeamIDField] = ownerTeamID
 
 						// Filter for non-admin users
 						if !isAdmin && effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
