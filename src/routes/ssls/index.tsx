@@ -16,6 +16,7 @@
  */
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
+import { Badge } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,7 @@ import { API_SSLS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { isResourceEnabled } from '@/utils/status';
 
 function RouteComponent() {
   const { t } = useTranslation();
@@ -62,10 +64,20 @@ function RouteComponent() {
         dataIndex: ['value', 'status'],
         title: t('form.basic.status'),
         key: 'status',
-        valueEnum: {
-          1: { text: t('table.enabled'), status: 'Success' },
-          0: { text: t('table.disabled'), status: 'Error' },
-        },
+        // Rendered rather than mapped through valueEnum: an absent status is
+        // live, and a map keyed on 1/0 has no entry for it, so those rows came
+        // up blank instead of enabled.
+        render: (_, record) => (
+          <Badge
+            color={isResourceEnabled(record.value.status) ? 'green' : 'red'}
+            variant="light"
+            size="sm"
+          >
+            {isResourceEnabled(record.value.status)
+              ? t('table.enabled')
+              : t('table.disabled')}
+          </Badge>
+        ),
       },
       {
         title: t('table.actions'),
