@@ -39,7 +39,11 @@ export const rmDoubleUnderscoreKeys = (obj: object) => {
   Object.keys(obj).forEach((key) => {
     const k = key as keyof typeof obj;
     if ((key as string).startsWith('__')) return delete obj[k];
-    if (typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+    // typeof null === 'object' and null is not an array, so without the null
+    // check the recursion walks into Object.keys(null) and throws. This runs
+    // inside the form submit handlers, which do not catch, so the throw
+    // surfaced as a form that silently did nothing on save.
+    if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
       (obj[k] as object) = rmDoubleUnderscoreKeys(obj[k]);
     }
   });
