@@ -18,6 +18,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
@@ -476,6 +477,22 @@ func (h *InstanceHandler) TestConnection(c *gin.Context) {
 }
 
 // SetUserInstanceRole assigns a role to a user for an instance (super_admin only)
+// isAssignableInstanceRole reports whether role can be held on a single
+// instance.
+//
+// super_admin is deliberately not one of them: it is a global role read from
+// the JWT and never narrowed by an instance assignment, so recording it here
+// would describe something the rest of the system does not honour. The roles
+// below are exactly the three the Users screen offers.
+func isAssignableInstanceRole(role string) bool {
+	switch role {
+	case models.RoleInstanceAdmin, models.RoleDeveloper, models.RoleViewer:
+		return true
+	default:
+		return false
+	}
+}
+
 func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	role := middleware.GetRole(c)
 	if role != models.RoleSuperAdmin {
@@ -486,9 +503,48 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	userID := c.Param("user_id")
 	instanceID := c.Param("instance_id")
 
+	// An empty segment produces a key with a doubled separator
+	// (/user_instances//<instance>), which nothing can look up again. The
+	// existence checks below would catch it anyway; this reports it as the
+	// malformed request it is rather than as a missing user.
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(instanceID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id and instance_id are required"})
+		return
+	}
+
 	var req SetUserInstanceRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isAssignableInstanceRole(req.Role) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid role: expected instance_admin, developer or viewer",
+		})
+		return
+	}
+
+	// The team is already checked below; the user and the instance were not,
+	// so a role could be recorded against ids that refer to nothing. Such a
+	// record is invisible to the user it names and survives until someone
+	// notices it by hand.
+	if _, err := h.authService.GetUser(c.Request.Context(), userID); err != nil {
+		if errors.Is(err, services.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	instance, err := h.instanceService.GetInstance(c.Request.Context(), instanceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if instance == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
 		return
 	}
 
