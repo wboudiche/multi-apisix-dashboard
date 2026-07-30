@@ -772,5 +772,10 @@
     "accessHint": "Assign this user to APISIX instances with a specific role and team.",
     "noInstances": "No instances available to assign.",
     "assigned": "Assigned"
+  },
+  "header": {
+    "accountRole": "Role: {{role}}",
+    "account": "Account",
+    "logout": "Logout"
   }
 }
