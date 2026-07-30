@@ -172,7 +172,11 @@
       "routesFound": "{{count}} route(s) found",
       "importRoutes": "Import {{count}} route(s)",
       "successCount": "{{count}} route(s) imported successfully",
-      "failedCount": "{{count}} route(s) failed to import"
+      "failedCount": "{{count}} route(s) failed to import",
+      "duplicateTitle": "{{count}} of these already exist on this gateway",
+      "duplicateItem": "\"{{- name}}\" clashes with {{- existing}}",
+      "duplicateHint": "APISIX allows several routes on the same path, so importing again will add copies rather than update anything. Import again to go ahead.",
+      "duplicateCheckFailed": "Could not check for existing routes. Import again to go ahead without the check."
     },
     "importWsdl": {
       "title": "Import from WSDL",
@@ -291,7 +295,13 @@
         "noUpstream": "No upstream configured",
         "noPlugins": "No plugins configured"
       },
-      "duplicateWarning": "A route with the same URI already exists: \"{{name}}\" ({{- uri}})"
+      "duplicateWarning": "A route with the same URI already exists: \"{{name}}\" ({{- uri}})",
+      "duplicateConfirmTitle": "This route looks like a duplicate",
+      "duplicateConfirmBody": "APISIX allows several routes on the same path and picks between them by priority, so this is permitted — but it is usually not what was intended. The following already exist:",
+      "duplicateReasonName": "\"{{- name}}\" uses the same name",
+      "duplicateReasonPath": "\"{{- name}}\" already answers on {{- uri}}",
+      "duplicateReasonBoth": "\"{{- name}}\" uses the same name and already answers on {{- uri}}",
+      "duplicateConfirmAction": "Create anyway"
     },
     "reassignTeam": {
       "title": "Reassign Team",

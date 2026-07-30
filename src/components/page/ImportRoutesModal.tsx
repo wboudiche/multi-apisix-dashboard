@@ -20,6 +20,7 @@ import {
   Button,
   Code,
   Group,
+  List,
   Modal,
   ScrollArea,
   Stack,
@@ -27,12 +28,19 @@ import {
   Text,
   Textarea,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { API_ROUTES } from '@/config/constant';
+import { getRouteListReq } from '@/apis/routes';
+import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import { req } from '@/config/req';
 import { parseImportData,type ParseResult } from '@/utils/openapi-import';
+import {
+  type ComparableRoute,
+  findRouteDuplicates,
+  type RouteDuplicate,
+} from '@/utils/route-duplicates';
 import IconError from '~icons/material-symbols/error-outline';
 import IconUpload from '~icons/material-symbols/upload';
 
@@ -42,6 +50,21 @@ type ImportRoutesModalProps = {
   onSuccess: () => void;
 };
 
+/**
+ * Existing routes each incoming route would clash with.
+ *
+ * Re-importing the same spec used to create a second copy of every route in it,
+ * silently. A clash is legal in APISIX, so this informs rather than blocks —
+ * but the operator has to see it before anything is written.
+ */
+const findImportClashes = (
+  incoming: ComparableRoute[],
+  existing: ComparableRoute[]
+): { route: ComparableRoute; clashes: RouteDuplicate[] }[] =>
+  incoming
+    .map((route) => ({ route, clashes: findRouteDuplicates(existing, route) }))
+    .filter((entry) => entry.clashes.length > 0);
+
 export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesModalProps) => {
   const { t } = useTranslation();
   const [content, setContent] = useState('');
@@ -50,6 +73,11 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Set once the operator has been shown the clashes, so a second click proceeds.
+  const [clashesAcknowledged, setClashesAcknowledged] = useState(false);
+  const [clashes, setClashes] = useState<
+    { route: ComparableRoute; clashes: RouteDuplicate[] }[]
+  >([]);
 
   const reset = () => {
     setContent('');
@@ -57,6 +85,8 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
     setParseError(null);
     setImporting(false);
     setImportResults(null);
+    setClashesAcknowledged(false);
+    setClashes([]);
   };
 
   const handleClose = () => {
@@ -83,6 +113,36 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
 
   const handleImport = useCallback(async () => {
     if (!parseResult) return;
+
+    // Check against what is already on the gateway before writing anything.
+    if (!clashesAcknowledged) {
+      setImporting(true);
+      try {
+        const existing = await getRouteListReq(req, { page: 1, page_size: PAGE_SIZE_MAX });
+        const found = findImportClashes(
+          parseResult.routes as ComparableRoute[],
+          existing.list.map((r) => r.value as ComparableRoute)
+        );
+        if (found.length > 0) {
+          setClashes(found);
+          setClashesAcknowledged(true);
+          setImporting(false);
+          return;
+        }
+      } catch {
+        // The list could not be read. Say so rather than importing blind, and
+        // let a second click go ahead.
+        setClashesAcknowledged(true);
+        setImporting(false);
+        notifications.show({
+          message: t('form.import.duplicateCheckFailed'),
+          color: 'yellow',
+        });
+        return;
+      }
+      setClashesAcknowledged(true);
+    }
+
     setImporting(true);
     setImportResults(null);
 
@@ -109,7 +169,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
     if (success > 0) {
       onSuccess();
     }
-  }, [parseResult, onSuccess]);
+  }, [parseResult, onSuccess, clashesAcknowledged, t]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -209,6 +269,27 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
               </Table>
             </ScrollArea.Autosize>
           </Stack>
+        )}
+
+        {clashes.length > 0 && !importResults && (
+          <Alert variant="light" color="yellow" icon={<IconError width="16" height="16" />}>
+            <Text size="sm" fw={500}>
+              {t('form.import.duplicateTitle', { count: clashes.length })}
+            </Text>
+            <List size="sm" spacing={2} withPadding mt={4}>
+              {clashes.map((entry) => (
+                <List.Item key={entry.route.name || entry.route.uri}>
+                  {t('form.import.duplicateItem', {
+                    name: entry.route.name || entry.route.uri,
+                    existing: entry.clashes.map((c) => c.name).join(', '),
+                  })}
+                </List.Item>
+              ))}
+            </List>
+            <Text size="xs" mt={6}>
+              {t('form.import.duplicateHint')}
+            </Text>
+          </Alert>
         )}
 
         {importResults && (
