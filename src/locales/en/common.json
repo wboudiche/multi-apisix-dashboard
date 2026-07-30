@@ -429,7 +429,12 @@
       "server": "Server",
       "serverAddr": "Server Address",
       "serverPort": "Server Port",
-      "sni": "SNI"
+      "sni": "SNI",
+      "duplicateConfirmTitle": "A matching stream route already exists",
+      "duplicateConfirmBody": "These stream routes already match the same traffic. Only one of them can win, and which one is not something you control.",
+      "duplicateEntry": "{{conditions}}",
+      "duplicateAny": "matches all stream traffic",
+      "duplicateConfirmAction": "Create anyway"
     },
     "tagsInput": {
       "placeholder": "Input text, then enter or blur"
