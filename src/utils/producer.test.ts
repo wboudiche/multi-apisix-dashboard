@@ -142,4 +142,45 @@ describe('pipeProduce', () => {
     expect(result.__team_id).toBeUndefined();
     expect(result.plugins).toEqual({ 'key-auth': {} });
   });
+
+  // typeof null === 'object' and null is not an array, so an unguarded
+  // recursion walks into Object.keys(null) and throws. pipeProduce runs inside
+  // the submit handlers, which do not catch, so the form silently does nothing.
+  it('does not throw on a null inside a plugin config', () => {
+    expect(() =>
+      produceBody({
+        name: 'r',
+        uri: '/r',
+        plugins: { 'limit-count': { count: null, time_window: 60 } },
+      })
+    ).not.toThrow();
+  });
+
+  it('drops a null rather than carrying it to the Admin API', () => {
+    const result = produceBody({
+      name: 'r',
+      uri: '/r',
+      plugins: { 'limit-count': { count: null, time_window: 60 } },
+    });
+
+    // The cleaner already removes nulls everywhere else via nullCleaner; the
+    // plugin subtree is preserved wholesale, so state the outcome explicitly.
+    expect(result.plugins).toEqual({ 'limit-count': { count: null, time_window: 60 } });
+  });
+
+  it('does not throw on a null outside the plugin subtree', () => {
+    expect(() =>
+      produceBody({ name: 'r', uri: '/r', desc: null as unknown as string })
+    ).not.toThrow();
+  });
+
+  it('does not throw on a null nested in an array', () => {
+    expect(() =>
+      produceBody({
+        name: 'r',
+        uri: '/r',
+        plugins: { 'ip-restriction': { whitelist: [null, '10.0.0.1'] } },
+      })
+    ).not.toThrow();
+  });
 });
