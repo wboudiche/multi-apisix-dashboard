@@ -81,9 +81,10 @@ const deleteByPrefix = async <T>(
   idOf: (item: T) => string,
   basePath: string,
   prefix: string,
+  query = '',
 ): Promise<void> => {
   const matched = (await list()).filter((item) => nameOf(item).startsWith(prefix));
-  await Promise.all(matched.map((item) => deleteQuietly(`${basePath}/${idOf(item)}`)));
+  await Promise.all(matched.map((item) => deleteQuietly(`${basePath}/${idOf(item)}${query}`)));
 };
 
 // Callers that clean up users AND teams must delete users first — removing a
@@ -92,5 +93,16 @@ export const deleteTeamsByPrefix = (prefix: string) =>
   deleteByPrefix(listTeams, (t) => t.name, (t) => t.id, '/api/v1/teams', prefix);
 export const deleteUsersByPrefix = (prefix: string) =>
   deleteByPrefix(listUsers, (u) => u.username, (u) => u.id, '/api/v1/users', prefix);
+// force=true: the API holds back any delete that would leave something behind —
+// gateway resources, user role assignments, ownership records — and always holds
+// back an instance it cannot reach, which most fixtures deliberately are.
+// Cleanup always means to confirm.
 export const deleteInstancesByPrefix = (prefix: string) =>
-  deleteByPrefix(listInstances, (i) => i.name, (i) => i.id, '/api/v1/instances', prefix);
+  deleteByPrefix(
+    listInstances,
+    (i) => i.name,
+    (i) => i.id,
+    '/api/v1/instances',
+    prefix,
+    '?force=true',
+  );
