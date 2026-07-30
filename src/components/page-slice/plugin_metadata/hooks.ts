@@ -39,8 +39,13 @@ export const usePluginMetadataList = () => {
     queries: names
       ? names.map((pluginName) => ({
           ...getPluginMetadataQueryOptions(pluginName, {
-            // skip error toast for 404 (no metadata yet) and 500
-            [SKIP_INTERCEPTOR_HEADER]: ['404', '500'],
+            // 404 means no metadata has been set yet, and 500 is APISIX
+            // objecting to a plugin it cannot describe — neither is worth a
+            // toast. 403 is here because this screen issues one request per
+            // plugin: a role that may not read plugin metadata would otherwise
+            // raise one notification per plugin, burying the page under them.
+            // The refusal is reported once, below, instead.
+            [SKIP_INTERCEPTOR_HEADER]: ['403', '404', '500'],
           }),
           retry: false,
         }))
@@ -70,7 +75,18 @@ export const usePluginMetadataList = () => {
     }
   }, [metadataQueries, names]);
 
+  // Whether the gateway refused to disclose metadata to this role at all, as
+  // opposed to individual plugins simply having none set.
+  const isForbidden =
+    metadataQueries.length > 0 &&
+    metadataQueries.every(
+      (query) =>
+        (query.error as { response?: { status?: number } } | null)?.response
+          ?.status === 403
+    );
+
   return {
+    isForbidden,
     isLoading,
     isError: pluginsListQuery.isError,
     error: pluginsListQuery.error,

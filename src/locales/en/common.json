@@ -670,7 +670,8 @@
   },
   "pluginMetadata": {
     "search": "Search Plugin Metadata",
-    "singular": "Plugin Metadata"
+    "singular": "Plugin Metadata",
+    "forbidden": "Your role on this instance may not read plugin metadata. Ask an admin if you need access."
   },
   "protos": {
     "singular": "Proto"
@@ -825,5 +826,11 @@
     "updateFailed": "Failed to update team",
     "deleted": "Team deleted successfully",
     "deleteFailed": "Failed to delete team"
+  },
+  "error": {
+    "forbidden": "You do not have permission to do that on this instance.",
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "notFound": "Not found.",
+    "generic": "The request failed ({{status}})."
   }
 }
