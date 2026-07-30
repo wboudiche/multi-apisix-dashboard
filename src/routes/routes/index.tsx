@@ -61,6 +61,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { extractSoapAction } from '@/utils/soap-route';
+import { isResourceEnabled } from '@/utils/status';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
@@ -363,7 +364,7 @@ export const RouteList = (props: RouteListProps) => {
               )}
               {isVisible('status') && (
                 <Table.Td>
-                  {record.value.status === 1 ? (
+                  {isResourceEnabled(record.value.status) ? (
                     <Badge color="green" variant="outline" size="sm">{t('routes.list.statusPublished')}</Badge>
                   ) : (
                     <Badge color="gray" variant="outline" size="sm">{t('routes.list.statusUnpublished')}</Badge>
