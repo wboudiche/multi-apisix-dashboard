@@ -17,7 +17,7 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { type Control, useWatch } from 'react-hook-form';
+import { useWatch } from 'react-hook-form';
 
 import { getRouteListQueryOptions } from '@/apis/hooks';
 import { PAGE_SIZE_MAX } from '@/config/constant';
@@ -34,16 +34,14 @@ import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplica
  * FormProvider rather than from inside it — there is no form context to read
  * from at that point, and useWatch would throw on a null control.
  */
-export const useDuplicateRouteCheck = (opts?: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  control?: Control<any>;
-  excludeID?: string;
-}) => {
-  const { control, excludeID } = opts ?? {};
-  const name = useWatch({ control, name: 'name' }) || '';
-  const uri = useWatch({ control, name: 'uri' }) || '';
-  const uris = useWatch({ control, name: 'uris' });
-  const watchedMethods = useWatch({ control, name: 'methods' });
+// Must be called from inside the FormProvider: it reads the form through
+// context. The submit gate cannot use it for that reason — see checkDuplicates
+// in routes/add.tsx, which asks the API directly with the submitted values.
+export const useDuplicateRouteCheck = (excludeID?: string) => {
+  const name = useWatch({ name: 'name' }) || '';
+  const uri = useWatch({ name: 'uri' }) || '';
+  const uris = useWatch({ name: 'uris' });
+  const watchedMethods = useWatch({ name: 'methods' });
   const [debouncedName] = useDebouncedValue(name, 500);
   const [debouncedUri] = useDebouncedValue(uri, 500);
 
