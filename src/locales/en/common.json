@@ -751,5 +751,26 @@
   },
   "upstreams": {
     "singular": "Upstream"
+  },
+  "users": {
+    "accessDeniedTitle": "Access Denied",
+    "accessDeniedBody": "Only Super Admins can manage users and RBAC roles.",
+    "pageTitle": "User Management",
+    "addUser": "Add User",
+    "columnUser": "User",
+    "columnRole": "Role",
+    "columnInstances": "Instances",
+    "columnTeams": "Teams",
+    "columnCreated": "Created",
+    "allInstances": "All instances",
+    "allTeams": "All teams",
+    "permissions": "Permissions",
+    "emptyTitle": "No users found",
+    "emptyBody": "Create your first team member to collaborate.",
+    "tabBasic": "Basic Info",
+    "tabAccess": "Instance Access",
+    "accessHint": "Assign this user to APISIX instances with a specific role and team.",
+    "noInstances": "No instances available to assign.",
+    "assigned": "Assigned"
   }
 }

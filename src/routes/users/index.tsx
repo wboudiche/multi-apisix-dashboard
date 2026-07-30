@@ -34,7 +34,8 @@ import {
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtom } from 'jotai';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { type User } from '@/apis/auth';
 import { instanceApi, type UserInstanceRole } from '@/apis/instances';
@@ -58,6 +59,7 @@ type CreateUserRequest = {
 };
 
 const UsersPage = () => {
+  const { t } = useTranslation();
   const [currentUser] = useAtom(currentUserAtom);
   const [availableInstances] = useAtom(instancesAtom);
   const [users, setUsers] = useState<User[]>([]);
@@ -80,7 +82,7 @@ const UsersPage = () => {
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!isSuperAdmin) return;
     setLoading(true);
     try {
@@ -121,11 +123,11 @@ const UsersPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     loadData();
-  }, [isSuperAdmin]);
+  }, [loadData]);
 
   const handleSubmit = async () => {
     // Validate team selection for developer/viewer roles
@@ -166,13 +168,38 @@ const UsersPage = () => {
         }
         const newUser = await response.json();
         userId = newUser.id;
+      } else {
+        // Editing used to skip this entirely, so the global role picked in the
+        // form was never sent anywhere — the form reported success having
+        // changed nothing.
+        const response = await fetch(`/api/v1/users/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            role: formData.role === 'user' ? '' : formData.role,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          notifications.show({
+            title: 'Error',
+            message: error.error || 'Failed to update user',
+            color: 'red',
+          });
+          return;
+        }
       }
 
       // Save instance specific roles, teams and scopes
       for (const instanceID in instanceRoles) {
         const config = instanceRoles[instanceID];
         if (config.role) {
-          await fetch(`/api/v1/user-access/${userId}/instances/${instanceID}/role`, {
+          const response = await fetch(`/api/v1/user-access/${userId}/instances/${instanceID}/role`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -184,6 +211,18 @@ const UsersPage = () => {
               scope: config.scope
             }),
           });
+
+          // Every one of these was previously unchecked, so a rejected
+          // assignment still ended in a success toast.
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            notifications.show({
+              title: 'Error',
+              message: error.error || 'Failed to assign the role for one of the instances',
+              color: 'red',
+            });
+            return;
+          }
         }
       }
 
@@ -255,9 +294,9 @@ const UsersPage = () => {
       <Container size="xl">
         <Paper p="xl" withBorder className="Card-root" ta="center">
           <IconShield width="48" height="48" color="var(--brand)" />
-          <Title order={2} mt="md">Access Denied</Title>
+          <Title order={2} mt="md">{t('users.accessDeniedTitle')}</Title>
           <Text c="dimmed" mt="sm">
-            Only Super Admins can manage users and RBAC roles.
+            {t('users.accessDeniedBody')}
           </Text>
         </Paper>
       </Container>
@@ -292,13 +331,13 @@ const UsersPage = () => {
   return (
     <>
       <PageHeader
-        title="User Management"
+        title={t('users.pageTitle')}
         extra={
           <Button
             leftSection={<IconPlus width="18" height="18" />}
             onClick={() => { resetForm(); setModalOpen(true); }}
           >
-            Add User
+            {t('users.addUser')}
           </Button>
         }
       />
@@ -307,12 +346,12 @@ const UsersPage = () => {
         <Table horizontalSpacing="lg" verticalSpacing="md">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>User</Table.Th>
-              <Table.Th>Role</Table.Th>
-              <Table.Th>Instances</Table.Th>
-              <Table.Th>Teams</Table.Th>
-              <Table.Th>Created</Table.Th>
-              <Table.Th style={{ textAlign: 'right' }}>Actions</Table.Th>
+              <Table.Th>{t('users.columnUser')}</Table.Th>
+              <Table.Th>{t('users.columnRole')}</Table.Th>
+              <Table.Th>{t('users.columnInstances')}</Table.Th>
+              <Table.Th>{t('users.columnTeams')}</Table.Th>
+              <Table.Th>{t('users.columnCreated')}</Table.Th>
+              <Table.Th style={{ textAlign: 'right' }}>{t('table.actions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -347,7 +386,7 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td>
                   {user.role === 'super_admin' ? (
-                    <Text size="xs" c="dimmed" fs="italic">All instances</Text>
+                    <Text size="xs" c="dimmed" fs="italic">{t('users.allInstances')}</Text>
                   ) : assignments.length === 0 ? (
                     <Text size="xs" c="dimmed">—</Text>
                   ) : (
@@ -367,7 +406,7 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td>
                   {user.role === 'super_admin' ? (
-                    <Text size="xs" c="dimmed" fs="italic">All teams</Text>
+                    <Text size="xs" c="dimmed" fs="italic">{t('users.allTeams')}</Text>
                   ) : uniqueTeams.length === 0 ? (
                     <Text size="xs" c="dimmed">—</Text>
                   ) : (
@@ -389,11 +428,11 @@ const UsersPage = () => {
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Group gap="xs" justify="flex-end">
                     <Button size="xs" variant="filled" color="blue" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openEditModal(user)}>
-                      Permissions
+                      {t('users.permissions')}
                     </Button>
                     {user.id !== currentUser?.id && (
                       <Button size="xs" variant="filled" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(user.id)}>
-                        Delete
+                        {t('form.btn.delete')}
                       </Button>
                     )}
                   </Group>
@@ -406,8 +445,8 @@ const UsersPage = () => {
                 <Table.Td colSpan={6}>
                   <Box className="EmptyState-root" ta="center">
                     <IconUser width="48" height="48" color="var(--text-tertiary)" />
-                    <Text fw={600} size="lg" mt="md">No users found</Text>
-                    <Text c="dimmed" size="sm">Create your first team member to collaborate.</Text>
+                    <Text fw={600} size="lg" mt="md">{t('users.emptyTitle')}</Text>
+                    <Text c="dimmed" size="sm">{t('users.emptyBody')}</Text>
                   </Box>
                 </Table.Td>
               </Table.Tr>
@@ -424,8 +463,8 @@ const UsersPage = () => {
       >
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List mb="lg" grow>
-            <Tabs.Tab value="basic" leftSection={<IconUser width="16" height="16" />}>Basic Info</Tabs.Tab>
-            <Tabs.Tab value="access" leftSection={<IconInstance width="16" height="16" />} disabled={formData.role === 'super_admin'}>Instance Access</Tabs.Tab>
+            <Tabs.Tab value="basic" leftSection={<IconUser width="16" height="16" />}>{t('users.tabBasic')}</Tabs.Tab>
+            <Tabs.Tab value="access" leftSection={<IconInstance width="16" height="16" />} disabled={formData.role === 'super_admin'}>{t('users.tabAccess')}</Tabs.Tab>
 
           </Tabs.List>
 
@@ -474,12 +513,12 @@ const UsersPage = () => {
           <Tabs.Panel value="access">
             <Stack gap="md">
               <Text size="sm" c="dimmed">
-                Assign this user to APISIX instances with a specific role and team.
+                {t('users.accessHint')}
               </Text>
 
               {availableInstances.length === 0 ? (
                 <Paper p="md" withBorder ta="center" bg="var(--surface-1)">
-                  <Text size="sm">No instances available to assign.</Text>
+                  <Text size="sm">{t('users.noInstances')}</Text>
                 </Paper>
               ) : (
                 <Stack gap="sm">
@@ -494,7 +533,7 @@ const UsersPage = () => {
                               <Text size="xs" c="dimmed">{inst.admin_api_url}</Text>
                             </Box>
                             {config?.role && (
-                              <Badge size="xs" variant="light" color="blue">Assigned</Badge>
+                              <Badge size="xs" variant="light" color="blue">{t('users.assigned')}</Badge>
                             )}
                           </Group>
                           <Group gap="sm" grow>
@@ -541,7 +580,7 @@ const UsersPage = () => {
         </Tabs>
 
         <Group justify="flex-end" mt="xl">
-          <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>Cancel</Button>
+          <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>{t('form.btn.cancel')}</Button>
           <Button onClick={handleSubmit}>{editingUser ? 'Save Changes' : 'Create User'}</Button>
         </Group>
       </Modal>
