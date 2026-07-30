@@ -55,7 +55,11 @@ type CreateInstanceRequest struct {
 	AdminAPIURL string `json:"admin_api_url" binding:"required"`
 	AdminKey    string `json:"admin_key" binding:"required"`
 	GatewayURL  string `json:"gateway_url"`
-	IsActive    bool   `json:"is_active"`
+	// A pointer so that an omitted is_active can be defaulted rather than read
+	// as false. An inactive instance cannot be proxied to at all (see
+	// ProxyRequest), so registering one without saying otherwise used to
+	// produce an instance that was dead on arrival.
+	IsActive *bool `json:"is_active"`
 }
 
 type UpdateInstanceRequest struct {
@@ -64,7 +68,11 @@ type UpdateInstanceRequest struct {
 	AdminAPIURL string `json:"admin_api_url"`
 	AdminKey    string `json:"admin_key"`
 	GatewayURL  string `json:"gateway_url"`
-	IsActive    bool   `json:"is_active"`
+	// A pointer so that omitting is_active leaves the stored value alone,
+	// consistent with every other field in UpdateInstance. As a plain bool an
+	// absent field bound to false, so a partial update meaning to change only
+	// the name also disabled the instance.
+	IsActive *bool `json:"is_active"`
 }
 
 type SetUserInstanceRoleRequest struct {
@@ -161,7 +169,8 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 		AdminAPIURL: req.AdminAPIURL,
 		AdminKey:    req.AdminKey,
 		GatewayURL:  req.GatewayURL,
-		IsActive:    req.IsActive,
+		// A newly registered instance is active unless the caller says not to.
+		IsActive: req.IsActive == nil || *req.IsActive,
 	}
 
 	if err := h.instanceService.CreateInstance(c.Request.Context(), instance); err != nil {
@@ -343,7 +352,9 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	if req.GatewayURL != "" {
 		instance.GatewayURL = req.GatewayURL
 	}
-	instance.IsActive = req.IsActive
+	if req.IsActive != nil {
+		instance.IsActive = *req.IsActive
+	}
 
 	if err := h.instanceService.UpdateInstance(c.Request.Context(), instance); err != nil {
 		if errors.Is(err, services.ErrDuplicateInstanceName) {
