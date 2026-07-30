@@ -80,6 +80,12 @@ func (e *EtcdClient) Delete(ctx context.Context, key string) error {
 	return err
 }
 
+// DeletePrefix removes every key under a prefix in a single operation
+func (e *EtcdClient) DeletePrefix(ctx context.Context, prefix string) error {
+	_, err := e.client.Delete(ctx, e.key(prefix), clientv3.WithPrefix())
+	return err
+}
+
 // List lists all keys with a prefix
 func (e *EtcdClient) List(ctx context.Context, prefix string) (map[string][]byte, error) {
 	resp, err := e.client.Get(ctx, e.key(prefix), clientv3.WithPrefix())
