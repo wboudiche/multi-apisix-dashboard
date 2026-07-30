@@ -21,7 +21,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -120,6 +122,11 @@ const unassignedResourceCode = "resource_not_assigned"
 // alreadyExistsCode marks a create refused because the id is taken, so the UI
 // can point at the field rather than show a generic failure.
 const alreadyExistsCode = "resource_already_exists"
+
+// maxListRows is the point past which a full list fetch is worth a log line.
+// Nothing is truncated - dropping rows would hide resources - but an operator
+// deserves to know the dashboard is pulling this much per list request.
+const maxListRows = 2000
 
 // createOnlyRequested reports whether the caller asked for a create that must
 // not overwrite anything.
@@ -382,10 +389,38 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 	}
 
+	// A list GET on a team-owned resource is filtered and paginated here rather
+	// than by APISIX: its filters are case-sensitive, it has no notion of status,
+	// and the ownership filter has to run before pagination rather than after.
+	// See list_filter.go.
+	isListGET := c.Request.Method == http.MethodGet &&
+		resourceID == "" &&
+		teamScopedResources[resourceType]
+
+	query := c.Request.URL.Query()
+	var filters listFilters
+	page, pageSize := 0, 0
+
+	if isListGET {
+		filters = parseListFilters(query)
+		page, _ = strconv.Atoi(query.Get("page"))
+		pageSize, _ = strconv.Atoi(query.Get("page_size"))
+
+		// Remove them from the upstream request. Left in place, APISIX would
+		// apply its own case-sensitive filter first and leave nothing to match,
+		// and would paginate before ownership had been considered.
+		for _, param := range listFilterParams {
+			query.Del(param)
+		}
+		for _, param := range paginationParams {
+			query.Del(param)
+		}
+	}
+
 	// 2. Prepare and execute proxy request
 	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin" + path
-	if len(c.Request.URL.Query()) > 0 {
-		targetURL += "?" + c.Request.URL.Query().Encode()
+	if len(query) > 0 {
+		targetURL += "?" + query.Encode()
 	}
 
 	var bodyBytes []byte
@@ -463,14 +498,20 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// upstreams — so a non-admin cannot read another team's consumers,
 	// consumer_groups or stream_routes.
 	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK && teamScopedResources[resourceType] {
-		isList := resourceID == ""
-
-		if isList {
+		if isListGET {
 			var resources struct {
 				List  []map[string]interface{} `json:"list"`
 				Total int                      `json:"total"`
 			}
 			if err := json.Unmarshal(respBody, &resources); err == nil {
+				if len(resources.List) > maxListRows {
+					// The whole list is fetched so filtering can precede
+					// pagination. Say so rather than quietly working through an
+					// unbounded response.
+					log.Printf("[instance %s] %s list returned %d rows; filtering the full set",
+						instanceID, resourceType, len(resources.List))
+				}
+
 				// Batch fetch all ownerships for this resource type
 				ownerMap, _ := h.ownershipService.ListOwnersByResourceType(c.Request.Context(), instanceID, resourceType)
 
@@ -494,13 +535,21 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						if !isAdmin && !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
 							continue
 						}
+
+						// Then the operator's own filters, case-insensitively
+						// and including status, which APISIX cannot do.
+						if !matchesListFilters(val, filters) {
+							continue
+						}
 					}
 					filtered = append(filtered, r)
 				}
-				if !isAdmin {
-					resources.Total = len(filtered)
-				}
-				resources.List = filtered
+
+				// The total is what the operator can actually reach, for admins
+				// too: pagination happens below, so it has to count the filtered
+				// set rather than everything on the gateway.
+				resources.Total = len(filtered)
+				resources.List = paginateRows(filtered, page, pageSize)
 				respBody, _ = json.Marshal(resources)
 			}
 		} else if !isAdmin {
