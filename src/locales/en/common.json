@@ -679,7 +679,8 @@
       "columnsTitle": "Column Display",
       "columnsReset": "Reset",
       "columnsNotFixed": "Not Fixed",
-      "columnsFixedRight": "Fixed Right"
+      "columnsFixedRight": "Fixed Right",
+      "emptyOwnershipHint": "Routes owned by another team, or not yet assigned to any team, are not shown here. If you expected to see a route, ask an admin to assign it to your team."
     }
   },
   "seconds": "Seconds",
