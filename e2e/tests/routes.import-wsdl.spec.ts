@@ -24,8 +24,9 @@ import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 import JSZip from 'jszip';
 
+import { getRouteListReq } from '@/apis/routes';
 import { postUpstreamReq } from '@/apis/upstreams';
-import { API_ROUTES } from '@/config/constant';
+import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 const readFixture = (name: string): string =>
@@ -33,6 +34,31 @@ const readFixture = (name: string): string =>
 
 const wsdl = readFixture('billing.wsdl');
 const wsdlSoap12 = readFixture('billing-soap12.wsdl');
+
+/**
+ * Every fixture here describes the same `BillingService` on the same
+ * `/services/Billing` path, so each import would otherwise land on top of the
+ * previous test's routes. The importer refuses to overwrite a clashing route
+ * without an explicit confirmation, which makes any leftover route change what
+ * the next test sees. Clear them either side of each test so the tests stay
+ * independent of their order — and of whatever a previous run left behind.
+ */
+const deleteImportedRoutes = async () => {
+  const { list } = await getRouteListReq(e2eReq, {
+    page: 1,
+    page_size: PAGE_SIZE_MAX,
+  });
+  const imported = list.filter((d) =>
+    d.value.name?.startsWith('BillingService')
+  );
+  await Promise.all(
+    imported.map((d) => e2eReq.delete(`${API_ROUTES}/${d.value.id}`))
+  );
+};
+
+test.beforeEach(deleteImportedRoutes);
+
+test.afterEach(deleteImportedRoutes);
 
 const openImporter = async (page: Page) => {
   await routesPom.toIndex(page);
