@@ -102,7 +102,7 @@ function ConsumersList() {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey="username"
+        rowKey={(record) => record.value.username}
         loading={isLoading}
         search={false}
         options={false}
