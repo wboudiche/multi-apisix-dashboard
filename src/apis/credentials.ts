@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 import { API_CREDENTIALS, SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -56,11 +56,13 @@ export const getCredentialReq = (req: AxiosInstance, username: string, id: strin
 
 export const putCredentialReq = (
   req: AxiosInstance,
-  data: APISIXType['CredentialPut'] & WithUsername
+  data: APISIXType['CredentialPut'] & WithUsername,
+  config?: AxiosRequestConfig
 ) => {
   const { username, id, ...rest } = data;
   return req.put<
     APISIXType['CredentialPut'],
     APISIXType['RespCredentialDetail']
-  >(`${API_CREDENTIALS(username)}/${id}`, rest);
+  >(`${API_CREDENTIALS(username)}/${id}`, rest,
+    config);
 };

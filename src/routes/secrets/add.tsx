@@ -28,7 +28,7 @@ import { FormPartSecret } from '@/components/form-slice/FormPartSecret';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import PageHeader from '@/components/page/PageHeader';
 import { queryClient } from '@/config/global';
-import { req } from '@/config/req';
+import { CREATE_ONLY, req } from '@/config/req';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
 
@@ -38,7 +38,7 @@ const SecretAddForm = () => {
 
   const putSecret = useMutation({
     mutationFn: (d: APISIXType['Secret']) =>
-      putSecretReq(req, pipeProduce()(d)),
+      putSecretReq(req, pipeProduce()(d), CREATE_ONLY),
     async onSuccess() {
       notifications.show({
         message: t('info.add.success', { name: t('secrets.singular') }),

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 import { API_CONSUMERS, PAGE_SIZE_MAX, PAGE_SIZE_MIN } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -36,11 +36,13 @@ export const getConsumerReq = (req: AxiosInstance, username: string) =>
 
 export const putConsumerReq = (
   req: AxiosInstance,
-  data: APISIXType['ConsumerPut']
+  data: APISIXType['ConsumerPut'],
+  config?: AxiosRequestConfig
 ) => {
   return req.put<APISIXType['ConsumerPut'], APISIXType['RespConsumerDetail']>(
     API_CONSUMERS,
-    data
+    data,
+    config
   );
 };
 
