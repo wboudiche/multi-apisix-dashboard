@@ -179,6 +179,7 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 				admin.GET("/instances/health", instanceHandler.ListInstancesHealth)
 				admin.GET("/instances/:id", instanceHandler.GetInstance)
 				admin.PUT("/instances/:id", instanceHandler.UpdateInstance)
+				admin.GET("/instances/:id/dependencies", instanceHandler.GetInstanceDependencies)
 				admin.DELETE("/instances/:id", instanceHandler.DeleteInstance)
 				admin.GET("/instances/:id/test", instanceHandler.TestConnection)
 
