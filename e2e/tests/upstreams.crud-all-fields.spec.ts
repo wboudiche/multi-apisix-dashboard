@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 import { upstreamsPom } from '@e2e/pom/upstreams';
+import { deleteUpstreamsByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
-import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import {
@@ -25,10 +25,14 @@ import {
 } from '@e2e/utils/ui/upstreams';
 import { expect } from '@playwright/test';
 
-import { deleteAllUpstreams } from '@/apis/upstreams';
 
 test.beforeAll(async () => {
-  await deleteAllUpstreams(e2eReq);
+});
+
+// The test removes its own fixture as its final step; this covers a run
+// that fails before reaching it.
+test.afterAll(async () => {
+  await deleteUpstreamsByNamePrefix('test-upstream-full');
 });
 
 test('should CRUD upstream with all fields', async ({ page }) => {
