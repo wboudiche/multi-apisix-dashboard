@@ -100,6 +100,9 @@ export const deleteByPrefix = async (
     )
   );
 
+  return doomed.length;
+};
+
 /** Deletes services whose name begins with any of the given prefixes. */
 export const deleteServicesByNamePrefix = async (
   ...prefixes: string[]
