@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 import { consumersPom } from '@e2e/pom/consumers';
-import { e2eReq } from '@e2e/utils/req';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
-import { deleteAllConsumers } from '@/apis/consumers';
+import { API_CONSUMERS } from '@/config/constant';
+
 
 // Consumer usernames can only contain: a-zA-Z0-9_-
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 10);
@@ -29,7 +30,12 @@ const consumerUsername = `testconsumer${nanoid()}`;
 const description = 'Test consumer with all fields filled';
 
 test.beforeAll(async () => {
-  await deleteAllConsumers(e2eReq);
+});
+
+// The test removes its own fixture as its final step; this covers a run
+// that fails before reaching it.
+test.afterAll(async () => {
+  await deleteByPrefix(API_CONSUMERS, 'username', 'testconsumer');
 });
 
 test('should CRUD consumer with all fields', async ({ page }) => {
