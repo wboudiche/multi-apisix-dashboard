@@ -63,9 +63,31 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
 
-      - name: Install Playwright Browsers
+      # Restores ~230 MB of browser binaries. Keyed on the lockfile, so a
+      # Playwright bump invalidates it and the browsers are fetched again.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      # chromium only. Without a browser argument this installs firefox and
+      # webkit too, and their system dependencies are the expensive part: the
+      # apt fetches that stalled runs to the 40-minute timeout were gstreamer,
+      # libavcodec, libcodec2 and friends, none of which chromium needs. The
+      # suite only defines a chromium project (see playwright.config.ts).
+      - name: Install Playwright browser and system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: |
-          pnpm exec playwright install --with-deps
+          pnpm exec playwright install --with-deps chromium
+
+      # System packages live outside the cached directory and the runner is
+      # fresh each time, so they are installed even when the browser is not.
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: |
+          pnpm exec playwright install-deps chromium
 
       - uses: actions/setup-go@v7
         with:
