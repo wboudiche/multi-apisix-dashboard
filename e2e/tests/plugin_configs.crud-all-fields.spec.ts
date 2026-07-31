@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 import { pluginConfigsPom } from '@e2e/pom/plugin_configs';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
-import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import {
   uiFillMonacoEditor,
@@ -26,25 +26,15 @@ import {
 import { expect } from '@playwright/test';
 
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
-import type { APISIXType } from '@/types/schema/apisix';
-
-// Helper function to delete all plugin configs
-const deleteAllPluginConfigs = async (req: typeof e2eReq) => {
-  const response = await req.get<unknown, APISIXType['RespPluginConfigList']>(
-    API_PLUGIN_CONFIGS
-  );
-  const list = response.data.list || [];
-  await Promise.all(
-    list.map((item) => req.delete(`${API_PLUGIN_CONFIGS}/${item.value.id}`))
-  );
-};
 
 const pluginConfigNameWithAllFields = randomId('test-plugin-config-full');
 const description =
   'This is a test description for the plugin config with all fields';
 
-test.beforeAll(async () => {
-  await deleteAllPluginConfigs(e2eReq);
+// The test removes its own fixture as its final step; this covers a run
+// that fails before reaching it.
+test.afterAll(async () => {
+  await deleteByPrefix(API_PLUGIN_CONFIGS, 'name', 'test-plugin-config-full');
 });
 
 test('should CRUD plugin config with all fields', async ({ page }) => {
