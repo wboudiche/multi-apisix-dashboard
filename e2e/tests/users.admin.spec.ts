@@ -69,7 +69,10 @@ test('creates a user via the Add User modal', async ({ page }) => {
   await expect(page.getByText('Add New User')).toBeVisible();
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Email').fill(`${username}@example.com`);
-  await page.getByLabel('Password').fill(PASSWORD);
+  // Targeted by placeholder: the page now also renders a "Temporary password"
+  // field for the reset flow, so a label match on 'Password' finds both, and
+  // this one is marked required so its label renders as "Password *".
+  await page.getByPlaceholder('Enter secure password').fill(PASSWORD);
   // Global Role defaults to "User (Assign per-instance roles below)".
   await page.getByRole('button', { name: 'Create User' }).click();
 

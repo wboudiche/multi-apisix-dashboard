@@ -217,17 +217,21 @@ func (s *AuthService) GetUserByUsername(ctx context.Context, username string) (*
 	return nil, ErrUserNotFound
 }
 
-func (s *AuthService) Login(ctx context.Context, username, password string) (*TokenPair, error) {
+func (s *AuthService) Login(ctx context.Context, username, password string) (*TokenPair, *models.User, error) {
 	user, err := s.GetUserByUsername(ctx, username)
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		return nil, nil, ErrInvalidCredentials
 	}
 
 	if !s.CheckPassword(password, user.PasswordHash) {
-		return nil, ErrInvalidCredentials
+		return nil, nil, ErrInvalidCredentials
 	}
 
-	return s.GenerateTokens(user)
+	tokens, err := s.GenerateTokens(user)
+	if err != nil {
+		return nil, nil, err
+	}
+	return tokens, user, nil
 }
 
 func (s *AuthService) CreateUser(ctx context.Context, user *models.User) error {

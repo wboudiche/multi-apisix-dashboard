@@ -43,7 +43,10 @@ const signIn = async (page: Page, username: string, password: string) => {
 };
 
 const openAccountMenu = async (page: Page, username: string) => {
-  await page.getByText(username, { exact: true }).click();
+  // The header trigger specifically, not the username wherever it appears: the
+  // login and change-password screens also render it in a <code> hint, and a
+  // bare text match picks up both.
+  await page.getByRole('button', { name: username }).click();
 };
 
 test('shows a developer their per-instance role in the account dropdown', async ({

@@ -44,6 +44,18 @@ function isAuthenticated(): boolean {
   return expiry === 0 || expiry > Date.now();
 }
 
+/** Check if the stored user still has to change their password */
+function mustChangePassword(): boolean {
+  const stored = localStorage.getItem('auth:user');
+  if (!stored) return false;
+  try {
+    const user = JSON.parse(stored) as { must_change_password?: boolean };
+    return user.must_change_password === true;
+  } catch {
+    return false;
+  }
+}
+
 const Root = () => {
   const [opened, { toggle }] = useDisclosure(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -52,9 +64,11 @@ const Root = () => {
 
   // Check if on login page (both /login and /ui/login)
   const isLoginPage = location.pathname === '/login' || location.pathname === '/ui/login';
+  const isChangePasswordPage =
+    location.pathname === '/change-password' || location.pathname === '/ui/change-password';
 
-  // Show AppShell only when authenticated AND not on login page
-  const showAppShell = authenticated && !isLoginPage;
+  // Show AppShell only when authenticated AND not on a bare full-screen page
+  const showAppShell = authenticated && !isLoginPage && !isChangePasswordPage;
 
   // Pages that operate against an APISIX instance and therefore need a
   // selected instance to make sense. Multi-tenant management pages and the
@@ -121,6 +135,16 @@ export const Route = createRootRoute({
     if (!isAuthenticated()) {
       throw redirect({
         to: '/login',
+      });
+    }
+
+    // A pending forced password change locks the app down to the dedicated
+    // screen; the backend enforces the same rule with 403s.
+    const isChangePasswordPage =
+      location.pathname === '/change-password' || location.pathname === '/ui/change-password';
+    if (!isChangePasswordPage && mustChangePassword()) {
+      throw redirect({
+        to: '/change-password',
       });
     }
   },

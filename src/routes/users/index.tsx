@@ -18,10 +18,12 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Container,
   Group,
   Modal,
   Paper,
+  PasswordInput,
   Select,
   Stack,
   Table,
@@ -56,6 +58,7 @@ type CreateUserRequest = {
   password: string;
   email: string;
   role: string;
+  must_change_password: boolean;
 };
 
 const UsersPage = () => {
@@ -67,6 +70,9 @@ const UsersPage = () => {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('basic');
   
   const [formData, setFormData] = useState<CreateUserRequest>({
@@ -74,6 +80,7 @@ const UsersPage = () => {
     password: '',
     email: '',
     role: 'user',
+    must_change_password: true,
   });
 
   const [userAssignments, setUserAssignments] = useState<Record<string, UserInstanceRole[]>>({});
@@ -243,6 +250,53 @@ const UsersPage = () => {
     }
   };
 
+  const openResetModal = (user: User) => {
+    setResetUser(user);
+    setResetPassword('');
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    setResetLoading(true);
+    try {
+      const token = localStorage.getItem('auth:access_token');
+      const response = await fetch(`/api/v1/users/${resetUser.id}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: resetPassword }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        notifications.show({
+          title: t('users.resetFailed'),
+          message: error.error || t('users.resetFailed'),
+          color: 'red',
+        });
+        return;
+      }
+
+      notifications.show({
+        title: t('users.resetSuccess'),
+        message: t('users.resetSuccessMessage', { username: resetUser.username }),
+        color: 'green',
+      });
+      setResetUser(null);
+      setResetPassword('');
+    } catch {
+      notifications.show({
+        title: t('users.resetFailed'),
+        message: t('users.resetFailed'),
+        color: 'red',
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleDelete = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
@@ -276,6 +330,7 @@ const UsersPage = () => {
       password: '',
       email: '',
       role: 'user',
+      must_change_password: true,
     });
     setActiveTab('basic');
   };
@@ -310,6 +365,7 @@ const UsersPage = () => {
       password: '',
       email: user.email,
       role: user.role === '' ? 'user' : user.role,
+      must_change_password: false,
     });
     // Load existing instance assignments
     const assignments = userAssignments[user.id] || [];
@@ -431,6 +487,11 @@ const UsersPage = () => {
                       {t('users.permissions')}
                     </Button>
                     {user.id !== currentUser?.id && (
+                      <Button size="xs" variant="light" color="orange" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openResetModal(user)}>
+                        {t('users.resetPassword')}
+                      </Button>
+                    )}
+                    {user.id !== currentUser?.id && (
                       <Button size="xs" variant="filled" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(user.id)}>
                         {t('form.btn.delete')}
                       </Button>
@@ -497,6 +558,15 @@ const UsersPage = () => {
                 />
               )}
               {!editingUser && <PasswordRequirements password={formData.password} />}
+              {!editingUser && (
+                <Checkbox
+                  label={t('changePassword.requireOnFirstLogin')}
+                  checked={formData.must_change_password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, must_change_password: e.currentTarget.checked })
+                  }
+                />
+              )}
               <Select
                 label="Global Role"
                 description="Super Admins have full access to all instances. Regular users need per-instance role assignments."
@@ -583,6 +653,38 @@ const UsersPage = () => {
           <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>{t('form.btn.cancel')}</Button>
           <Button onClick={handleSubmit}>{editingUser ? 'Save Changes' : 'Create User'}</Button>
         </Group>
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        opened={!!resetUser}
+        onClose={() => setResetUser(null)}
+        title={t('users.resetPassword')}
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            {t('users.resetHint', { username: resetUser?.username ?? '' })}
+          </Text>
+          <PasswordInput
+            label={t('users.tempPassword')}
+            placeholder={t('users.tempPasswordPlaceholder')}
+            required
+            data-autofocus
+            value={resetPassword}
+            onChange={(e) => setResetPassword(e.target.value)}
+            leftSection={<IconKey width="16" height="16" />}
+          />
+          <PasswordRequirements password={resetPassword} />
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={() => setResetUser(null)}>
+              {t('form.btn.cancel')}
+            </Button>
+            <Button color="orange" loading={resetLoading} onClick={handleResetPassword}>
+              {t('users.resetPassword')}
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </>
   );
