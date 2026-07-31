@@ -23,6 +23,24 @@ services:
     restart: always
     volumes:
       - ./apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
+    # A unix socket left behind in logs/ survives a container restart, and
+    # nginx refuses to bind a path that already exists:
+    #
+    #   [emerg] bind() to unix:.../stream_worker_events.sock failed
+    #           (98: Address already in use)
+    #
+    # With restart: always that becomes a crash loop the container never gets
+    # out of, and only a --force-recreate clears it. Clear the sockets before
+    # handing over to the image's own entrypoint.
+    #
+    # Deliberately not a tmpfs over logs/: that directory holds the
+    # access.log -> /dev/stdout and error.log -> /dev/stderr symlinks the image
+    # ships, and mounting over it both hides them (silencing docker logs) and
+    # arrives root-owned, which the apisix user cannot write to.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
     ports:
       - '9180:9180'
     depends_on:
@@ -35,6 +53,24 @@ services:
     restart: always
     volumes:
       - ./apisix_conf_2.yml:/usr/local/apisix/conf/config.yaml:ro
+    # A unix socket left behind in logs/ survives a container restart, and
+    # nginx refuses to bind a path that already exists:
+    #
+    #   [emerg] bind() to unix:.../stream_worker_events.sock failed
+    #           (98: Address already in use)
+    #
+    # With restart: always that becomes a crash loop the container never gets
+    # out of, and only a --force-recreate clears it. Clear the sockets before
+    # handing over to the image's own entrypoint.
+    #
+    # Deliberately not a tmpfs over logs/: that directory holds the
+    # access.log -> /dev/stdout and error.log -> /dev/stderr symlinks the image
+    # ships, and mounting over it both hides them (silencing docker logs) and
+    # arrives root-owned, which the apisix user cannot write to.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
     ports:
       - '9181:9180'
     depends_on:
