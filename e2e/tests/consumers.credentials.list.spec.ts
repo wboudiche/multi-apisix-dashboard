@@ -17,12 +17,13 @@
 
 import { consumersPom } from '@e2e/pom/consumers';
 import { credentialsPom } from '@e2e/pom/credentials';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
-import { deleteAllConsumers, putConsumerReq } from '@/apis/consumers';
+import { putConsumerReq } from '@/apis/consumers';
 import { putCredentialReq } from '@/apis/credentials';
 import { API_CONSUMERS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -83,7 +84,6 @@ test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
   // Clean up any existing consumers first
-  await deleteAllConsumers(e2eReq);
 
   // Create test consumer first
   await putConsumerReq(e2eReq, {
@@ -110,7 +110,12 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await deleteAllConsumers(e2eReq);
+  await deleteByPrefix(
+    API_CONSUMERS,
+    'username',
+    testConsumerUsername,
+    anotherConsumerUsername
+  );
 });
 
 test('should navigate to consumer credentials page', async ({ page }) => {
