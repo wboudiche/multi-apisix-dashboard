@@ -77,7 +77,13 @@ export const deleteRoutesByNamePrefix = async (
  */
 export const deleteByPrefix = async (
   apiBase: string,
-  field: 'name' | 'username' | 'id',
+  /**
+   * Which field carries the identity: `name` for most, `username` for
+   * consumers, `id` where there is no name, `service_id` to sweep the
+   * children of a service. Compared with startsWith, so passing a whole id
+   * matches it exactly.
+   */
+  field: string,
   ...prefixes: string[]
 ): Promise<number> => {
   if (prefixes.length === 0) return 0;
