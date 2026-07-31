@@ -66,6 +66,43 @@ export const deleteRoutesByNamePrefix = async (
   return doomed.length;
 };
 
+/**
+ * Deletes resources under `apiBase` whose identifying field starts with one of
+ * the given prefixes.
+ *
+ * Kept generic rather than one function per resource: the only thing that
+ * varies is which field carries the name. Consumers key on `username`, several
+ * types have no name at all and are matched on `id`, so the caller says which
+ * to read.
+ */
+export const deleteByPrefix = async (
+  apiBase: string,
+  field: 'name' | 'username' | 'id',
+  ...prefixes: string[]
+): Promise<number> => {
+  if (prefixes.length === 0) return 0;
+
+  const res = await e2eReq.get<unknown, { data: { list?: { value: Record<string, unknown> }[] } }>(
+    apiBase,
+    { params: { page: 1, page_size: PAGE_SIZE_MAX } }
+  );
+
+  const doomed = (res.data.list ?? []).filter((row) => {
+    const value = row.value[field];
+    return typeof value === 'string' && prefixes.some((p) => value.startsWith(p));
+  });
+
+  await Promise.all(
+    doomed.map((row) =>
+      // Tolerant of a 404: the spec usually deleted it itself already, which is
+      // the normal path rather than a failure.
+      e2eReq.delete(`${apiBase}/${row.value.id ?? row.value.username}`).catch(() => null)
+    )
+  );
+
+  return doomed.length;
+};
+
 /** Deletes services whose name begins with any of the given prefixes. */
 export const deleteServicesByNamePrefix = async (
   ...prefixes: string[]

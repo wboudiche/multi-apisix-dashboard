@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { consumerGroupsPom } from '@e2e/pom/consumer_groups';
-import { e2eReq } from '@e2e/utils/req';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { test } from '@e2e/utils/test';
 import {
   uiFillMonacoEditor,
@@ -24,10 +24,16 @@ import {
 } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
-import { deleteAllConsumerGroups } from '@/apis/consumer_groups';
+import { API_CONSUMER_GROUPS } from '@/config/constant';
+
 
 test.beforeAll(async () => {
-  await deleteAllConsumerGroups(e2eReq);
+});
+
+// The test removes its own fixture as its final step; this covers a run
+// that fails before reaching it.
+test.afterAll(async () => {
+  await deleteByPrefix(API_CONSUMER_GROUPS, 'id', 'test-consumer-group-all-fields');
 });
 
 test('should CRUD Consumer Group with all fields', async ({ page }) => {
