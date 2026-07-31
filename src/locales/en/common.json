@@ -832,5 +832,13 @@
     "unauthorized": "Your session has expired. Please sign in again.",
     "notFound": "Not found.",
     "generic": "The request failed ({{status}})."
+  },
+  "labelFilter": {
+    "selectKey": "Select key",
+    "selectValue": "Select value",
+    "loading": "Loading labels…",
+    "loadFailed": "Could not load the label catalogue, so filtering by label is unavailable.",
+    "noKeys": "No label keys are defined yet",
+    "noValues": "This key has no values defined yet"
   }
 }
