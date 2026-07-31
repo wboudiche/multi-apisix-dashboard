@@ -17,6 +17,7 @@
 /* eslint-disable playwright/expect-expect -- assertions live in the
    verifyRouteData / uiHasToastMsg helpers */
 import { routesPom } from '@e2e/pom/routes';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
@@ -27,10 +28,9 @@ import {
 } from '@e2e/utils/ui/routes';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllRoutes } from '@/apis/routes';
-import { deleteAllServices, postServiceReq } from '@/apis/services';
-import { deleteAllUpstreams, postUpstreamReq } from '@/apis/upstreams';
-import { API_ROUTES } from '@/config/constant';
+import { postServiceReq } from '@/apis/services';
+import { postUpstreamReq } from '@/apis/upstreams';
+import { API_ROUTES, API_SERVICES, API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 const upstreamName = randomId('test-upstream');
@@ -102,9 +102,6 @@ async function verifyRouteData(
 }
 
 test.beforeAll(async () => {
-  await deleteAllRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
-  await deleteAllUpstreams(e2eReq);
 
   const upstreamResponse = await postUpstreamReq(e2eReq, {
     name: upstreamName,
@@ -120,9 +117,9 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await deleteAllRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
-  await deleteAllUpstreams(e2eReq);
+  await deleteByPrefix(API_ROUTES, 'name', routeNameForUpstreamId, routeNameForServiceId);
+  await deleteByPrefix(API_SERVICES, 'name', serviceName);
+  await deleteByPrefix(API_UPSTREAMS, 'name', upstreamName);
 });
 
 test('selecting an existing upstream stores upstream_id without inline upstream', async ({

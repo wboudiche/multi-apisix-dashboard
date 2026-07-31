@@ -15,14 +15,15 @@
  * limitations under the License.
  */
 import { servicesPom } from '@e2e/pom/services';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
-import { deleteAllServices, postServiceReq } from '@/apis/services';
-import { deleteAllStreamRoutes } from '@/apis/stream_routes';
+import { postServiceReq } from '@/apis/services';
+import { API_SERVICES, API_STREAM_ROUTES } from '@/config/constant';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -35,8 +36,6 @@ const updatedStreamRouteServerPort = 8081;
 let testServiceId: string;
 
 test.beforeAll(async () => {
-  await deleteAllStreamRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
 
   // Create a test service for testing service stream routes
   const serviceResponse = await postServiceReq(e2eReq, {
@@ -48,8 +47,8 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await deleteAllStreamRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
+  await deleteByPrefix(API_STREAM_ROUTES, 'service_id', testServiceId);
+  await deleteByPrefix(API_SERVICES, 'name', serviceName);
 });
 
 test('should CRUD stream route under service', async ({ page }) => {
