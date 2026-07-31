@@ -114,7 +114,10 @@ test.afterAll(async () => {
     API_CONSUMERS,
     'username',
     testConsumerUsername,
-    anotherConsumerUsername
+    anotherConsumerUsername,
+    // Created inside a test rather than at module scope, so it is named by its
+    // prefix here. Credentials belong to a consumer and go with it.
+    'empty-consumer'
   );
 });
 

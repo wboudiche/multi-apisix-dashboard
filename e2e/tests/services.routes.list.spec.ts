@@ -108,7 +108,19 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await deleteByPrefix(API_ROUTES, 'name', 'route1', 'route2');
+  // Every route fixture this spec creates, not just the first two: it also
+  // seeds route3, a temp route, one bound by upstream_id and one under the
+  // other service.
+  await deleteByPrefix(
+    API_ROUTES,
+    'name',
+    'route1',
+    'route2',
+    'route3',
+    'temp-route',
+    'upstream-route',
+    'another-service-route'
+  );
   await deleteByPrefix(API_SERVICES, 'name', serviceName, anotherServiceName);
 });
 
