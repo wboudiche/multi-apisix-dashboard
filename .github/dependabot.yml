@@ -14,6 +14,31 @@ updates:
     directory: "/"  # Location of package manifests
     schedule:
       interval: "daily"
+    ignore:
+      # Both of these were evaluated and declined on their merits, not missed.
+      # Without these entries Dependabot reopens them on every release and the
+      # same reasoning has to be redone each time.
+      #
+      # monaco-editor: 0.53 moved the nested language namespaces to the top
+      # level (languages.json -> json) and 0.55 added an exports map, so the
+      # deep imports in src/utils/monaco.ts no longer resolve. The quick fix is
+      # to import the package root, which pulls in the css, html and typescript
+      # language services the dashboard never uses: +141 kB gzipped on the
+      # editor chunk. Doing it properly means keeping the minimal imports and
+      # working around where the types now live. Worth doing the day a specific
+      # fix from a newer version is needed — see #43.
+      - dependency-name: "monaco-editor"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
+      # eslint-plugin-react-refresh: 0.5 makes only-export-components far
+      # stricter, taking the repo from 90 lint problems to 174. All 84 new ones
+      # are warnings, but lint-staged runs with --max-warnings=0, so every one
+      # of the ~40 affected files becomes uncommittable until it is restructured
+      # or suppressed. That is a large refactor for a dev-only rule with no
+      # runtime benefit — see #41.
+      - dependency-name: "eslint-plugin-react-refresh"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: "gomod"  # See documentation for possible values
     directory: "/api"  # Go module lives in api/, not repo root
