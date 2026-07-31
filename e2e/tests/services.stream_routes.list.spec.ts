@@ -15,17 +15,18 @@
  * limitations under the License.
  */
 import { servicesPom } from '@e2e/pom/services';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiGoto } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
-import { deleteAllServices, postServiceReq } from '@/apis/services';
+import { postServiceReq } from '@/apis/services';
 import {
-  deleteAllStreamRoutes,
   postStreamRouteReq,
 } from '@/apis/stream_routes';
+import { API_SERVICES, API_STREAM_ROUTES } from '@/config/constant';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -66,8 +67,6 @@ let anotherServiceId: string;
 const createdStreamRoutes: string[] = [];
 
 test.beforeAll(async () => {
-  await deleteAllStreamRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
 
   // Create a test service for testing service stream routes
   const serviceResponse = await postServiceReq(e2eReq, {
@@ -106,8 +105,14 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await deleteAllStreamRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
+  // The exact stream routes this spec created, recorded as it went, plus its
+  // two services by name.
+  await Promise.all(
+    createdStreamRoutes.map((id) =>
+      e2eReq.delete(`${API_STREAM_ROUTES}/${id}`).catch(() => null)
+    )
+  );
+  await deleteByPrefix(API_SERVICES, 'name', serviceName, anotherServiceName);
 });
 
 test('should only show stream routes with current service_id', async ({

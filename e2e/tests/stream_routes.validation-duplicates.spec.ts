@@ -34,10 +34,10 @@ import { API_STREAM_ROUTES, API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/consta
  * two indistinguishable entries.
  */
 
-// Several stream-route specs call deleteAllUpstreams, so this one cannot rely
-// on an upstream seeded once for the file — it would be wiped part-way through
-// depending on the order the specs happen to run in. Re-create it per test,
-// under a fixed id so re-seeding is idempotent.
+// Re-created per test under a fixed id so re-seeding is idempotent. This was
+// originally to survive other specs calling deleteAllUpstreams; those now clean
+// up only their own fixtures (#82), but per-test seeding is still the more
+// robust arrangement and costs nothing.
 const UPSTREAM_ID = 'e2e-sr-dup-upstream';
 const upstreamName = 'e2e-sr-dup-upstream';
 const SERVER_ADDR = '127.0.9.9';

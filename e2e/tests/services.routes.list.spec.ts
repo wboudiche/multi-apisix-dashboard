@@ -16,13 +16,15 @@
  */
 import { routesPom } from '@e2e/pom/routes';
 import { servicesPom } from '@e2e/pom/services';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
-import { deleteAllRoutes, postRouteReq } from '@/apis/routes';
-import { deleteAllServices, postServiceReq } from '@/apis/services';
+import { postRouteReq } from '@/apis/routes';
+import { postServiceReq } from '@/apis/services';
+import { API_ROUTES, API_SERVICES } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 test.describe.configure({ mode: 'serial' });
@@ -69,8 +71,6 @@ let anotherServiceId: string;
 const createdRoutes: string[] = [];
 
 test.beforeAll(async () => {
-  await deleteAllRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
 
   // Create a test service for testing service routes
   const serviceResponse = await postServiceReq(e2eReq, {
@@ -108,8 +108,8 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await deleteAllRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
+  await deleteByPrefix(API_ROUTES, 'name', 'route1', 'route2');
+  await deleteByPrefix(API_SERVICES, 'name', serviceName, anotherServiceName);
 });
 
 test('should only show routes with current service_id', async ({ page }) => {
