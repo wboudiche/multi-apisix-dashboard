@@ -560,13 +560,31 @@ const FilterInput = ({ label, placeholder, valueKey, selectData, localParams, se
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { canEdit } = usePermission();
+  const { canEdit, isAdmin } = usePermission();
   const { params, setParams, resetParams } = useSearchParams('/routes/');
   const { data, isLoading, refetch, setParams: setRouteParams } = useRouteList('/routes/');
   const [localParams, setLocalParams] = useState(params);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [appliedLabels, setAppliedLabels] = useState<string[]>([]);
   const [expanded, setExpanded] = useState(false);
+  // Only an admin sees more than one team's resources, so only an admin has
+  // anything to narrow. Fetched here rather than reused from the table, which
+  // owns its own copy for rendering the Team column.
+  const { data: filterTeams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => teamApi.list(),
+    staleTime: 60_000,
+    enabled: isAdmin,
+  });
+  const teamFilterOptions = useMemo(
+    () => [
+      // Resources belonging to no team are invisible to everyone but an admin,
+      // so an admin is the only one who can go looking for them.
+      { value: '__none__', label: t('routes.list.filterTeamUnassigned') },
+      ...(filterTeams ?? []).map((tm) => ({ value: tm.id, label: tm.name })),
+    ],
+    [filterTeams, t]
+  );
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [wsdlModalOpen, setWsdlModalOpen] = useState(false);
 
@@ -632,6 +650,18 @@ function RouteComponent() {
               <Grid.Col span={4}><FilterInput label="Name" placeholder="Please enter" valueKey="name" localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
               <Grid.Col span={4}><FilterInput label="Path" placeholder="Please enter" valueKey="uri" localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
               <Grid.Col span={4}><FilterInput label="Status" placeholder="UnPublished/Published" valueKey="status" selectData={[{ label: 'Published', value: '1' }, { label: 'UnPublished', value: '0' }]} localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
+              {isAdmin && (
+                <Grid.Col span={4}>
+                  <FilterInput
+                    label={t('routes.list.filterTeam')}
+                    placeholder={t('routes.list.filterTeamPlaceholder')}
+                    valueKey="team_id"
+                    selectData={teamFilterOptions}
+                    localParams={localParams}
+                    setLocalParams={setLocalParams}
+                  />
+                </Grid.Col>
+              )}
               <Grid.Col span={12}>
                 <Group gap="xs" align="center" wrap="nowrap">
                   <Text size="sm" fw={500} style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>{t('routes.list.filterLabels')}</Text>

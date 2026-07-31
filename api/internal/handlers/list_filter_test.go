@@ -207,3 +207,58 @@ func TestPaginateRows(t *testing.T) {
 		})
 	}
 }
+
+// The owning team is not part of the resource APISIX stores; the proxy injects
+// it into each row just before filtering. These pin that the filter reads it
+// from there, and that "belongs to no team" is expressible — an admin needs to
+// find unassigned resources, since nobody else can see them at all.
+func TestMatchesTeam(t *testing.T) {
+	row := func(team any) map[string]any {
+		if team == nil {
+			return map[string]any{"name": "r"}
+		}
+		return map[string]any{"name": "r", dashboardTeamIDField: team}
+	}
+
+	tests := []struct {
+		name  string
+		value map[string]any
+		want  string
+		match bool
+	}{
+		{"same team matches", row("backend"), "backend", true},
+		{"another team does not", row("frontend"), "backend", false},
+		{"unassigned does not match a named team", row(""), "backend", false},
+		{"a missing field does not match a named team", row(nil), "backend", false},
+		{"the reserved token finds unassigned rows", row(""), unassignedTeamFilter, true},
+		{"the reserved token finds rows with no field at all", row(nil), unassignedTeamFilter, true},
+		{"the reserved token skips owned rows", row("backend"), unassignedTeamFilter, false},
+		// The field is injected as a string; anything else is not an owner.
+		{"a non-string owner matches nothing", row(42), "backend", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchesTeam(tt.value, tt.want); got != tt.match {
+				t.Errorf("matchesTeam(%v, %q) = %v, want %v", tt.value, tt.want, got, tt.match)
+			}
+		})
+	}
+}
+
+// A team filter has to survive the same round trip as the others: read out of
+// the query string, and recognised as a filter so the rows are not passed
+// through untouched.
+func TestTeamFilterParsing(t *testing.T) {
+	f := parseListFilters(url.Values{"team_id": []string{" backend "}})
+	if f.teamID != "backend" {
+		t.Errorf("teamID = %q, want %q", f.teamID, "backend")
+	}
+	if f.empty() {
+		t.Error("a team filter should not count as empty")
+	}
+
+	if !parseListFilters(url.Values{"team_id": []string{"  "}}).empty() {
+		t.Error("a blank team_id is not a filter")
+	}
+}

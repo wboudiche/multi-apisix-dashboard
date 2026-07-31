@@ -704,7 +704,10 @@
       "columnsFixedRight": "Fixed Right",
       "emptyOwnershipHint": "Routes owned by another team, or not yet assigned to any team, are not shown here. If you expected to see a route, ask an admin to assign it to your team.",
       "columnsFixed": "Fixed",
-      "columnsNameAlwaysShown": "Always shown, so every row can be identified"
+      "columnsNameAlwaysShown": "Always shown, so every row can be identified",
+      "filterTeam": "Team",
+      "filterTeamPlaceholder": "Any team",
+      "filterTeamUnassigned": "Unassigned"
     }
   },
   "seconds": "Seconds",

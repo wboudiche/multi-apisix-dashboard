@@ -37,17 +37,26 @@ import (
 // listFilterParams are the query parameters this layer consumes. They are
 // stripped from the upstream request so APISIX cannot apply its own
 // case-sensitive version first and leave nothing to match.
-var listFilterParams = []string{"name", "uri", "label", "status"}
+var listFilterParams = []string{"name", "uri", "label", "status", "team_id"}
 
 // paginationParams are removed from the upstream request as well: filtering has
 // to see every row, so the page is cut here afterwards.
 var paginationParams = []string{"page", "page_size"}
+
+// unassignedTeamFilter asks for the resources that belong to no team.
+//
+// Those are a real category rather than an oddity: they are invisible to every
+// non-admin until assigned (see nonAdminMayAccess), and detaching one is now a
+// deliberate action, so an admin needs a way to find them. A reserved token
+// rather than an empty value, which already means "no filter at all".
+const unassignedTeamFilter = "__none__"
 
 type listFilters struct {
 	name   string
 	uri    string
 	label  string
 	status *int
+	teamID string
 }
 
 // parseListFilters reads the dashboard filters out of a query string. A blank
@@ -55,9 +64,10 @@ type listFilters struct {
 // than turned into a filter that matches nothing.
 func parseListFilters(q url.Values) listFilters {
 	f := listFilters{
-		name:  strings.TrimSpace(q.Get("name")),
-		uri:   strings.TrimSpace(q.Get("uri")),
-		label: strings.TrimSpace(q.Get("label")),
+		name:   strings.TrimSpace(q.Get("name")),
+		uri:    strings.TrimSpace(q.Get("uri")),
+		label:  strings.TrimSpace(q.Get("label")),
+		teamID: strings.TrimSpace(q.Get("team_id")),
 	}
 	if raw := strings.TrimSpace(q.Get("status")); raw != "" {
 		if status, err := strconv.Atoi(raw); err == nil {
@@ -68,7 +78,8 @@ func parseListFilters(q url.Values) listFilters {
 }
 
 func (f listFilters) empty() bool {
-	return f.name == "" && f.uri == "" && f.label == "" && f.status == nil
+	return f.name == "" && f.uri == "" && f.label == "" && f.status == nil &&
+		f.teamID == ""
 }
 
 func containsFold(haystack, needle string) bool {
@@ -150,7 +161,23 @@ func matchesListFilters(value map[string]any, f listFilters) bool {
 	if f.status != nil && !matchesStatus(value, *f.status) {
 		return false
 	}
+	if f.teamID != "" && !matchesTeam(value, f.teamID) {
+		return false
+	}
 	return true
+}
+
+// matchesTeam compares a row against the requested owning team.
+//
+// The owner is read from the field the proxy injects just above this call, not
+// from the resource itself: APISIX knows nothing about teams, and ownership
+// lives in the dashboard's own store.
+func matchesTeam(value map[string]any, want string) bool {
+	owner, _ := value[dashboardTeamIDField].(string)
+	if want == unassignedTeamFilter {
+		return owner == ""
+	}
+	return owner == want
 }
 
 // paginateRows returns the requested page of rows.
