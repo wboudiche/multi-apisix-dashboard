@@ -108,7 +108,7 @@ const ServiceList = () => {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey="id"
+        rowKey={(record) => record.value.id}
         loading={isLoading}
         search={false}
         options={false}

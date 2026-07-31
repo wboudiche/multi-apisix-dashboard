@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getUpstreamQueryOptions } from '@/apis/hooks';
 import { TestConnectionButton } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
+import { isResourceEnabled } from '@/utils/status';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 
 import type { RoutePostType } from './schema';
@@ -117,8 +118,14 @@ export const RoutePreviewSummary = ({ data }: Props) => {
           <Stack gap={2}>
             <FieldLabel>{t('form.basic.status')}</FieldLabel>
             <div>
-              <Badge color={values.status === 1 ? 'green' : 'red'} variant="light" size="sm">
-                {values.status === 1 ? t('table.enabled') : t('table.disabled')}
+              <Badge
+                color={isResourceEnabled(values.status) ? 'green' : 'red'}
+                variant="light"
+                size="sm"
+              >
+                {isResourceEnabled(values.status)
+                  ? t('table.enabled')
+                  : t('table.disabled')}
               </Badge>
             </div>
           </Stack>

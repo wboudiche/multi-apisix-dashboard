@@ -16,6 +16,7 @@
  */
 import { routesPom } from '@e2e/pom/routes';
 import { servicesPom } from '@e2e/pom/services';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
@@ -30,8 +31,8 @@ import {
 } from '@e2e/utils/ui/routes';
 import { expect } from '@playwright/test';
 
-import { deleteAllRoutes } from '@/apis/routes';
-import { deleteAllServices, postServiceReq } from '@/apis/services';
+import { postServiceReq } from '@/apis/services';
+import { API_ROUTES, API_SERVICES } from '@/config/constant';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -42,8 +43,6 @@ const routeUri = '/test-route';
 let testServiceId: string;
 
 test.beforeAll(async () => {
-  await deleteAllRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
 
   // Create a test service for testing service routes
   const serviceResponse = await postServiceReq(e2eReq, {
@@ -55,8 +54,8 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await deleteAllRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
+  await deleteByPrefix(API_ROUTES, 'name', routeName);
+  await deleteByPrefix(API_SERVICES, 'name', serviceName);
 });
 
 test('should CRUD route under service with required fields', async ({

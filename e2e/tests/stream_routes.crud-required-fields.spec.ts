@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 import { streamRoutesPom } from '@e2e/pom/stream_routes';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
@@ -26,7 +27,8 @@ import {
 } from '@e2e/utils/ui/stream_routes';
 import { expect } from '@playwright/test';
 
-import { deleteAllUpstreams, postUpstreamReq } from '@/apis/upstreams';
+import { postUpstreamReq } from '@/apis/upstreams';
+import { API_UPSTREAMS } from '@/config/constant';
 
 // The redesigned form references an existing upstream; seed one via the API
 const upstreamName = randomId('sr-req-upstream');
@@ -38,9 +40,12 @@ test.beforeAll(async () => {
   });
 });
 
+// Only the upstream this spec seeded; the gateway's other ones are not
+// this spec's to remove.
 test.afterAll(async () => {
-  await deleteAllUpstreams(e2eReq);
+  await deleteByPrefix(API_UPSTREAMS, 'name', upstreamName);
 });
+
 
 test.describe.configure({ mode: 'serial' });
 

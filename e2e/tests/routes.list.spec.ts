@@ -16,12 +16,13 @@
  */
 
 import { routesPom } from '@e2e/pom/routes';
+import { env } from '@e2e/utils/env';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllRoutes, putRouteReq } from '@/apis/routes';
+import { putRouteReq } from '@/apis/routes';
 import { API_ROUTES } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -44,9 +45,13 @@ test('should navigate to routes page', async ({ page }) => {
   });
 });
 
+// Shared by the fixtures, the scoping filter and the cell matcher below, so
+// they cannot drift apart.
+const FIXTURE_PREFIX = 'route_name_';
+
 const routes: APISIXType['Route'][] = Array.from({ length: 11 }, (_, i) => ({
   id: `route_id_${i + 1}`,
-  name: `route_name_${i + 1}`,
+  name: `${FIXTURE_PREFIX}${i + 1}`,
   uri: `/test_route_${i + 1}`,
   desc: `Description for route ${i + 1}`,
   methods: ['GET'],
@@ -65,7 +70,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllRoutes(e2eReq);
     await Promise.all(routes.map((d) => putRouteReq(e2eReq, d)));
   });
 
@@ -87,7 +91,17 @@ test.describe('page and page_size should work correctly', () => {
   };
 
   setupPaginationTests(test, {
-    pom: routesPom,
+    // Scoped to this spec's own fixtures rather than the whole gateway. The
+    // pagination assertions need a known total, which used to be arranged by
+    // deleting every route first — taking any real data with it. Filtering by
+    // the fixture name prefix gives the same determinism without touching
+    // anything else, and the filter survives page changes because setParams
+    // merges into the existing search params.
+    pom: {
+      ...routesPom,
+      toIndex: (page: Page) =>
+        page.goto(`${env.E2E_TARGET_URL}routes?name=${FIXTURE_PREFIX}`),
+    },
     items: routes,
     filterItemsNotInPage,
     getCell: (page, item) =>

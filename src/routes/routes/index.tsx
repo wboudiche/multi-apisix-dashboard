@@ -61,6 +61,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { extractSoapAction } from '@/utils/soap-route';
+import { isResourceEnabled } from '@/utils/status';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
@@ -92,7 +93,7 @@ export const RouteList = (props: RouteListProps) => {
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
-  const { canEdit, canDelete } = usePermission();
+  const { canEdit, canDelete, isAdmin } = usePermission();
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
   const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
   const [jsonSaving, setJsonSaving] = useState(false);
@@ -282,9 +283,19 @@ export const RouteList = (props: RouteListProps) => {
               </Table.Td>
               {isVisible('name') && (
                 <Table.Td>
-                  <Text fw={600} size="sm">
-                    {record.value.name || '-'}
-                  </Text>
+                  {record.value.name ? (
+                    <Text fw={600} size="sm">
+                      {record.value.name}
+                    </Text>
+                  ) : (
+                    // A name is optional in APISIX. Pinning this column would
+                    // guarantee nothing if it rendered a dash for the routes
+                    // that have none, so fall back to the id — always present,
+                    // and styled like the ID column so it does not read as one.
+                    <Text size="xs" ff="monospace" c="dimmed">
+                      {record.value.id}
+                    </Text>
+                  )}
                 </Table.Td>
               )}
               {isVisible('id') && (
@@ -353,7 +364,7 @@ export const RouteList = (props: RouteListProps) => {
               )}
               {isVisible('status') && (
                 <Table.Td>
-                  {record.value.status === 1 ? (
+                  {isResourceEnabled(record.value.status) ? (
                     <Badge color="green" variant="outline" size="sm">{t('routes.list.statusPublished')}</Badge>
                   ) : (
                     <Badge color="gray" variant="outline" size="sm">{t('routes.list.statusUnpublished')}</Badge>
@@ -473,7 +484,18 @@ export const RouteList = (props: RouteListProps) => {
             <Table.Tr>
               <Table.Td colSpan={visibleColumns.length + 1}>
                 <Center py="xl">
-                  <Text c="dimmed">{t('noData')}</Text>
+                  <Stack gap={4} align="center">
+                    <Text c="dimmed">{t('noData')}</Text>
+                    {/* An empty table is ambiguous for a non-admin: the gateway
+                        may hold plenty of routes that are simply owned by
+                        another team, or by no team at all. Saying so beats
+                        letting them conclude their own route vanished. */}
+                    {!isAdmin && (
+                      <Text c="dimmed" size="xs" ta="center" maw={460}>
+                        {t('routes.list.emptyOwnershipHint')}
+                      </Text>
+                    )}
+                  </Stack>
                 </Center>
               </Table.Td>
             </Table.Tr>
@@ -538,13 +560,31 @@ const FilterInput = ({ label, placeholder, valueKey, selectData, localParams, se
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { canEdit } = usePermission();
+  const { canEdit, isAdmin } = usePermission();
   const { params, setParams, resetParams } = useSearchParams('/routes/');
   const { data, isLoading, refetch, setParams: setRouteParams } = useRouteList('/routes/');
   const [localParams, setLocalParams] = useState(params);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [appliedLabels, setAppliedLabels] = useState<string[]>([]);
   const [expanded, setExpanded] = useState(false);
+  // Only an admin sees more than one team's resources, so only an admin has
+  // anything to narrow. Fetched here rather than reused from the table, which
+  // owns its own copy for rendering the Team column.
+  const { data: filterTeams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => teamApi.list(),
+    staleTime: 60_000,
+    enabled: isAdmin,
+  });
+  const teamFilterOptions = useMemo(
+    () => [
+      // Resources belonging to no team are invisible to everyone but an admin,
+      // so an admin is the only one who can go looking for them.
+      { value: '__none__', label: t('routes.list.filterTeamUnassigned') },
+      ...(filterTeams ?? []).map((tm) => ({ value: tm.id, label: tm.name })),
+    ],
+    [filterTeams, t]
+  );
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [wsdlModalOpen, setWsdlModalOpen] = useState(false);
 
@@ -561,8 +601,12 @@ function RouteComponent() {
     return { ...data, list: filtered, total: filtered.length };
   }, [data, appliedLabels]);
 
+  // Name is not in this list on purpose. Every column here can be switched
+  // off, and switching all of them off used to leave a table of nothing but
+  // action buttons — rows with no way to tell which route each one was. Keeping
+  // the identifying column out of the toggleable set makes that unreachable by
+  // construction, rather than relying on a "keep at least one" check.
   const ALL_COLUMNS = [
-    { label: 'Name', value: 'name' },
     { label: 'ID', value: 'id' },
     { label: 'Host', value: 'host' },
     { label: 'Path', value: 'path' },
@@ -606,6 +650,18 @@ function RouteComponent() {
               <Grid.Col span={4}><FilterInput label="Name" placeholder="Please enter" valueKey="name" localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
               <Grid.Col span={4}><FilterInput label="Path" placeholder="Please enter" valueKey="uri" localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
               <Grid.Col span={4}><FilterInput label="Status" placeholder="UnPublished/Published" valueKey="status" selectData={[{ label: 'Published', value: '1' }, { label: 'UnPublished', value: '0' }]} localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
+              {isAdmin && (
+                <Grid.Col span={4}>
+                  <FilterInput
+                    label={t('routes.list.filterTeam')}
+                    placeholder={t('routes.list.filterTeamPlaceholder')}
+                    valueKey="team_id"
+                    selectData={teamFilterOptions}
+                    localParams={localParams}
+                    setLocalParams={setLocalParams}
+                  />
+                </Grid.Col>
+              )}
               <Grid.Col span={12}>
                 <Group gap="xs" align="center" wrap="nowrap">
                   <Text size="sm" fw={500} style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>{t('routes.list.filterLabels')}</Text>
@@ -656,7 +712,14 @@ function RouteComponent() {
             <ActionIcon variant="subtle" color="gray" size="md" onClick={() => refetch()}><IconRefresh width="18" height="18" /></ActionIcon>
             <Popover width={200} position="bottom-end" withArrow shadow="md">
               <Popover.Target>
-                <ActionIcon variant="subtle" color="gray" size="md"><IconSettings width="18" height="18" /></ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="md"
+                  aria-label={t('routes.list.columnsTitle')}
+                >
+                  <IconSettings width="18" height="18" />
+                </ActionIcon>
               </Popover.Target>
               <Popover.Dropdown p="xs">
                 <Group justify="space-between" mb="xs">
@@ -664,6 +727,16 @@ function RouteComponent() {
                   <Anchor size="xs" component="button" onClick={() => setVisibleColumns(DEFAULT_COLUMNS)}>{t('routes.list.columnsReset')}</Anchor>
                 </Group>
 
+                <Text size="xs" c="dimmed" mb={4}>{t('routes.list.columnsFixed')}</Text>
+                <Checkbox
+                  size="xs"
+                  label={t('form.basic.name')}
+                  checked
+                  disabled
+                  description={t('routes.list.columnsNameAlwaysShown')}
+                />
+
+                <Divider my="xs" />
                 <Text size="xs" c="dimmed" mb={4}>{t('routes.list.columnsNotFixed')}</Text>
                 <Stack gap={4}>
                   {ALL_COLUMNS.map(col => (

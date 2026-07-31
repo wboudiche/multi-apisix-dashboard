@@ -187,6 +187,7 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 				admin.GET("/instances/health", instanceHandler.ListInstancesHealth)
 				admin.GET("/instances/:id", instanceHandler.GetInstance)
 				admin.PUT("/instances/:id", instanceHandler.UpdateInstance)
+				admin.GET("/instances/:id/dependencies", instanceHandler.GetInstanceDependencies)
 				admin.DELETE("/instances/:id", instanceHandler.DeleteInstance)
 				admin.GET("/instances/:id/test", instanceHandler.TestConnection)
 
@@ -194,6 +195,7 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 				admin.POST("/teams", teamHandler.CreateTeam)
 				admin.GET("/teams", teamHandler.ListTeams)
 				admin.GET("/teams/:id", teamHandler.GetTeam)
+				admin.PUT("/teams/:id", teamHandler.UpdateTeam)
 				admin.DELETE("/teams/:id", teamHandler.DeleteTeam)
 				admin.GET("/teams/:id/members", teamHandler.GetTeamMembers)
 

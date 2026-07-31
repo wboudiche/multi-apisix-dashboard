@@ -64,6 +64,46 @@ func resolveMustChangePassword(v *bool) bool {
 
 type UpdateUserRequest struct {
 	Email string `json:"email"`
+	// Role is a pointer so an absent field means "leave the role alone" and an
+	// explicit "" means "clear it". Sending a value requires super_admin.
+	Role *string `json:"role"`
+}
+
+// isAssignableGlobalRole reports whether role may be written to User.Role.
+//
+// The field is reserved for super_admin, or empty for users whose effective role
+// is derived entirely from per-instance assignments. Anything else gets baked
+// into the JWT and bypasses per-instance RBAC.
+func isAssignableGlobalRole(role string) bool {
+	return role == "" || role == models.RoleSuperAdmin
+}
+
+// wouldRemoveLastSuperAdmin reports whether giving targetID the role newRole
+// would leave the deployment with no super_admin at all — a state only
+// recoverable by editing etcd by hand.
+func wouldRemoveLastSuperAdmin(users []*models.User, targetID, newRole string) bool {
+	if newRole == models.RoleSuperAdmin {
+		return false
+	}
+
+	remaining := 0
+	for _, u := range users {
+		if u == nil || u.Role != models.RoleSuperAdmin {
+			continue
+		}
+		if u.ID == targetID {
+			continue // about to lose the role
+		}
+		remaining++
+	}
+
+	// Only a problem if the target actually holds it today.
+	for _, u := range users {
+		if u != nil && u.ID == targetID && u.Role == models.RoleSuperAdmin {
+			return remaining == 0
+		}
+	}
+	return false
 }
 
 type ChangePasswordRequest struct {
@@ -267,6 +307,38 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 	}
 
 	user.Email = req.Email
+
+	// The role was previously dropped on the floor here: only Email was applied,
+	// yet the handler answered 200, so the UI reported "Permissions updated
+	// successfully" while nothing had changed.
+	if req.Role != nil {
+		// Gate on super_admin specifically, not on the self-edit rule above. A
+		// user may edit their own record, so without this any account could PUT
+		// itself to super_admin.
+		if role != models.RoleSuperAdmin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only a super admin can change a global role"})
+			return
+		}
+		if !isAssignableGlobalRole(*req.Role) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role: global role can only be super_admin or empty"})
+			return
+		}
+
+		if *req.Role != user.Role {
+			users, err := h.authService.ListUsers(c.Request.Context())
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if wouldRemoveLastSuperAdmin(users, userID, *req.Role) {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": "This is the only super admin. Promote another user before removing this role.",
+				})
+				return
+			}
+			user.Role = *req.Role
+		}
+	}
 
 	if err := h.authService.UpdateUser(c.Request.Context(), user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

@@ -168,12 +168,11 @@ export const Header: FC<HeaderProps> = (props) => {
           const teamData = await teamApi.list();
           setTeams(teamData);
         }
-      } catch {
-        // Silently fail — the shell still renders; pages surface their own errors
+      } catch (error) {
+        console.error('Failed to load header data:', error);
       }
     };
     loadHeaderData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, currentInstanceId]);
 
   // Poll instance health every 30 seconds
@@ -226,7 +225,7 @@ export const Header: FC<HeaderProps> = (props) => {
   // Current selection display with health dot
   const currentHealth = healthMap[currentInstanceId];
 
-  const { isAdmin } = usePermission();
+  const { isAdmin, role: effectiveRole } = usePermission();
 
   return (
     <AppShell.Header>
@@ -301,13 +300,14 @@ export const Header: FC<HeaderProps> = (props) => {
               <Menu.Item>
                 {currentUser?.email}
               </Menu.Item>
-              <Menu.Item>
-                {t('header.role', { role: currentUser?.role?.replace('_', ' ') })}
-              </Menu.Item>
+              {effectiveRole && (
+                <Menu.Item>
+                  {t('header.accountRole', {
+                    role: effectiveRole.replace('_', ' '),
+                  })}
+                </Menu.Item>
+              )}
               <Menu.Divider />
-              <Menu.Item onClick={() => navigate({ to: '/change-password' })}>
-                {t('header.changePassword')}
-              </Menu.Item>
               <Menu.Item color="red" onClick={handleLogout}>
                 {t('header.logout')}
               </Menu.Item>

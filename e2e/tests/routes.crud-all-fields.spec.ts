@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 import { routesPom } from '@e2e/pom/routes';
+import { deleteRoutesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
-import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import {
   uiFillMonacoEditor,
@@ -32,7 +32,6 @@ import {
 } from '@e2e/utils/ui/routes';
 import { expect } from '@playwright/test';
 
-import { deleteAllRoutes } from '@/apis/routes';
 
 const routeNameWithAllFields = randomId('test-route-full');
 const routeUri = '/test-route-all-fields';
@@ -42,7 +41,12 @@ const initialVars = '[["arg_name", "==", "json"], ["arg_age", ">", 18]]';
 const updatedVars = '[["arg_name", "==", "updated"], ["arg_age", ">", 21]]';
 
 test.beforeAll(async () => {
-  await deleteAllRoutes(e2eReq);
+});
+
+// The test deletes its own route as its final step; this covers a run
+// that fails before reaching it, so a leftover cannot affect the next.
+test.afterAll(async () => {
+  await deleteRoutesByNamePrefix(routeNameWithAllFields);
 });
 
 test('should CRUD route with all fields', async ({ page }) => {

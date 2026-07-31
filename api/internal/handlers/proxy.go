@@ -17,9 +17,13 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,6 +56,160 @@ var teamScopedResources = map[string]bool{
 	"stream_routes":   true,
 }
 
+// dashboardFieldPrefix marks fields the dashboard adds to APISIX resources for
+// its own use. APISIX rejects unknown properties, so these must never reach it.
+//
+// To be stripped back out, an injected field must carry this prefix AND sit at
+// the top level of whatever a client sends back: the strip below is deliberately
+// shallow. That is enough today because the only injection is __team_id on a
+// list row's "value" (see dashboardTeamIDField), and clients round-trip that
+// "value" object itself. A nested injection would need the strip to recurse.
+const dashboardFieldPrefix = "__"
+
+// dashboardTeamIDField is injected into list responses so the UI can show team
+// ownership. Named here rather than written literally at the injection site so
+// it cannot drift away from the prefix the strip looks for.
+const dashboardTeamIDField = dashboardFieldPrefix + "team_id"
+
+// stripDashboardFields removes the dashboard's own fields from a request body
+// bound for APISIX. A body that is not a JSON object is returned untouched.
+func stripDashboardFields(body []byte) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	// UseNumber keeps integers exact. Decoding into map[string]any otherwise
+	// turns every number into a float64, and re-marshalling would silently
+	// rewrite an ID beyond 2^53 to a neighbouring value.
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+
+	var resource map[string]any
+	if err := decoder.Decode(&resource); err != nil || resource == nil {
+		// Not a JSON object (an array, a scalar, or malformed). Forward it
+		// verbatim and let APISIX be the judge.
+		return body
+	}
+
+	stripped := false
+	for key := range resource {
+		if strings.HasPrefix(key, dashboardFieldPrefix) {
+			delete(resource, key)
+			stripped = true
+		}
+	}
+	if !stripped {
+		// Nothing to remove, so forward the original bytes rather than a
+		// re-serialized copy.
+		return body
+	}
+
+	cleaned, err := json.Marshal(resource)
+	if err != nil {
+		// Unreachable in practice: a map decoded from JSON always re-marshals.
+		// Forwarding the original means the dashboard field reaches APISIX and
+		// is rejected with a clear error, which beats dropping the request.
+		return body
+	}
+	return cleaned
+}
+
+// injectTeamID adds the owning team to a single-resource Admin API response,
+// under the same field the list path uses.
+//
+// The body is returned untouched if it is not the {"key":…,"value":{…}} shape
+// this expects, so an unexpected payload is forwarded rather than mangled.
+func injectTeamID(body []byte, ownerTeamID string) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	// UseNumber for the same reason stripDashboardFields needs it: decoding into
+	// map[string]any would turn every number into a float64, and re-marshalling
+	// would rewrite an id beyond 2^53 to a neighbouring value.
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+
+	var single map[string]any
+	if err := decoder.Decode(&single); err != nil {
+		return body
+	}
+	value, ok := single["value"].(map[string]any)
+	if !ok {
+		return body
+	}
+
+	value[dashboardTeamIDField] = ownerTeamID
+	enriched, err := json.Marshal(single)
+	if err != nil {
+		// Unreachable in practice; forwarding the original just means the UI
+		// falls back to not knowing the team, which is how it behaved before.
+		return body
+	}
+	return enriched
+}
+
+// unassignedResourceCode marks a refusal caused by the resource having no team,
+// so the UI can tell it apart from "owned by another team" and point the
+// operator at an admin rather than at a team that does not exist.
+const unassignedResourceCode = "resource_not_assigned"
+
+// alreadyExistsCode marks a create refused because the id is taken, so the UI
+// can point at the field rather than show a generic failure.
+const alreadyExistsCode = "resource_already_exists"
+
+// maxListRows is the point past which a full list fetch is worth a log line.
+// Nothing is truncated - dropping rows would hide resources - but an operator
+// deserves to know the dashboard is pulling this much per list request.
+const maxListRows = 2000
+
+// createOnlyRequested reports whether the caller asked for a create that must
+// not overwrite anything.
+//
+// APISIX's PUT is an upsert, so an "Add" form that PUTs an id the user already
+// used replaces the existing record and reports success. The Add flows cannot be
+// told apart from the Edit flows at this layer - both PUT the same path - so
+// they declare their intent with If-None-Match: *, the standard way to ask that
+// a request apply only when nothing is there. Edits send no such header and keep
+// overwriting, which is what editing is.
+func createOnlyRequested(method, ifNoneMatch string) bool {
+	return method == http.MethodPut && strings.TrimSpace(ifNoneMatch) == "*"
+}
+
+// Messages for the proxy's authorization refusals.
+const (
+	unassignedResourceMsg = "This resource is not assigned to a team. Ask an admin to assign it before editing."
+	alreadyExistsMsg      = "A resource with this name or ID already exists. Choose a different one, or edit the existing resource."
+	couldNotVerifyMsg     = "Could not verify the resource before writing to it"
+	otherTeamMsg          = "Resource owned by another team"
+	accessDeniedMsg       = "Access denied to this resource"
+)
+
+// nonAdminMayAccess reports whether a non-admin whose team is callerTeamID may
+// see or modify a resource owned by ownerTeamID.
+//
+// A resource with no team is administrative territory: it is invisible and
+// unwritable to non-admins until an admin assigns it (see ReassignOwnership).
+// Resources predating the dashboard, or created directly against the Admin API,
+// arrive in exactly that state.
+//
+// A caller with no team of their own passes nothing: they own no resources, and
+// unowned resources must not become a free-for-all for teamless accounts.
+func nonAdminMayAccess(ownerTeamID, callerTeamID string) bool {
+	return ownerTeamID != "" && ownerTeamID == callerTeamID
+}
+
+// unownedWriteDenied decides a write against a resource carrying no ownership
+// record, given whether that resource already exists on the gateway.
+//
+// The absence of an ownership record is ambiguous. A PUT to an id that does not
+// exist yet is a create - which is how consumers and consumer_groups are made,
+// keyed by username - and ordinary work for a developer. A write to an id that
+// does exist is a write to somebody's unassigned resource, which is admin-only.
+func unownedWriteDenied(resourceExists bool) bool {
+	return resourceExists
+}
+
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
@@ -61,6 +219,36 @@ func NewProxyHandler(instanceService *services.InstanceService, ownershipService
 	return &ProxyHandler{
 		instanceService:  instanceService,
 		ownershipService: ownershipService,
+	}
+}
+
+// resourceExists asks the instance's Admin API whether the resource at path is
+// already there. Used to tell a creating PUT apart from a write against an
+// existing but unassigned resource.
+func (h *ProxyHandler) resourceExists(ctx context.Context, instance *models.Instance, path string) (bool, error) {
+	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin" + path
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return false, err
+	}
+	if instance.AdminKey != "" {
+		req.Header.Set("X-API-Key", instance.AdminKey)
+	}
+
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	switch {
+	case resp.StatusCode == http.StatusNotFound:
+		return false, nil
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return true, nil
+	default:
+		return false, fmt.Errorf("admin API returned status %d", resp.StatusCode)
 	}
 }
 
@@ -162,21 +350,112 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
+	// An Add flow declares that it means to create. APISIX would happily upsert,
+	// replacing whatever is already at that id and returning a success the UI
+	// reports as "Add ... Successfully" - the only trace being a changed
+	// update_time on a row the user thought they were adding.
+	//
+	// resourceID is only used here to confirm the request targets a specific
+	// resource rather than a collection; the existence check uses the whole
+	// path, which is what makes this work for secrets too - they are addressed
+	// as /secrets/{manager}/{id}, where getResourceMetadata reports the manager
+	// as the id.
+	if createOnlyRequested(c.Request.Method, c.GetHeader("If-None-Match")) && resourceID != "" {
+		exists, err := h.resourceExists(c.Request.Context(), instance, path)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{
+				"error":     couldNotVerifyMsg,
+				"error_msg": couldNotVerifyMsg,
+			})
+			c.Abort()
+			return
+		}
+		if exists {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":     alreadyExistsMsg,
+				"error_msg": alreadyExistsMsg,
+				"code":      alreadyExistsCode,
+			})
+			c.Abort()
+			return
+		}
+	}
+
 	if !isAdmin {
 		if (c.Request.Method == http.MethodPut || c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) && resourceID != "" {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
-			if ownerTeamID != "" && ownerTeamID != effectiveTeamID {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Resource owned by another team"})
+
+			if ownerTeamID == "" {
+				// No ownership record. Either this creates something new - a PUT
+				// to an id that does not exist yet, which is how consumers and
+				// consumer_groups are made - or it targets a resource that
+				// exists without a team, which only an admin may change.
+				exists, err := h.resourceExists(c.Request.Context(), instance, path)
+				if err != nil {
+					// Fail closed: an unverifiable target is not a licence to
+					// overwrite it.
+					c.JSON(http.StatusBadGateway, gin.H{
+						"error":     couldNotVerifyMsg,
+						"error_msg": couldNotVerifyMsg,
+					})
+					c.Abort()
+					return
+				}
+				if unownedWriteDenied(exists) {
+					// error_msg as well as error: `req` (the APISIX admin
+					// client) renders a failure from error_msg/message, so a
+					// refusal carrying only `error` shows the user a blank toast.
+					c.JSON(http.StatusForbidden, gin.H{
+						"error":     unassignedResourceMsg,
+						"error_msg": unassignedResourceMsg,
+						"code":      unassignedResourceCode,
+					})
+					c.Abort()
+					return
+				}
+			} else if !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error":     otherTeamMsg,
+					"error_msg": otherTeamMsg,
+				})
 				c.Abort()
 				return
 			}
 		}
 	}
 
+	// A list GET on a team-owned resource is filtered and paginated here rather
+	// than by APISIX: its filters are case-sensitive, it has no notion of status,
+	// and the ownership filter has to run before pagination rather than after.
+	// See list_filter.go.
+	isListGET := c.Request.Method == http.MethodGet &&
+		resourceID == "" &&
+		teamScopedResources[resourceType]
+
+	query := c.Request.URL.Query()
+	var filters listFilters
+	page, pageSize := 0, 0
+
+	if isListGET {
+		filters = parseListFilters(query)
+		page, _ = strconv.Atoi(query.Get("page"))
+		pageSize, _ = strconv.Atoi(query.Get("page_size"))
+
+		// Remove them from the upstream request. Left in place, APISIX would
+		// apply its own case-sensitive filter first and leave nothing to match,
+		// and would paginate before ownership had been considered.
+		for _, param := range listFilterParams {
+			query.Del(param)
+		}
+		for _, param := range paginationParams {
+			query.Del(param)
+		}
+	}
+
 	// 2. Prepare and execute proxy request
 	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin" + path
-	if len(c.Request.URL.Query()) > 0 {
-		targetURL += "?" + c.Request.URL.Query().Encode()
+	if len(query) > 0 {
+		targetURL += "?" + query.Encode()
 	}
 
 	var bodyBytes []byte
@@ -184,9 +463,21 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		bodyBytes, _ = io.ReadAll(c.Request.Body)
 	}
 
+	// The dashboard injects its own fields into GET responses (see step 4). A
+	// client that round-trips a resource it just read - duplicating a route,
+	// saving the JSON editor - would send them straight back, and APISIX rejects
+	// unknown properties. Strip them here, at the same boundary that added them,
+	// so every write path is covered rather than each caller remembering to.
+	if c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut ||
+		c.Request.Method == http.MethodPatch {
+		bodyBytes = stripDashboardFields(bodyBytes)
+	}
+
 	proxyReq, _ := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(bodyBytes))
 	for key, values := range c.Request.Header {
-		if key != "Host" && key != "Authorization" {
+		// If-None-Match is a contract between the dashboard and this proxy
+		// (see createOnlyRequested); APISIX has no business acting on it.
+		if key != "Host" && key != "Authorization" && key != "If-None-Match" {
 			for _, v := range values {
 				proxyReq.Header.Add(key, v)
 			}
@@ -242,14 +533,20 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// upstreams — so a non-admin cannot read another team's consumers,
 	// consumer_groups or stream_routes.
 	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK && teamScopedResources[resourceType] {
-		isList := resourceID == ""
-
-		if isList {
+		if isListGET {
 			var resources struct {
 				List  []map[string]interface{} `json:"list"`
 				Total int                      `json:"total"`
 			}
 			if err := json.Unmarshal(respBody, &resources); err == nil {
+				if len(resources.List) > maxListRows {
+					// The whole list is fetched so filtering can precede
+					// pagination. Say so rather than quietly working through an
+					// unbounded response.
+					log.Printf("[instance %s] %s list returned %d rows; filtering the full set",
+						instanceID, resourceType, len(resources.List))
+				}
+
 				// Batch fetch all ownerships for this resource type
 				ownerMap, _ := h.ownershipService.ListOwnersByResourceType(c.Request.Context(), instanceID, resourceType)
 
@@ -265,27 +562,46 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						ownerTeamID := ownerMap[id]
 
 						// Inject __team_id for all users
-						val["__team_id"] = ownerTeamID
+						val[dashboardTeamIDField] = ownerTeamID
 
-						// Filter for non-admin users
-						if !isAdmin && effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
+						// Filter for non-admin users. Unowned resources are
+						// admin-only, so they are hidden here too — the same
+						// rule the write guard above applies.
+						if !isAdmin && !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+							continue
+						}
+
+						// Then the operator's own filters, case-insensitively
+						// and including status, which APISIX cannot do.
+						if !matchesListFilters(val, filters) {
 							continue
 						}
 					}
 					filtered = append(filtered, r)
 				}
-				if !isAdmin {
-					resources.Total = len(filtered)
-				}
-				resources.List = filtered
+
+				// The total is what the operator can actually reach, for admins
+				// too: pagination happens below, so it has to count the filtered
+				// set rather than everything on the gateway.
+				resources.Total = len(filtered)
+				resources.List = paginateRows(filtered, page, pageSize)
 				respBody, _ = json.Marshal(resources)
 			}
-		} else if !isAdmin {
+		} else {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
-			if effectiveTeamID != "" && ownerTeamID != effectiveTeamID {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this resource"})
+			if !isAdmin && !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error":     accessDeniedMsg,
+					"error_msg": accessDeniedMsg,
+				})
 				return
 			}
+
+			// Inject __team_id here as well as into list rows: a detail view has
+			// only this response to go on, and without it the reassign dialog
+			// cannot name the current team — nor tell a route that is already
+			// unowned from one the operator is about to detach.
+			respBody = injectTeamID(respBody, ownerTeamID)
 		}
 	}
 
@@ -300,6 +616,36 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 func (h *ProxyHandler) ListRoutes(c *gin.Context)    { h.ProxyRequest(c) }
 func (h *ProxyHandler) ListServices(c *gin.Context)  { h.ProxyRequest(c) }
 func (h *ProxyHandler) ListUpstreams(c *gin.Context) { h.ProxyRequest(c) }
+
+// ownershipAction is what a reassign request is asking for.
+type ownershipAction int
+
+const (
+	// ownershipInvalid means the caller sent no team_id at all.
+	ownershipInvalid ownershipAction = iota
+	// ownershipDetach means the caller sent an empty team_id, i.e. asked for
+	// the resource to belong to no team.
+	ownershipDetach
+	// ownershipAssign means the caller named a team.
+	ownershipAssign
+)
+
+// ownershipActionFor reads the intent behind a reassign body's team_id.
+//
+// The distinction that matters is nil vs empty: leaving the field out is a
+// malformed request, while sending "" is a deliberate request to detach. Only
+// a pointer can carry that difference, since an absent JSON string and an empty
+// one both decode to "".
+func ownershipActionFor(teamID *string) ownershipAction {
+	switch {
+	case teamID == nil:
+		return ownershipInvalid
+	case *teamID == "":
+		return ownershipDetach
+	default:
+		return ownershipAssign
+	}
+}
 
 // ReassignOwnership changes the team owner of a resource (admin only)
 func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
@@ -321,11 +667,39 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 	resourceType := c.Param("resource_type")
 	resourceID := c.Param("resource_id")
 
+	// A pointer, so that an omitted team_id (nil) stays an error while an
+	// explicitly empty one means "detach this resource from its team". A plain
+	// string with binding:"required" cannot tell those two apart.
 	var body struct {
-		TeamID string `json:"team_id" binding:"required"`
+		TeamID *string `json:"team_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required"})
+		return
+	}
+
+	action := ownershipActionFor(body.TeamID)
+	if action == ownershipInvalid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required"})
+		return
+	}
+
+	// Detaching leaves the resource unowned, which puts it out of reach of
+	// every non-admin until an admin assigns it again — see nonAdminMayAccess.
+	if action == ownershipDetach {
+		if err := h.ownershipService.DeleteOwner(
+			c.Request.Context(), instanceID, resourceType, resourceID,
+		); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unassign: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":       "Ownership removed",
+			"resource_type": resourceType,
+			"resource_id":   resourceID,
+			"team_id":       "",
+		})
 		return
 	}
 
@@ -333,7 +707,7 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 		InstanceID:   instanceID,
 		ResourceType: resourceType,
 		ResourceID:   resourceID,
-		TeamID:       body.TeamID,
+		TeamID:       *body.TeamID,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reassign: " + err.Error()})
@@ -344,6 +718,6 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 		"message":       "Ownership reassigned",
 		"resource_type": resourceType,
 		"resource_id":   resourceID,
-		"team_id":       body.TeamID,
+		"team_id":       *body.TeamID,
 	})
 }

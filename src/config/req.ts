@@ -24,8 +24,19 @@ import {
   API_PREFIX,
   SKIP_INTERCEPTOR_HEADER,
 } from '@/config/constant';
+import i18n from '@/config/i18n';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
+
+/**
+ * Marks a PUT as a create that must not overwrite anything.
+ *
+ * APISIX's PUT is an upsert, so an Add form submitting an id that already exists
+ * silently replaces that record and still reports success. Add flows pass this;
+ * Edit flows do not, because overwriting is what editing is. The Go proxy
+ * enforces it — see createOnlyRequested in handlers/proxy.go.
+ */
+export const CREATE_ONLY = { headers: { 'If-None-Match': '*' } } as const;
 
 export const req = axios.create();
 
@@ -72,6 +83,31 @@ req.interceptors.request.use((conf) => {
 export type APISIXRespErr = {
   error_msg?: string;
   message?: string;
+  /**
+   * The dashboard's own refusals (RBAC, ownership) carry `error`. Reading only
+   * the APISIX-shaped fields left every such response with nothing to show.
+   */
+  error?: string;
+};
+
+/**
+ * The text to show when a response carries no message of its own.
+ *
+ * A notification with no message renders as an empty box, and an empty box
+ * explains nothing — worse, it looks like a rendering fault. Every failure gets
+ * something readable, even if only the status.
+ */
+const fallbackMessage = (status?: number): string => {
+  switch (status) {
+    case HttpStatusCode.Forbidden:
+      return i18n.t('error.forbidden');
+    case HttpStatusCode.Unauthorized:
+      return i18n.t('error.unauthorized');
+    case HttpStatusCode.NotFound:
+      return i18n.t('error.notFound');
+    default:
+      return i18n.t('error.generic', { status: status ?? '?' });
+  }
 };
 
 /**
@@ -138,9 +174,15 @@ req.interceptors.response.use(
       }
 
       const d = res.data;
+      const message =
+        d?.error_msg || d?.message || d?.error || fallbackMessage(status);
       notifications.show({
-        id: d?.error_msg || d?.message,
-        message: d?.error_msg || d?.message,
+        // A stable id is what makes repeats collapse into one notification.
+        // Deriving it from the message left it undefined whenever the payload
+        // had none, so Mantine treated each as new — and a screen that fires
+        // one request per plugin stacked a tower of empty boxes over the page.
+        id: `req-error-${status}-${message}`,
+        message,
         color: 'red',
       });
       if (status === HttpStatusCode.Unauthorized) {

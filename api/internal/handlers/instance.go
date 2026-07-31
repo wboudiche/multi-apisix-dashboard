@@ -16,7 +16,9 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
@@ -24,6 +26,14 @@ import (
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
 
 	"github.com/gin-gonic/gin"
+)
+
+// Machine-readable codes on 409 responses, so the UI can tell a hard rejection
+// from a conflict the operator is allowed to confirm past.
+const (
+	duplicateInstanceNameCode   = "duplicate_instance_name"
+	duplicateAdminAPIURLCode    = "duplicate_admin_api_url"
+	instanceHasDependenciesCode = "instance_has_dependencies"
 )
 
 type InstanceHandler struct {
@@ -46,7 +56,11 @@ type CreateInstanceRequest struct {
 	AdminAPIURL string `json:"admin_api_url" binding:"required"`
 	AdminKey    string `json:"admin_key" binding:"required"`
 	GatewayURL  string `json:"gateway_url"`
-	IsActive    bool   `json:"is_active"`
+	// A pointer so that an omitted is_active can be defaulted rather than read
+	// as false. An inactive instance cannot be proxied to at all (see
+	// ProxyRequest), so registering one without saying otherwise used to
+	// produce an instance that was dead on arrival.
+	IsActive *bool `json:"is_active"`
 }
 
 type UpdateInstanceRequest struct {
@@ -55,13 +69,43 @@ type UpdateInstanceRequest struct {
 	AdminAPIURL string `json:"admin_api_url"`
 	AdminKey    string `json:"admin_key"`
 	GatewayURL  string `json:"gateway_url"`
-	IsActive    bool   `json:"is_active"`
+	// A pointer so that omitting is_active leaves the stored value alone,
+	// consistent with every other field in UpdateInstance. As a plain bool an
+	// absent field bound to false, so a partial update meaning to change only
+	// the name also disabled the instance.
+	IsActive *bool `json:"is_active"`
 }
 
 type SetUserInstanceRoleRequest struct {
 	Role   string        `json:"role" binding:"required"`
 	TeamID string        `json:"team_id"`
 	Scope  *models.Scope `json:"scope"`
+}
+
+// InstanceResponse is an instance plus any non-fatal advisory about it. The
+// instance fields are inlined, so existing clients see the shape they always saw.
+type InstanceResponse struct {
+	*models.Instance
+	// ConnectionWarning is set when the instance was saved but its Admin API did
+	// not answer, so the caller can say so instead of reporting a clean success.
+	ConnectionWarning string `json:"connection_warning,omitempty"`
+}
+
+// isForced reports whether the caller explicitly confirmed an operation that
+// would otherwise be held back by a conflict or dependency check.
+func isForced(c *gin.Context) bool {
+	return c.Query("force") == "true"
+}
+
+// connectionWarning probes the instance's Admin API and returns a human-readable
+// warning when it cannot be reached. An unreachable gateway does not block the
+// save - operators legitimately register an instance before it is running - but
+// it must never be reported as a clean success.
+func (h *InstanceHandler) connectionWarning(c *gin.Context, instance *models.Instance) string {
+	if err := h.instanceService.TestConnection(c.Request.Context(), instance); err != nil {
+		return "Instance saved, but its Admin API could not be reached: " + err.Error()
+	}
+	return ""
 }
 
 // CreateInstance creates a new APISIX instance (super_admin only)
@@ -78,23 +122,72 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 		return
 	}
 
+	// binding:"required" rejects "" but accepts "   ", which normalizes to empty
+	// and is then exempt from every name comparison - so blank-named instances
+	// would stack up as indistinguishable rows and never collide with anything.
+	if services.NormalizeInstanceName(req.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name must not be blank"})
+		return
+	}
+
+	// A duplicate name is a hard rejection, so report it before the Admin API URL
+	// warning - otherwise the operator confirms past the warning only to be
+	// stopped by the name anyway. CreateInstance re-checks this authoritatively.
+	nameConflict, err := h.instanceService.FindNameConflict(c.Request.Context(), req.Name, "")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if nameConflict != nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"error": services.ErrDuplicateInstanceName.Error(),
+			"code":  duplicateInstanceNameCode,
+		})
+		return
+	}
+
+	// Two instances may legitimately address one gateway with different admin
+	// keys, so a shared Admin API URL is a warning the caller confirms, not an error.
+	if !isForced(c) {
+		conflict, err := h.instanceService.FindAdminAPIURLConflict(c.Request.Context(), req.AdminAPIURL, "")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if conflict != nil {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":                "Another instance already uses this Admin API URL",
+				"code":                 duplicateAdminAPIURLCode,
+				"conflicting_instance": conflict.Name,
+			})
+			return
+		}
+	}
+
 	instance := &models.Instance{
 		Name:        req.Name,
 		Description: req.Description,
 		AdminAPIURL: req.AdminAPIURL,
 		AdminKey:    req.AdminKey,
 		GatewayURL:  req.GatewayURL,
-		IsActive:    req.IsActive,
+		// A newly registered instance is active unless the caller says not to.
+		IsActive: req.IsActive == nil || *req.IsActive,
 	}
 
 	if err := h.instanceService.CreateInstance(c.Request.Context(), instance); err != nil {
+		if errors.Is(err, services.ErrDuplicateInstanceName) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error(), "code": duplicateInstanceNameCode})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	warning := h.connectionWarning(c, instance)
+
 	// Don't return admin key in response
 	instance.AdminKey = ""
-	c.JSON(http.StatusCreated, instance)
+	c.JSON(http.StatusCreated, InstanceResponse{Instance: instance, ConnectionWarning: warning})
 }
 
 // ListInstances lists all instances
@@ -192,6 +285,60 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	}
 
 	if req.Name != "" {
+		if services.NormalizeInstanceName(req.Name) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Name must not be blank"})
+			return
+		}
+
+		// Uniqueness is new, so etcd may already hold instances that collide -
+		// created before this check existed, or by two admins racing. The edit
+		// form resubmits the instance's own name on every save, so without this
+		// exemption both of those instances become permanently un-editable:
+		// changing an admin key would be refused because of a *different* row,
+		// and unlike the URL check there is no force to get past it. A rename
+		// that does not actually change the name cannot make things worse.
+		renaming := services.NormalizeInstanceName(req.Name) !=
+			services.NormalizeInstanceName(instance.Name)
+
+		if renaming {
+			nameConflict, err := h.instanceService.FindNameConflict(c.Request.Context(), req.Name, instanceID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if nameConflict != nil {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": services.ErrDuplicateInstanceName.Error(),
+					"code":  duplicateInstanceNameCode,
+				})
+				return
+			}
+		}
+	}
+
+	// Only an edit that actually changes the URL can introduce a new collision.
+	// Re-warning about an unchanged URL would block every unrelated edit to an
+	// instance that already shares a gateway - a conflict already confirmed once.
+	urlChanged := req.AdminAPIURL != "" &&
+		services.NormalizeAdminAPIURL(req.AdminAPIURL) != services.NormalizeAdminAPIURL(instance.AdminAPIURL)
+
+	if urlChanged && !isForced(c) {
+		conflict, err := h.instanceService.FindAdminAPIURLConflict(c.Request.Context(), req.AdminAPIURL, instanceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if conflict != nil {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":                "Another instance already uses this Admin API URL",
+				"code":                 duplicateAdminAPIURLCode,
+				"conflicting_instance": conflict.Name,
+			})
+			return
+		}
+	}
+
+	if req.Name != "" {
 		instance.Name = req.Name
 	}
 	if req.Description != "" {
@@ -206,15 +353,52 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	if req.GatewayURL != "" {
 		instance.GatewayURL = req.GatewayURL
 	}
-	instance.IsActive = req.IsActive
+	if req.IsActive != nil {
+		instance.IsActive = *req.IsActive
+	}
 
 	if err := h.instanceService.UpdateInstance(c.Request.Context(), instance); err != nil {
+		if errors.Is(err, services.ErrDuplicateInstanceName) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error(), "code": duplicateInstanceNameCode})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	warning := h.connectionWarning(c, instance)
+
 	instance.AdminKey = ""
-	c.JSON(http.StatusOK, instance)
+	c.JSON(http.StatusOK, InstanceResponse{Instance: instance, ConnectionWarning: warning})
+}
+
+// GetInstanceDependencies reports what still references an instance, so the UI
+// can show the blast radius before asking the operator to confirm a delete
+// (super_admin only)
+func (h *InstanceHandler) GetInstanceDependencies(c *gin.Context) {
+	role := middleware.GetRole(c)
+	if role != models.RoleSuperAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	instance, err := h.instanceService.GetInstance(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if instance == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
+		return
+	}
+
+	deps, err := h.instanceService.GetInstanceDependencies(c.Request.Context(), instance)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, deps)
 }
 
 // DeleteInstance deletes an instance (super_admin only)
@@ -226,6 +410,34 @@ func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 	}
 
 	instanceID := c.Param("id")
+
+	instance, err := h.instanceService.GetInstance(c.Request.Context(), instanceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if instance == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
+		return
+	}
+
+	// Report the blast radius before destroying anything. The caller retries with
+	// ?force=true once the operator has seen what would be orphaned.
+	if !isForced(c) {
+		deps, err := h.instanceService.GetInstanceDependencies(c.Request.Context(), instance)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if deps.RequiresConfirmation() {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":        "Instance still has attached resources",
+				"code":         instanceHasDependenciesCode,
+				"dependencies": deps,
+			})
+			return
+		}
+	}
 
 	if err := h.instanceService.DeleteInstance(c.Request.Context(), instanceID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -265,6 +477,22 @@ func (h *InstanceHandler) TestConnection(c *gin.Context) {
 }
 
 // SetUserInstanceRole assigns a role to a user for an instance (super_admin only)
+// isAssignableInstanceRole reports whether role can be held on a single
+// instance.
+//
+// super_admin is deliberately not one of them: it is a global role read from
+// the JWT and never narrowed by an instance assignment, so recording it here
+// would describe something the rest of the system does not honour. The roles
+// below are exactly the three the Users screen offers.
+func isAssignableInstanceRole(role string) bool {
+	switch role {
+	case models.RoleInstanceAdmin, models.RoleDeveloper, models.RoleViewer:
+		return true
+	default:
+		return false
+	}
+}
+
 func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	role := middleware.GetRole(c)
 	if role != models.RoleSuperAdmin {
@@ -275,9 +503,48 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	userID := c.Param("user_id")
 	instanceID := c.Param("instance_id")
 
+	// An empty segment produces a key with a doubled separator
+	// (/user_instances//<instance>), which nothing can look up again. The
+	// existence checks below would catch it anyway; this reports it as the
+	// malformed request it is rather than as a missing user.
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(instanceID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id and instance_id are required"})
+		return
+	}
+
 	var req SetUserInstanceRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isAssignableInstanceRole(req.Role) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid role: expected instance_admin, developer or viewer",
+		})
+		return
+	}
+
+	// The team is already checked below; the user and the instance were not,
+	// so a role could be recorded against ids that refer to nothing. Such a
+	// record is invisible to the user it names and survives until someone
+	// notices it by hand.
+	if _, err := h.authService.GetUser(c.Request.Context(), userID); err != nil {
+		if errors.Is(err, services.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	instance, err := h.instanceService.GetInstance(c.Request.Context(), instanceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if instance == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
 		return
 	}
 
@@ -364,11 +631,60 @@ func (h *InstanceHandler) hasAccess(c *gin.Context, instanceID string) bool {
 }
 
 // ListInstancesHealth returns the health status of all accessible instances
+// filterAllowedInstances keeps only the instances whose ID is in allowed.
+func filterAllowedInstances(instances []*models.Instance, allowed map[string]bool) []*models.Instance {
+	filtered := make([]*models.Instance, 0, len(instances))
+	for _, instance := range instances {
+		if instance != nil && allowed[instance.ID] {
+			filtered = append(filtered, instance)
+		}
+	}
+	return filtered
+}
+
+// healthErrorDetail renders a failed probe for the caller.
+//
+// The probe error quotes the URL it dialled, so handing it to everyone would
+// publish each gateway's internal Admin API address. Only a super_admin — who
+// can read the address off the instance record anyway — gets the full reason.
+func healthErrorDetail(probeErr error, isSuperAdmin bool) string {
+	if probeErr == nil {
+		return ""
+	}
+	if isSuperAdmin {
+		return probeErr.Error()
+	}
+	return "The dashboard could not reach this gateway's Admin API"
+}
+
+// ListInstancesHealth returns the connectivity status of the instances the
+// caller may see: everything for a super_admin, and otherwise only the
+// instances they hold a role on — the same rule ListInstances applies. The
+// header polls this for every user to badge the instance switcher, so an
+// unassigned user gets an empty list rather than a 403.
 func (h *InstanceHandler) ListInstancesHealth(c *gin.Context) {
+	isSuperAdmin := middleware.GetRole(c) == models.RoleSuperAdmin
+
 	instances, err := h.instanceService.ListInstances(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if !isSuperAdmin {
+		userInstances, err := h.authService.GetUserInstances(c.Request.Context(), middleware.GetUserID(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		allowed := make(map[string]bool, len(userInstances))
+		for _, ui := range userInstances {
+			allowed[ui.InstanceID] = true
+		}
+		// Filter before probing, not after: probing an instance the caller
+		// cannot see would both leak its existence through timing and spend up
+		// to 5s per gateway on a request that must not report it.
+		instances = filterAllowedInstances(instances, allowed)
 	}
 
 	healthResults := make([]models.InstanceHealth, 0, len(instances))
@@ -381,7 +697,7 @@ func (h *InstanceHandler) ListInstancesHealth(c *gin.Context) {
 
 		if err := h.instanceService.TestConnection(c.Request.Context(), inst); err != nil {
 			health.Status = "Disconnected"
-			health.Error = err.Error()
+			health.Error = healthErrorDetail(err, isSuperAdmin)
 		} else {
 			health.Status = "Connected"
 		}

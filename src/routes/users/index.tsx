@@ -36,7 +36,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtom } from 'jotai';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type User } from '@/apis/auth';
@@ -89,7 +89,7 @@ const UsersPage = () => {
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!isSuperAdmin) return;
     setLoading(true);
     try {
@@ -130,12 +130,11 @@ const UsersPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuperAdmin]);
+  }, [loadData]);
 
   const handleSubmit = async () => {
     // Validate team selection for developer/viewer roles
@@ -176,13 +175,38 @@ const UsersPage = () => {
         }
         const newUser = await response.json();
         userId = newUser.id;
+      } else {
+        // Editing used to skip this entirely, so the global role picked in the
+        // form was never sent anywhere — the form reported success having
+        // changed nothing.
+        const response = await fetch(`/api/v1/users/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            role: formData.role === 'user' ? '' : formData.role,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          notifications.show({
+            title: 'Error',
+            message: error.error || 'Failed to update user',
+            color: 'red',
+          });
+          return;
+        }
       }
 
       // Save instance specific roles, teams and scopes
       for (const instanceID in instanceRoles) {
         const config = instanceRoles[instanceID];
         if (config.role) {
-          await fetch(`/api/v1/user-access/${userId}/instances/${instanceID}/role`, {
+          const response = await fetch(`/api/v1/user-access/${userId}/instances/${instanceID}/role`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -194,6 +218,18 @@ const UsersPage = () => {
               scope: config.scope
             }),
           });
+
+          // Every one of these was previously unchecked, so a rejected
+          // assignment still ended in a success toast.
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            notifications.show({
+              title: 'Error',
+              message: error.error || 'Failed to assign the role for one of the instances',
+              color: 'red',
+            });
+            return;
+          }
         }
       }
 
@@ -313,9 +349,9 @@ const UsersPage = () => {
       <Container size="xl">
         <Paper p="xl" withBorder className="Card-root" ta="center">
           <IconShield width="48" height="48" color="var(--brand)" />
-          <Title order={2} mt="md">{t('users.accessDenied')}</Title>
+          <Title order={2} mt="md">{t('users.accessDeniedTitle')}</Title>
           <Text c="dimmed" mt="sm">
-            {t('users.accessDeniedMessage')}
+            {t('users.accessDeniedBody')}
           </Text>
         </Paper>
       </Container>
@@ -366,12 +402,12 @@ const UsersPage = () => {
         <Table horizontalSpacing="lg" verticalSpacing="md">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{t('users.thUser')}</Table.Th>
-              <Table.Th>{t('users.thRole')}</Table.Th>
-              <Table.Th>{t('users.thInstances')}</Table.Th>
-              <Table.Th>{t('users.thTeams')}</Table.Th>
-              <Table.Th>{t('users.thCreated')}</Table.Th>
-              <Table.Th style={{ textAlign: 'right' }}>{t('users.thActions')}</Table.Th>
+              <Table.Th>{t('users.columnUser')}</Table.Th>
+              <Table.Th>{t('users.columnRole')}</Table.Th>
+              <Table.Th>{t('users.columnInstances')}</Table.Th>
+              <Table.Th>{t('users.columnTeams')}</Table.Th>
+              <Table.Th>{t('users.columnCreated')}</Table.Th>
+              <Table.Th style={{ textAlign: 'right' }}>{t('table.actions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -470,8 +506,8 @@ const UsersPage = () => {
                 <Table.Td colSpan={6}>
                   <Box className="EmptyState-root" ta="center">
                     <IconUser width="48" height="48" color="var(--text-tertiary)" />
-                    <Text fw={600} size="lg" mt="md">{t('users.noUsers')}</Text>
-                    <Text c="dimmed" size="sm">{t('users.noUsersHint')}</Text>
+                    <Text fw={600} size="lg" mt="md">{t('users.emptyTitle')}</Text>
+                    <Text c="dimmed" size="sm">{t('users.emptyBody')}</Text>
                   </Box>
                 </Table.Td>
               </Table.Tr>
@@ -547,7 +583,7 @@ const UsersPage = () => {
           <Tabs.Panel value="access">
             <Stack gap="md">
               <Text size="sm" c="dimmed">
-                {t('users.assignHint')}
+                {t('users.accessHint')}
               </Text>
 
               {availableInstances.length === 0 ? (

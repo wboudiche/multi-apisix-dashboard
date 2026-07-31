@@ -17,6 +17,7 @@
 
 import { ActionIcon, Badge, Group, Select } from '@mantine/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { labelApi, type LabelTaxonomy } from '@/apis/labels';
 import IconPlus from '~icons/material-symbols/add';
@@ -28,12 +29,32 @@ export type LabelFilterProps = {
 };
 
 export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
+  const { t } = useTranslation();
   const [taxonomy, setTaxonomy] = useState<LabelTaxonomy[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
+  // Substituting an empty catalogue for a failed request made the two
+  // indistinguishable: a 401, a 500 or an unreachable backend all rendered as
+  // "no labels defined", with nothing logged and nothing shown.
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
 
   useEffect(() => {
-    labelApi.list().then(setTaxonomy).catch(() => setTaxonomy([]));
+    let active = true;
+    labelApi
+      .list()
+      .then((labels) => {
+        if (!active) return;
+        setTaxonomy(labels);
+        setStatus('ready');
+      })
+      .catch(() => {
+        if (!active) return;
+        setTaxonomy([]);
+        setStatus('error');
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const keyOptions = useMemo(
@@ -75,7 +96,14 @@ export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
     <Group gap="sm" wrap="wrap" align="center" style={{ flex: 1 }}>
       <Select
         data={keyOptions}
-        placeholder="Select key"
+        placeholder={
+          status === 'loading' ? t('labelFilter.loading') : t('labelFilter.selectKey')
+        }
+        nothingFoundMessage={t('labelFilter.noKeys')}
+        // Nothing can be picked from a catalogue that failed to load, and an
+        // empty dropdown would read as "there are none".
+        disabled={status === 'error'}
+        error={status === 'error' ? t('labelFilter.loadFailed') : undefined}
         size="sm"
         value={selectedKey}
         onChange={handleKeyChange}
@@ -85,7 +113,8 @@ export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
       />
       <Select
         data={valueOptions}
-        placeholder="Select value"
+        placeholder={t('labelFilter.selectValue')}
+        nothingFoundMessage={t('labelFilter.noValues')}
         size="sm"
         value={selectedValue}
         onChange={setSelectedValue}

@@ -17,6 +17,7 @@
 import { routesPom } from '@e2e/pom/routes';
 import { servicesPom } from '@e2e/pom/services';
 import { upstreamsPom } from '@e2e/pom/upstreams';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
@@ -27,20 +28,16 @@ import {
 } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllRoutes, getRouteReq } from '@/apis/routes';
-import { deleteAllServices, getServiceReq } from '@/apis/services';
-import { deleteAllUpstreams, getUpstreamReq } from '@/apis/upstreams';
-import {
-  API_ROUTES,
-  API_SERVICES,
-  API_UPSTREAMS,
-} from '@/config/constant';
+import { getRouteReq } from '@/apis/routes';
+import { getServiceReq } from '@/apis/services';
+import { getUpstreamReq } from '@/apis/upstreams';
+import { API_ROUTES, API_SERVICES, API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 test.afterAll(async () => {
-  await deleteAllRoutes(e2eReq);
-  await deleteAllServices(e2eReq);
-  await deleteAllUpstreams(e2eReq);
+  await deleteByPrefix(API_ROUTES, 'name', 'Generate UUID');
+  await deleteByPrefix(API_SERVICES, 'name', 'HTTPBIN Service');
+  await deleteByPrefix(API_UPSTREAMS, 'name', 'HTTPBIN Server');
 });
 
 /**

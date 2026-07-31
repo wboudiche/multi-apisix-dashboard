@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 import { servicesPom } from '@e2e/pom/services';
+import { deleteServicesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
-import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import {
@@ -25,14 +25,18 @@ import {
 } from '@e2e/utils/ui/services';
 import { expect } from '@playwright/test';
 
-import { deleteAllServices } from '@/apis/services';
 
 test.describe.configure({ mode: 'serial' });
 
 const serviceName = randomId('test-service');
 
 test.beforeAll(async () => {
-  await deleteAllServices(e2eReq);
+});
+
+// The test removes its own fixture as its final step; this covers a run
+// that fails before reaching it.
+test.afterAll(async () => {
+  await deleteServicesByNamePrefix('test-service');
 });
 
 test('should CRUD service with required fields', async ({ page }) => {
