@@ -16,12 +16,12 @@
  */
 
 import { servicesPom } from '@e2e/pom/services';
+import { env } from '@e2e/utils/env';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllServices } from '@/apis/services';
 import { API_SERVICES } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -45,6 +45,8 @@ test('should navigate to services page', async ({ page }) => {
   });
 });
 
+const FIXTURE_PREFIX = 'service_name_';
+
 const services: APISIXType['Service'][] = Array.from({ length: 11 }, (_, i) => ({
   id: `service_id_${i + 1}`,
   name: `service_name_${i + 1}`,
@@ -57,7 +59,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllServices(e2eReq);
     await Promise.all(
       services.map((d) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -85,7 +86,14 @@ test.describe('page and page_size should work correctly', () => {
   };
 
   setupPaginationTests(test, {
-    pom: servicesPom,
+    // Scoped to this spec's own fixtures. The pagination assertions need a
+    // known total, which used to be arranged by emptying the gateway. A name
+    // filter gives the same determinism without touching anything else.
+    pom: {
+      ...servicesPom,
+      toIndex: (page: Page) =>
+        page.goto(`${env.E2E_TARGET_URL}services?name=${FIXTURE_PREFIX}`),
+    },
     items: services,
     filterItemsNotInPage,
     getCell: (page, item) =>

@@ -15,7 +15,14 @@
  * limitations under the License.
  */
 import { getRouteListReq } from '@/apis/routes';
-import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
+import { getServiceListReq } from '@/apis/services';
+import { getUpstreamListReq } from '@/apis/upstreams';
+import {
+  API_ROUTES,
+  API_SERVICES,
+  API_UPSTREAMS,
+  PAGE_SIZE_MAX,
+} from '@/config/constant';
 
 import { e2eReq } from './req';
 
@@ -56,5 +63,45 @@ export const deleteRoutesByNamePrefix = async (
     )
   );
 
+  return doomed.length;
+};
+
+/** Deletes services whose name begins with any of the given prefixes. */
+export const deleteServicesByNamePrefix = async (
+  ...prefixes: string[]
+): Promise<number> => {
+  if (prefixes.length === 0) return 0;
+  const { list } = await getServiceListReq(e2eReq, {
+    page: 1,
+    page_size: PAGE_SIZE_MAX,
+  });
+  const doomed = list.filter((row) =>
+    prefixes.some((prefix) => row.value.name?.startsWith(prefix))
+  );
+  await Promise.all(
+    doomed.map((row) =>
+      e2eReq.delete(`${API_SERVICES}/${row.value.id}`).catch(() => null)
+    )
+  );
+  return doomed.length;
+};
+
+/** Deletes upstreams whose name begins with any of the given prefixes. */
+export const deleteUpstreamsByNamePrefix = async (
+  ...prefixes: string[]
+): Promise<number> => {
+  if (prefixes.length === 0) return 0;
+  const { list } = await getUpstreamListReq(e2eReq, {
+    page: 1,
+    page_size: PAGE_SIZE_MAX,
+  });
+  const doomed = list.filter((row) =>
+    prefixes.some((prefix) => row.value.name?.startsWith(prefix))
+  );
+  await Promise.all(
+    doomed.map((row) =>
+      e2eReq.delete(`${API_UPSTREAMS}/${row.value.id}`).catch(() => null)
+    )
+  );
   return doomed.length;
 };
