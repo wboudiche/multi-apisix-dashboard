@@ -139,10 +139,72 @@ export type CreateInstanceInput = {
   is_active?: boolean;
 };
 
+/** Trailing slashes and case are not meaningful when comparing admin URLs. */
+const sameAdminURL = (a: string, b: string): boolean =>
+  a.trim().replace(/\/+$/, '').toLowerCase() ===
+  b.trim().replace(/\/+$/, '').toLowerCase();
+
+/**
+ * Hosts the test stack is expected to live on. Anything else is presumed to be
+ * somebody's real gateway.
+ */
+const TEST_GATEWAY_HOSTS = new Set([
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '::1',
+  'host.docker.internal',
+  // docker-compose service names, for runs inside the compose network
+  'apisix',
+  'apisix2',
+]);
+
+const isTestGateway = (adminAPIURL: string): boolean => {
+  try {
+    return TEST_GATEWAY_HOSTS.has(new URL(adminAPIURL).hostname);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Refuses to let the suite run against a gateway it does not own.
+ *
+ * The specs delete every route, service and upstream on the instance they use,
+ * so pointing them at a real gateway destroys it. Set
+ * E2E_ALLOW_REMOTE_GATEWAY=1 to override, if you genuinely mean to.
+ */
+function assertDisposableGateway(name: string, adminAPIURL: string): void {
+  if (process.env['E2E_ALLOW_REMOTE_GATEWAY'] === '1') return;
+  if (isTestGateway(adminAPIURL)) return;
+  throw new Error(
+    `[e2e] refusing to run against "${name}" at ${adminAPIURL}: this does not look like ` +
+      'the throwaway test gateway. The suite deletes every route, service and upstream on ' +
+      'it. Point E2E_LOCAL_APISIX_URL at the test stack, or set ' +
+      'E2E_ALLOW_REMOTE_GATEWAY=1 if you really mean to wipe this one.'
+  );
+}
+
 export async function ensureInstance(token: string, input: CreateInstanceInput): Promise<Instance> {
+  assertDisposableGateway(input.name, input.admin_api_url);
+
   const list = (await apiFetch('/api/v1/instances', token)) as Instance[];
   const existing = list.find((i) => i.name === input.name);
   if (existing) {
+    // Matching on the name alone is how a run adopts somebody else's gateway:
+    // a backend that already has an instance called "Local APISIX" pointing at
+    // a real APISIX hands it straight to the specs, which then empty it. The
+    // fixture only owns an instance that points where the fixture says.
+    if (!sameAdminURL(existing.admin_api_url, input.admin_api_url)) {
+      throw new Error(
+        `[e2e] refusing to run: an instance named "${input.name}" already exists but points ` +
+          `at ${existing.admin_api_url}, not ${input.admin_api_url}. The suite deletes every ` +
+          'route, service and upstream on the instance it uses, so it will not adopt one it ' +
+          'did not create. Remove or rename that instance, or point the fixture at it with ' +
+          'E2E_LOCAL_APISIX_URL.'
+      );
+    }
+    assertDisposableGateway(existing.name, existing.admin_api_url);
     return existing;
   }
 
