@@ -16,12 +16,13 @@
  */
 
 import { upstreamsPom } from '@e2e/pom/upstreams';
+import { env } from '@e2e/utils/env';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllUpstreams, putUpstreamReq } from '@/apis/upstreams';
+import { putUpstreamReq } from '@/apis/upstreams';
 import { API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -43,6 +44,8 @@ test('should navigate to upstreams page', async ({ page }) => {
   });
 });
 
+const FIXTURE_PREFIX = 'upstream_name_';
+
 const upstreams: APISIXType['Upstream'][] = Array.from(
   { length: 11 },
   (_, i) => ({
@@ -62,7 +65,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllUpstreams(e2eReq);
     await Promise.all(upstreams.map((d) => putUpstreamReq(e2eReq, d)));
   });
 
@@ -84,7 +86,14 @@ test.describe('page and page_size should work correctly', () => {
   };
 
   setupPaginationTests(test, {
-    pom: upstreamsPom,
+    // Scoped to this spec's own fixtures. The pagination assertions need a
+    // known total, which used to be arranged by emptying the gateway. A name
+    // filter gives the same determinism without touching anything else.
+    pom: {
+      ...upstreamsPom,
+      toIndex: (page: Page) =>
+        page.goto(`${env.E2E_TARGET_URL}upstreams?name=${FIXTURE_PREFIX}`),
+    },
     items: upstreams,
     filterItemsNotInPage,
     getCell: (page, item) =>
