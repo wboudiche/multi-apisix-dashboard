@@ -96,14 +96,22 @@ test.afterAll(async () => {
 test('show disabled error', async ({ page }) => {
   await streamRoutesPom.toIndex(page);
 
-  // Wait for the error message to appear (extra long timeout for CI after server restart)
-  await expect(
-    page.getByText('stream mode is disabled, can not add stream routes')
-  ).toBeVisible({ timeout: 30000 });
+  // Scoped to the page body rather than matched anywhere on screen. The same
+  // text arrives twice: once in the page, from the route's error component, and
+  // once in a toast raised by the request interceptor. Matching both is a strict
+  // mode violation, and whether the toast is still on screen depends on how long
+  // the page took to settle — which is what made this test flaky.
+  //
+  // The page copy is the one this test means: it is what stays put, and the
+  // reload below asserts exactly that.
+  const disabledError = page
+    .getByRole('main')
+    .getByText('stream mode is disabled, can not add stream routes');
+
+  // Extra long timeout for CI after the server restart.
+  await expect(disabledError).toBeVisible({ timeout: 30000 });
 
   // Verify the error message is still shown after refresh
   await page.reload();
-  await expect(
-    page.getByText('stream mode is disabled, can not add stream routes')
-  ).toBeVisible({ timeout: 30000 });
+  await expect(disabledError).toBeVisible({ timeout: 30000 });
 });
