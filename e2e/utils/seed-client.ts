@@ -170,18 +170,19 @@ const isTestGateway = (adminAPIURL: string): boolean => {
 /**
  * Refuses to let the suite run against a gateway it does not own.
  *
- * The specs delete every route, service and upstream on the instance they use,
- * so pointing them at a real gateway destroys it. Set
- * E2E_ALLOW_REMOTE_GATEWAY=1 to override, if you genuinely mean to.
+ * The specs no longer empty the gateway — they delete their own fixtures by
+ * name prefix — but they still create and delete resources on the instance
+ * they use, and a prefix collision with real config would take it with them.
+ * Set E2E_ALLOW_REMOTE_GATEWAY=1 to override, if you genuinely mean to.
  */
 function assertDisposableGateway(name: string, adminAPIURL: string): void {
   if (process.env['E2E_ALLOW_REMOTE_GATEWAY'] === '1') return;
   if (isTestGateway(adminAPIURL)) return;
   throw new Error(
     `[e2e] refusing to run against "${name}" at ${adminAPIURL}: this does not look like ` +
-      'the throwaway test gateway. The suite deletes every route, service and upstream on ' +
-      'it. Point E2E_LOCAL_APISIX_URL at the test stack, or set ' +
-      'E2E_ALLOW_REMOTE_GATEWAY=1 if you really mean to wipe this one.'
+      'the throwaway test gateway. The suite creates and deletes resources on it. ' +
+      'Point E2E_LOCAL_APISIX_URL at the test stack, or set ' +
+      'E2E_ALLOW_REMOTE_GATEWAY=1 if you really mean to write to this one.'
   );
 }
 

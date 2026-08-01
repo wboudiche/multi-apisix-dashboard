@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-import axios, { type AxiosInstance } from 'axios';
+import { type AxiosInstance } from 'axios';
 
-import { API_UPSTREAMS, PAGE_SIZE_MAX, PAGE_SIZE_MIN } from '@/config/constant';
+import { API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 import type { PageSearchType } from '@/types/schema/pageSearch';
 
@@ -52,34 +52,4 @@ export const putUpstreamReq = (
     `${API_UPSTREAMS}/${id}`,
     rest
   );
-};
-
-export const deleteAllUpstreams = async (req: AxiosInstance) => {
-  // Fetch the total count first to determine how many pages of deletions are needed.
-  // Using PAGE_SIZE_MIN (typically 10) is efficient just to get the 'total' count metadata.
-  const totalRes = await getUpstreamListReq(req, {
-    page: 1,
-    page_size: PAGE_SIZE_MIN,
-  });
-  const total = totalRes.total;
-  if (total === 0) return;
-
-  // Iterate through all pages and delete upstreams in batches.
-  // We calculate the number of iterations based on the total count and maximum page size.
-  for (let times = Math.ceil(total / PAGE_SIZE_MAX); times > 0; times--) {
-    const res = await getUpstreamListReq(req, {
-      page: 1,
-      page_size: PAGE_SIZE_MAX,
-    });
-    // Delete all upstreams in the current batch concurrently.
-    await Promise.all(
-      res.list.map((d) =>
-        req.delete(`${API_UPSTREAMS}/${d.value.id}`).catch((err) => {
-          // Ignore 404 errors as the resource might have been deleted
-          if (axios.isAxiosError(err) && err.response?.status === 404) return;
-          throw err;
-        })
-      )
-    );
-  }
 };

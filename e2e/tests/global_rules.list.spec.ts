@@ -16,6 +16,7 @@
  */
 
 import { globalRulePom } from '@e2e/pom/global_rules';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
@@ -39,19 +40,6 @@ test('should navigate to global rules list page', async ({ page }) => {
     await expect(table.getByText('Actions', { exact: true })).toBeVisible();
   });
 });
-
-// Helper function to delete all global rules
-const deleteAllGlobalRules = async (req: typeof e2eReq) => {
-  const res = await req.get(API_GLOBAL_RULES);
-  const globalRules = res.data?.list || [];
-  await Promise.all(
-    globalRules.map((item: { value: { id: string } }) =>
-      req.delete(`${API_GLOBAL_RULES}/${item.value.id}`).catch(() => {
-        // Ignore errors
-      })
-    )
-  );
-};
 
 interface GlobalRule {
   id: string;
@@ -83,7 +71,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllGlobalRules(e2eReq);
     await Promise.all(
       globalRules.map((d) =>
         e2eReq.put(`${API_GLOBAL_RULES}/${d.id}`, {
@@ -93,17 +80,10 @@ test.describe('page and page_size should work correctly', () => {
     );
   });
 
+  // Only this spec's own rules. The previous sweep deleted every global rule
+  // on the gateway, which is the behaviour #82 is about.
   test.afterAll(async () => {
-    // Get current list and only delete those that exist
-    const res = await e2eReq.get(API_GLOBAL_RULES);
-    const existingRules = res.data?.list || [];
-    await Promise.all(
-      existingRules.map((item: { value: { id: string } }) =>
-        e2eReq.delete(`${API_GLOBAL_RULES}/${item.value.id}`).catch(() => {
-          // Ignore errors
-        })
-      )
-    );
+    await deleteByPrefix(API_GLOBAL_RULES, 'id', 'global_rule_id_');
   });
 
   // Setup pagination tests with global-rule-specific configurations
@@ -119,7 +99,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: globalRulePom,
-    items: globalRules,
     filterItemsNotInPage,
     getCell: (page, item) => page.getByRole('cell', { name: item.id }).first(),
   });

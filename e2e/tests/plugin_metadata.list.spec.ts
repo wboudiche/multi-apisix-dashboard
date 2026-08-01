@@ -16,37 +16,8 @@
  */
 
 import { pluginMetadataPom } from '@e2e/pom/plugin_metadata';
-import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
-
-import { API_PLUGIN_METADATA } from '@/config/constant';
-
-// Helper function to delete all plugin metadata
-const deleteAllPluginMetadata = async (req: typeof e2eReq) => {
-  // Plugin metadata doesn't have a list endpoint, so we'll delete known plugins
-  const pluginsToClean = [
-    'http-logger',
-    'syslog',
-    'skywalking',
-    'error-log-logger',
-  ];
-  await Promise.all(
-    pluginsToClean.map((name) =>
-      req.delete(`${API_PLUGIN_METADATA}/${name}`).catch(() => {
-        // Ignore errors if metadata doesn't exist
-      })
-    )
-  );
-};
-
-test.beforeAll(async () => {
-  await deleteAllPluginMetadata(e2eReq);
-});
-
-test.afterAll(async () => {
-  await deleteAllPluginMetadata(e2eReq);
-});
 
 test('should navigate to plugin metadata page', async ({ page }) => {
   await test.step('navigate to plugin metadata page', async () => {

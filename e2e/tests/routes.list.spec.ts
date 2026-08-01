@@ -102,7 +102,6 @@ test.describe('page and page_size should work correctly', () => {
       toIndex: (page: Page) =>
         page.goto(`${env.E2E_TARGET_URL}routes?name=${FIXTURE_PREFIX}`),
     },
-    items: routes,
     filterItemsNotInPage,
     getCell: (page, item) =>
       page.getByRole('cell', { name: item.name }).first(),

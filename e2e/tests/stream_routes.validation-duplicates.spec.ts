@@ -34,9 +34,8 @@ import { API_STREAM_ROUTES, API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/consta
  * two indistinguishable entries.
  */
 
-// Re-created per test under a fixed id so re-seeding is idempotent. This was
-// originally to survive other specs calling deleteAllUpstreams; those now clean
-// up only their own fixtures (#82), but per-test seeding is still the more
+// Re-created per test under a fixed id so re-seeding is idempotent. No spec
+// empties the gateway any more (#82), but per-test seeding is still the more
 // robust arrangement and costs nothing.
 const UPSTREAM_ID = 'e2e-sr-dup-upstream';
 const upstreamName = 'e2e-sr-dup-upstream';

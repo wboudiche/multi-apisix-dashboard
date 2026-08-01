@@ -21,7 +21,6 @@ import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
 import {
-  deleteAllConsumerGroups,
   putConsumerGroupReq,
 } from '@/apis/consumer_groups';
 import { API_CONSUMER_GROUPS } from '@/config/constant';
@@ -49,7 +48,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllConsumerGroups(e2eReq);
     await Promise.all(
       consumerGroups.map((d) => putConsumerGroupReq(e2eReq, d))
     );
@@ -75,7 +73,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: consumerGroupsPom,
-    items: consumerGroups,
     filterItemsNotInPage,
     getCell: (page, item) =>
       page.getByRole('cell', { name: item.id }).first(),
