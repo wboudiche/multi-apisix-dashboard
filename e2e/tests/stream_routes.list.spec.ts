@@ -20,7 +20,6 @@ import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllStreamRoutes } from '@/apis/stream_routes';
 import { API_STREAM_ROUTES } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -60,7 +59,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllStreamRoutes(e2eReq);
     await Promise.all(
       streamRoutes.map((d) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -91,7 +89,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: streamRoutesPom,
-    items: streamRoutes,
     filterItemsNotInPage,
     getCell: (page, item) =>
       page.getByRole('cell', { name: item.id }).first(),

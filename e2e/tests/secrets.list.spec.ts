@@ -93,7 +93,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: secretsPom,
-    items: secrets,
     filterItemsNotInPage,
     getCell: (page, item) => page.getByRole('cell', { name: item.id }).first(),
   });

@@ -40,19 +40,6 @@ test('should navigate to global rules list page', async ({ page }) => {
   });
 });
 
-// Helper function to delete all global rules
-const deleteAllGlobalRules = async (req: typeof e2eReq) => {
-  const res = await req.get(API_GLOBAL_RULES);
-  const globalRules = res.data?.list || [];
-  await Promise.all(
-    globalRules.map((item: { value: { id: string } }) =>
-      req.delete(`${API_GLOBAL_RULES}/${item.value.id}`).catch(() => {
-        // Ignore errors
-      })
-    )
-  );
-};
-
 interface GlobalRule {
   id: string;
   plugins: Record<string, unknown>;
@@ -83,7 +70,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllGlobalRules(e2eReq);
     await Promise.all(
       globalRules.map((d) =>
         e2eReq.put(`${API_GLOBAL_RULES}/${d.id}`, {
@@ -119,7 +105,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: globalRulePom,
-    items: globalRules,
     filterItemsNotInPage,
     getCell: (page, item) => page.getByRole('cell', { name: item.id }).first(),
   });

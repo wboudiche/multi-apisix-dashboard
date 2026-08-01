@@ -25,13 +25,6 @@ import { putPluginConfigReq } from '@/apis/plugin_configs';
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
-// Helper function to delete all plugin configs
-const deleteAllPluginConfigs = async (req: typeof e2eReq) => {
-  const response = await req.get<unknown, APISIXType['RespPluginConfigList']>(API_PLUGIN_CONFIGS);
-  const list = response.data.list || [];
-  await Promise.all(list.map((item) => req.delete(`${API_PLUGIN_CONFIGS}/${item.value.id}`)));
-};
-
 test('should navigate to plugin configs page', async ({ page }) => {
   await test.step('navigate to plugin configs page', async () => {
     await pluginConfigsPom.getPluginConfigNavBtn(page).click();
@@ -69,7 +62,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllPluginConfigs(e2eReq);
     await Promise.all(pluginConfigs.map((d) => putPluginConfigReq(e2eReq, d)));
   });
 
@@ -100,7 +92,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: pluginConfigsPom,
-    items: pluginConfigs,
     filterItemsNotInPage,
     getCell: (page, item) =>
       page.getByRole('cell', { name: item.name }).first(),

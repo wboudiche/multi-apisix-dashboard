@@ -90,7 +90,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: protosPom,
-    items: protos,
     filterItemsNotInPage,
     getCell: (page, item) => page.getByRole('cell', { name: item.id }).first(),
   });

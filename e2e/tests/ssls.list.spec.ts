@@ -22,7 +22,7 @@ import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllSSLs, putSSLReq } from '@/apis/ssls';
+import { putSSLReq } from '@/apis/ssls';
 import { API_SSLS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -64,8 +64,6 @@ test.describe('page and page_size should work correctly', () => {
       },
       status: 1,
     }));
-
-    await deleteAllSSLs(e2eReq);
     await Promise.all(ssls.map((d) => putSSLReq(e2eReq, d)));
   });
 
@@ -89,7 +87,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: sslsPom,
-    items: ssls,
     filterItemsNotInPage,
     getCell: (page, item) =>
       page

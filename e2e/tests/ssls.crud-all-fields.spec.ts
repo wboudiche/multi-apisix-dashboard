@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 import { sslsPom } from '@e2e/pom/ssls';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { genTLS } from '@e2e/utils/common';
-import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { uiFillSSLRequiredFields } from '@e2e/utils/ui/ssls';
 import { expect } from '@playwright/test';
 
-import { deleteAllSSLs } from '@/apis/ssls';
+import { API_SSLS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 const snis = [
@@ -38,7 +38,12 @@ const initialLabels = {
 };
 
 test.beforeAll(async () => {
-  await deleteAllSSLs(e2eReq);
+});
+
+// Only the certificates this spec created. SSLs carry no name, so they
+// are matched on their snis.
+test.afterAll(async () => {
+  await deleteByPrefix(API_SSLS, 'snis', ...snis);
 });
 
 test('should CRUD SSL with all fields', async ({ page }) => {

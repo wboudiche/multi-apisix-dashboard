@@ -93,10 +93,21 @@ export const deleteByPrefix = async (
     { params: { page: 1, page_size: PAGE_SIZE_MAX } }
   );
 
-  const doomed = (res.data.list ?? []).filter((row) => {
-    const value = row.value[field];
-    return typeof value === 'string' && prefixes.some((p) => value.startsWith(p));
-  });
+  const matches = (value: unknown): boolean => {
+    if (typeof value === 'string') {
+      return prefixes.some((p) => value.startsWith(p));
+    }
+    // SSLs have no name and are identified by their `snis` array, so a field
+    // holding a list counts as a match when any entry does.
+    if (Array.isArray(value)) {
+      return value.some(
+        (entry) => typeof entry === 'string' && prefixes.some((p) => entry.startsWith(p))
+      );
+    }
+    return false;
+  };
+
+  const doomed = (res.data.list ?? []).filter((row) => matches(row.value[field]));
 
   await Promise.all(
     doomed.map((row) =>

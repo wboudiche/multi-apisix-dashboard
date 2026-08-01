@@ -21,7 +21,7 @@ import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { deleteAllConsumers, putConsumerReq } from '@/apis/consumers';
+import { putConsumerReq } from '@/apis/consumers';
 import { API_CONSUMERS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -51,7 +51,6 @@ test.describe('page and page_size should work correctly', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
-    await deleteAllConsumers(e2eReq);
     await Promise.all(consumers.map((d) => putConsumerReq(e2eReq, d)));
   });
 
@@ -74,7 +73,6 @@ test.describe('page and page_size should work correctly', () => {
 
   setupPaginationTests(test, {
     pom: consumersPom,
-    items: consumers,
     filterItemsNotInPage,
     getCell: (page, item) =>
       page.getByRole('cell', { name: item.username }).first(),

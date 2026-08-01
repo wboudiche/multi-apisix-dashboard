@@ -24,7 +24,6 @@ export interface PaginationTestConfig<T> {
     toIndex: (page: Page) => Promise<unknown>;
     isIndexPage: (page: Page) => Promise<void>;
   };
-  items: T[];
   filterItemsNotInPage: (page: Page) => Promise<T[]>;
   getCell: (page: Page, item: T) => Locator;
   /**
@@ -38,7 +37,7 @@ export interface PaginationTestConfig<T> {
 
 export function setupPaginationTests<T>(
   test: typeof realTest,
-  { pom, items, filterItemsNotInPage, getCell, variant = 'antd' }: PaginationTestConfig<T>
+  { pom, filterItemsNotInPage, getCell, variant = 'antd' }: PaginationTestConfig<T>
 ) {
   const defaultPageNum = 1;
   const defaultPageSize = 10;
@@ -64,9 +63,18 @@ export function setupPaginationTests<T>(
     return page.getByRole('listitem', { name: `${num}` });
   };
 
-  const itemIsVisible = async (page: Page, item: T) => {
-    const cell = getCell(page, item);
-    await expect(cell).toBeVisible();
+  /**
+   * The data rows on screen, as text, with the header row dropped.
+   *
+   * Used by the assertions below instead of naming the fixtures directly.
+   * A spec's own items only occupy a whole page when nothing else is on the
+   * gateway, which is why these tests used to empty it first — and emptying it
+   * is what made the suite order-dependent (#82). Comparing rows to each other
+   * tests the same behaviour without caring what else exists.
+   */
+  const visibleRows = async (page: Page): Promise<string[]> => {
+    const rows = await page.getByRole('row').allInnerTexts();
+    return rows.slice(1).map((r) => r.trim()).filter(Boolean);
   };
 
   const itemIsHidden = async (page: Page, item: T) => {
@@ -108,6 +116,8 @@ export function setupPaginationTests<T>(
 
     if (hasPageSizeSelector) {
       await test.step(`can switch page size to ${newPageSize}`, async () => {
+        const rowsBefore = (await visibleRows(page)).length;
+
         // click page size selection, then click new page size option
         await getPageSizeSelection(page, defaultPageSize).click();
         await getPageSizeOption(page, newPageSize).click();
@@ -126,10 +136,13 @@ export function setupPaginationTests<T>(
           (url) => url.searchParams.get('page') === defaultPageNum.toString()
         );
 
-        // all items should be visible
-        for (const item of items) {
-          await itemIsVisible(page, item);
-        }
+        // A larger page shows more rows, and never more than it allows. The
+        // fixtures seed more than defaultPageSize items, so there is always
+        // something for the extra capacity to reveal.
+        await expect
+          .poll(async () => (await visibleRows(page)).length)
+          .toBeGreaterThan(rowsBefore);
+        expect((await visibleRows(page)).length).toBeLessThanOrEqual(newPageSize);
       });
     }
 
@@ -145,7 +158,8 @@ export function setupPaginationTests<T>(
     }
 
     await test.step(`can switch page num to ${newPageNum}`, async () => {
-      const itemsNotInPage = await filterItemsNotInPage(page);
+      const firstPage = await visibleRows(page);
+
       // click page num
       await getPageNum(page, defaultPageNum).click();
       await getPageNum(page, newPageNum).click();
@@ -156,10 +170,13 @@ export function setupPaginationTests<T>(
       );
       await pom.isIndexPage(page);
 
-      // items not in page should be visible
-      for (const item of itemsNotInPage) {
-        await itemIsVisible(page, item);
-      }
+      // The second page carries different rows from the first. Asserting that
+      // this spec's own leftovers land there needs the gateway to hold nothing
+      // else; comparing the two pages does not, and is what pagination is
+      // actually meant to do.
+      const secondPage = await visibleRows(page);
+      expect(secondPage.length).toBeGreaterThan(0);
+      expect(secondPage.filter((row) => firstPage.includes(row))).toEqual([]);
     });
   });
 
@@ -214,10 +231,10 @@ export function setupPaginationTests<T>(
         );
       });
 
-      // all items should be visible
-      for (const item of items) {
-        await itemIsVisible(page, item);
-      }
+      // Same reasoning as the click-driven test above: a bigger page shows
+      // more rows, without assuming the gateway holds only this spec's data.
+      expect((await visibleRows(page)).length).toBeLessThanOrEqual(newPageSize);
+      expect((await visibleRows(page)).length).toBeGreaterThan(0);
     });
 
     await test.step('switch to default', async () => {
@@ -233,7 +250,7 @@ export function setupPaginationTests<T>(
     });
 
     await test.step(`can switch page num to ${newPageNum}`, async () => {
-      const itemsNotInPage = await filterItemsNotInPage(page);
+      const firstPage = await visibleRows(page);
 
       const url = new URL(page.url());
       url.searchParams.set('page', newPageNum.toString());
@@ -245,10 +262,10 @@ export function setupPaginationTests<T>(
       );
       await pom.isIndexPage(page);
 
-      // items not in page should be visible
-      for (const item of itemsNotInPage) {
-        await itemIsVisible(page, item);
-      }
+      // The second page carries different rows from the first.
+      const secondPage = await visibleRows(page);
+      expect(secondPage.length).toBeGreaterThan(0);
+      expect(secondPage.filter((row) => firstPage.includes(row))).toEqual([]);
     });
   });
 }
