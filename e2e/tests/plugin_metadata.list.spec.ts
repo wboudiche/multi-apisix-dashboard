@@ -19,13 +19,6 @@ import { pluginMetadataPom } from '@e2e/pom/plugin_metadata';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
-
-test.beforeAll(async () => {
-});
-
-test.afterAll(async () => {
-});
-
 test('should navigate to plugin metadata page', async ({ page }) => {
   await test.step('navigate to plugin metadata page', async () => {
     await pluginMetadataPom.getPluginMetadataNavBtn(page).click();

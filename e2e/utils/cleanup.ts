@@ -29,10 +29,12 @@ import { e2eReq } from './req';
 /**
  * Cleanup scoped to what a spec created.
  *
- * The alternative — deleteAllRoutes and friends — empties the gateway, which
- * is fine against a throwaway stack and catastrophic against anything else.
- * A spec knows the names it used; that is enough to clean up after itself
- * without deciding the fate of everything around it.
+ * The alternative — a delete-everything sweep before seeding — empties the
+ * gateway, which is fine against a throwaway stack and catastrophic against
+ * anything else (#82). A spec knows the names it used; that is enough to clean
+ * up after itself without deciding the fate of everything around it. The
+ * sweeping helpers this replaces have been deleted rather than left unused, so
+ * reintroducing them takes writing them again.
  *
  * A spec that finishes normally usually deletes its own fixtures as part of the
  * test. These exist for the case that does the damage: a failed assertion

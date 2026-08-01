@@ -37,9 +37,6 @@ const initialLabels = {
   team: 'backend',
 };
 
-test.beforeAll(async () => {
-});
-
 // Only the certificates this spec created. SSLs carry no name, so they
 // are matched on their snis.
 test.afterAll(async () => {
