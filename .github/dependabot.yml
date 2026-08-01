@@ -39,6 +39,19 @@ updates:
       - dependency-name: "eslint-plugin-react-refresh"
         update-types:
           ["version-update:semver-major", "version-update:semver-minor"]
+      # react / react-dom: 19.2.8 fails the e2e suite across unrelated specs —
+      # auth, header, forms and wizards alike — 59 failures on one shard before
+      # the 40-minute ceiling cancelled it, against ~9 minutes green on main.
+      # Root cause not yet isolated; the run is killed before Playwright prints
+      # its error summary. Listed together because they are pinned to the same
+      # version: ignoring only react would let react-dom be bumped alone and
+      # desynchronise them. Patch updates still come through — see #121.
+      - dependency-name: "react"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-dom"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: "gomod"  # See documentation for possible values
     directory: "/api"  # Go module lives in api/, not repo root
