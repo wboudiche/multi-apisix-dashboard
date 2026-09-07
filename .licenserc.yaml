@@ -14,6 +14,9 @@ header:
     - '**/*.json'
     - '**/*.toml'
     - '**/*.yaml'
+    # The config already excluded *.yaml; *.yml was an oversight, and the two
+    # APISIX configs under e2e/server are the only files it left uncovered.
+    - '**/*.yml'
     - 'src/assets/**'
     - '.actions/**'
     - '.devcontainer/**'
@@ -26,6 +29,11 @@ header:
     - '.yamllint'
     - 'eslint.config.js'
     - 'src/routeTree.gen.ts'
+    # Written by the Go toolchain, which rewrites them on every `go mod tidy`.
+    - 'api/go.mod'
+    - 'api/go.sum'
+    # Third-party-shaped SOAP documents the WSDL import specs parse verbatim.
+    - 'e2e/fixtures/**'
 
   comment: on-failure
 

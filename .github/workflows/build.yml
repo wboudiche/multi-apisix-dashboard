@@ -1,0 +1,48 @@
+name: Build and unit tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # The e2e job is the only other gate on a frontend change, and it takes ten
+    # minutes a shard. This answers the questions that do not need a browser —
+    # does it compile, do the unit tests pass — in about a minute, so a broken
+    # type or a failed invariant is reported before the shards even start.
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v5
+        name: Install pnpm
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Type-checks and bundles. `pnpm build` is `tsc -b && vite build`, so this
+      # also catches a vite config that no longer compiles — the failure mode
+      # behind #139, which only surfaced inside a docker build step.
+      - name: Build
+        run: pnpm build
+
+      # Includes src/react-version-pairing.test.ts, which is the only automated
+      # guard on the react/react-dom invariant from #121.
+      - name: Unit tests
+        run: pnpm test
