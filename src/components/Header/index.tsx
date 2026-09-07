@@ -36,7 +36,7 @@ import type { FC } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { type Instance, instanceApi, type InstanceHealth } from '@/apis/instances';
+import { describeError, instanceApi, type InstanceHealth } from '@/apis/instances';
 import { type Team, teamApi } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { queryClient } from '@/config/global';
@@ -152,32 +152,42 @@ export const Header: FC<HeaderProps> = (props) => {
   // Load header data on mount and when user/instance changes
   useEffect(() => {
     const loadHeaderData = async () => {
-      let data: Instance[];
+      // The whole read is covered, not just the request: a 200 carrying the
+      // wrong shape — the SPA's own HTML from a misrouted proxy, say — resolves
+      // the promise and only throws further down, on `data.some`. With the try
+      // around the request alone that was an unhandled rejection, reported
+      // nowhere.
       try {
-        data = await instanceApi.list();
-      } catch {
+        const data = await instanceApi.list();
+        // Checked before the write rather than after: the throw below would be
+        // caught either way, but not before the malformed value had reached the
+        // atom every other consumer reads.
+        if (!Array.isArray(data)) {
+          throw new TypeError('instance list is not an array');
+        }
+        setInstances(data);
+
+        // Auto-select when nothing is selected, or when the stored id no
+        // longer matches a known instance (stale localStorage would leave
+        // InstanceGuard stuck on the "no instance" empty state forever)
+        const isStale =
+          currentInstanceId && !data.some((inst) => inst.id === currentInstanceId);
+        if ((!currentInstanceId || isStale) && data.length > 0) {
+          setCurrentInstanceId(data[0].id);
+        }
+      } catch (error) {
         // A header with no instance selector and no reason given for it reads
         // as "this account has no gateways", which is a different situation
-        // entirely. A stable id keeps the re-runs of this effect collapsed
-        // into one notification rather than stacking a tower of them.
+        // entirely. describeError surfaces the backend's own reason, the way
+        // the instances page already does for this same call; a stable id keeps
+        // the re-runs of this effect collapsed into one notification.
         notifications.show({
           id: 'header-load-failed',
           title: t('header.loadFailedTitle'),
-          message: t('header.loadFailed'),
+          message: describeError(error, t('header.loadFailed')),
           color: 'red',
         });
         return;
-      }
-
-      setInstances(data);
-
-      // Auto-select when nothing is selected, or when the stored id no
-      // longer matches a known instance (stale localStorage would leave
-      // InstanceGuard stuck on the "no instance" empty state forever)
-      const isStale =
-        currentInstanceId && !data.some((inst) => inst.id === currentInstanceId);
-      if ((!currentInstanceId || isStale) && data.length > 0) {
-        setCurrentInstanceId(data[0].id);
       }
 
       if (!currentUser) return;
@@ -200,6 +210,13 @@ export const Header: FC<HeaderProps> = (props) => {
     loadHeaderData();
   }, [currentUser, currentInstanceId, setCurrentInstanceId, setInstances, setUserInstances, t]);
 
+  // Identity of the list rather than the array, which is a new reference on
+  // every load even when nothing changed.
+  const instanceIds = instances
+    .map((inst) => inst.id)
+    .sort()
+    .join(',');
+
   // Health is polled rather than pushed, so it belongs to the data layer like
   // every other server read. Running it here as an effect meant calling the
   // fetcher synchronously on mount, which set state during the effect and
@@ -207,7 +224,12 @@ export const Header: FC<HeaderProps> = (props) => {
   const { data: healthMap = {} } = useQuery({
     // Scoped to the user: the endpoint answers within the caller's own
     // assignments, so a cached map must not outlive the session that read it.
-    queryKey: ['instance-health', currentUser?.id],
+    //
+    // Keyed by the list too, because `enabled` only gates the first run. The
+    // instances page writes the same atom this reads, so registering a gateway
+    // there used to leave its dot grey on "Checking…" until the timer next came
+    // round, and deleting one left the removed id in the map.
+    queryKey: ['instance-health', currentUser?.id, instanceIds],
     queryFn: async () => {
       const healthData = await instanceApi.listHealth();
       return Object.fromEntries(
