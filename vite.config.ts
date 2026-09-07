@@ -72,13 +72,23 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'monaco-editor-vendor': ['monaco-editor', '@monaco-editor/react'],
-          'antd-vendor': [
-            'antd',
-            '@ant-design/pro-components',
-            '@ant-design/v5-patch-for-react-19',
+        // Vite 8 bundles Rolldown rather than Rollup, and Rolldown does not
+        // accept the object form of manualChunks at all. Its own manualChunks
+        // and advancedChunks are already deprecated in favour of this.
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-vendor',
+              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+            },
+            {
+              name: 'monaco-editor-vendor',
+              test: /[\\/]node_modules[\\/](monaco-editor|@monaco-editor[\\/]react)[\\/]/,
+            },
+            {
+              name: 'antd-vendor',
+              test: /[\\/]node_modules[\\/](antd|@ant-design[\\/](pro-components|v5-patch-for-react-19))[\\/]/,
+            },
           ],
         },
       },
