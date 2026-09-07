@@ -32,7 +32,9 @@
     "account": "账户",
     "changePassword": "修改密码",
     "logout": "退出登录",
-    "role": "角色：{{role}}"
+    "role": "角色：{{role}}",
+    "loadFailedTitle": "实例不可用",
+    "loadFailed": "无法加载实例列表。"
   },
   "instanceGuard": {
     "noInstances": {

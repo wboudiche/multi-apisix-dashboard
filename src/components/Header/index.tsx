@@ -28,13 +28,15 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useAtom, useSetAtom } from 'jotai';
 import type { FC } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { instanceApi, type InstanceHealth } from '@/apis/instances';
+import { describeError, instanceApi, type InstanceHealth } from '@/apis/instances';
 import { type Team, teamApi } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { queryClient } from '@/config/global';
@@ -46,6 +48,9 @@ import IconMenu from '~icons/material-symbols/menu';
 import IconMenuOpen from '~icons/material-symbols/menu-open';
 
 import { LanguageMenu } from './LanguageMenu';
+
+/** How often the header re-probes every gateway it is allowed to see. */
+const HEALTH_POLL_INTERVAL_MS = 30_000;
 
 const Logo = () => {
   const { t } = useTranslation();
@@ -141,15 +146,25 @@ export const Header: FC<HeaderProps> = (props) => {
   const [userInstances, setUserInstances] = useAtom(userInstancesAtom);
   const [currentInstanceId, setCurrentInstanceId] = useAtom(currentInstanceIdAtom);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [healthMap, setHealthMap] = useState<Record<string, InstanceHealth>>({});
   const setInstances = useSetAtom(setInstancesAtom);
   const logout = useSetAtom(logoutActionAtom);
 
   // Load header data on mount and when user/instance changes
   useEffect(() => {
     const loadHeaderData = async () => {
+      // The whole read is covered, not just the request: a 200 carrying the
+      // wrong shape — the SPA's own HTML from a misrouted proxy, say — resolves
+      // the promise and only throws further down, on `data.some`. With the try
+      // around the request alone that was an unhandled rejection, reported
+      // nowhere.
       try {
         const data = await instanceApi.list();
+        // Checked before the write rather than after: the throw below would be
+        // caught either way, but not before the malformed value had reached the
+        // atom every other consumer reads.
+        if (!Array.isArray(data)) {
+          throw new TypeError('instance list is not an array');
+        }
         setInstances(data);
 
         // Auto-select when nothing is selected, or when the stored id no
@@ -160,39 +175,73 @@ export const Header: FC<HeaderProps> = (props) => {
         if ((!currentInstanceId || isStale) && data.length > 0) {
           setCurrentInstanceId(data[0].id);
         }
-
-        if (currentUser) {
-          const userInstData = await instanceApi.getUserInstances(currentUser.id);
-          setUserInstances(userInstData);
-
-          const teamData = await teamApi.list();
-          setTeams(teamData);
-        }
       } catch (error) {
-        console.error('Failed to load header data:', error);
+        // A header with no instance selector and no reason given for it reads
+        // as "this account has no gateways", which is a different situation
+        // entirely. describeError surfaces the backend's own reason, the way
+        // the instances page already does for this same call; a stable id keeps
+        // the re-runs of this effect collapsed into one notification.
+        notifications.show({
+          id: 'header-load-failed',
+          title: t('header.loadFailedTitle'),
+          message: describeError(error, t('header.loadFailed')),
+          color: 'red',
+        });
+        return;
+      }
+
+      if (!currentUser) return;
+
+      // Deliberately quiet, and deliberately not folded into the report above.
+      // /api/v1/teams is admin-only and answers 403 to a developer, which is
+      // the ordinary case rather than a fault: they get no team switcher and
+      // that is all. Announcing it would put a red toast on every page of
+      // every non-admin session, blaming an instance list that loaded fine.
+      try {
+        const userInstData = await instanceApi.getUserInstances(currentUser.id);
+        setUserInstances(userInstData);
+
+        const teamData = await teamApi.list();
+        setTeams(teamData);
+      } catch {
+        // Leaves the team switcher and role badge unrendered, as before.
       }
     };
     loadHeaderData();
-  }, [currentUser, currentInstanceId]);
+  }, [currentUser, currentInstanceId, setCurrentInstanceId, setInstances, setUserInstances, t]);
 
-  // Poll instance health every 30 seconds
-  const fetchHealth = useCallback(async () => {
-    try {
+  // Identity of the list rather than the array, which is a new reference on
+  // every load even when nothing changed.
+  const instanceIds = instances
+    .map((inst) => inst.id)
+    .sort()
+    .join(',');
+
+  // Health is polled rather than pushed, so it belongs to the data layer like
+  // every other server read. Running it here as an effect meant calling the
+  // fetcher synchronously on mount, which set state during the effect and
+  // cascaded a render on every change to the instance list.
+  const { data: healthMap = {} } = useQuery({
+    // Scoped to the user: the endpoint answers within the caller's own
+    // assignments, so a cached map must not outlive the session that read it.
+    //
+    // Keyed by the list too, because `enabled` only gates the first run. The
+    // instances page writes the same atom this reads, so registering a gateway
+    // there used to leave its dot grey on "Checking…" until the timer next came
+    // round, and deleting one left the removed id in the map.
+    queryKey: ['instance-health', currentUser?.id, instanceIds],
+    queryFn: async () => {
       const healthData = await instanceApi.listHealth();
-      const map: Record<string, InstanceHealth> = {};
-      healthData.forEach((h) => { map[h.instance_id] = h; });
-      setHealthMap(map);
-    } catch {
-      // Silently fail — health is supplemental
-    }
-  }, []);
-
-  useEffect(() => {
-    if (instances.length === 0) return;
-    fetchHealth();
-    const interval = setInterval(fetchHealth, 30_000);
-    return () => clearInterval(interval);
-  }, [instances.length, fetchHealth]);
+      return Object.fromEntries(
+        healthData.map((h) => [h.instance_id, h])
+      ) as Record<string, InstanceHealth>;
+    },
+    enabled: instances.length > 0,
+    refetchInterval: HEALTH_POLL_INTERVAL_MS,
+    // Health is supplemental: a failed probe leaves the dots on "Checking…"
+    // rather than interrupting whatever the operator is doing.
+    retry: false,
+  });
 
   const activeUserInstance = userInstances.find(ui => ui.instance_id === currentInstanceId);
   const currentTeam = teams.find(t => t.id === activeUserInstance?.team_id);

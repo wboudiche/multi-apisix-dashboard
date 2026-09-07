@@ -32,7 +32,9 @@
     "account": "Konto",
     "changePassword": "Passwort ändern",
     "logout": "Abmelden",
-    "role": "Rolle: {{role}}"
+    "role": "Rolle: {{role}}",
+    "loadFailedTitle": "Instanzen nicht verfügbar",
+    "loadFailed": "Die Instanzliste konnte nicht geladen werden."
   },
   "instanceGuard": {
     "noInstances": {
