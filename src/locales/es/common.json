@@ -32,7 +32,9 @@
     "account": "Cuenta",
     "changePassword": "Cambiar contraseña",
     "logout": "Cerrar sesión",
-    "role": "Rol: {{role}}"
+    "role": "Rol: {{role}}",
+    "loadFailedTitle": "Instancias no disponibles",
+    "loadFailed": "No se pudo cargar la lista de instancias."
   },
   "instanceGuard": {
     "noInstances": {

@@ -32,7 +32,9 @@
     "account": "Hesap",
     "changePassword": "Parolayı değiştir",
     "logout": "Oturumu kapat",
-    "role": "Rol: {{role}}"
+    "role": "Rol: {{role}}",
+    "loadFailedTitle": "Örnekler kullanılamıyor",
+    "loadFailed": "Örnek listesi yüklenemedi."
   },
   "instanceGuard": {
     "noInstances": {

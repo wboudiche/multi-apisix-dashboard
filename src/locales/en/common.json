@@ -805,7 +805,9 @@
     "accountRole": "Role: {{role}}",
     "account": "Account",
     "logout": "Logout",
-    "changePassword": "Change password"
+    "changePassword": "Change password",
+    "loadFailedTitle": "Instances unavailable",
+    "loadFailed": "Could not load the instance list."
   },
   "teams": {
     "title": "Teams",
