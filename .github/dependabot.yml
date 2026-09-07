@@ -14,6 +14,40 @@ updates:
     directory: "/"  # Location of package manifests
     schedule:
       interval: "daily"
+    groups:
+      # react and react-dom are separate npm packages, so Dependabot bumps them
+      # in separate PRs — and React refuses to run when the two versions differ
+      # at all, throwing "Incompatible React versions" before anything renders.
+      # The page comes up blank, every spec that drives the UI fails and the
+      # API-only ones still pass. PR #117 did exactly this and cost issue #121;
+      # PR #123 repeated it one version lower.
+      #
+      # Nothing catches it on the way in: react-dom's peer range accepts a newer
+      # react, so the install is silent. React's own check exists only in its
+      # development build, so a skewed pair would ship to production without a
+      # word — src/react-version-pairing.test.ts states the invariant instead.
+      #
+      # Two entries because a group applies to one update type: without the
+      # second, a React security advisory would still arrive as a single-package
+      # PR and reintroduce the skew this exists to prevent.
+      #
+      # @types/react and @types/react-dom are here for the same reason one step
+      # removed: @types/react-dom peers on @types/react, and a lone bump of
+      # either breaks tsc rather than the browser.
+      react:
+        applies-to: version-updates
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      react-security:
+        applies-to: security-updates
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
     ignore:
       # Both of these were evaluated and declined on their merits, not missed.
       # Without these entries Dependabot reopens them on every release and the
@@ -39,33 +73,6 @@ updates:
       - dependency-name: "eslint-plugin-react-refresh"
         update-types:
           ["version-update:semver-major", "version-update:semver-minor"]
-      # react / react-dom: 19.2.8 fails the e2e suite across unrelated specs —
-      # auth, header, forms and wizards alike — 59 failures on one shard before
-      # the 40-minute ceiling cancelled it, against ~9 minutes green on main.
-      # Root cause not yet isolated; the run is killed before Playwright prints
-      # its error summary. Listed together because they are pinned to the same
-      # version: ignoring only react would let react-dom be bumped alone and
-      # desynchronise them — see #121.
-      #
-      # Patch updates were left open after #121, but #123 (19.1.0 -> 19.1.9)
-      # hit the same e2e failure signature (multi-instance/RBAC specs timing
-      # out) and, being an unpaired patch bump, desynchronised react-dom from
-      # react exactly as the paragraph above warns about. All update types are
-      # now blocked until the root cause is isolated — see #123.
-      - dependency-name: "react"
-        update-types:
-          [
-            "version-update:semver-major",
-            "version-update:semver-minor",
-            "version-update:semver-patch",
-          ]
-      - dependency-name: "react-dom"
-        update-types:
-          [
-            "version-update:semver-major",
-            "version-update:semver-minor",
-            "version-update:semver-patch",
-          ]
 
   - package-ecosystem: "gomod"  # See documentation for possible values
     directory: "/api"  # Go module lives in api/, not repo root
