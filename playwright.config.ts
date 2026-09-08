@@ -29,6 +29,26 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  /**
+   * A change that breaks rendering breaks every spec that drives the UI, and
+   * each one then burns its retries in series. That is how #121 played out: the
+   * shard passed the 40-minute ceiling, GitHub cancelled it, and Playwright
+   * never printed its summary — so three PRs went by without anyone seeing the
+   * one-line console error that explained it.
+   *
+   * Capped, a shard in that state ends on its own and prints its summary
+   * instead of being cancelled mid-flight. Note that the gain is the summary
+   * rather than speed: retries stay at 2 because they earn their place against
+   * real flake, so five failures still cost fifteen executions, and in this
+   * scenario every one of them is a locator timeout: reproducing #121's blank
+   * page and running under CI settings, the shard gave up after 10m17s with
+   * "Testing stopped early after 5 maximum allowed failures" and a list of
+   * them, against a 40-minute ceiling and no summary at all before.
+   *
+   * CI only: a local run is where the whole picture is wanted, and no ceiling
+   * is cancelling it.
+   */
+  maxFailures: process.env.CI ? 5 : undefined,
   reporter: [
     ['html'],
     ['list'],
