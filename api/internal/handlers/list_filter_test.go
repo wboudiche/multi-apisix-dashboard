@@ -16,8 +16,13 @@
 package handlers
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
 func row(value map[string]any) map[string]any {
@@ -449,4 +454,61 @@ func TestUpstreamFilterMatchesNumericIDs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The upstream filter needs the service table to answer for routes bound
+// through one. When it cannot be read the list is narrower than the truth, and
+// the caller has to be told — a log line reaches whoever reads logs later, not
+// the operator asking the question during an incident.
+func TestFetchServiceUpstreamsReportsWhyItFailed(t *testing.T) {
+	cases := []struct {
+		name    string
+		handler http.HandlerFunc
+		wantErr string
+	}{
+		{
+			name: "a refused key",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusUnauthorized)
+			},
+			wantErr: "401",
+		},
+		{
+			name: "a body that is not a service list",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("<!doctype html>"))
+			},
+			wantErr: "invalid character",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv := httptest.NewServer(c.handler)
+			defer srv.Close()
+
+			_, err := fetchServiceUpstreams(&models.Instance{AdminAPIURL: srv.URL})
+			if err == nil {
+				t.Fatal("expected an error the caller can report, got nil")
+			}
+			if !strings.Contains(err.Error(), c.wantErr) {
+				t.Errorf("error %q does not mention %q", err, c.wantErr)
+			}
+		})
+	}
+
+	t.Run("a healthy gateway reports nothing", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"list":[{"value":{"id":"s1","upstream_id":"u1"}}]}`))
+		}))
+		defer srv.Close()
+
+		got, err := fetchServiceUpstreams(&models.Instance{AdminAPIURL: srv.URL})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got["s1"] != "u1" {
+			t.Errorf("services = %v, want s1 -> u1", got)
+		}
+	})
 }

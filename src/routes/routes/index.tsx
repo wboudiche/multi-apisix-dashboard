@@ -48,6 +48,7 @@ import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
 import { ImportWsdlModal } from '@/components/page/ImportWsdlModal';
+import { ListWarningBanner } from '@/components/page/ListWarningBanner';
 import PageHeader from '@/components/page/PageHeader';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import type { RouteFilters } from '@/components/page/RoutesFilterBar';
@@ -297,6 +298,7 @@ export const RouteList = (props: RouteListProps) => {
           </Group>
         </Group>
       )}
+      <ListWarningBanner warning={(data as { __warning?: string } | undefined)?.__warning} />
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>

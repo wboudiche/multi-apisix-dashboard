@@ -267,3 +267,35 @@ test('a narrowing search returns to the first page', async ({ page }) => {
 
   await expect(rowFor(page, `${PREFIX}-elsewhere`)).toBeVisible({ timeout: 20000 });
 });
+
+test('says when the list is narrower than the truth', async ({ page }) => {
+  // The proxy sets __warning when it could not read the service table, which is
+  // what the upstream filter needs to find routes bound through one. The list
+  // still arrives, 200 and shorter than the truth — so the caveat has to be on
+  // screen rather than only in the backend's log.
+  //
+  // Injected here rather than provoked: making APISIX fail on /services alone,
+  // while /routes keeps working, is not something a test can ask of it.
+  await page.route('**/apisix/admin/routes*', async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...body,
+        __warning:
+          'The service list could not be read, so routes that reach an upstream ' +
+          'through a service are missing from these results.',
+      },
+    });
+  });
+
+  await page.goto(`/ui/routes?name=${PREFIX}&page_size=50`);
+
+  await expect(
+    page.getByText('routes that reach an upstream through a service are missing')
+  ).toBeVisible({ timeout: 20000 });
+
+  // Degraded, not blocked: what could be read is still shown.
+  await expect(rowFor(page, `${PREFIX}-direct`)).toBeVisible();
+});

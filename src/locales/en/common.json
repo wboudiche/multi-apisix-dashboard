@@ -920,5 +920,8 @@
     "usernamePlaceholder": "Enter your username",
     "welcome": "Welcome, {{username}}!",
     "welcomeBack": "Welcome back"
+  },
+  "listWarning": {
+    "title": "Incomplete results"
   }
 }

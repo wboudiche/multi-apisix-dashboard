@@ -558,5 +558,8 @@
     "thRole": "Rol",
     "thTeams": "Equipos",
     "thUser": "Usuario"
+  },
+  "listWarning": {
+    "title": "Resultados incompletos"
   }
 }

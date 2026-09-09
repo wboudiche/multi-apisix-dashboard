@@ -558,5 +558,8 @@
     "thRole": "Rolle",
     "thTeams": "Teams",
     "thUser": "Benutzer"
+  },
+  "listWarning": {
+    "title": "Unvollständige Ergebnisse"
   }
 }

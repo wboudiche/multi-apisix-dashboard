@@ -558,5 +558,8 @@
     "thRole": "角色",
     "thTeams": "团队",
     "thUser": "用户"
+  },
+  "listWarning": {
+    "title": "结果不完整"
   }
 }

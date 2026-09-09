@@ -558,5 +558,8 @@
     "thRole": "Rol",
     "thTeams": "Takımlar",
     "thUser": "Kullanıcı"
+  },
+  "listWarning": {
+    "title": "Eksik sonuçlar"
   }
 }

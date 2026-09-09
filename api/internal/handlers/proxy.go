@@ -66,6 +66,7 @@ var teamScopedResources = map[string]bool{
 // "value" object itself. A nested injection would need the strip to recurse.
 const dashboardFieldPrefix = "__"
 
+
 // dashboardTeamIDField is injected into list responses so the UI can show team
 // ownership. Named here rather than written literally at the injection site so
 // it cannot drift away from the prefix the strip looks for.
@@ -534,9 +535,17 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// consumer_groups or stream_routes.
 	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK && teamScopedResources[resourceType] {
 		if isListGET {
+			// __warning uses the same "__" prefix as __team_id: a field the
+			// dashboard injects, not something APISIX sent. It carries a caveat
+			// about the list being held — a filtered list can be narrower than
+			// the truth when something the filter depends on could not be read,
+			// and answering 200 with the shorter list and saying nothing lets it
+			// pass for complete. During an incident that is the difference
+			// between "no route reaches this upstream" and "I could not check".
 			var resources struct {
-				List  []map[string]interface{} `json:"list"`
-				Total int                      `json:"total"`
+				List    []map[string]interface{} `json:"list"`
+				Total   int                      `json:"total"`
+				Warning string                   `json:"__warning,omitempty"`
 			}
 			if err := json.Unmarshal(respBody, &resources); err == nil {
 				if len(resources.List) > maxListRows {
@@ -564,6 +573,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						// answer this filter could give.
 						log.Printf("[instance %s] upstream filter could not read services, "+
 							"routes bound to one will not match: %v", instanceID, err)
+						resources.Warning = serviceLookupWarning
 					}
 					filters.serviceUpstreams = services
 				}
@@ -772,6 +782,13 @@ func fetchServiceUpstreams(instance *models.Instance) (map[string]string, error)
 	}
 	return parseServiceUpstreams(body)
 }
+
+// serviceLookupWarning is what the client is told when the service table could
+// not be read: which rows are missing and why, rather than a bare "something
+// went wrong". The gateway address is deliberately absent — see the health
+// endpoint's own reason for keeping it out of what a non-admin can read.
+const serviceLookupWarning = "The service list could not be read, so routes that reach an upstream " +
+	"through a service are missing from these results."
 
 // parseServiceUpstreams maps each service id to the upstream it names.
 //
