@@ -469,7 +469,10 @@
       "filterMultiHint": "(çoklu seçim)",
       "columnUpstream": "Upstream",
       "upstreamInline": "satır içi",
-      "upstreamNone": "—"
+      "upstreamNone": "—",
+      "filterTeam": "Takım",
+      "filterTeamPlaceholder": "Herhangi bir takım",
+      "filterTeamUnassigned": "Atanmamış"
     }
   },
   "seconds": "Saniye",

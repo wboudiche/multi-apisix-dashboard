@@ -36,13 +36,13 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useAtom } from 'jotai';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import { getServiceListReq } from '@/apis/services';
 import { teamApi } from '@/apis/teams';
-import { getUpstreamListReq } from '@/apis/upstreams';
 import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
@@ -57,7 +57,9 @@ import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
+import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
+import { currentInstanceIdAtom } from '@/stores/instance';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { extractSoapAction } from '@/utils/soap-route';
@@ -75,7 +77,8 @@ import IconSettings from '~icons/material-symbols/settings-outline';
 import IconUpload from '~icons/material-symbols/upload';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export type RouteListProps = {
+export 
+type RouteListProps = {
   routeKey: Extract<ListPageKeys, '/routes/' | '/services/detail/$id/routes/'>;
   data: any;
   isLoading: boolean;
@@ -93,6 +96,7 @@ export const RouteList = (props: RouteListProps) => {
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
   const { canEdit, canDelete, isAdmin } = usePermission();
+  const [currentInstanceId] = useAtom(currentInstanceIdAtom);
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
   const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
   const [jsonSaving, setJsonSaving] = useState(false);
@@ -114,15 +118,18 @@ export const RouteList = (props: RouteListProps) => {
   // A route reaches its upstream directly, through a service, or inline with no
   // id at all. All three have to render as something an operator can read: an
   // empty cell would say "no backend", which is never what any of them means.
-  const { data: upstreams } = useQuery({
-    queryKey: ['upstreams', 'all'],
-    queryFn: () => getUpstreamListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
-    staleTime: 60_000,
-  });
+  //
+  // Keyed by instance like every other APISIX list (genListQueryOptions does the
+  // same): these live on the gateway, and without it switching instance resolves
+  // ids against the names of the one just left. Skipped entirely when the column
+  // is off — the services routes list, for one, never shows it.
+  const wantsUpstreams = visibleColumns.includes('upstream');
+  const { data: upstreams } = useAllUpstreams(currentInstanceId, wantsUpstreams);
   const { data: services } = useQuery({
-    queryKey: ['services', 'all'],
+    queryKey: ['services', currentInstanceId, 'all'],
     queryFn: () => getServiceListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
     staleTime: 60_000,
+    enabled: wantsUpstreams,
   });
   const upstreamNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -135,6 +142,15 @@ export const RouteList = (props: RouteListProps) => {
       if (sv.value.upstream_id) map.set(sv.value.id, sv.value.upstream_id);
     });
     return map;
+  }, [services]);
+  // A service can carry its upstream inline, with no id to resolve. Its routes
+  // still have a backend, so they are told apart from routes that have none.
+  const servicesWithInlineUpstream = useMemo(() => {
+    const ids = new Set<string>();
+    services?.list?.forEach((sv) => {
+      if (!sv.value.upstream_id && sv.value.upstream) ids.add(sv.value.id);
+    });
+    return ids;
   }, [services]);
 
   const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
@@ -386,7 +402,13 @@ export const RouteList = (props: RouteListProps) => {
                     }
                     // An inline upstream is a real backend with no id and no
                     // name; saying so beats an empty cell that reads as none.
-                    if (record.value.upstream) {
+                    // A service carrying one inline puts its routes in the same
+                    // position, one step removed.
+                    if (
+                      record.value.upstream ||
+                      (record.value.service_id &&
+                        servicesWithInlineUpstream.has(record.value.service_id))
+                    ) {
                       return (
                         <Text size="xs" c="dimmed" fs="italic">
                           {t('routes.list.upstreamInline')}
@@ -595,7 +617,6 @@ export const RouteList = (props: RouteListProps) => {
   );
 };
 
- 
 
 function RouteComponent() {
   const { t } = useTranslation();
@@ -619,11 +640,8 @@ function RouteComponent() {
     ],
     [filterTeams, t]
   );
-  const { data: filterUpstreams } = useQuery({
-    queryKey: ['upstreams', 'all'],
-    queryFn: () => getUpstreamListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
-    staleTime: 60_000,
-  });
+  const [currentInstanceId] = useAtom(currentInstanceIdAtom);
+  const { data: filterUpstreams } = useAllUpstreams(currentInstanceId);
   const upstreamOptions = useMemo(
     () =>
       (filterUpstreams?.list ?? []).map((u) => ({

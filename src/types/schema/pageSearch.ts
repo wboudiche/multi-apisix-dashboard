@@ -30,9 +30,15 @@ export const pageSearchSchema = z
       .default(10)
       .transform((val) => (val ? Number(val) : 10)),
     name: z.string().optional(),
-    label: z.string().optional(),
     uri: z.string().optional(),
     status: z.union([z.string(), z.number()]).optional(),
+    // Repeatable since #142: the routes bar can name several labels, teams or
+    // upstreams at once, and qs serialises those as repeated keys. A lone value
+    // still arrives as a bare string — an older bookmark holds exactly that —
+    // so both shapes have to validate, and consumers normalise.
+    label: z.union([z.string(), z.array(z.string())]).optional(),
+    team_id: z.union([z.string(), z.array(z.string())]).optional(),
+    upstream_id: z.union([z.string(), z.array(z.string())]).optional(),
   })
   .passthrough();
 

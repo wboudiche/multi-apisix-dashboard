@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/url"
 	"strconv"
 	"strings"
@@ -115,6 +116,24 @@ func stringField(value map[string]any, key string) string {
 	return s
 }
 
+// idField reads an identifier that APISIX may have stored as either type.
+//
+// `PUT /apisix/admin/services` with {"id": 9002} and no path segment keeps the
+// number, so an id is a string or a number depending on how it was created.
+// Comparing only the string form would silently skip the numeric ones.
+func idField(value map[string]any, key string) string {
+	switch v := value[key].(type) {
+	case string:
+		return v
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	case json.Number:
+		return v.String()
+	default:
+		return ""
+	}
+}
+
 // matchesURI reports whether any path the resource answers on contains the
 // search text. A resource may use `uri` or `uris`, and either may be the one the
 // operator remembers.
@@ -185,9 +204,9 @@ func matchesLabel(value map[string]any, needle string) bool {
 // route bound to a service is as affected as one bound directly. The third
 // cannot match anything — there is no id to compare.
 func matchesUpstream(value map[string]any, want []string, services map[string]string) bool {
-	id := stringField(value, "upstream_id")
+	id := idField(value, "upstream_id")
 	if id == "" {
-		if serviceID := stringField(value, "service_id"); serviceID != "" {
+		if serviceID := idField(value, "service_id"); serviceID != "" {
 			id = services[serviceID]
 		}
 	}

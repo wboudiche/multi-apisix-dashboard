@@ -87,19 +87,19 @@ test.beforeAll(async () => {
     name: `${PREFIX}-direct`,
     uri: `/${PREFIX}/direct`,
     upstream_id: `${PREFIX}-up`,
-    labels: { env: 'prod', tier: 'edge' },
+    labels: { env: `${PREFIX}-prod`, tier: 'edge' },
   });
   await put(`/routes/${PREFIX}-viasvc`, {
     name: `${PREFIX}-viasvc`,
     uri: `/${PREFIX}/viasvc`,
     service_id: `${PREFIX}-svc`,
-    labels: { env: 'prod', tier: 'core' },
+    labels: { env: `${PREFIX}-prod`, tier: 'core' },
   });
-  await put(`/routes/${PREFIX}-inline`, {
-    name: `${PREFIX}-inline`,
-    uri: `/${PREFIX}/inline`,
+  await put(`/routes/${PREFIX}-embedded`, {
+    name: `${PREFIX}-embedded`,
+    uri: `/${PREFIX}/embedded`,
     upstream: { type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } },
-    labels: { env: 'staging' },
+    labels: { env: `${PREFIX}-staging` },
   });
   await put(`/routes/${PREFIX}-elsewhere`, {
     name: `${PREFIX}-elsewhere`,
@@ -130,7 +130,7 @@ test('the upstream filter reaches routes bound through a service', async () => {
 
 test('an inline upstream has no id, so it matches no upstream filter', async () => {
   const names = await listNames(`upstream_id=${PREFIX}-up`);
-  expect(names).not.toContain(`${PREFIX}-inline`);
+  expect(names).not.toContain(`${PREFIX}-embedded`);
 });
 
 test('several upstreams widen rather than narrow', async () => {
@@ -140,13 +140,13 @@ test('several upstreams widen rather than narrow', async () => {
 });
 
 test('several labels all have to match', async () => {
-  expect(await listNames('label=env:prod')).toEqual([
+  expect(await listNames(`label=env:${PREFIX}-prod`)).toEqual([
     `${PREFIX}-direct`,
     `${PREFIX}-viasvc`,
   ]);
 
   // Narrowing, not widening: tier:edge belongs to one of the two above.
-  expect(await listNames('label=env:prod&label=tier:edge')).toEqual([
+  expect(await listNames(`label=env:${PREFIX}-prod&label=tier:edge`)).toEqual([
     `${PREFIX}-direct`,
   ]);
 });
@@ -154,23 +154,24 @@ test('several labels all have to match', async () => {
 test('a label value is compared, not just its key', async () => {
   // The value used to be discarded, so env:staging matched every route
   // carrying an env label whatever it held.
-  expect(await listNames('label=env:staging')).toEqual([`${PREFIX}-inline`]);
+  expect(await listNames(`label=env:${PREFIX}-staging`)).toEqual([`${PREFIX}-embedded`]);
 });
 
 test('the label filter searches every page, and the total agrees', async () => {
   // This is the regression the move to the proxy fixes. The browser used to
   // filter the page it had been handed and overwrite the total with the matches
   // on it, so a label on page two simply did not exist — and the pager lied.
-  const one = await total('label=env:prod&page=1&page_size=1');
-  const two = await total('label=env:prod&page=2&page_size=1');
+  const one = await total(`label=env:${PREFIX}-prod&page=1&page_size=1`);
+  const two = await total(`label=env:${PREFIX}-prod&page=2&page_size=1`);
 
-  // Two routes carry env:prod. Both pages report the size of the whole match,
-  // not of the slice they returned.
+  // Two routes carry it, and the value is unique to this run so the count is
+  // exactly those two whatever else the gateway holds. Both pages report the
+  // size of the whole match, not of the slice they returned.
   expect(one).toBe(2);
   expect(two).toBe(2);
 
-  const firstPage = await listNames('label=env:prod&page=1&page_size=1');
-  const secondPage = await listNames('label=env:prod&page=2&page_size=1');
+  const firstPage = await listNames(`label=env:${PREFIX}-prod&page=1&page_size=1`);
+  const secondPage = await listNames(`label=env:${PREFIX}-prod&page=2&page_size=1`);
   expect(firstPage).toHaveLength(1);
   expect(secondPage).toHaveLength(1);
   expect(firstPage).not.toEqual(secondPage);
@@ -195,8 +196,10 @@ test('the Upstream column names the upstream a route reaches', async ({ page }) 
   await expect(rowFor(page, `${PREFIX}-viasvc`)).toContainText(`${PREFIX}-upstream`);
 
   // An inline upstream has no name to show, and an empty cell would read as
-  // "no backend" — which is the one thing it does not mean.
-  await expect(rowFor(page, `${PREFIX}-inline`)).toContainText('inline');
+  // "no backend" — which is the one thing it does not mean. The route is named
+  // "-embedded" rather than "-inline" on purpose: with the word in the name the
+  // assertion would match the Name column and pass whatever this one rendered.
+  await expect(rowFor(page, `${PREFIX}-embedded`)).toContainText('inline');
 });
 
 test('picking an upstream in the bar narrows the table', async ({ page }) => {
@@ -212,4 +215,55 @@ test('picking an upstream in the bar narrows the table', async ({ page }) => {
   await expect(rowFor(page, `${PREFIX}-viasvc`)).toBeVisible();
   // Bound to a different upstream, so it drops out.
   await expect(rowFor(page, `${PREFIX}-elsewhere`)).toHaveCount(0);
+});
+
+// Two shapes the page has to survive, and did not: the multi-valued params the
+// bar itself produces, and the single-valued ones an older bookmark still holds.
+// Both landed on the router's error screen — the first because pageSearchSchema
+// declared `label` as a string, the second because a bare string reached a
+// MultiSelect that maps over its value.
+
+test('accepts the multi-valued filters the bar itself produces', async ({ page }) => {
+  // Exactly the URL Search writes when two labels are picked. It used to reach
+  // pageSearchSchema, which declared `label` as a string, and the router turned
+  // the failure into its error screen before the table ever rendered.
+  await page.goto(
+    `/ui/routes?name=${PREFIX}&label=env%3A${PREFIX}-prod&label=tier%3Aedge&page_size=50`
+  );
+
+  await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
+  await expect(rowFor(page, `${PREFIX}-direct`)).toBeVisible({ timeout: 20000 });
+  await expect(rowFor(page, `${PREFIX}-viasvc`)).toHaveCount(0);
+
+  // And the bar opens on them rather than crashing on an array it cannot map.
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
+});
+
+test('opens a bookmark that still carries single-valued filters', async ({ page }) => {
+  // The shape the previous release wrote into the URL. It has to keep working,
+  // and the bar has to show it rather than crash on it.
+  await page.goto(`/ui/routes?name=${PREFIX}&team_id=nobody&label=env&page_size=50`);
+  await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
+});
+
+test('keeps the Status field showing what was searched', async ({ page }) => {
+  // The URL turns "1" back into the number 1, which no option value matches.
+  await page.goto(`/ui/routes?name=${PREFIX}&status=1&page_size=50`);
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await expect(page.getByPlaceholder('UnPublished/Published')).toHaveValue('Published');
+});
+
+test('a narrowing search returns to the first page', async ({ page }) => {
+  // Searching from page 2 used to keep page=2 in the draft, so a filter matching
+  // fewer rows than one page landed past the end and showed nothing.
+  await page.goto(`/ui/routes?name=${PREFIX}&page_size=1&page=2`);
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByPlaceholder('Any upstream').click();
+  await page.getByRole('option', { name: `${PREFIX}-other-upstream`, exact: true }).click();
+  await page.getByRole('button', { name: 'Search' }).click();
+
+  await expect(rowFor(page, `${PREFIX}-elsewhere`)).toBeVisible({ timeout: 20000 });
 });

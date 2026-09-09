@@ -36,14 +36,28 @@ import IconArrowDropUp from '~icons/material-symbols/arrow-drop-up';
 
 export type FilterOption = { value: string; label: string };
 
-/** What the bar hands back when Search is pressed. */
+/**
+ * What the bar hands back when Search is pressed.
+ *
+ * The repeatable filters are read back as a bare string when the URL holds only
+ * one — which is what an older bookmark holds — and `status` comes back as a
+ * number, because the router parses `?status=1` for us. Both are normalised at
+ * the point of use rather than assumed away.
+ */
 export type RouteFilters = {
   name?: string;
   uri?: string;
-  status?: string;
-  team_id?: string[];
-  label?: string[];
-  upstream_id?: string[];
+  status?: string | number;
+  team_id?: string | string[];
+  label?: string | string[];
+  upstream_id?: string | string[];
+  page?: number;
+};
+
+/** A repeatable filter, whatever shape the URL delivered it in. */
+const asList = (value: string | string[] | undefined): string[] => {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
 };
 
 type RoutesFilterBarProps = {
@@ -108,7 +122,10 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
   const set = <K extends keyof RouteFilters>(key: K, value: RouteFilters[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
 
-  const search = () => onSearch(draft);
+  // Back to the first page: a narrowing search run from page 3 used to keep
+  // page 3, land past the end of the shorter result and show an empty table
+  // under a pager that reported matches.
+  const search = () => onSearch({ ...draft, page: 1 });
   const reset = () => {
     setDraft({});
     onReset();
@@ -144,7 +161,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
         size="sm"
         style={{ flex: 1 }}
         clearable
-        value={draft.status ?? null}
+        value={draft.status != null ? String(draft.status) : null}
         onChange={(v) => set('status', v ?? undefined)}
       />
     </Group>
@@ -217,7 +234,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
                   searchable
                   clearable
                   nothingFoundMessage={t('routes.list.filterUpstreamEmpty')}
-                  value={draft.upstream_id ?? []}
+                  value={asList(draft.upstream_id)}
                   onChange={(v) => set('upstream_id', v.length > 0 ? v : undefined)}
                 />
               </Box>
@@ -235,7 +252,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
                   size="sm"
                   searchable
                   clearable
-                  value={draft.team_id ?? []}
+                  value={asList(draft.team_id)}
                   onChange={(v) => set('team_id', v.length > 0 ? v : undefined)}
                 />
               </Grid.Col>
@@ -247,7 +264,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
                 <Text size="xs" c="dimmed">{t('routes.list.filterMultiHint')}</Text>
               </Group>
               <LabelFilter
-                value={draft.label ?? []}
+                value={asList(draft.label)}
                 onChange={(v) => set('label', v.length > 0 ? v : undefined)}
               />
             </Grid.Col>

@@ -469,7 +469,10 @@
       "filterMultiHint": "(Mehrfachauswahl)",
       "columnUpstream": "Upstream",
       "upstreamInline": "inline",
-      "upstreamNone": "—"
+      "upstreamNone": "—",
+      "filterTeam": "Team",
+      "filterTeamPlaceholder": "Beliebiges Team",
+      "filterTeamUnassigned": "Nicht zugewiesen"
     }
   },
   "seconds": "Sekunden",

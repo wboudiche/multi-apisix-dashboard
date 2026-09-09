@@ -469,7 +469,10 @@
       "filterMultiHint": "（多选）",
       "columnUpstream": "上游",
       "upstreamInline": "内联",
-      "upstreamNone": "—"
+      "upstreamNone": "—",
+      "filterTeam": "团队",
+      "filterTeamPlaceholder": "任意团队",
+      "filterTeamUnassigned": "未分配"
     }
   },
   "seconds": "秒",

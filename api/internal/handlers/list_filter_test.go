@@ -396,3 +396,57 @@ func TestUpstreamFilterResolvesThroughServices(t *testing.T) {
 		})
 	}
 }
+
+// APISIX stores an id as whatever JSON type it arrived as: PUT /services with
+// {"id": 9002} and no path segment keeps the number. One such service used to
+// abort the decode of the whole list and leave the map nil, so every route
+// bound to any service dropped out of an upstream filter without a word — the
+// "nothing touches this upstream" answer the filter exists to avoid giving.
+func TestServiceUpstreamsToleratesNumericIDs(t *testing.T) {
+	body := []byte(`{"list":[
+		{"value":{"id":"svc-str","upstream_id":"up-a"}},
+		{"value":{"id":9002,"upstream_id":777}},
+		{"value":{"id":"svc-inline"}}
+	]}`)
+
+	got, err := parseServiceUpstreams(body)
+	if err != nil {
+		t.Fatalf("parseServiceUpstreams: %v", err)
+	}
+
+	want := map[string]string{"svc-str": "up-a", "9002": "777"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("services[%q] = %q, want %q", k, got[k], v)
+		}
+	}
+}
+
+// A route can name its service or upstream numerically for the same reason.
+func TestUpstreamFilterMatchesNumericIDs(t *testing.T) {
+	services := map[string]string{"9002": "777"}
+
+	cases := []struct {
+		name string
+		row  map[string]any
+		want bool
+	}{
+		{"numeric upstream_id", map[string]any{"upstream_id": float64(777)}, true},
+		{"numeric service_id", map[string]any{"service_id": float64(9002)}, true},
+		{"string as before", map[string]any{"upstream_id": "777"}, true},
+		{"a different number", map[string]any{"upstream_id": float64(778)}, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"upstream_id": {"777"}})
+			f.serviceUpstreams = services
+			if got := matchesListFilters(c.row, f); got != c.want {
+				t.Errorf("%v = %v, want %v", c.row, got, c.want)
+			}
+		})
+	}
+}

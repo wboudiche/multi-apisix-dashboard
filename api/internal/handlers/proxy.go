@@ -770,13 +770,21 @@ func fetchServiceUpstreams(instance *models.Instance) (map[string]string, error)
 	if err != nil {
 		return nil, err
 	}
+	return parseServiceUpstreams(body)
+}
 
+// parseServiceUpstreams maps each service id to the upstream it names.
+//
+// Ids are decoded loosely on purpose: APISIX keeps whichever JSON type they
+// arrived as, so one service created with a numeric id used to abort the decode
+// of the whole list and leave every service-bound route out of the filter.
+//
+// A service carrying an inline upstream has no id to record and is absent here,
+// the same as a route with an inline upstream of its own.
+func parseServiceUpstreams(body []byte) (map[string]string, error) {
 	var services struct {
 		List []struct {
-			Value struct {
-				ID         string `json:"id"`
-				UpstreamID string `json:"upstream_id"`
-			} `json:"value"`
+			Value map[string]any `json:"value"`
 		} `json:"list"`
 	}
 	if err := json.Unmarshal(body, &services); err != nil {
@@ -785,8 +793,10 @@ func fetchServiceUpstreams(instance *models.Instance) (map[string]string, error)
 
 	mapped := make(map[string]string, len(services.List))
 	for _, svc := range services.List {
-		if svc.Value.ID != "" && svc.Value.UpstreamID != "" {
-			mapped[svc.Value.ID] = svc.Value.UpstreamID
+		id := idField(svc.Value, "id")
+		upstreamID := idField(svc.Value, "upstream_id")
+		if id != "" && upstreamID != "" {
+			mapped[id] = upstreamID
 		}
 	}
 	return mapped, nil
