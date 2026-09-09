@@ -214,12 +214,17 @@ func unownedWriteDenied(resourceExists bool) bool {
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
+	// Held per handler rather than per request: paging through an
+	// upstream-filtered list is several requests, and re-reading the whole
+	// service table on each was the cost this exists to remove.
+	serviceUpstreams *serviceUpstreamCache
 }
 
 func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService) *ProxyHandler {
 	return &ProxyHandler{
 		instanceService:  instanceService,
 		ownershipService: ownershipService,
+		serviceUpstreams: newServiceUpstreamCache(time.Now),
 	}
 }
 
@@ -564,7 +569,16 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// the second kind. Fetched only when that filter is present:
 				// every other listing pays nothing.
 				if len(filters.upstreamIDs) > 0 {
-					services, err := fetchServiceUpstreams(instance)
+					// A failure is never cached: the next page retries rather
+					// than repeating a wrong answer for the whole window.
+					services, cached := h.serviceUpstreams.get(instanceID)
+					var err error
+					if !cached {
+						services, err = fetchServiceUpstreams(instance)
+						if err == nil {
+							h.serviceUpstreams.put(instanceID, services)
+						}
+					}
 					if err != nil {
 						// Said out loud rather than swallowed. Without the
 						// table, routes bound to a service silently stop
