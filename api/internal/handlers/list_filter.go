@@ -37,7 +37,7 @@ import (
 // listFilterParams are the query parameters this layer consumes. They are
 // stripped from the upstream request so APISIX cannot apply its own
 // case-sensitive version first and leave nothing to match.
-var listFilterParams = []string{"name", "uri", "label", "status", "team_id"}
+var listFilterParams = []string{"name", "uri", "label", "status", "team_id", "upstream_id"}
 
 // paginationParams are removed from the upstream request as well: filtering has
 // to see every row, so the page is cut here afterwards.
@@ -54,9 +54,19 @@ const unassignedTeamFilter = "__none__"
 type listFilters struct {
 	name   string
 	uri    string
-	label  string
 	status *int
-	teamID string
+
+	// Repeatable. Labels narrow (every one has to match) while teams and
+	// upstreams widen (any one will do) — a resource carries many labels but
+	// only ever one team, and only ever one upstream.
+	labels      []string
+	teamIDs     []string
+	upstreamIDs []string
+
+	// service id -> upstream id, read from the gateway by the caller and only
+	// when an upstream filter is actually present. Empty otherwise, which
+	// costs a lookup that misses rather than a branch at every call site.
+	serviceUpstreams map[string]string
 }
 
 // parseListFilters reads the dashboard filters out of a query string. A blank
@@ -64,10 +74,11 @@ type listFilters struct {
 // than turned into a filter that matches nothing.
 func parseListFilters(q url.Values) listFilters {
 	f := listFilters{
-		name:   strings.TrimSpace(q.Get("name")),
-		uri:    strings.TrimSpace(q.Get("uri")),
-		label:  strings.TrimSpace(q.Get("label")),
-		teamID: strings.TrimSpace(q.Get("team_id")),
+		name:        strings.TrimSpace(q.Get("name")),
+		uri:         strings.TrimSpace(q.Get("uri")),
+		labels:      trimmedValues(q["label"]),
+		teamIDs:     trimmedValues(q["team_id"]),
+		upstreamIDs: trimmedValues(q["upstream_id"]),
 	}
 	if raw := strings.TrimSpace(q.Get("status")); raw != "" {
 		if status, err := strconv.Atoi(raw); err == nil {
@@ -78,8 +89,21 @@ func parseListFilters(q url.Values) listFilters {
 }
 
 func (f listFilters) empty() bool {
-	return f.name == "" && f.uri == "" && f.label == "" && f.status == nil &&
-		f.teamID == ""
+	return f.name == "" && f.uri == "" && f.status == nil &&
+		len(f.labels) == 0 && len(f.teamIDs) == 0 && len(f.upstreamIDs) == 0
+}
+
+// trimmedValues keeps the values that are actually filters. A parameter present
+// but blank is not one, and dropping it here means every caller downstream can
+// treat a non-empty slice as a real request.
+func trimmedValues(values []string) []string {
+	var kept []string
+	for _, v := range values {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			kept = append(kept, trimmed)
+		}
+	}
+	return kept
 }
 
 func containsFold(haystack, needle string) bool {
@@ -129,18 +153,49 @@ func matchesStatus(value map[string]any, want int) bool {
 
 // matchesLabel reports whether the resource carries the requested label.
 //
-// APISIX matches on the key alone and ignores anything after a colon; that is
-// preserved so moving the filter here does not quietly change which rows a
-// saved filter returns. The comparison is case-insensitive, unlike APISIX's.
+// A bare key matches whatever value it holds, which is how APISIX behaves and
+// what a single-label filter has always done here. Given "key:value" the value
+// is compared too — several labels can be chosen at once now, and the values
+// are what tell them apart. Both halves are compared case-insensitively, unlike
+// APISIX.
 func matchesLabel(value map[string]any, needle string) bool {
-	key := needle
-	if before, _, found := strings.Cut(needle, ":"); found {
-		key = before
-	}
+	key, want, hasValue := strings.Cut(needle, ":")
 
 	labels, _ := value["labels"].(map[string]any)
-	for k := range labels {
-		if strings.EqualFold(k, key) {
+	for k, v := range labels {
+		if !strings.EqualFold(k, key) {
+			continue
+		}
+		if !hasValue {
+			return true
+		}
+		if s, ok := v.(string); ok && strings.EqualFold(s, want) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesUpstream reports whether the resource reaches one of the requested
+// upstreams.
+//
+// A route names an upstream directly, or names a service that names one, or
+// carries one inline with no id at all. The second form has to resolve: during
+// an incident the question is which routes reach the failing gateway, and a
+// route bound to a service is as affected as one bound directly. The third
+// cannot match anything — there is no id to compare.
+func matchesUpstream(value map[string]any, want []string, services map[string]string) bool {
+	id := stringField(value, "upstream_id")
+	if id == "" {
+		if serviceID := stringField(value, "service_id"); serviceID != "" {
+			id = services[serviceID]
+		}
+	}
+	if id == "" {
+		return false
+	}
+	for _, w := range want {
+		if id == w {
 			return true
 		}
 	}
@@ -155,13 +210,18 @@ func matchesListFilters(value map[string]any, f listFilters) bool {
 	if f.uri != "" && !matchesURI(value, f.uri) {
 		return false
 	}
-	if f.label != "" && !matchesLabel(value, f.label) {
-		return false
+	for _, label := range f.labels {
+		if !matchesLabel(value, label) {
+			return false
+		}
 	}
 	if f.status != nil && !matchesStatus(value, *f.status) {
 		return false
 	}
-	if f.teamID != "" && !matchesTeam(value, f.teamID) {
+	if len(f.teamIDs) > 0 && !matchesTeam(value, f.teamIDs) {
+		return false
+	}
+	if len(f.upstreamIDs) > 0 && !matchesUpstream(value, f.upstreamIDs, f.serviceUpstreams) {
 		return false
 	}
 	return true
@@ -172,12 +232,20 @@ func matchesListFilters(value map[string]any, f listFilters) bool {
 // The owner is read from the field the proxy injects just above this call, not
 // from the resource itself: APISIX knows nothing about teams, and ownership
 // lives in the dashboard's own store.
-func matchesTeam(value map[string]any, want string) bool {
+func matchesTeam(value map[string]any, want []string) bool {
 	owner, _ := value[dashboardTeamIDField].(string)
-	if want == unassignedTeamFilter {
-		return owner == ""
+	for _, w := range want {
+		if w == unassignedTeamFilter {
+			if owner == "" {
+				return true
+			}
+			continue
+		}
+		if owner == w {
+			return true
+		}
 	}
-	return owner == want
+	return false
 }
 
 // paginateRows returns the requested page of rows.

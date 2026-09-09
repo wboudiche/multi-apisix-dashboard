@@ -23,38 +23,38 @@ import {
   Center,
   Checkbox,
   Divider,
-  Grid,
   Group,
   Loader,
   Menu,
   Pagination,
   Paper,
   Popover,
-  Select,
   Stack,
   Table,
   Text,
-  TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
+import { getServiceListReq } from '@/apis/services';
 import { teamApi } from '@/apis/teams';
-import { RouteLinkBtn } from '@/components/Btn';
+import { getUpstreamListReq } from '@/apis/upstreams';
+import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
 import { ImportWsdlModal } from '@/components/page/ImportWsdlModal';
-import { LabelFilter } from '@/components/page/LabelFilter';
 import PageHeader from '@/components/page/PageHeader';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
+import type { RouteFilters } from '@/components/page/RoutesFilterBar';
+import { RoutesFilterBar } from '@/components/page/RoutesFilterBar';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
 import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
-import { API_ROUTES } from '@/config/constant';
+import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
@@ -65,7 +65,6 @@ import { isResourceEnabled } from '@/utils/status';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
-import IconArrowDropUp from '~icons/material-symbols/arrow-drop-up';
 import IconCode from '~icons/material-symbols/code';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
 import IconDelete from '~icons/material-symbols/delete-outline';
@@ -111,6 +110,32 @@ export const RouteList = (props: RouteListProps) => {
     teams?.forEach((tm) => map.set(tm.id, tm.name));
     return map;
   }, [teams]);
+
+  // A route reaches its upstream directly, through a service, or inline with no
+  // id at all. All three have to render as something an operator can read: an
+  // empty cell would say "no backend", which is never what any of them means.
+  const { data: upstreams } = useQuery({
+    queryKey: ['upstreams', 'all'],
+    queryFn: () => getUpstreamListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
+    staleTime: 60_000,
+  });
+  const { data: services } = useQuery({
+    queryKey: ['services', 'all'],
+    queryFn: () => getServiceListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
+    staleTime: 60_000,
+  });
+  const upstreamNames = useMemo(() => {
+    const map = new Map<string, string>();
+    upstreams?.list?.forEach((u) => map.set(u.value.id, u.value.name || u.value.id));
+    return map;
+  }, [upstreams]);
+  const serviceUpstreams = useMemo(() => {
+    const map = new Map<string, string>();
+    services?.list?.forEach((sv) => {
+      if (sv.value.upstream_id) map.set(sv.value.id, sv.value.upstream_id);
+    });
+    return map;
+  }, [services]);
 
   const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
   const allSelected = allIds.length > 0 && allIds.every((id: string) => selectedIds.has(id));
@@ -264,6 +289,11 @@ export const RouteList = (props: RouteListProps) => {
             {isVisible('id') && <Table.Th>ID</Table.Th>}
             {isVisible('host') && <Table.Th>{t('routes.list.headerHost')}</Table.Th>}
             {isVisible('path') && <Table.Th>{t('routes.list.headerPath')}</Table.Th>}
+            {isVisible('upstream') && (
+              <Table.Th style={{ background: 'var(--mantine-color-blue-0)' }}>
+                {t('routes.list.columnUpstream')}
+              </Table.Th>
+            )}
             {isVisible('desc') && <Table.Th>{t('routes.list.headerDescription')}</Table.Th>}
             {isVisible('label') && <Table.Th>{t('routes.list.headerLabels')}</Table.Th>}
             {isVisible('version') && <Table.Th>{t('routes.list.headerVersion')}</Table.Th>}
@@ -333,6 +363,38 @@ export const RouteList = (props: RouteListProps) => {
                   ) : (
                     <Text size="sm" c="dimmed">-</Text>
                   )}
+                </Table.Td>
+              )}
+              {isVisible('upstream') && (
+                <Table.Td style={{ background: 'var(--mantine-color-blue-0)' }}>
+                  {(() => {
+                    const upstreamId =
+                      record.value.upstream_id ||
+                      (record.value.service_id
+                        ? serviceUpstreams.get(record.value.service_id)
+                        : undefined);
+                    if (upstreamId) {
+                      return (
+                        <RouteAnchor
+                          to="/upstreams/detail/$id"
+                          params={{ id: upstreamId }}
+                          size="sm"
+                        >
+                          {upstreamNames.get(upstreamId) || upstreamId}
+                        </RouteAnchor>
+                      );
+                    }
+                    // An inline upstream is a real backend with no id and no
+                    // name; saying so beats an empty cell that reads as none.
+                    if (record.value.upstream) {
+                      return (
+                        <Text size="xs" c="dimmed" fs="italic">
+                          {t('routes.list.upstreamInline')}
+                        </Text>
+                      );
+                    }
+                    return <Text size="xs" c="dimmed">{t('routes.list.upstreamNone')}</Text>;
+                  })()}
                 </Table.Td>
               )}
               {isVisible('desc') && (
@@ -533,50 +595,22 @@ export const RouteList = (props: RouteListProps) => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const FilterInput = ({ label, placeholder, valueKey, selectData, localParams, setLocalParams }: { label: string; placeholder: string; valueKey: string; selectData?: { label: string; value: string }[]; localParams: any; setLocalParams: (params: any) => void }) => (
-  <Group gap="xs" style={{ minWidth: 250 }}>
-    <Text size="sm" fw={500} style={{ width: 80, textAlign: 'right' }}>{label}:</Text>
-    {selectData ? (
-      <Select
-        data={selectData}
-        placeholder={placeholder}
-        size="sm"
-        style={{ flex: 1 }}
-        value={localParams[valueKey] || null}
-        onChange={(val) => setLocalParams({ ...localParams, [valueKey]: val })}
-      />
-    ) : (
-      <TextInput
-        placeholder={placeholder}
-        size="sm"
-        style={{ flex: 1 }}
-        value={localParams[valueKey] || ''}
-        onChange={(e) => setLocalParams({ ...localParams, [valueKey]: e.target.value })}
-      />
-    )}
-  </Group>
-);
+ 
 
 function RouteComponent() {
   const { t } = useTranslation();
   const { canEdit, isAdmin } = usePermission();
   const { params, setParams, resetParams } = useSearchParams('/routes/');
   const { data, isLoading, refetch, setParams: setRouteParams } = useRouteList('/routes/');
-  const [localParams, setLocalParams] = useState(params);
-  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const [appliedLabels, setAppliedLabels] = useState<string[]>([]);
-  const [expanded, setExpanded] = useState(false);
-  // Only an admin sees more than one team's resources, so only an admin has
-  // anything to narrow. Fetched here rather than reused from the table, which
-  // owns its own copy for rendering the Team column.
+  // Options for the bar. Teams are admin-only; upstreams are what the new
+  // filter narrows by, and the same list the table resolves names from.
   const { data: filterTeams } = useQuery({
     queryKey: ['teams'],
     queryFn: () => teamApi.list(),
     staleTime: 60_000,
     enabled: isAdmin,
   });
-  const teamFilterOptions = useMemo(
+  const teamOptions = useMemo(
     () => [
       // Resources belonging to no team are invisible to everyone but an admin,
       // so an admin is the only one who can go looking for them.
@@ -585,21 +619,23 @@ function RouteComponent() {
     ],
     [filterTeams, t]
   );
+  const { data: filterUpstreams } = useQuery({
+    queryKey: ['upstreams', 'all'],
+    queryFn: () => getUpstreamListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
+    staleTime: 60_000,
+  });
+  const upstreamOptions = useMemo(
+    () =>
+      (filterUpstreams?.list ?? []).map((u) => ({
+        value: u.value.id,
+        label: u.value.name || u.value.id,
+      })),
+    [filterUpstreams]
+  );
+
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [wsdlModalOpen, setWsdlModalOpen] = useState(false);
 
-  const filteredData = useMemo(() => {
-    if (!data || appliedLabels.length === 0) return data;
-    const filtered = data.list?.filter((record: { value?: { labels?: Record<string, string> } }) => {
-      const routeLabels = record.value?.labels;
-      if (!routeLabels) return false;
-      return appliedLabels.every((tag) => {
-        const [key, val] = tag.split(':');
-        return routeLabels[key] === val;
-      });
-    }) || [];
-    return { ...data, list: filtered, total: filtered.length };
-  }, [data, appliedLabels]);
 
   // Name is not in this list on purpose. Every column here can be switched
   // off, and switching all of them off used to leave a table of nothing but
@@ -610,6 +646,7 @@ function RouteComponent() {
     { label: 'ID', value: 'id' },
     { label: 'Host', value: 'host' },
     { label: 'Path', value: 'path' },
+    { label: 'Upstream', value: 'upstream' },
     { label: 'Description', value: 'desc' },
     { label: 'Labels', value: 'label' },
     { label: 'Version', value: 'version' },
@@ -619,67 +656,21 @@ function RouteComponent() {
     { label: 'Team', value: 'team' },
   ];
 
-  const DEFAULT_COLUMNS = ['name', 'path', 'label', 'status', 'update_time', 'plugin', 'team', 'operation'];
+  const DEFAULT_COLUMNS = ['name', 'path', 'upstream', 'label', 'status', 'update_time', 'plugin', 'team', 'operation'];
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
-
-  useEffect(() => {
-    setLocalParams(params);
-  }, [params]);
 
   return (
     <Box className="animate-fade-in-up" bg="#f0f2f5" style={{ minHeight: '100vh', width: '100%' }}>
       <PageHeader title={t('sources.routes')} />
 
-      <Paper p="md" mb="md" radius="sm" shadow="sm" w="100%" style={{ border: '1px solid #eee' }}>
-        <Stack gap="md">
-          {!expanded ? (
-            <Group justify="space-between" align="center">
-              <Group gap="xl" flex={1}>
-                <FilterInput label="Name" placeholder="Please enter" valueKey="name" localParams={localParams} setLocalParams={setLocalParams} />
-                <FilterInput label="Path" placeholder="Please enter" valueKey="uri" localParams={localParams} setLocalParams={setLocalParams} />
-                <FilterInput label="Status" placeholder="UnPublished/Published" valueKey="status" selectData={[{ label: 'Published', value: '1' }, { label: 'UnPublished', value: '0' }]} localParams={localParams} setLocalParams={setLocalParams} />
-              </Group>
-              <Group gap="sm">
-                <Button variant="default" size="sm" onClick={() => { setLocalParams({}); resetParams(); }}>{t('routes.list.filterReset')}</Button>
-                <Button color="blue" variant="filled" size="sm" onClick={() => setParams(localParams)}>{t('routes.list.filterSearch')}</Button>
-                <Button variant="transparent" size="sm" onClick={() => setExpanded(true)} rightSection={<IconArrowDropDown width="14" height="14" />} style={{ color: '#1890ff', fontWeight: 400 }}>{t('routes.list.filterExpand')}</Button>
-              </Group>
-            </Group>
-          ) : (
-            <Grid gutter="lg" align="flex-start">
-              <Grid.Col span={4}><FilterInput label="Name" placeholder="Please enter" valueKey="name" localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
-              <Grid.Col span={4}><FilterInput label="Path" placeholder="Please enter" valueKey="uri" localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
-              <Grid.Col span={4}><FilterInput label="Status" placeholder="UnPublished/Published" valueKey="status" selectData={[{ label: 'Published', value: '1' }, { label: 'UnPublished', value: '0' }]} localParams={localParams} setLocalParams={setLocalParams} /></Grid.Col>
-              {isAdmin && (
-                <Grid.Col span={4}>
-                  <FilterInput
-                    label={t('routes.list.filterTeam')}
-                    placeholder={t('routes.list.filterTeamPlaceholder')}
-                    valueKey="team_id"
-                    selectData={teamFilterOptions}
-                    localParams={localParams}
-                    setLocalParams={setLocalParams}
-                  />
-                </Grid.Col>
-              )}
-              <Grid.Col span={12}>
-                <Group gap="xs" align="center" wrap="nowrap">
-                  <Text size="sm" fw={500} style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>{t('routes.list.filterLabels')}</Text>
-                  <LabelFilter value={selectedLabels} onChange={setSelectedLabels} />
-                </Group>
-              </Grid.Col>
-
-              <Grid.Col span={12}>
-                <Group justify="flex-end" gap="sm">
-                  <Button variant="default" size="sm" onClick={() => { setLocalParams({}); setSelectedLabels([]); setAppliedLabels([]); resetParams(); }}>{t('routes.list.filterReset')}</Button>
-                  <Button color="blue" variant="filled" size="sm" onClick={() => { setAppliedLabels(selectedLabels); setParams({ ...localParams, label: selectedLabels.length > 0 ? selectedLabels[0].split(':')[0] : undefined }); }}>{t('routes.list.filterSearch')}</Button>
-                  <Button variant="transparent" size="sm" onClick={() => setExpanded(false)} rightSection={<IconArrowDropUp width="14" height="14" />} style={{ color: '#1890ff', fontWeight: 400 }}>{t('routes.list.filterCollapse')}</Button>
-                </Group>
-              </Grid.Col>
-            </Grid>
-          )}
-        </Stack>
-      </Paper>
+      <RoutesFilterBar
+        params={params as RouteFilters}
+        onSearch={setParams}
+        onReset={resetParams}
+        isAdmin={isAdmin}
+        teamOptions={teamOptions}
+        upstreamOptions={upstreamOptions}
+      />
 
       <Paper p="md" radius="sm" shadow="sm" w="100%" style={{ borderTop: '2px solid #F8423F' }}>
         <Group justify="flex-end" mb="md" align="center">
@@ -775,7 +766,7 @@ function RouteComponent() {
 
         <RouteList
           routeKey="/routes/"
-          data={filteredData}
+          data={data}
           isLoading={isLoading}
           refetch={refetch}
           setParams={setRouteParams}

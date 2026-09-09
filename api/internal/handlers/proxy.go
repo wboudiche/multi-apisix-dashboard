@@ -550,6 +550,24 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// Batch fetch all ownerships for this resource type
 				ownerMap, _ := h.ownershipService.ListOwnersByResourceType(c.Request.Context(), instanceID, resourceType)
 
+				// A route reaches its upstream directly or through a service,
+				// so the upstream filter needs the service table to answer for
+				// the second kind. Fetched only when that filter is present:
+				// every other listing pays nothing.
+				if len(filters.upstreamIDs) > 0 {
+					services, err := fetchServiceUpstreams(instance)
+					if err != nil {
+						// Said out loud rather than swallowed. Without the
+						// table, routes bound to a service silently stop
+						// matching — which during an incident reads as "no
+						// route touches this upstream", the most misleading
+						// answer this filter could give.
+						log.Printf("[instance %s] upstream filter could not read services, "+
+							"routes bound to one will not match: %v", instanceID, err)
+					}
+					filters.serviceUpstreams = services
+				}
+
 				filtered := make([]map[string]interface{}, 0, len(resources.List))
 				for _, r := range resources.List {
 					val, ok := r["value"].(map[string]interface{})
@@ -720,4 +738,56 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 		"resource_id":   resourceID,
 		"team_id":       *body.TeamID,
 	})
+}
+
+// fetchServiceUpstreams maps each service id to the upstream it names.
+//
+// Only what the upstream filter needs: a route that names a service reaches
+// whatever upstream that service points at, and the filter has to see it. A
+// service carrying an inline upstream has no id to record, so it is absent
+// here and its routes match nothing — the same as a route with an inline
+// upstream of its own.
+func fetchServiceUpstreams(instance *models.Instance) (map[string]string, error) {
+	url := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin/services"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if instance.AdminKey != "" {
+		req.Header.Set("X-API-Key", instance.AdminKey)
+	}
+
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("services returned %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var services struct {
+		List []struct {
+			Value struct {
+				ID         string `json:"id"`
+				UpstreamID string `json:"upstream_id"`
+			} `json:"value"`
+		} `json:"list"`
+	}
+	if err := json.Unmarshal(body, &services); err != nil {
+		return nil, err
+	}
+
+	mapped := make(map[string]string, len(services.List))
+	for _, svc := range services.List {
+		if svc.Value.ID != "" && svc.Value.UpstreamID != "" {
+			mapped[svc.Value.ID] = svc.Value.UpstreamID
+		}
+	}
+	return mapped, nil
 }

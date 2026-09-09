@@ -32,7 +32,8 @@ func TestParseListFilters(t *testing.T) {
 			"label":  {"Env:Prod"},
 			"status": {"0"},
 		})
-		if f.name != "Billing" || f.uri != "/services" || f.label != "Env:Prod" {
+		if f.name != "Billing" || f.uri != "/services" ||
+			len(f.labels) != 1 || f.labels[0] != "Env:Prod" {
 			t.Errorf("parseListFilters gave %+v", f)
 		}
 		if f.status == nil || *f.status != 0 {
@@ -144,10 +145,11 @@ func TestLabelFilterMatchesOnKey(t *testing.T) {
 		label string
 		want  bool
 	}{
-		{"Env", true},
-		{"env", true},         // case-insensitive, unlike APISIX
-		{"Env:Prod", true},    // value part ignored, as APISIX does
-		{"Env:Staging", true}, // ...so this matches too
+		{"Env", true},          // a bare key still matches on the key alone
+		{"env", true},          // case-insensitive, unlike APISIX
+		{"Env:Prod", true},     // key and value both match
+		{"env:prod", true},     // ...still ignoring case
+		{"Env:Staging", false}, // the value is significant now, see below
 		{"Region", false},
 	}
 
@@ -239,7 +241,7 @@ func TestMatchesTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := matchesTeam(tt.value, tt.want); got != tt.match {
+			if got := matchesTeam(tt.value, []string{tt.want}); got != tt.match {
 				t.Errorf("matchesTeam(%v, %q) = %v, want %v", tt.value, tt.want, got, tt.match)
 			}
 		})
@@ -251,8 +253,8 @@ func TestMatchesTeam(t *testing.T) {
 // through untouched.
 func TestTeamFilterParsing(t *testing.T) {
 	f := parseListFilters(url.Values{"team_id": []string{" backend "}})
-	if f.teamID != "backend" {
-		t.Errorf("teamID = %q, want %q", f.teamID, "backend")
+	if len(f.teamIDs) != 1 || f.teamIDs[0] != "backend" {
+		t.Errorf("teamIDs = %v, want [backend]", f.teamIDs)
 	}
 	if f.empty() {
 		t.Error("a team filter should not count as empty")
@@ -260,5 +262,137 @@ func TestTeamFilterParsing(t *testing.T) {
 
 	if !parseListFilters(url.Values{"team_id": []string{"  "}}).empty() {
 		t.Error("a blank team_id is not a filter")
+	}
+}
+
+// The value used to be discarded, mirroring APISIX. That was fine while one
+// label could be chosen at a time and the browser re-filtered the page it got
+// back, but #142 asks for several at once and the values are what tell them
+// apart — "cors:test" and "wsdl-source-hash:62a1e60f" share no key. Matching on
+// the key alone would have made every multi-select as broad as its loosest
+// member.
+func TestLabelFilterMatchesValueWhenOneIsGiven(t *testing.T) {
+	route := map[string]any{
+		"name":   "labelled",
+		"labels": map[string]any{"Env": "Prod", "Region": "eu"},
+	}
+
+	cases := []struct {
+		name  string
+		label string
+		want  bool
+	}{
+		{"key and value", "Env:Prod", true},
+		{"wrong value for a key that exists", "Env:Staging", false},
+		{"key alone still matches any value", "Env", true},
+		{"value belonging to another key", "Region:Prod", false},
+		{"a value containing a colon", "Env:Prod:1", false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"label": {c.label}})
+			if got := matchesListFilters(route, f); got != c.want {
+				t.Errorf("label=%q = %v, want %v", c.label, got, c.want)
+			}
+		})
+	}
+}
+
+// Several labels narrow, they do not widen: the browser used to apply them with
+// .every() over the page it had been given, and moving that to the server must
+// not quietly turn it into an OR.
+func TestMultipleLabelsAllHaveToMatch(t *testing.T) {
+	route := map[string]any{
+		"name":   "labelled",
+		"labels": map[string]any{"Env": "Prod", "Region": "eu"},
+	}
+
+	cases := []struct {
+		name   string
+		labels []string
+		want   bool
+	}{
+		{"both present", []string{"Env:Prod", "Region:eu"}, true},
+		{"one of them missing", []string{"Env:Prod", "Region:us"}, false},
+		{"neither present", []string{"Env:Dev", "Region:us"}, false},
+		{"one label behaves as before", []string{"Env:Prod"}, true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"label": c.labels})
+			if got := matchesListFilters(route, f); got != c.want {
+				t.Errorf("labels=%v = %v, want %v", c.labels, got, c.want)
+			}
+		})
+	}
+}
+
+// Teams are the opposite case: a resource belongs to exactly one, so naming
+// several can only mean "any of these".
+func TestMultipleTeamsMatchAnyOfThem(t *testing.T) {
+	owned := func(team string) map[string]any {
+		return map[string]any{"name": "r", dashboardTeamIDField: team}
+	}
+
+	cases := []struct {
+		name  string
+		teams []string
+		row   map[string]any
+		want  bool
+	}{
+		{"first of two", []string{"a", "b"}, owned("a"), true},
+		{"second of two", []string{"a", "b"}, owned("b"), true},
+		{"neither", []string{"a", "b"}, owned("c"), false},
+		{"unassigned alongside a real team", []string{"a", unassignedTeamFilter}, owned(""), true},
+		{"one team behaves as before", []string{"a"}, owned("a"), true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"team_id": c.teams})
+			if got := matchesListFilters(c.row, f); got != c.want {
+				t.Errorf("team_id=%v = %v, want %v", c.teams, got, c.want)
+			}
+		})
+	}
+}
+
+// A route reaches its backend by naming an upstream, by naming a service that
+// names one, or by carrying one inline with no id at all. During an incident on
+// a gateway the question is which routes reach the failing upstream, so the
+// second form has to resolve rather than be skipped.
+func TestUpstreamFilterResolvesThroughServices(t *testing.T) {
+	services := map[string]string{"svc-1": "up-a", "svc-2": "up-b"}
+
+	direct := map[string]any{"name": "direct", "upstream_id": "up-a"}
+	viaService := map[string]any{"name": "via-service", "service_id": "svc-1"}
+	otherService := map[string]any{"name": "other-service", "service_id": "svc-2"}
+	inline := map[string]any{"name": "inline", "upstream": map[string]any{"type": "roundrobin"}}
+
+	cases := []struct {
+		name      string
+		upstreams []string
+		row       map[string]any
+		want      bool
+	}{
+		{"named directly", []string{"up-a"}, direct, true},
+		{"reached through its service", []string{"up-a"}, viaService, true},
+		{"a service pointing elsewhere", []string{"up-a"}, otherService, false},
+		{"an inline upstream has no id to match", []string{"up-a"}, inline, false},
+		{"any of several", []string{"up-a", "up-b"}, otherService, true},
+		{"none of several", []string{"up-c", "up-d"}, direct, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"upstream_id": c.upstreams})
+			f.serviceUpstreams = services
+			if got := matchesListFilters(c.row, f); got != c.want {
+				t.Errorf("upstream_id=%v on %v = %v, want %v",
+					c.upstreams, c.row["name"], got, c.want)
+			}
+		})
 	}
 }
