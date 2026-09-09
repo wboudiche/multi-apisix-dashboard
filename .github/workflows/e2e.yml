@@ -72,6 +72,21 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # The runner image ships Google Chrome and its apt source. Playwright
+      # brings its own chromium, so nothing here needs that source — but both
+      # install steps below run `apt-get update`, and apt fails the whole step
+      # when any configured source is broken, however irrelevant.
+      #
+      # dl.google.com served an index whose contents did not match its own
+      # hashes ("Hash Sum mismatch") for at least twenty minutes, killing three
+      # consecutive runs across all three shards in under 40s each, while every
+      # ubuntu.com mirror in the same output was fine. Dropping the source
+      # removes a dependency the suite never had.
+      - name: Drop the Chrome apt source
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list \
+                     /etc/apt/sources.list.d/google-chrome*.sources
+
       # chromium only. Without a browser argument this installs firefox and
       # webkit too, and their system dependencies are the expensive part: the
       # apt fetches that stalled runs to the 40-minute timeout were gstreamer,
