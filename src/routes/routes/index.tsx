@@ -41,7 +41,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
-import { getServiceListReq } from '@/apis/services';
 import { teamApi } from '@/apis/teams';
 import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
@@ -55,10 +54,10 @@ import type { RouteFilters } from '@/components/page/RoutesFilterBar';
 import { RoutesFilterBar } from '@/components/page/RoutesFilterBar';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
 import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
-import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
-import { useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { useAllServices,useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
@@ -78,8 +77,7 @@ import IconSettings from '~icons/material-symbols/settings-outline';
 import IconUpload from '~icons/material-symbols/upload';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export 
-type RouteListProps = {
+export type RouteListProps = {
   routeKey: Extract<ListPageKeys, '/routes/' | '/services/detail/$id/routes/'>;
   data: any;
   isLoading: boolean;
@@ -126,12 +124,7 @@ export const RouteList = (props: RouteListProps) => {
   // is off — the services routes list, for one, never shows it.
   const wantsUpstreams = visibleColumns.includes('upstream');
   const { data: upstreams } = useAllUpstreams(currentInstanceId, wantsUpstreams);
-  const { data: services } = useQuery({
-    queryKey: ['services', currentInstanceId, 'all'],
-    queryFn: () => getServiceListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
-    staleTime: 60_000,
-    enabled: wantsUpstreams,
-  });
+  const { data: services } = useAllServices(currentInstanceId, wantsUpstreams);
   const upstreamNames = useMemo(() => {
     const map = new Map<string, string>();
     upstreams?.list?.forEach((u) => map.set(u.value.id, u.value.name || u.value.id));
@@ -386,10 +379,21 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('upstream') && (
                 <Table.Td style={{ background: 'var(--mantine-color-blue-0)' }}>
                   {(() => {
+                    // An id of 0 is an id: APISIX keeps whichever JSON type it
+                    // was created with, so truthiness would drop it.
+                    const ownId =
+                      record.value.upstream_id != null
+                        ? String(record.value.upstream_id)
+                        : undefined;
+                    // A route carrying its own upstream reaches that one, even
+                    // alongside a service_id — APISIX takes the route's over
+                    // the service's. Resolving through the service here would
+                    // name a backend it never touches.
+                    const carriesInline = record.value.upstream != null;
                     const upstreamId =
-                      record.value.upstream_id ||
-                      (record.value.service_id
-                        ? serviceUpstreams.get(record.value.service_id)
+                      ownId ??
+                      (!carriesInline && record.value.service_id != null
+                        ? serviceUpstreams.get(String(record.value.service_id))
                         : undefined);
                     if (upstreamId) {
                       return (
@@ -407,9 +411,9 @@ export const RouteList = (props: RouteListProps) => {
                     // A service carrying one inline puts its routes in the same
                     // position, one step removed.
                     if (
-                      record.value.upstream ||
-                      (record.value.service_id &&
-                        servicesWithInlineUpstream.has(record.value.service_id))
+                      carriesInline ||
+                      (record.value.service_id != null &&
+                        servicesWithInlineUpstream.has(String(record.value.service_id)))
                     ) {
                       return (
                         <Text size="xs" c="dimmed" fs="italic">

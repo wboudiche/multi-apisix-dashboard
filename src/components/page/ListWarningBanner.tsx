@@ -22,15 +22,30 @@ import IconWarning from '~icons/material-symbols/warning-outline';
 
 type ListWarningBannerProps = {
   /**
-   * The `__warning` the proxy attached to a list response, or nothing.
+   * The `__warning` code the proxy attached to a list response, or nothing.
    *
    * It means the list arrived complete as far as the gateway was asked, but
    * something the filter depended on could not be read — so what is on screen
    * is narrower than the truth. The rows are still worth showing; what must not
    * happen is the shorter list passing for the whole one.
+   *
+   * A code rather than a sentence, so the text is translated here. The backend
+   * knows which part it could not read; it does not know what language the
+   * person reading it uses.
    */
   warning?: string;
 };
+
+/**
+ * The codes the proxy can send, mapped to what they say.
+ *
+ * Spelled out rather than built from the code, because the i18n catalogue is
+ * typed: a key assembled at runtime is not one the compiler can check, and a
+ * typo would surface as a missing string rather than a build failure.
+ */
+const WARNING_MESSAGES = {
+  service_lookup_failed: 'listWarning.service_lookup_failed',
+} as const;
 
 export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
   const { t } = useTranslation();
@@ -45,10 +60,9 @@ export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
       variant="light"
       mb="md"
     >
-      {/* The reason comes from the backend, as it does for a failed request
-          (see describeError): it knows which part it could not read, and a
-          generic line here would throw that away. */}
-      {warning}
+      {/* An unrecognised code still has to read as something: a newer backend
+          may name a caveat this build has never heard of. */}
+      {t(WARNING_MESSAGES[warning as keyof typeof WARNING_MESSAGES] ?? 'listWarning.unknown')}
     </Alert>
   );
 };

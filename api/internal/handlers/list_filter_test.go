@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -487,7 +488,7 @@ func TestFetchServiceUpstreamsReportsWhyItFailed(t *testing.T) {
 			srv := httptest.NewServer(c.handler)
 			defer srv.Close()
 
-			_, err := fetchServiceUpstreams(&models.Instance{AdminAPIURL: srv.URL})
+			_, err := fetchServiceUpstreams(context.Background(), &models.Instance{AdminAPIURL: srv.URL})
 			if err == nil {
 				t.Fatal("expected an error the caller can report, got nil")
 			}
@@ -503,7 +504,7 @@ func TestFetchServiceUpstreamsReportsWhyItFailed(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		got, err := fetchServiceUpstreams(&models.Instance{AdminAPIURL: srv.URL})
+		got, err := fetchServiceUpstreams(context.Background(), &models.Instance{AdminAPIURL: srv.URL})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -511,4 +512,43 @@ func TestFetchServiceUpstreamsReportsWhyItFailed(t *testing.T) {
 			t.Errorf("services = %v, want s1 -> u1", got)
 		}
 	})
+}
+
+// A route may carry both a service_id and an upstream of its own. APISIX gives
+// the route's own upstream precedence, so such a route does not reach the
+// service's upstream at all — and saying it does during an incident points at
+// the wrong backend. Verified against the gateway: it accepts the combination.
+func TestInlineUpstreamBeatsTheServiceItIsBoundTo(t *testing.T) {
+	services := map[string]string{"svc-1": "up-a"}
+
+	viaService := map[string]any{"name": "via", "service_id": "svc-1"}
+	inlineWins := map[string]any{
+		"name":       "inline-wins",
+		"service_id": "svc-1",
+		"upstream":   map[string]any{"type": "roundrobin"},
+	}
+
+	f := parseListFilters(url.Values{"upstream_id": {"up-a"}})
+	f.serviceUpstreams = services
+
+	if !matchesListFilters(viaService, f) {
+		t.Error("a route bound only to the service should still match")
+	}
+	if matchesListFilters(inlineWins, f) {
+		t.Error("a route with its own upstream does not reach the service's one")
+	}
+}
+
+// APISIX answers an empty collection with an object rather than an array — the
+// quirk src/config/req.ts already works around in the browser. Decoding that as
+// a failure would raise "results are missing" on a gateway whose truthful
+// answer is "there are no services".
+func TestServiceUpstreamsReadsAnEmptyListAsEmpty(t *testing.T) {
+	got, err := parseServiceUpstreams([]byte(`{"list":{},"total":0}`))
+	if err != nil {
+		t.Fatalf("an empty service list is not a failure: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %v, want an empty map", got)
+	}
 }

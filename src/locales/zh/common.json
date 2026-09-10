@@ -560,6 +560,8 @@
     "thUser": "用户"
   },
   "listWarning": {
-    "title": "结果不完整"
+    "title": "结果不完整",
+    "service_lookup_failed": "无法读取服务列表，因此通过服务访问上游的路由未包含在这些结果中。",
+    "unknown": "部分结果可能缺失。"
   }
 }

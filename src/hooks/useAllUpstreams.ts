@@ -16,6 +16,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 
+import { getServiceListReq } from '@/apis/services';
 import { getUpstreamListReq } from '@/apis/upstreams';
 import { PAGE_SIZE_MAX } from '@/config/constant';
 import { req } from '@/config/req';
@@ -36,6 +37,22 @@ export const useAllUpstreams = (instanceId: string, enabled = true) =>
   useQuery({
     queryKey: ['upstreams', instanceId, 'all'],
     queryFn: () => getUpstreamListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
+    staleTime: 60_000,
+    enabled,
+  });
+
+/**
+ * The whole service list for an instance, on the same terms.
+ *
+ * The routes table needs it to tell which upstream a route reaches through its
+ * service. Declared beside its sibling for the reason that one exists: written
+ * inline, the key shape and staleTime were repeated by hand and the next
+ * consumer would have copied them again.
+ */
+export const useAllServices = (instanceId: string, enabled = true) =>
+  useQuery({
+    queryKey: ['services', instanceId, 'all'],
+    queryFn: () => getServiceListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
     staleTime: 60_000,
     enabled,
   });

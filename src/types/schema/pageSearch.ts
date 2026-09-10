@@ -17,6 +17,11 @@
 import { z } from 'zod';
 
 
+const scalarParam = z.union([z.string(), z.number()]);
+const repeatableParam = z
+  .union([scalarParam, z.array(scalarParam)])
+  .optional();
+
 export const pageSearchSchema = z
   .object({
     page: z
@@ -34,11 +39,16 @@ export const pageSearchSchema = z
     status: z.union([z.string(), z.number()]).optional(),
     // Repeatable since #142: the routes bar can name several labels, teams or
     // upstreams at once, and qs serialises those as repeated keys. A lone value
-    // still arrives as a bare string — an older bookmark holds exactly that —
-    // so both shapes have to validate, and consumers normalise.
-    label: z.union([z.string(), z.array(z.string())]).optional(),
-    team_id: z.union([z.string(), z.array(z.string())]).optional(),
-    upstream_id: z.union([z.string(), z.array(z.string())]).optional(),
+    // still arrives as a bare string — an older bookmark holds exactly that.
+    //
+    // Numbers are admitted for the same reason `status` above admits them: the
+    // router parses `?upstream_id=9002` into a number before this sees it, and
+    // an id really can be numeric (APISIX keeps whichever JSON type it was
+    // created with). Rejecting one puts the whole page on the error screen.
+    // Consumers normalise; nothing downstream may assume a string.
+    label: repeatableParam,
+    team_id: repeatableParam,
+    upstream_id: repeatableParam,
   })
   .passthrough();
 

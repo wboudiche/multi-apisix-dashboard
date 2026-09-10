@@ -235,8 +235,9 @@ test('accepts the multi-valued filters the bar itself produces', async ({ page }
   await expect(rowFor(page, `${PREFIX}-direct`)).toBeVisible({ timeout: 20000 });
   await expect(rowFor(page, `${PREFIX}-viasvc`)).toHaveCount(0);
 
-  // And the bar opens on them rather than crashing on an array it cannot map.
-  await page.getByRole('button', { name: 'Expand' }).click();
+  // And the bar shows them rather than crashing on an array it cannot map. It
+  // opens itself here, since a label filter lives in the panel.
+  await expect(page.getByPlaceholder('Select key')).toBeVisible({ timeout: 20000 });
   await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
 });
 
@@ -245,7 +246,10 @@ test('opens a bookmark that still carries single-valued filters', async ({ page 
   // and the bar has to show it rather than crash on it.
   await page.goto(`/ui/routes?name=${PREFIX}&team_id=nobody&label=env&page_size=50`);
   await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Expand' }).click();
+
+  // Both filters live in the panel, so it opens on them — and a bare string
+  // reaching a control that maps over its value is what used to blow up here.
+  await expect(page.getByPlaceholder('Select key')).toBeVisible({ timeout: 20000 });
   await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
 });
 
@@ -274,6 +278,10 @@ test('says when the list is narrower than the truth', async ({ page }) => {
   // still arrives, 200 and shorter than the truth — so the caveat has to be on
   // screen rather than only in the backend's log.
   //
+  // A code rather than a sentence: the backend names the caveat and the browser
+  // translates it, so a German operator does not read a translated title above
+  // an untranslated body.
+  //
   // Injected here rather than provoked: making APISIX fail on /services alone,
   // while /routes keeps working, is not something a test can ask of it.
   await page.route('**/apisix/admin/routes*', async (route) => {
@@ -281,12 +289,7 @@ test('says when the list is narrower than the truth', async ({ page }) => {
     const body = await response.json();
     await route.fulfill({
       response,
-      json: {
-        ...body,
-        __warning:
-          'The service list could not be read, so routes that reach an upstream ' +
-          'through a service are missing from these results.',
-      },
+      json: { ...body, __warning: 'service_lookup_failed' },
     });
   });
 
@@ -298,4 +301,43 @@ test('says when the list is narrower than the truth', async ({ page }) => {
 
   // Degraded, not blocked: what could be read is still shown.
   await expect(rowFor(page, `${PREFIX}-direct`)).toBeVisible();
+});
+
+test('numeric ids in the URL do not blow the page up', async ({ page }) => {
+  // The router parses ?upstream_id=9002 into a number before the schema sees
+  // it, and an id really can be numeric — the Go half of this work exists
+  // because APISIX keeps whichever JSON type an id was created with. Declaring
+  // the key as string-only put the whole page on the error screen; leaving it
+  // undeclared, as it was, let it through unvalidated.
+  for (const query of ['upstream_id=9002', 'upstream_id=9002&upstream_id=9003', 'team_id=123']) {
+    await page.goto(`/ui/routes?${query}`);
+    await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
+  }
+});
+
+test('keeps what was typed when the pager moves', async ({ page }) => {
+  // The bar re-reads the URL during render so a shared link fills the fields.
+  // The pager writes to that same URL, so paging used to wipe a half-typed
+  // search out of the field with no explanation.
+  await page.goto(`/ui/routes?name=${PREFIX}&page_size=1`);
+  await page.getByRole('button', { name: 'Expand' }).click();
+
+  const nameField = page.getByPlaceholder('Please enter').first();
+  await nameField.fill('half-typed');
+
+  await page.getByRole('button', { name: '2', exact: true }).click();
+
+  await expect(nameField).toHaveValue('half-typed');
+});
+
+test('opens the panel when a filter that lives in it is already applied', async ({
+  page,
+}) => {
+  // A shared link carrying an upstream filter used to show a narrowed table
+  // above a bar with three empty fields and nothing to say why.
+  await page.goto(`/ui/routes?name=${PREFIX}&upstream_id=${PREFIX}-up&page_size=50`);
+
+  await expect(page.getByPlaceholder('Any upstream')).toBeVisible({ timeout: 20000 });
+  await expect(rowFor(page, `${PREFIX}-direct`)).toBeVisible();
+  await expect(rowFor(page, `${PREFIX}-elsewhere`)).toHaveCount(0);
 });

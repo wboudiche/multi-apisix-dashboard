@@ -922,6 +922,8 @@
     "welcomeBack": "Welcome back"
   },
   "listWarning": {
-    "title": "Incomplete results"
+    "title": "Incomplete results",
+    "service_lookup_failed": "The service list could not be read, so routes that reach an upstream through a service are missing from these results.",
+    "unknown": "Some results may be missing."
   }
 }

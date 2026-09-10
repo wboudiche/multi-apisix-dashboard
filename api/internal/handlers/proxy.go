@@ -66,7 +66,6 @@ var teamScopedResources = map[string]bool{
 // "value" object itself. A nested injection would need the strip to recurse.
 const dashboardFieldPrefix = "__"
 
-
 // dashboardTeamIDField is injected into list responses so the UI can show team
 // ownership. Named here rather than written literally at the injection site so
 // it cannot drift away from the prefix the strip looks for.
@@ -502,6 +501,16 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 	respBody, _ := io.ReadAll(resp.Body)
 
+	// A write to this instance's services makes whatever table the upstream
+	// filter is holding untrue, and this handler is the one place that sees it
+	// happen. Dropped here rather than waited out: nothing fails in that window,
+	// so no warning would have told the operator the answer was stale.
+	if resourceType == "services" && resp.StatusCode < http.StatusBadRequest &&
+		(c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut ||
+			c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) {
+		h.serviceUpstreams.forget(instanceID)
+	}
+
 	// 3. Post-mutation: Record ownership for new objects
 	if (resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated) &&
 		(c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut) {
@@ -571,12 +580,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				if len(filters.upstreamIDs) > 0 {
 					// A failure is never cached: the next page retries rather
 					// than repeating a wrong answer for the whole window.
-					services, cached := h.serviceUpstreams.get(instanceID)
+					serviceTable, cached := h.serviceUpstreams.get(instanceID)
 					var err error
 					if !cached {
-						services, err = fetchServiceUpstreams(instance)
+						serviceTable, err = fetchServiceUpstreams(c.Request.Context(), instance)
 						if err == nil {
-							h.serviceUpstreams.put(instanceID, services)
+							h.serviceUpstreams.put(instanceID, serviceTable)
 						}
 					}
 					if err != nil {
@@ -589,7 +598,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 							"routes bound to one will not match: %v", instanceID, err)
 						resources.Warning = serviceLookupWarning
 					}
-					filters.serviceUpstreams = services
+					filters.serviceUpstreams = serviceTable
 				}
 
 				filtered := make([]map[string]interface{}, 0, len(resources.List))
@@ -771,9 +780,9 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 // service carrying an inline upstream has no id to record, so it is absent
 // here and its routes match nothing — the same as a route with an inline
 // upstream of its own.
-func fetchServiceUpstreams(instance *models.Instance) (map[string]string, error) {
+func fetchServiceUpstreams(ctx context.Context, instance *models.Instance) (map[string]string, error) {
 	url := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin/services"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -797,12 +806,17 @@ func fetchServiceUpstreams(instance *models.Instance) (map[string]string, error)
 	return parseServiceUpstreams(body)
 }
 
-// serviceLookupWarning is what the client is told when the service table could
-// not be read: which rows are missing and why, rather than a bare "something
-// went wrong". The gateway address is deliberately absent — see the health
-// endpoint's own reason for keeping it out of what a non-admin can read.
-const serviceLookupWarning = "The service list could not be read, so routes that reach an upstream " +
-	"through a service are missing from these results."
+// serviceLookupWarning names the caveat rather than spelling it out.
+//
+// A sentence here would be English for everyone: CLAUDE.md's i18n rule covers
+// .ts/.tsx, so nothing would have caught a German operator reading a translated
+// title above an untranslated body. The client resolves this code through its
+// own catalogue, and an unknown one falls back to something readable rather
+// than to a missing-key string.
+//
+// The gateway address stays out of it either way — see the health endpoint's
+// own reason for keeping it out of what a non-admin can read.
+const serviceLookupWarning = "service_lookup_failed"
 
 // parseServiceUpstreams maps each service id to the upstream it names.
 //
@@ -813,19 +827,36 @@ const serviceLookupWarning = "The service list could not be read, so routes that
 // A service carrying an inline upstream has no id to record and is absent here,
 // the same as a route with an inline upstream of its own.
 func parseServiceUpstreams(body []byte) (map[string]string, error) {
-	var services struct {
-		List []struct {
-			Value map[string]any `json:"value"`
-		} `json:"list"`
+	// `list` is decoded loosely because APISIX answers an empty collection with
+	// an object rather than an array — the quirk src/config/req.ts already works
+	// around in the browser. Insisting on an array would report "results are
+	// missing" to an operator whose gateway simply has no services.
+	var payload struct {
+		List any `json:"list"`
 	}
-	if err := json.Unmarshal(body, &services); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, err
 	}
 
-	mapped := make(map[string]string, len(services.List))
-	for _, svc := range services.List {
-		id := idField(svc.Value, "id")
-		upstreamID := idField(svc.Value, "upstream_id")
+	rows, ok := payload.List.([]any)
+	if !ok {
+		// An object, or absent: either way there is nothing to map, and nothing
+		// went wrong.
+		return map[string]string{}, nil
+	}
+
+	mapped := make(map[string]string, len(rows))
+	for _, row := range rows {
+		entry, ok := row.(map[string]any)
+		if !ok {
+			continue
+		}
+		value, ok := entry["value"].(map[string]any)
+		if !ok {
+			continue
+		}
+		id := idField(value, "id")
+		upstreamID := idField(value, "upstream_id")
 		if id != "" && upstreamID != "" {
 			mapped[id] = upstreamID
 		}

@@ -44,20 +44,30 @@ export type FilterOption = { value: string; label: string };
  * number, because the router parses `?status=1` for us. Both are normalised at
  * the point of use rather than assumed away.
  */
+type Repeatable = string | number | (string | number)[] | undefined;
+
 export type RouteFilters = {
   name?: string;
   uri?: string;
   status?: string | number;
-  team_id?: string | string[];
-  label?: string | string[];
-  upstream_id?: string | string[];
+  team_id?: Repeatable;
+  label?: Repeatable;
+  upstream_id?: Repeatable;
   page?: number;
 };
 
-/** A repeatable filter, whatever shape the URL delivered it in. */
-const asList = (value: string | string[] | undefined): string[] => {
-  if (Array.isArray(value)) return value;
-  return value ? [value] : [];
+/**
+ * A repeatable filter as a list of strings, whatever shape the URL delivered.
+ *
+ * One value arrives bare rather than in an array, and the router parses a
+ * numeric-looking one into a number — `?upstream_id=9002` is a number by the
+ * time it reaches here, and an id really can be numeric. Everything below
+ * compares against option values, which are strings.
+ */
+const asList = (value: Repeatable): string[] => {
+  if (value == null) return [];
+  const values = Array.isArray(value) ? value : [value];
+  return values.map(String);
 };
 
 type RoutesFilterBarProps = {
@@ -102,17 +112,37 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
   upstreamOptions,
 }) => {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
+  // Open when one of the filters that only lives in this panel is already
+  // active. A shared link carrying an upstream or a label otherwise showed a
+  // table holding 3 of 400 rows above a bar with three empty fields — the same
+  // shorter-list-passing-for-the-whole-one the backend's __warning guards
+  // against, arrived at from the other side.
+  const hasHiddenFilter =
+    asList(params.upstream_id).length > 0 ||
+    asList(params.team_id).length > 0 ||
+    asList(params.label).length > 0;
+  const [expanded, setExpanded] = useState(hasHiddenFilter);
   const [draft, setDraft] = useState<RouteFilters>(params);
 
   // The URL is the source of truth: a back button or a shared link has to be
   // reflected in the fields rather than silently ignored.
   //
+  // Keyed on the filters alone. The pager writes page and page_size to the same
+  // URL, and this bar owns neither — resynchronising on them wiped a half-typed
+  // search out of the field the moment someone turned a page.
+  //
   // Adjusted during render rather than in an effect. An effect here would set
   // state synchronously and cascade a render on every params change — the same
   // finding that #86 was raised for. Remounting on a key would work too, but it
   // would also reset `expanded` and collapse the bar after every search.
-  const paramsKey = JSON.stringify(params);
+  const paramsKey = JSON.stringify([
+    params.name,
+    params.uri,
+    params.status,
+    asList(params.team_id),
+    asList(params.label),
+    asList(params.upstream_id),
+  ]);
   const [lastParamsKey, setLastParamsKey] = useState(paramsKey);
   if (paramsKey !== lastParamsKey) {
     setLastParamsKey(paramsKey);

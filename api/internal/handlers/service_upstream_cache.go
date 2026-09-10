@@ -78,3 +78,16 @@ func (c *serviceUpstreamCache) put(instanceID string, services map[string]string
 
 	c.entries[instanceID] = serviceUpstreamEntry{services: services, storedAt: c.now()}
 }
+
+// forget drops an instance's table.
+//
+// Called when this handler proxies a write to that instance's services: it is
+// the one place that sees the change, so the window can be closed rather than
+// waited out. Nothing fails in that window — the answer is simply wrong — so no
+// warning would have told the operator either.
+func (c *serviceUpstreamCache) forget(instanceID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.entries, instanceID)
+}

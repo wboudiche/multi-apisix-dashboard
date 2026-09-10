@@ -206,6 +206,13 @@ func matchesLabel(value map[string]any, needle string) bool {
 func matchesUpstream(value map[string]any, want []string, services map[string]string) bool {
 	id := idField(value, "upstream_id")
 	if id == "" {
+		// An upstream of its own, even alongside a service_id: APISIX takes the
+		// route's over the service's, so resolving through the service here
+		// would name a backend the route never reaches. During an incident that
+		// is a route reported as depending on the gateway being drained.
+		if _, inline := value["upstream"]; inline {
+			return false
+		}
 		if serviceID := idField(value, "service_id"); serviceID != "" {
 			id = services[serviceID]
 		}

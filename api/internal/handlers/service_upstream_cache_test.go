@@ -85,3 +85,27 @@ func TestServiceUpstreamCacheIsSafeForConcurrentUse(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// The handler that answers the filter is also the one that writes services, so
+// it knows the moment the table it is holding stops being true. Repointing a
+// service through the dashboard and immediately filtering by the new upstream
+// used to answer from the stale map for the rest of the window — and nothing
+// failed, so no warning said so either.
+func TestServiceUpstreamCacheForgetsOneInstance(t *testing.T) {
+	cache := newServiceUpstreamCache(time.Now)
+	cache.put("inst-a", map[string]string{"svc": "up-a"})
+	cache.put("inst-b", map[string]string{"svc": "up-b"})
+
+	cache.forget("inst-a")
+
+	if _, ok := cache.get("inst-a"); ok {
+		t.Error("the instance that was written to should have been dropped")
+	}
+	if _, ok := cache.get("inst-b"); !ok {
+		t.Error("another instance's table has nothing to do with that write")
+	}
+
+	t.Run("forgetting something unheld is not an error", func(t *testing.T) {
+		cache.forget("never-seen")
+	})
+}

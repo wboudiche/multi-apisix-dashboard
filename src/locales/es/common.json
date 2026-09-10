@@ -560,6 +560,8 @@
     "thUser": "Usuario"
   },
   "listWarning": {
-    "title": "Resultados incompletos"
+    "title": "Resultados incompletos",
+    "service_lookup_failed": "No se pudo leer la lista de servicios, por lo que faltan en estos resultados las rutas que alcanzan un upstream a través de un servicio.",
+    "unknown": "Es posible que falten algunos resultados."
   }
 }

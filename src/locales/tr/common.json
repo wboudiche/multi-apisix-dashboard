@@ -560,6 +560,8 @@
     "thUser": "Kullanıcı"
   },
   "listWarning": {
-    "title": "Eksik sonuçlar"
+    "title": "Eksik sonuçlar",
+    "service_lookup_failed": "Servis listesi okunamadı; bu nedenle bir upstream’e servis üzerinden ulaşan rotalar bu sonuçlarda yer almıyor.",
+    "unknown": "Bazı sonuçlar eksik olabilir."
   }
 }

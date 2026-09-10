@@ -560,6 +560,8 @@
     "thUser": "Benutzer"
   },
   "listWarning": {
-    "title": "Unvollständige Ergebnisse"
+    "title": "Unvollständige Ergebnisse",
+    "service_lookup_failed": "Die Dienstliste konnte nicht gelesen werden. Routen, die einen Upstream über einen Dienst erreichen, fehlen daher in diesen Ergebnissen.",
+    "unknown": "Einige Ergebnisse fehlen möglicherweise."
   }
 }
