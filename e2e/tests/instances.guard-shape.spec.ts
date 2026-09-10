@@ -18,7 +18,7 @@ import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
 /**
- * The shapes themselves are covered by src/apis/list-shape.test.ts, which is a
+ * The shapes themselves are covered by src/utils/list-shape.test.ts, which is a
  * predicate over a value and belongs in a unit test. What needs a browser is
  * the reach of the thing: a malformed instance list used to take the whole
  * dashboard down, and the pages it reaches are the point.

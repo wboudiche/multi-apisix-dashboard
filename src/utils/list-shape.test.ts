@@ -30,7 +30,9 @@ import { parseRecordList } from '@/utils/list-shape';
  * away; there is no number of consumers at which that converges.
  */
 describe('parseRecordList', () => {
-  it('passes a real list through untouched', () => {
+  it('returns the very same array it was given', () => {
+    // toBe, not toEqual: these feed jotai atoms and react-query caches, where
+    // a fresh array on every call is a re-render on every call.
     const list = [{ id: 'a' }, { id: 'b' }];
     expect(parseRecordList(list)).toBe(list);
   });
@@ -61,10 +63,4 @@ describe('parseRecordList', () => {
     expect(() => parseRecordList([[], []])).toThrow(/expected a list of records/i);
   });
 
-  it('returns the very same array it was given', () => {
-    // Identity matters: these feed jotai atoms and react-query caches, where a
-    // fresh array on every call is a re-render on every call.
-    const list = [{ id: 'a' }];
-    expect(parseRecordList(list)).toBe(list);
-  });
 });

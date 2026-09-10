@@ -16,6 +16,16 @@
  */
 
 /**
+ * A record: an object that is not an array.
+ *
+ * Declared as a type predicate so `every` below actually narrows — without it
+ * the return needs an unchecked cast, which would keep compiling if this check
+ * were ever weakened.
+ */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/**
  * A list response as a list, or a failure saying it was not one.
  *
  * axios resolves any 2xx, so a proxy answering /api/* with the SPA's own
@@ -42,9 +52,6 @@
  * react-query caches, where a fresh array on every call is a re-render on
  * every call.
  */
-const isRecord = (value: unknown): boolean =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
-
 export const parseRecordList = <T>(value: unknown): T[] => {
   if (!Array.isArray(value)) {
     throw new TypeError(`expected a list, got ${value === null ? 'null' : typeof value}`);
