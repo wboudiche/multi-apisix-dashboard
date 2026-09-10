@@ -14,6 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import axios from 'axios';
+
 import { appUrl } from '@/utils/app-url';
 
 import { authApi } from './auth';
@@ -47,11 +49,16 @@ export const isSessionInvalid = (body: unknown): boolean =>
 const ACCESS = 'auth:access_token';
 const REFRESH = 'auth:refresh_token';
 const EXPIRY = 'auth:token_expiry';
+const USER = 'auth:user';
 
 export const clearStoredSession = () => {
   localStorage.removeItem(ACCESS);
   localStorage.removeItem(REFRESH);
   localStorage.removeItem(EXPIRY);
+  // The user record too. It is read back into currentUserAtom on load
+  // (stores/auth.ts) and by mustChangePassword in __root.tsx, so leaving it
+  // behind means the next visit starts as someone who has no session.
+  localStorage.removeItem(USER);
 };
 
 /**
@@ -61,8 +68,23 @@ export const clearStoredSession = () => {
  * is a session that no longer exists, and every query cache, atom and in-flight
  * request in the tab was built on it.
  */
-export const endSession = () => {
+/** Where the login page looks for why it is being shown. */
+export const SIGNED_OUT_REASON_KEY = 'auth:signed_out_reason';
+
+export const endSession = (reason = 'session_ended') => {
   clearStoredSession();
+  // Left for the login page to pick up. Ending a session is a full page load,
+  // which destroys any notification still on screen, so without this the
+  // operator arrives at a form with no idea why — halfway through a batch
+  // delete, say, with four of twelve routes gone and nothing to explain the
+  // rest. sessionStorage rather than a query parameter: it is this tab's
+  // business and does not belong in a URL anyone might share or bookmark.
+  try {
+    sessionStorage.setItem(SIGNED_OUT_REASON_KEY, reason);
+  } catch {
+    // Private mode, or storage disabled. The redirect matters more than the
+    // explanation; losing the explanation must not lose the redirect.
+  }
   window.location.href = appUrl('/login');
 };
 
@@ -78,13 +100,38 @@ export const endSession = () => {
  */
 let refreshing: Promise<string> | null = null;
 
+/**
+ * The session is over: there is nothing left to renew with, or the backend
+ * refused what there was.
+ *
+ * Distinguished from every other way a refresh can fail — the network dropped,
+ * the backend restarted, a proxy answered with the SPA's index.html — because
+ * only this one is worth ending a session over. The others say "try again",
+ * and signing someone out for one costs them whatever they were in the middle
+ * of to recover from something that has already fixed itself.
+ */
+export class SessionOverError extends Error {
+  constructor(detail: string) {
+    super(detail);
+    this.name = 'SessionOverError';
+  }
+}
+
 const performRefresh = async (): Promise<string> => {
   const refreshToken = localStorage.getItem(REFRESH);
   if (!refreshToken) {
-    throw new Error('no refresh token');
+    throw new SessionOverError('no refresh token stored');
   }
 
-  const data = await authApi.refresh(refreshToken);
+  const data = await authApi.refresh(refreshToken).catch((error: unknown) => {
+    // Only an answer from the backend saying no. A transport failure, a 500 or
+    // a body that was not JSON leaves the session alone.
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    if (status === 401 || status === 403) {
+      throw new SessionOverError(`refresh refused (${status})`);
+    }
+    throw error;
+  });
   localStorage.setItem(ACCESS, data.access_token);
   localStorage.setItem(REFRESH, data.refresh_token);
   localStorage.setItem(EXPIRY, String(Date.now() + data.expires_in * 1000));

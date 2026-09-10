@@ -19,7 +19,7 @@ import axios from 'axios';
 import { appUrl } from '@/utils/app-url';
 import { assertJsonBody } from '@/utils/response-shape';
 
-import { endSession, refreshSession } from './session';
+import { endSession, refreshSession, SessionOverError } from './session';
 
 export const apiClient = axios.create();
 
@@ -73,9 +73,16 @@ apiClient.interceptors.response.use(
                 const token = await refreshSession();
                 originalRequest.headers.Authorization = `Bearer ${token}`;
                 return apiClient(originalRequest);
-            } catch {
-                endSession();
-                return Promise.reject(error);
+            } catch (refreshError) {
+                // Same rule as `req`: only a refusal ends the session. Anything
+                // else — the network, a restarting backend, a proxy answering
+                // with index.html — is reported as itself, and its message is
+                // the only one that names what is actually wrong.
+                if (refreshError instanceof SessionOverError) {
+                    endSession();
+                    return Promise.reject(error);
+                }
+                return Promise.reject(refreshError);
             }
         }
 

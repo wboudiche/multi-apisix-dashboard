@@ -52,9 +52,18 @@ import { getStreamRouteListReq, getStreamRouteReq } from './stream_routes';
 // into the router's error boundary. The axios interceptor in src/config/req.ts
 // has already set the proxyErrorAtom, so the persistent banner renders
 // above the page while the page itself shows an empty list/detail.
+// A gateway the dashboard cannot currently use, as opposed to a request that
+// failed. The list resolves empty and ProxyErrorBanner explains why — an empty
+// table under a banner naming the instance, rather than a dashboard-wide error
+// screen that says nothing about which gateway or what to do.
+//
+// 401 is here because the proxy relays APISIX's status verbatim: it means the
+// instance's admin key was refused. The dashboard's own session rejections are
+// marked and handled in req.ts long before this, so a 401 arriving here is
+// always the gateway's.
 const isProxyUnreachable = (err: unknown) => {
   const status = (err as { response?: { status?: number } })?.response?.status;
-  return status === 502 || status === 504;
+  return status === 502 || status === 504 || status === 401;
 };
 
 const genDetailQueryOptions =

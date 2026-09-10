@@ -94,6 +94,14 @@ test('a session that cannot be refreshed goes to the login form', async ({
     timeout: 30000,
   });
   expect(new URL(page.url()).pathname).toBe('/ui/login');
+
+  // And says so. Ending a session is a full page load, which destroys any
+  // notification still on screen, so without this the operator arrives at a
+  // login form with no idea why — mid-way through a batch delete, say, with
+  // four of twelve routes gone and nothing to explain the rest.
+  await expect(
+    page.getByText('Your session ended').first()
+  ).toBeVisible({ timeout: 20000 });
 });
 
 test('a gateway rejecting the admin key does not sign the operator out', async ({
@@ -104,7 +112,13 @@ test('a gateway rejecting the admin key does not sign the operator out', async (
   // Ending the session here would send someone to the login form to fix a
   // problem that logging in again cannot touch — and lose whatever they were
   // in the middle of.
-  await page.route(ROUTES, (route) =>
+  // Every proxied call, not just this page's list. A refused admin key refuses
+  // all of them, and the distinction matters: a successful proxy response
+  // clears the banner (see the success interceptor in req.ts), so failing one
+  // endpoint while its neighbours succeed would have the banner set and wiped
+  // in the same second — and a test built that way would be measuring
+  // something that cannot happen.
+  await page.route('**/apisix/admin/**', (route) =>
     route.fulfill({
       status: 401,
       contentType: 'application/json',
@@ -114,10 +128,18 @@ test('a gateway rejecting the admin key does not sign the operator out', async (
 
   await page.goto('/ui/routes');
 
-  // Told what happened, in the gateway's own words.
-  await expect(
-    page.getByText('failed to check token').first()
-  ).toBeVisible({ timeout: 30000 });
+  // Told what happened, and told so that it is still on screen a minute later.
+  // A toast auto-closes after five seconds; the loader spends about seven
+  // retrying, so the only thing left by the time the page settles used to be
+  // the generic "Failed to load the dashboard", which never mentions the key.
+  // This is the banner the 502/504 path already uses, and its text says the
+  // admin key may be wrong — with Retry and Edit instance beside it.
+  await expect(page.getByText('Cannot reach')).toBeVisible({ timeout: 30000 });
+  // In the gateway's own words, not a generic line.
+  await expect(page.getByText('failed to check token')).toBeVisible();
+  // A Link, so an anchor rather than a button.
+  await expect(page.getByRole('link', { name: 'Edit instance' })).toBeVisible();
+  await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
 
   // And still here.
   expect(new URL(page.url()).pathname).toBe('/ui/routes');
@@ -163,4 +185,35 @@ test('recovers from a real expired token, against the real backend', async ({
   expect(
     await page.evaluate(() => localStorage.getItem('auth:access_token'))
   ).not.toBe('no.longer.valid');
+});
+
+test('a network blip while renewing does not end the session', async ({
+  page,
+}) => {
+  // Wiring `req` to the shared refresh extended one of apiClient's habits to
+  // every resource page: any failure to renew ended the session. But "the
+  // backend refused this refresh token" and "the network dropped for two
+  // seconds" are not the same fact. Only the first means the session is over;
+  // the second means try again.
+  //
+  // Signing out on the second costs the operator whatever they were in the
+  // middle of — the batch delete in flight, the route form half filled — to
+  // recover from something that had already fixed itself.
+  await failOnce(page, ROUTES, sessionExpired);
+  await page.route('**/api/v1/refresh', (route) => route.abort('failed'));
+
+  await page.goto('/ui/routes');
+
+  // Told, rather than moved.
+  await expect(
+    page.getByText('Could not renew your session').first()
+  ).toBeVisible({ timeout: 30000 });
+
+  /* eslint-disable-next-line playwright/no-wait-for-timeout --
+     Asserting that a redirect never starts has no state to wait for. */
+  await page.waitForTimeout(3000);
+  expect(new URL(page.url()).pathname).toBe('/ui/routes');
+  expect(
+    await page.evaluate(() => localStorage.getItem('auth:refresh_token'))
+  ).not.toBeNull();
 });

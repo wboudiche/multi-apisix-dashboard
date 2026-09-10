@@ -46,7 +46,14 @@ export type User = {
   created_at: string;
 };
 
-// Unauthenticated client for login/refresh/logout
+// Unauthenticated client for login/refresh/logout.
+//
+// It must stay separate from apiClient, and not merely because these endpoints
+// need no token: apiClient's 401 handler calls refreshSession(), and
+// refreshSession() is what issues this refresh. Moving it onto apiClient would
+// have a failing refresh re-enter the handler, ask for the refresh already in
+// flight, and await the promise it is itself supposed to settle — a deadlock
+// with no error, on the path taken when a session ends.
 const unauthClient = axios.create();
 
 // The same boundary as the other two clients. This one carries the login
