@@ -89,15 +89,10 @@ export const InstanceGuard = ({ children }: InstanceGuardProps) => {
     );
   }
 
-  // (1) Nothing usable to work with — drive the user to /ui/instances.
-  //
-  // The shape is checked, not just the length. This guard decides whether any
-  // page renders at all, so whatever it does with a bad answer it does to the
-  // whole dashboard — and axios resolves any 2xx, so a misrouted proxy handing
-  // back the SPA's own index.html arrives here as success. A string has a
-  // length, so `length === 0` waved 28 characters of HTML through as 28
-  // registered instances and `.some` below threw, taking the shell with it.
-  if (!Array.isArray(instances) || instances.length === 0) {
+  // (1) No instances registered at all — drive the user to /ui/instances.
+  // instanceApi.list always answers with a list (see parseRecordList), so the
+  // length is the whole question here.
+  if (!instances || instances.length === 0) {
     return (
       <EmptyState
         title={t('instanceGuard.noInstances.title')}
