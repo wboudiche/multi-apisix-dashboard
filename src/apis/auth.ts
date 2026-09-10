@@ -54,8 +54,8 @@ const unauthClient = axios.create();
 // and it stores the string "undefined" as a session — the failure arrives
 // later, as a 401 loop, with nothing pointing back here.
 unauthClient.interceptors.response.use((response) => {
-    assertJsonBody(response.data, response.config.url ?? '');
-    return response;
+  assertJsonBody(response.data, response.config.url ?? '');
+  return response;
 });
 
 export const authApi = {

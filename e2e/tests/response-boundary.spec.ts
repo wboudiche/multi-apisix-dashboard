@@ -46,9 +46,11 @@ authed('names the request when a resource call is misrouted', async ({ page }) =
   await misroute(page, '**/apisix/admin/routes*');
   await page.goto('/ui/routes');
 
+  // 30s, not 20: getRouteListQueryOptions does not override `retry`, so the
+  // loader spends ~7s on three attempts with backoff before it rejects.
   await expect(
     page.getByText('/api/v1/apisix/admin/routes: expected a JSON body')
-  ).toBeVisible({ timeout: 20000 });
+  ).toBeVisible({ timeout: 30000 });
   await expect(page.getByText('Cannot read properties')).toHaveCount(0);
 });
 
@@ -109,6 +111,69 @@ test('leaves no half-open session when the identity call is misrouted', async ({
       timeout: 20000,
     });
     expect(new URL(page.url()).pathname).toBe('/ui/login');
+  } finally {
+    await context.close();
+  }
+});
+
+authed('reports a misroute that no page renders an error for', async ({ page }) => {
+  // The upstream list feeds the routes table's Upstream column and its filter
+  // bar. Neither renders an error state — a failure just leaves raw ids on
+  // screen — so the toast from req's error interceptor is the only signal
+  // there is.
+  //
+  // And a throw from the *success* handler of an interceptor pair never
+  // reaches the `rejected` handler of that same pair: axios chains them as
+  // one then(fulfilled, rejected). The check has to be registered earlier, as
+  // its own pair, or the failure it raises is silent on every write in the
+  // dashboard too — 23 of the 26 useMutation call sites have no onError and
+  // rely entirely on that interceptor.
+  await misroute(page, '**/apisix/admin/upstreams*');
+  await page.goto('/ui/routes');
+
+  await expect(
+    page
+      .locator('.mantine-Notification-root')
+      .filter({ hasText: '/api/v1/apisix/admin/upstreams' })
+  ).toBeVisible({ timeout: 20000 });
+});
+
+test('a failed login does not end the session already in this browser', async ({
+  browser,
+}) => {
+  // __root.tsx returns before the auth check for /ui/login, so the login page
+  // is reachable while signed in — a bookmark, a typed URL, a second tab.
+  // Discarding the session on every failure would sign the person out of the
+  // tab they were working in because they mistyped a password in this one.
+  const context = await browser.newContext({ storageState: undefined });
+
+  try {
+    const page = await context.newPage();
+
+    await page.goto(`${BASE_URL}/login`);
+    await page.getByRole('textbox', { name: 'Username' }).fill('admin');
+    await page.getByPlaceholder('Enter your password').fill('admin');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.waitForURL((url) => !url.pathname.endsWith('/login'), {
+      timeout: 20000,
+    });
+    const token = await page.evaluate(() =>
+      localStorage.getItem('auth:access_token')
+    );
+    expect(token).not.toBeNull();
+
+    // Back to the login page, and get it wrong.
+    await page.goto(`${BASE_URL}/login`);
+    await page.getByRole('textbox', { name: 'Username' }).fill('admin');
+    await page.getByPlaceholder('Enter your password').fill('not-the-password');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText('Invalid username or password').first()).toBeVisible({
+      timeout: 20000,
+    });
+
+    expect(
+      await page.evaluate(() => localStorage.getItem('auth:access_token'))
+    ).toBe(token);
   } finally {
     await context.close();
   }

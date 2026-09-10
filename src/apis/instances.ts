@@ -18,6 +18,7 @@
 import axios from 'axios';
 
 import { parseRecordList } from '@/utils/list-shape';
+import { MalformedResponseError } from '@/utils/response-shape';
 
 import { apiClient } from './client';
 
@@ -94,6 +95,12 @@ export const describeError = (error: unknown, fallback: string): string => {
     if (reason) return reason;
     if (error.message) return error.message;
   }
+  // Not an axios error — the response boundary raises it past axios — and its
+  // message is the only one that names the request that misrouted. Without
+  // this the header and all four call sites on the instances page collapse it
+  // into their generic fallback, which is the thing this function exists to
+  // stop doing.
+  if (error instanceof MalformedResponseError) return error.message;
   return fallback;
 };
 

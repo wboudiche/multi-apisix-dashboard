@@ -141,6 +141,13 @@ const Login = () => {
     setError('');
     setLoading(true);
 
+    // Whether this attempt got as far as writing a session. Bad credentials
+    // never do, and /ui/login is reachable while already signed in
+    // (__root.tsx returns before the auth check for it) — so discarding
+    // unconditionally would sign someone out of the tab they were working in
+    // because they mistyped a password in another one.
+    let sessionStarted = false;
+
     try {
       const response = await authApi.login({ username, password });
 
@@ -148,6 +155,7 @@ const Login = () => {
       setAccessToken(response.access_token);
       setRefreshToken(response.refresh_token);
       setTokenExpiry(Date.now() + response.expires_in * 1000);
+      sessionStarted = true;
 
       // Get current user
       const user = await authApi.getCurrentUser();
@@ -172,7 +180,7 @@ const Login = () => {
       // session `isAuthenticated()` accepts with nobody behind it, and the
       // next navigation walks into the app as no one. Half a session is worse
       // than none: drop it.
-      discardSession();
+      if (sessionStarted) discardSession();
 
       const message =
         isAxiosError(err) && err.response?.status === 401

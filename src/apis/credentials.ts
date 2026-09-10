@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import type { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { type AxiosInstance, type AxiosRequestConfig, isAxiosError } from 'axios';
 
 import { API_CREDENTIALS, SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -36,8 +36,13 @@ export const getCredentialListReq = (req: AxiosInstance, params: WithUsername) =
     )
     .then((v) => v.data)
     .catch((e) => {
+      // Guarded: this used to read `.response` off whatever arrived. The
+      // response boundary raises a MalformedResponseError, which has none, so
+      // an unguarded read turns the message naming the misrouted request into
+      // "Cannot read properties of undefined" — the exact failure the boundary
+      // exists to stop. A dropped connection had the same shape already.
       // 404 means credentials is empty
-      if (e.response.status === 404) {
+      if (isAxiosError(e) && e.response?.status === 404) {
         const res: APISIXListResponse<APISIXType['Credential']> = {
           total: 0,
           list: [],

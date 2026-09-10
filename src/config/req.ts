@@ -27,7 +27,10 @@ import {
 import i18n from '@/config/i18n';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
-import { assertJsonBody } from '@/utils/response-shape';
+import {
+  assertJsonBody,
+  MalformedResponseError,
+} from '@/utils/response-shape';
 
 /**
  * Marks a PUT as a create that must not overwrite anything.
@@ -130,16 +133,30 @@ const isProxyRequest = (config?: { url?: string; baseURL?: string }) => {
   return full.includes('/apisix/admin');
 };
 
+/**
+ * The response boundary, registered as its own pair and before the one below.
+ *
+ * axios chains interceptors as `then(onFulfilled, onRejected)` **per
+ * registered pair**, so a throw from a success handler is not seen by the
+ * error handler beside it — only by the next pair's. Putting this check inside
+ * the pair below would mean the interceptor that owns every red toast in the
+ * dashboard never hears about it, and 23 of the 26 useMutation call sites have
+ * no onError of their own: a misrouted write would go from a lying green toast
+ * to nothing at all.
+ *
+ * A 2xx carrying text is the dashboard's own index.html coming back from a
+ * misrouted proxy, not a resource. Checked here as well as on the other two
+ * axios instances: they are independent clients over independent paths, and
+ * hardening them one at a time is what #150, #153 and #162 each did — see
+ * src/utils/response-shape.ts.
+ */
+req.interceptors.response.use((res) => {
+  assertJsonBody(res.data, `${res.config.baseURL ?? ''}${res.config.url ?? ''}`);
+  return res;
+});
+
 req.interceptors.response.use(
   (res) => {
-    // Before anything reads the body: a 2xx carrying text is the dashboard's
-    // own index.html coming back from a misrouted proxy, not a resource.
-    // Checked here as well as on the other two axios instances: they are
-    // independent clients over independent paths, and hardening them one at a
-    // time is what #150, #153 and #162 each did — see
-    // src/utils/response-shape.ts.
-    assertJsonBody(res.data, `${res.config.baseURL ?? ''}${res.config.url ?? ''}`);
-
     // it's a apisix design
     // when list is empty, it will be a object
     // but we need a array
@@ -159,6 +176,18 @@ req.interceptors.response.use(
     return res;
   },
   (err) => {
+    // Raised by the boundary above, so it has no `response` and would fall
+    // straight past the block below without a word. It is the only failure
+    // here whose message names the request rather than quoting the server.
+    if (err instanceof MalformedResponseError) {
+      notifications.show({
+        id: `req-error-malformed-${err.url ?? ''}`,
+        message: i18n.t('error.malformedResponse', { url: err.url ?? '' }),
+        color: 'red',
+      });
+      return Promise.reject(err);
+    }
+
     if (err.response) {
       if (matchSkipInterceptor(err)) return Promise.reject(err);
       const res = err.response as AxiosResponse<APISIXRespErr>;
