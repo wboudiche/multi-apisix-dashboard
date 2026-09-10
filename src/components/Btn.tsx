@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { ActionIcon, type ActionIconProps,Button, type ButtonProps } from '@mantine/core';
+import { ActionIcon, type ActionIconProps, Anchor, type AnchorProps, Button, type ButtonProps } from '@mantine/core';
 import { createLink, Link } from '@tanstack/react-router';
 import { forwardRef } from 'react';
 
@@ -35,5 +35,16 @@ const MantineActionIconLinkComponent = forwardRef<HTMLButtonElement, ActionIconP
 MantineActionIconLinkComponent.displayName = 'RouteActionIconBtn';
 
 export const RouteActionIconBtn = createLink(MantineActionIconLinkComponent);
+
+// The anchor counterpart of the two above, for places where a link should read
+// as a link rather than a control — a resource name inside a table cell.
+const MantineAnchorLinkComponent = forwardRef<HTMLAnchorElement, AnchorProps>(
+  (props, ref) => {
+    return <Anchor ref={ref} {...props} />;
+  }
+);
+MantineAnchorLinkComponent.displayName = 'RouteAnchor';
+
+export const RouteAnchor = createLink(MantineAnchorLinkComponent);
 
 export const RouteLink = Link;

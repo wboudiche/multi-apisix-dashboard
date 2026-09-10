@@ -453,11 +453,26 @@
       "filterSearch": "搜索",
       "filterExpand": "展开",
       "filterCollapse": "折叠",
-      "filterLabels": "标签：",
+      "filterLabels": "标签",
       "columnsTitle": "列显示",
       "columnsReset": "重置",
       "columnsNotFixed": "不固定",
-      "columnsFixedRight": "固定到右侧"
+      "columnsFixedRight": "固定到右侧",
+      "filterName": "名称",
+      "filterPath": "路径",
+      "filterStatus": "状态",
+      "filterPlaceholder": "请输入",
+      "filterStatusPlaceholder": "未发布/已发布",
+      "filterUpstream": "上游",
+      "filterUpstreamPlaceholder": "任意上游",
+      "filterUpstreamEmpty": "没有匹配的上游",
+      "filterMultiHint": "（多选）",
+      "columnUpstream": "上游",
+      "upstreamInline": "内联",
+      "upstreamNone": "—",
+      "filterTeam": "团队",
+      "filterTeamPlaceholder": "任意团队",
+      "filterTeamUnassigned": "未分配"
     }
   },
   "seconds": "秒",
@@ -543,5 +558,10 @@
     "thRole": "角色",
     "thTeams": "团队",
     "thUser": "用户"
+  },
+  "listWarning": {
+    "title": "结果不完整",
+    "service_lookup_failed": "无法读取服务列表，因此通过服务访问上游的路由未包含在这些结果中。",
+    "unknown": "部分结果可能缺失。"
   }
 }

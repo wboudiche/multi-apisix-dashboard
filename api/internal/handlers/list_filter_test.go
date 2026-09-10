@@ -16,8 +16,14 @@
 package handlers
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
 func row(value map[string]any) map[string]any {
@@ -32,7 +38,8 @@ func TestParseListFilters(t *testing.T) {
 			"label":  {"Env:Prod"},
 			"status": {"0"},
 		})
-		if f.name != "Billing" || f.uri != "/services" || f.label != "Env:Prod" {
+		if f.name != "Billing" || f.uri != "/services" ||
+			len(f.labels) != 1 || f.labels[0] != "Env:Prod" {
 			t.Errorf("parseListFilters gave %+v", f)
 		}
 		if f.status == nil || *f.status != 0 {
@@ -144,10 +151,11 @@ func TestLabelFilterMatchesOnKey(t *testing.T) {
 		label string
 		want  bool
 	}{
-		{"Env", true},
-		{"env", true},         // case-insensitive, unlike APISIX
-		{"Env:Prod", true},    // value part ignored, as APISIX does
-		{"Env:Staging", true}, // ...so this matches too
+		{"Env", true},          // a bare key still matches on the key alone
+		{"env", true},          // case-insensitive, unlike APISIX
+		{"Env:Prod", true},     // key and value both match
+		{"env:prod", true},     // ...still ignoring case
+		{"Env:Staging", false}, // the value is significant now, see below
 		{"Region", false},
 	}
 
@@ -239,7 +247,7 @@ func TestMatchesTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := matchesTeam(tt.value, tt.want); got != tt.match {
+			if got := matchesTeam(tt.value, []string{tt.want}); got != tt.match {
 				t.Errorf("matchesTeam(%v, %q) = %v, want %v", tt.value, tt.want, got, tt.match)
 			}
 		})
@@ -251,8 +259,8 @@ func TestMatchesTeam(t *testing.T) {
 // through untouched.
 func TestTeamFilterParsing(t *testing.T) {
 	f := parseListFilters(url.Values{"team_id": []string{" backend "}})
-	if f.teamID != "backend" {
-		t.Errorf("teamID = %q, want %q", f.teamID, "backend")
+	if len(f.teamIDs) != 1 || f.teamIDs[0] != "backend" {
+		t.Errorf("teamIDs = %v, want [backend]", f.teamIDs)
 	}
 	if f.empty() {
 		t.Error("a team filter should not count as empty")
@@ -260,5 +268,287 @@ func TestTeamFilterParsing(t *testing.T) {
 
 	if !parseListFilters(url.Values{"team_id": []string{"  "}}).empty() {
 		t.Error("a blank team_id is not a filter")
+	}
+}
+
+// The value used to be discarded, mirroring APISIX. That was fine while one
+// label could be chosen at a time and the browser re-filtered the page it got
+// back, but #142 asks for several at once and the values are what tell them
+// apart — "cors:test" and "wsdl-source-hash:62a1e60f" share no key. Matching on
+// the key alone would have made every multi-select as broad as its loosest
+// member.
+func TestLabelFilterMatchesValueWhenOneIsGiven(t *testing.T) {
+	route := map[string]any{
+		"name":   "labelled",
+		"labels": map[string]any{"Env": "Prod", "Region": "eu"},
+	}
+
+	cases := []struct {
+		name  string
+		label string
+		want  bool
+	}{
+		{"key and value", "Env:Prod", true},
+		{"wrong value for a key that exists", "Env:Staging", false},
+		{"key alone still matches any value", "Env", true},
+		{"value belonging to another key", "Region:Prod", false},
+		{"a value containing a colon", "Env:Prod:1", false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"label": {c.label}})
+			if got := matchesListFilters(route, f); got != c.want {
+				t.Errorf("label=%q = %v, want %v", c.label, got, c.want)
+			}
+		})
+	}
+}
+
+// Several labels narrow, they do not widen: the browser used to apply them with
+// .every() over the page it had been given, and moving that to the server must
+// not quietly turn it into an OR.
+func TestMultipleLabelsAllHaveToMatch(t *testing.T) {
+	route := map[string]any{
+		"name":   "labelled",
+		"labels": map[string]any{"Env": "Prod", "Region": "eu"},
+	}
+
+	cases := []struct {
+		name   string
+		labels []string
+		want   bool
+	}{
+		{"both present", []string{"Env:Prod", "Region:eu"}, true},
+		{"one of them missing", []string{"Env:Prod", "Region:us"}, false},
+		{"neither present", []string{"Env:Dev", "Region:us"}, false},
+		{"one label behaves as before", []string{"Env:Prod"}, true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"label": c.labels})
+			if got := matchesListFilters(route, f); got != c.want {
+				t.Errorf("labels=%v = %v, want %v", c.labels, got, c.want)
+			}
+		})
+	}
+}
+
+// Teams are the opposite case: a resource belongs to exactly one, so naming
+// several can only mean "any of these".
+func TestMultipleTeamsMatchAnyOfThem(t *testing.T) {
+	owned := func(team string) map[string]any {
+		return map[string]any{"name": "r", dashboardTeamIDField: team}
+	}
+
+	cases := []struct {
+		name  string
+		teams []string
+		row   map[string]any
+		want  bool
+	}{
+		{"first of two", []string{"a", "b"}, owned("a"), true},
+		{"second of two", []string{"a", "b"}, owned("b"), true},
+		{"neither", []string{"a", "b"}, owned("c"), false},
+		{"unassigned alongside a real team", []string{"a", unassignedTeamFilter}, owned(""), true},
+		{"one team behaves as before", []string{"a"}, owned("a"), true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"team_id": c.teams})
+			if got := matchesListFilters(c.row, f); got != c.want {
+				t.Errorf("team_id=%v = %v, want %v", c.teams, got, c.want)
+			}
+		})
+	}
+}
+
+// A route reaches its backend by naming an upstream, by naming a service that
+// names one, or by carrying one inline with no id at all. During an incident on
+// a gateway the question is which routes reach the failing upstream, so the
+// second form has to resolve rather than be skipped.
+func TestUpstreamFilterResolvesThroughServices(t *testing.T) {
+	services := map[string]string{"svc-1": "up-a", "svc-2": "up-b"}
+
+	direct := map[string]any{"name": "direct", "upstream_id": "up-a"}
+	viaService := map[string]any{"name": "via-service", "service_id": "svc-1"}
+	otherService := map[string]any{"name": "other-service", "service_id": "svc-2"}
+	inline := map[string]any{"name": "inline", "upstream": map[string]any{"type": "roundrobin"}}
+
+	cases := []struct {
+		name      string
+		upstreams []string
+		row       map[string]any
+		want      bool
+	}{
+		{"named directly", []string{"up-a"}, direct, true},
+		{"reached through its service", []string{"up-a"}, viaService, true},
+		{"a service pointing elsewhere", []string{"up-a"}, otherService, false},
+		{"an inline upstream has no id to match", []string{"up-a"}, inline, false},
+		{"any of several", []string{"up-a", "up-b"}, otherService, true},
+		{"none of several", []string{"up-c", "up-d"}, direct, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"upstream_id": c.upstreams})
+			f.serviceUpstreams = services
+			if got := matchesListFilters(c.row, f); got != c.want {
+				t.Errorf("upstream_id=%v on %v = %v, want %v",
+					c.upstreams, c.row["name"], got, c.want)
+			}
+		})
+	}
+}
+
+// APISIX stores an id as whatever JSON type it arrived as: PUT /services with
+// {"id": 9002} and no path segment keeps the number. One such service used to
+// abort the decode of the whole list and leave the map nil, so every route
+// bound to any service dropped out of an upstream filter without a word — the
+// "nothing touches this upstream" answer the filter exists to avoid giving.
+func TestServiceUpstreamsToleratesNumericIDs(t *testing.T) {
+	body := []byte(`{"list":[
+		{"value":{"id":"svc-str","upstream_id":"up-a"}},
+		{"value":{"id":9002,"upstream_id":777}},
+		{"value":{"id":"svc-inline"}}
+	]}`)
+
+	got, err := parseServiceUpstreams(body)
+	if err != nil {
+		t.Fatalf("parseServiceUpstreams: %v", err)
+	}
+
+	want := map[string]string{"svc-str": "up-a", "9002": "777"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("services[%q] = %q, want %q", k, got[k], v)
+		}
+	}
+}
+
+// A route can name its service or upstream numerically for the same reason.
+func TestUpstreamFilterMatchesNumericIDs(t *testing.T) {
+	services := map[string]string{"9002": "777"}
+
+	cases := []struct {
+		name string
+		row  map[string]any
+		want bool
+	}{
+		{"numeric upstream_id", map[string]any{"upstream_id": float64(777)}, true},
+		{"numeric service_id", map[string]any{"service_id": float64(9002)}, true},
+		{"string as before", map[string]any{"upstream_id": "777"}, true},
+		{"a different number", map[string]any{"upstream_id": float64(778)}, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := parseListFilters(url.Values{"upstream_id": {"777"}})
+			f.serviceUpstreams = services
+			if got := matchesListFilters(c.row, f); got != c.want {
+				t.Errorf("%v = %v, want %v", c.row, got, c.want)
+			}
+		})
+	}
+}
+
+// The upstream filter needs the service table to answer for routes bound
+// through one. When it cannot be read the list is narrower than the truth, and
+// the caller has to be told — a log line reaches whoever reads logs later, not
+// the operator asking the question during an incident.
+func TestFetchServiceUpstreamsReportsWhyItFailed(t *testing.T) {
+	cases := []struct {
+		name    string
+		handler http.HandlerFunc
+		wantErr string
+	}{
+		{
+			name: "a refused key",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusUnauthorized)
+			},
+			wantErr: "401",
+		},
+		{
+			name: "a body that is not a service list",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("<!doctype html>"))
+			},
+			wantErr: "invalid character",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv := httptest.NewServer(c.handler)
+			defer srv.Close()
+
+			_, err := fetchServiceUpstreams(context.Background(), &models.Instance{AdminAPIURL: srv.URL})
+			if err == nil {
+				t.Fatal("expected an error the caller can report, got nil")
+			}
+			if !strings.Contains(err.Error(), c.wantErr) {
+				t.Errorf("error %q does not mention %q", err, c.wantErr)
+			}
+		})
+	}
+
+	t.Run("a healthy gateway reports nothing", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"list":[{"value":{"id":"s1","upstream_id":"u1"}}]}`))
+		}))
+		defer srv.Close()
+
+		got, err := fetchServiceUpstreams(context.Background(), &models.Instance{AdminAPIURL: srv.URL})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got["s1"] != "u1" {
+			t.Errorf("services = %v, want s1 -> u1", got)
+		}
+	})
+}
+
+// A route may carry both a service_id and an upstream of its own. APISIX gives
+// the route's own upstream precedence, so such a route does not reach the
+// service's upstream at all — and saying it does during an incident points at
+// the wrong backend. Verified against the gateway: it accepts the combination.
+func TestInlineUpstreamBeatsTheServiceItIsBoundTo(t *testing.T) {
+	services := map[string]string{"svc-1": "up-a"}
+
+	viaService := map[string]any{"name": "via", "service_id": "svc-1"}
+	inlineWins := map[string]any{
+		"name":       "inline-wins",
+		"service_id": "svc-1",
+		"upstream":   map[string]any{"type": "roundrobin"},
+	}
+
+	f := parseListFilters(url.Values{"upstream_id": {"up-a"}})
+	f.serviceUpstreams = services
+
+	if !matchesListFilters(viaService, f) {
+		t.Error("a route bound only to the service should still match")
+	}
+	if matchesListFilters(inlineWins, f) {
+		t.Error("a route with its own upstream does not reach the service's one")
+	}
+}
+
+// APISIX answers an empty collection with an object rather than an array — the
+// quirk src/config/req.ts already works around in the browser. Decoding that as
+// a failure would raise "results are missing" on a gateway whose truthful
+// answer is "there are no services".
+func TestServiceUpstreamsReadsAnEmptyListAsEmpty(t *testing.T) {
+	got, err := parseServiceUpstreams([]byte(`{"list":{},"total":0}`))
+	if err != nil {
+		t.Fatalf("an empty service list is not a failure: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %v, want an empty map", got)
 	}
 }

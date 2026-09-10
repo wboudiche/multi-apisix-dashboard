@@ -453,11 +453,26 @@
       "filterSearch": "Buscar",
       "filterExpand": "Expandir",
       "filterCollapse": "Contraer",
-      "filterLabels": "Etiquetas:",
+      "filterLabels": "Etiquetas",
       "columnsTitle": "Visualización de columnas",
       "columnsReset": "Restablecer",
       "columnsNotFixed": "No fijado",
-      "columnsFixedRight": "Fijado a la derecha"
+      "columnsFixedRight": "Fijado a la derecha",
+      "filterName": "Nombre",
+      "filterPath": "Ruta",
+      "filterStatus": "Estado",
+      "filterPlaceholder": "Introduzca un valor",
+      "filterStatusPlaceholder": "No publicado/Publicado",
+      "filterUpstream": "Upstream",
+      "filterUpstreamPlaceholder": "Cualquier upstream",
+      "filterUpstreamEmpty": "Ningún upstream coincide",
+      "filterMultiHint": "(selección múltiple)",
+      "columnUpstream": "Upstream",
+      "upstreamInline": "en línea",
+      "upstreamNone": "—",
+      "filterTeam": "Equipo",
+      "filterTeamPlaceholder": "Cualquier equipo",
+      "filterTeamUnassigned": "Sin asignar"
     }
   },
   "seconds": "Segundos",
@@ -543,5 +558,10 @@
     "thRole": "Rol",
     "thTeams": "Equipos",
     "thUser": "Usuario"
+  },
+  "listWarning": {
+    "title": "Resultados incompletos",
+    "service_lookup_failed": "No se pudo leer la lista de servicios, por lo que faltan en estos resultados las rutas que alcanzan un upstream a través de un servicio.",
+    "unknown": "Es posible que falten algunos resultados."
   }
 }

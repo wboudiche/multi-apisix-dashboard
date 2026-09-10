@@ -697,7 +697,7 @@
       "filterSearch": "Search",
       "filterExpand": "Expand",
       "filterCollapse": "Collapse",
-      "filterLabels": "Labels:",
+      "filterLabels": "Labels",
       "columnsTitle": "Column Display",
       "columnsReset": "Reset",
       "columnsNotFixed": "Not Fixed",
@@ -707,7 +707,19 @@
       "columnsNameAlwaysShown": "Always shown, so every row can be identified",
       "filterTeam": "Team",
       "filterTeamPlaceholder": "Any team",
-      "filterTeamUnassigned": "Unassigned"
+      "filterTeamUnassigned": "Unassigned",
+      "filterName": "Name",
+      "filterPath": "Path",
+      "filterStatus": "Status",
+      "filterPlaceholder": "Please enter",
+      "filterStatusPlaceholder": "UnPublished/Published",
+      "filterUpstream": "Upstream",
+      "filterUpstreamPlaceholder": "Any upstream",
+      "filterUpstreamEmpty": "No upstream matches",
+      "filterMultiHint": "(multi-select)",
+      "columnUpstream": "Upstream",
+      "upstreamInline": "inline",
+      "upstreamNone": "—"
     }
   },
   "seconds": "Seconds",
@@ -908,5 +920,10 @@
     "usernamePlaceholder": "Enter your username",
     "welcome": "Welcome, {{username}}!",
     "welcomeBack": "Welcome back"
+  },
+  "listWarning": {
+    "title": "Incomplete results",
+    "service_lookup_failed": "The service list could not be read, so routes that reach an upstream through a service are missing from these results.",
+    "unknown": "Some results may be missing."
   }
 }

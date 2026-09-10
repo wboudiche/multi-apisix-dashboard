@@ -453,11 +453,26 @@
       "filterSearch": "Ara",
       "filterExpand": "Genişlet",
       "filterCollapse": "Daralt",
-      "filterLabels": "Etiketler:",
+      "filterLabels": "Etiketler",
       "columnsTitle": "Sütun Görüntüsü",
       "columnsReset": "Sıfırla",
       "columnsNotFixed": "Sabit Değil",
-      "columnsFixedRight": "Sağa Sabit"
+      "columnsFixedRight": "Sağa Sabit",
+      "filterName": "Ad",
+      "filterPath": "Yol",
+      "filterStatus": "Durum",
+      "filterPlaceholder": "Lütfen girin",
+      "filterStatusPlaceholder": "Yayımlanmamış/Yayımlanmış",
+      "filterUpstream": "Upstream",
+      "filterUpstreamPlaceholder": "Herhangi bir upstream",
+      "filterUpstreamEmpty": "Eşleşen upstream yok",
+      "filterMultiHint": "(çoklu seçim)",
+      "columnUpstream": "Upstream",
+      "upstreamInline": "satır içi",
+      "upstreamNone": "—",
+      "filterTeam": "Takım",
+      "filterTeamPlaceholder": "Herhangi bir takım",
+      "filterTeamUnassigned": "Atanmamış"
     }
   },
   "seconds": "Saniye",
@@ -543,5 +558,10 @@
     "thRole": "Rol",
     "thTeams": "Takımlar",
     "thUser": "Kullanıcı"
+  },
+  "listWarning": {
+    "title": "Eksik sonuçlar",
+    "service_lookup_failed": "Servis listesi okunamadı; bu nedenle bir upstream’e servis üzerinden ulaşan rotalar bu sonuçlarda yer almıyor.",
+    "unknown": "Bazı sonuçlar eksik olabilir."
   }
 }

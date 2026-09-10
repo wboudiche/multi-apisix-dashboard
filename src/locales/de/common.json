@@ -453,11 +453,26 @@
       "filterSearch": "Suchen",
       "filterExpand": "Erweitern",
       "filterCollapse": "Einklappen",
-      "filterLabels": "Labels:",
+      "filterLabels": "Labels",
       "columnsTitle": "Spaltenanzeige",
       "columnsReset": "Zurücksetzen",
       "columnsNotFixed": "Nicht fixiert",
-      "columnsFixedRight": "Rechts fixiert"
+      "columnsFixedRight": "Rechts fixiert",
+      "filterName": "Name",
+      "filterPath": "Pfad",
+      "filterStatus": "Status",
+      "filterPlaceholder": "Bitte eingeben",
+      "filterStatusPlaceholder": "Unveröffentlicht/Veröffentlicht",
+      "filterUpstream": "Upstream",
+      "filterUpstreamPlaceholder": "Beliebiger Upstream",
+      "filterUpstreamEmpty": "Kein Upstream gefunden",
+      "filterMultiHint": "(Mehrfachauswahl)",
+      "columnUpstream": "Upstream",
+      "upstreamInline": "inline",
+      "upstreamNone": "—",
+      "filterTeam": "Team",
+      "filterTeamPlaceholder": "Beliebiges Team",
+      "filterTeamUnassigned": "Nicht zugewiesen"
     }
   },
   "seconds": "Sekunden",
@@ -543,5 +558,10 @@
     "thRole": "Rolle",
     "thTeams": "Teams",
     "thUser": "Benutzer"
+  },
+  "listWarning": {
+    "title": "Unvollständige Ergebnisse",
+    "service_lookup_failed": "Die Dienstliste konnte nicht gelesen werden. Routen, die einen Upstream über einen Dienst erreichen, fehlen daher in diesen Ergebnissen.",
+    "unknown": "Einige Ergebnisse fehlen möglicherweise."
   }
 }
