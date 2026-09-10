@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import { parseRecordList } from '@/utils/list-shape';
+
 import { apiClient } from './client';
 
 export type Team = {
@@ -34,7 +36,7 @@ export const teamApi = {
   // List all teams
   list: async (): Promise<Team[]> => {
     const response = await apiClient.get<Team[]>('/api/v1/teams');
-    return response.data;
+    return parseRecordList<Team>(response.data);
   },
 
   // Create a new team

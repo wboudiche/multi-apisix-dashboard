@@ -45,6 +45,11 @@
     "noSelection": {
       "title": "Ninguna instancia seleccionada",
       "message": "Elige una instancia de APISIX en el selector de la cabecera para ver esta página."
+    },
+    "unreadable": {
+      "title": "Lista de instancias no disponible",
+      "message": "No se pudo leer la lista de instancias de APISIX, por lo que aún no hay nada con lo que trabajar. No es lo mismo que no tener ninguna registrada.",
+      "cta": "Reintentar"
     }
   },
   "login": {

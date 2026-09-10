@@ -17,6 +17,11 @@
     "noSelection": {
       "title": "No instance selected",
       "message": "Pick an APISIX instance from the selector in the header above to view this page."
+    },
+    "unreadable": {
+      "title": "Instance list unavailable",
+      "message": "The list of APISIX instances could not be read, so there is nothing to work with yet. This is not the same as having none registered.",
+      "cta": "Try again"
     }
   },
   "instances": {

@@ -154,17 +154,13 @@ export const Header: FC<HeaderProps> = (props) => {
     const loadHeaderData = async () => {
       // The whole read is covered, not just the request: a 200 carrying the
       // wrong shape — the SPA's own HTML from a misrouted proxy, say — resolves
-      // the promise and only throws further down, on `data.some`. With the try
-      // around the request alone that was an unhandled rejection, reported
-      // nowhere.
+      // the promise, and with the try around the request alone the failure that
+      // followed was an unhandled rejection, reported nowhere.
       try {
+        // instanceApi.list refuses anything that is not a list of records, so
+        // a malformed body arrives here as a rejection and never reaches the
+        // atom (see src/utils/list-shape.ts).
         const data = await instanceApi.list();
-        // Checked before the write rather than after: the throw below would be
-        // caught either way, but not before the malformed value had reached the
-        // atom every other consumer reads.
-        if (!Array.isArray(data)) {
-          throw new TypeError('instance list is not an array');
-        }
         setInstances(data);
 
         // Auto-select when nothing is selected, or when the stored id no

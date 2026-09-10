@@ -17,6 +17,8 @@
 
 import axios from 'axios';
 
+import { parseRecordList } from '@/utils/list-shape';
+
 import { apiClient } from './client';
 
 export type Instance = {
@@ -135,7 +137,7 @@ export const instanceApi = {
   // List all instances
   list: async (): Promise<Instance[]> => {
     const response = await apiClient.get<Instance[]>('/api/v1/instances');
-    return response.data;
+    return parseRecordList<Instance>(response.data);
   },
 
   // Get a specific instance
@@ -188,7 +190,7 @@ export const instanceApi = {
   // Get health status for all instances
   listHealth: async (): Promise<InstanceHealth[]> => {
     const response = await apiClient.get<InstanceHealth[]>('/api/v1/instances/health');
-    return response.data;
+    return parseRecordList<InstanceHealth>(response.data);
   },
 
   // Assign role and scope to user for instance
@@ -212,6 +214,6 @@ export const instanceApi = {
   // Get user's instances
   getUserInstances: async (userId: string): Promise<UserInstanceRole[]> => {
     const response = await apiClient.get<UserInstanceRole[]>(`/api/v1/user-access/${userId}/instances`);
-    return response.data;
+    return parseRecordList<UserInstanceRole>(response.data);
   },
 };

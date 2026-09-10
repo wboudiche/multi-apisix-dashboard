@@ -45,6 +45,11 @@
     "noSelection": {
       "title": "Keine Instanz ausgewählt",
       "message": "Wähle oben im Kopfbereich eine APISIX-Instanz aus, um diese Seite anzuzeigen."
+    },
+    "unreadable": {
+      "title": "Instanzliste nicht verfügbar",
+      "message": "Die Liste der APISIX-Instanzen konnte nicht gelesen werden, daher steht noch nichts zur Verfügung. Das ist nicht dasselbe wie keine registrierten Instanzen.",
+      "cta": "Erneut versuchen"
     }
   },
   "login": {
