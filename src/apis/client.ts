@@ -17,6 +17,7 @@
 import axios from 'axios';
 
 import { appUrl } from '@/utils/app-url';
+import { assertJsonBody } from '@/utils/response-shape';
 
 import { authApi } from './auth';
 
@@ -58,7 +59,13 @@ apiClient.interceptors.request.use((config) => {
 
 // Response interceptor — auto-refresh on 401
 apiClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Every /api/* endpoint answers JSON. A 2xx carrying text is the
+        // dashboard's own index.html coming back from a misrouted proxy, and
+        // axios has already resolved it — see src/utils/response-shape.ts.
+        assertJsonBody(response.data, response.config.url ?? '');
+        return response;
+    },
     async (error) => {
         const originalRequest = error.config;
 

@@ -27,6 +27,7 @@ import apisixLogo from '@/assets/apisix-logo.svg';
 import {
   accessTokenAtom,
   currentUserAtom,
+  logoutActionAtom,
   refreshTokenAtom,
   tokenExpiryAtom,
 } from '@/stores/auth';
@@ -129,6 +130,7 @@ const Login = () => {
   const setRefreshToken = useSetAtom(refreshTokenAtom);
   const setTokenExpiry = useSetAtom(tokenExpiryAtom);
   const setCurrentUser = useSetAtom(currentUserAtom);
+  const discardSession = useSetAtom(logoutActionAtom);
 
   const checkCapsLock = (e: React.KeyboardEvent<HTMLInputElement>) => {
     setCapsLock(e.getModifierState('CapsLock'));
@@ -165,6 +167,13 @@ const Login = () => {
         navigate({ to: '/' });
       }
     } catch (err: unknown) {
+      // The tokens go in before the identity call — apiClient reads them from
+      // localStorage to make it — so a failure after that point leaves a
+      // session `isAuthenticated()` accepts with nobody behind it, and the
+      // next navigation walks into the app as no one. Half a session is worse
+      // than none: drop it.
+      discardSession();
+
       const message =
         isAxiosError(err) && err.response?.status === 401
           ? t('login.invalidCredentials')

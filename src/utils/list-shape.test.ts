@@ -17,6 +17,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseRecordList } from '@/utils/list-shape';
+import { MalformedResponseError } from '@/utils/response-shape';
 
 /**
  * axios resolves any 2xx, so a proxy that answers /api/* with the SPA's own
@@ -63,4 +64,22 @@ describe('parseRecordList', () => {
     expect(() => parseRecordList([[], []])).toThrow(/expected a list of records/i);
   });
 
+});
+
+/**
+ * The type matters as much as the message. InstanceGuard declines to retry a
+ * malformed body — retrying something deterministic only holds the dashboard
+ * on a spinner for seven seconds before saying the same thing — and it decides
+ * that by type. A wrong-shape list and a body that was never JSON are the same
+ * fault at two depths, so they are one type. Before, this threw a native
+ * TypeError, which meant any accidental TypeError from an interceptor was read
+ * as "malformed body, do not retry".
+ */
+describe('the failure it reports', () => {
+  it('is the shared malformed-response type, not a native TypeError', () => {
+    expect(() => parseRecordList('<!doctype html>')).toThrow(
+      MalformedResponseError
+    );
+    expect(() => parseRecordList([[]])).toThrow(MalformedResponseError);
+  });
 });

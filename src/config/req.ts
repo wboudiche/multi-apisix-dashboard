@@ -27,6 +27,7 @@ import {
 import i18n from '@/config/i18n';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
+import { assertJsonBody } from '@/utils/response-shape';
 
 /**
  * Marks a PUT as a create that must not overwrite anything.
@@ -131,6 +132,14 @@ const isProxyRequest = (config?: { url?: string; baseURL?: string }) => {
 
 req.interceptors.response.use(
   (res) => {
+    // Before anything reads the body: a 2xx carrying text is the dashboard's
+    // own index.html coming back from a misrouted proxy, not a resource.
+    // Checked here as well as on the other two axios instances: they are
+    // independent clients over independent paths, and hardening them one at a
+    // time is what #150, #153 and #162 each did — see
+    // src/utils/response-shape.ts.
+    assertJsonBody(res.data, `${res.config.baseURL ?? ''}${res.config.url ?? ''}`);
+
     // it's a apisix design
     // when list is empty, it will be a object
     // but we need a array
