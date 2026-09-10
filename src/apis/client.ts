@@ -16,6 +16,8 @@
  */
 import axios from 'axios';
 
+import { appUrl } from '@/utils/app-url';
+
 import { authApi } from './auth';
 
 let isRefreshing = false;
@@ -67,7 +69,7 @@ apiClient.interceptors.response.use(
             error.response?.data?.code === 'password_change_required' &&
             !window.location.pathname.endsWith('/change-password')
         ) {
-            window.location.href = '/ui/change-password';
+            window.location.href = appUrl('/change-password');
             return Promise.reject(error);
         }
 
@@ -90,7 +92,7 @@ apiClient.interceptors.response.use(
                 localStorage.removeItem('auth:access_token');
                 localStorage.removeItem('auth:refresh_token');
                 localStorage.removeItem('auth:token_expiry');
-                window.location.href = '/login';
+                window.location.href = appUrl('/login');
                 return Promise.reject(error);
             }
 
@@ -111,7 +113,7 @@ apiClient.interceptors.response.use(
                 localStorage.removeItem('auth:access_token');
                 localStorage.removeItem('auth:refresh_token');
                 localStorage.removeItem('auth:token_expiry');
-                window.location.href = '/login';
+                window.location.href = appUrl('/login');
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;
