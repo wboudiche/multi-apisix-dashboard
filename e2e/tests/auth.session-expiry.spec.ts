@@ -91,9 +91,13 @@ test('sends a session whose refresh is refused to the login page', async ({
   // 7 days, or a JWT_SECRET rotated under it. The access token is rejected,
   // the refresh is attempted, and the backend refuses that too.
   const context = await browser.newContext({ storageState: undefined });
-  const page = await context.newPage();
 
+  // Inside the try: a failure opening the page would otherwise leak the
+  // context, and a leaked context holds a browser process open for the rest
+  // of the run.
   try {
+    const page = await context.newPage();
+
     await signIn(page);
 
     await failTheInstanceList(page, 401, expired);
@@ -125,9 +129,13 @@ test('sends a session with no refresh token left to the login page', async ({
   // tokens are gone from localStorage while requests started before it are
   // still in flight.
   const context = await browser.newContext({ storageState: undefined });
-  const page = await context.newPage();
 
+  // Inside the try: a failure opening the page would otherwise leak the
+  // context, and a leaked context holds a browser process open for the rest
+  // of the run.
   try {
+    const page = await context.newPage();
+
     await signIn(page);
 
     await page.evaluate(() => localStorage.removeItem('auth:refresh_token'));
@@ -158,9 +166,13 @@ test('sends an account owing a password change to the dedicated screen', async (
   // __root.tsx before a request ever left, which is the other mechanism and
   // not this one.
   const context = await browser.newContext({ storageState: undefined });
-  const page = await context.newPage();
 
+  // Inside the try: a failure opening the page would otherwise leak the
+  // context, and a leaked context holds a browser process open for the rest
+  // of the run.
   try {
+    const page = await context.newPage();
+
     await signIn(page);
 
     await failTheInstanceList(
