@@ -19,24 +19,7 @@ import axios from 'axios';
 import { appUrl } from '@/utils/app-url';
 import { assertJsonBody } from '@/utils/response-shape';
 
-import { authApi } from './auth';
-
-let isRefreshing = false;
-let failedQueue: Array<{
-    resolve: (value: unknown) => void;
-    reject: (reason: unknown) => void;
-}> = [];
-
-const processQueue = (error: unknown, token: string | null = null) => {
-    failedQueue.forEach((prom) => {
-        if (error) {
-            prom.reject(error);
-        } else {
-            prom.resolve(token);
-        }
-    });
-    failedQueue = [];
-};
+import { endSession, refreshSession } from './session';
 
 export const apiClient = axios.create();
 
@@ -81,49 +64,18 @@ apiClient.interceptors.response.use(
         }
 
         if (error.response?.status === 401 && !originalRequest._retry) {
-            if (isRefreshing) {
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject });
-                }).then((token) => {
-                    originalRequest.headers.Authorization = `Bearer ${token}`;
-                    return apiClient(originalRequest);
-                });
-            }
-
             originalRequest._retry = true;
-            isRefreshing = true;
 
-            const refreshToken = localStorage.getItem('auth:refresh_token');
-            if (!refreshToken) {
-                // No refresh token — redirect to login
-                localStorage.removeItem('auth:access_token');
-                localStorage.removeItem('auth:refresh_token');
-                localStorage.removeItem('auth:token_expiry');
-                window.location.href = appUrl('/login');
-                return Promise.reject(error);
-            }
-
+            // Every endpoint on this client sits behind the dashboard's own
+            // auth middleware, so a 401 here is always this session — unlike
+            // `req`, which also carries a gateway's rejections.
             try {
-                const data = await authApi.refresh(refreshToken);
-                localStorage.setItem('auth:access_token', data.access_token);
-                localStorage.setItem('auth:refresh_token', data.refresh_token);
-                localStorage.setItem(
-                    'auth:token_expiry',
-                    String(Date.now() + data.expires_in * 1000)
-                );
-
-                processQueue(null, data.access_token);
-                originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+                const token = await refreshSession();
+                originalRequest.headers.Authorization = `Bearer ${token}`;
                 return apiClient(originalRequest);
-            } catch (refreshError) {
-                processQueue(refreshError, null);
-                localStorage.removeItem('auth:access_token');
-                localStorage.removeItem('auth:refresh_token');
-                localStorage.removeItem('auth:token_expiry');
-                window.location.href = appUrl('/login');
-                return Promise.reject(refreshError);
-            } finally {
-                isRefreshing = false;
+            } catch {
+                endSession();
+                return Promise.reject(error);
             }
         }
 

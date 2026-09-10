@@ -20,6 +20,7 @@ import axios, { AxiosError, type AxiosResponse, HttpStatusCode } from 'axios';
 import { getDefaultStore } from 'jotai';
 import { stringify } from 'qs';
 
+import { endSession, isSessionInvalid, refreshSession } from '@/apis/session';
 import {
   API_PREFIX,
   SKIP_INTERCEPTOR_HEADER,
@@ -211,6 +212,29 @@ req.interceptors.response.use(
         return Promise.reject(err);
       }
 
+      // A 401 the dashboard raised about this session, as opposed to one
+      // APISIX raised about an admin key the proxy relayed untouched. Only the
+      // first is worth ending a session over; treating them alike would sign
+      // someone out because a gateway is misconfigured, which logging in again
+      // cannot fix.
+      if (status === HttpStatusCode.Unauthorized && isSessionInvalid(res.data)) {
+        const original = err.config as (typeof err.config & { _retry?: boolean });
+        if (original && !original._retry) {
+          original._retry = true;
+          // The request interceptor reads the token from localStorage, so the
+          // retry picks up whatever the refresh wrote.
+          return refreshSession().then(
+            () => req(original),
+            () => {
+              endSession();
+              return Promise.reject(err);
+            }
+          );
+        }
+        endSession();
+        return Promise.reject(err);
+      }
+
       const d = res.data;
       const message =
         d?.error_msg || d?.message || d?.error || fallbackMessage(status);
@@ -223,9 +247,6 @@ req.interceptors.response.use(
         message,
         color: 'red',
       });
-      if (status === HttpStatusCode.Unauthorized) {
-        return Promise.resolve({ data: {} });
-      }
     }
     return Promise.reject(err);
   }

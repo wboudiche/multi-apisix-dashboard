@@ -33,17 +33,28 @@ const (
 	InstanceIDKey       = "instanceID"
 )
 
+// SessionInvalidCode marks a 401 the dashboard raised about its own session,
+// as opposed to one relayed from a gateway.
+//
+// The proxy passes APISIX's status through verbatim (handlers/proxy.go), so a
+// 401 arriving at the browser can equally mean "this instance's admin key is
+// wrong". Those want opposite responses — sign in again, versus go fix the
+// instance — and treating them alike would sign someone out because a gateway
+// was misconfigured. Same shape as password_change_required in
+// force_password_change.go.
+const SessionInvalidCode = "session_invalid"
+
 func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader(AuthorizationHeader)
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required", "code": SessionInvalidCode})
 			c.Abort()
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, BearerPrefix) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format", "code": SessionInvalidCode})
 			c.Abort()
 			return
 		}
@@ -53,9 +64,9 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 		claims, err := authService.ValidateAccessToken(token)
 		if err != nil {
 			if err == services.ErrTokenExpired {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired", "code": SessionInvalidCode})
 			} else {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "code": SessionInvalidCode})
 			}
 			c.Abort()
 			return
