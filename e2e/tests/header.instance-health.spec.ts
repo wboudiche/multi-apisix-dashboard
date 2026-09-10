@@ -250,8 +250,18 @@ test('reports a malformed instance list instead of throwing past its own catch',
 
   await page.goto('/ui/routes');
 
+  // Was `header.loadFailed` — "Could not load the instance list." — which is
+  // the fallback describeError answers when it has nothing better. It now has
+  // something better: the response boundary names the request it rejected, and
+  // one endpoint of many being misrouted is exactly what an operator needs to
+  // be told. The generic line is still what a failure with no reason gets; see
+  // "says why the instance list could not be loaded" above, which drives a 500
+  // carrying its own message.
+  //
+  // Asserted without the character count, which is a property of this fixture
+  // rather than of the behaviour.
   await expect(
-    page.getByText('Could not load the instance list.')
+    page.getByText('/api/v1/instances: expected a JSON body')
   ).toBeVisible({ timeout: 20000 });
 
   // Scoped to what this loader owns: that it reports rather than throwing past

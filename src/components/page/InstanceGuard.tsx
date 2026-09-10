@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { instanceApi } from '@/apis/instances';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { MalformedResponseError } from '@/utils/response-shape';
 import IconAdd from '~icons/material-symbols/add';
 import IconInstance from '~icons/material-symbols/lan';
 import IconRefresh from '~icons/material-symbols/refresh';
@@ -90,12 +91,18 @@ export const InstanceGuard = ({ children }: InstanceGuardProps) => {
     queryKey: ['instances', currentUser?.id],
     queryFn: () => instanceApi.list(),
     staleTime: 30_000,
-    // A malformed body throws deterministically (see parseRecordList), so
-    // retrying it only holds the whole dashboard on a spinner for seven seconds
-    // before saying the same thing. Everything else — a 502 from a restarting
-    // backend, a dropped connection — still gets the default attempts, because
-    // those do heal on their own and used to.
-    retry: (attempt, error) => !(error instanceof TypeError) && attempt < 3,
+    // A malformed body throws deterministically — the response interceptor
+    // rejects one that was never JSON, parseRecordList one that is JSON of the
+    // wrong shape — so retrying it only holds the whole dashboard on a spinner
+    // for seven seconds before saying the same thing. Everything else — a 502
+    // from a restarting backend, a dropped connection — still gets the default
+    // attempts, because those do heal on their own and used to.
+    //
+    // Keyed on the shared type rather than the native TypeError this used to
+    // check: that read any accidental TypeError from an interceptor as
+    // "malformed body, do not retry".
+    retry: (attempt, error) =>
+      !(error instanceof MalformedResponseError) && attempt < 3,
   });
 
   if (isLoading) {

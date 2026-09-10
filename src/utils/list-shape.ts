@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import { MalformedResponseError } from '@/utils/response-shape';
+
 /**
  * A record: an object that is not an array.
  *
@@ -54,10 +56,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 export const parseRecordList = <T>(value: unknown): T[] => {
   if (!Array.isArray(value)) {
-    throw new TypeError(`expected a list, got ${value === null ? 'null' : typeof value}`);
+    throw new MalformedResponseError(
+      `expected a list, got ${value === null ? 'null' : typeof value}`
+    );
   }
   if (!value.every(isRecord)) {
-    throw new TypeError('expected a list of records');
+    throw new MalformedResponseError('expected a list of records');
   }
   return value as T[];
 };

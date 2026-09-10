@@ -17,6 +17,8 @@
 
 import axios from 'axios';
 
+import { assertJsonBody } from '@/utils/response-shape';
+
 import { apiClient } from './client';
 
 export type LoginRequest = {
@@ -46,6 +48,15 @@ export type User = {
 
 // Unauthenticated client for login/refresh/logout
 const unauthClient = axios.create();
+
+// The same boundary as the other two clients. This one carries the login
+// response, so a misroute here hands the app `data.access_token` of undefined
+// and it stores the string "undefined" as a session — the failure arrives
+// later, as a 401 loop, with nothing pointing back here.
+unauthClient.interceptors.response.use((response) => {
+  assertJsonBody(response.data, response.config.url ?? '');
+  return response;
+});
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {

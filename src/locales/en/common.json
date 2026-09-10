@@ -865,7 +865,8 @@
     "forbidden": "You do not have permission to do that on this instance.",
     "unauthorized": "Your session has expired. Please sign in again.",
     "notFound": "Not found.",
-    "generic": "The request failed ({{status}})."
+    "generic": "The request failed ({{status}}).",
+    "malformedResponse": "The server did not answer with data for {{- url}}. The dashboard may be behind a misconfigured proxy."
   },
   "labelFilter": {
     "selectKey": "Select key",
