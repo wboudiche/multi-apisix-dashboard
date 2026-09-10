@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
+import { parseRecordList } from '@/utils/list-shape';
+
 import { apiClient } from './client';
-import { parseRecordList } from './list-shape';
 
 export type Team = {
   id: string;

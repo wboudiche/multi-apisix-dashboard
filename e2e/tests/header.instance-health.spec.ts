@@ -254,9 +254,9 @@ test('reports a malformed instance list instead of throwing past its own catch',
     page.getByText('Could not load the instance list.')
   ).toBeVisible({ timeout: 20000 });
 
-  // Scoped to what this loader owns. The app as a whole still falls over on
-  // this input, from InstanceGuard's own independent read of the same endpoint
-  // (src/components/page/InstanceGuard.tsx:114) — tracked in #153.
+  // Scoped to what this loader owns: that it reports rather than throwing past
+  // its own catch. What the rest of the app does with the same input is
+  // instances.guard-shape.spec.ts, since #153.
 });
 
 base('logging out does not probe health without a token', async ({ browser }) => {

@@ -46,11 +46,29 @@ test('the guarded pages explain themselves instead of falling over', async ({
   // Asserted first: it is the positive claim, and it is what fails when the
   // guard regresses. The absence check below only means something once the
   // page has settled — placed first it passes on an empty document.
+  //
+  // And it says what actually happened. "No APISIX gateway connected" would be
+  // a lie here and a costly one: it invites someone to register a gateway they
+  // may already have, when the truth is that the list could not be read.
+  await expect(page.getByText('Instance list unavailable')).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.getByText('No APISIX gateway connected')).toHaveCount(0);
+  await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
+  await expect(page.locator('header')).toBeVisible();
+});
+
+test('and still says "none registered" when that is the truth', async ({ page }) => {
+  // The distinction only means something if the other side of it still works.
+  await page.route('**/api/v1/instances', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  );
+  await page.goto('/ui/routes');
+
   await expect(page.getByText('No APISIX gateway connected')).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
-  await expect(page.locator('header')).toBeVisible();
+  await expect(page.getByText('Instance list unavailable')).toHaveCount(0);
 });
 
 test('and so does the page its only way out leads to', async ({ page }) => {

@@ -28,26 +28,29 @@
  * converge: hardening the header left the guard, hardening the guard left the
  * instances page one click away behind its own empty-state button.
  *
- * Entries that are not records are dropped for the same reason `Array.isArray`
- * alone was not enough — `[null]` passed it and threw on the next line.
+ * It throws rather than answering with an empty or shortened list. Returning []
+ * would trade a crash for a silent lie — "there are no instances" and "the
+ * response was unreadable" would look the same, and the header would stop
+ * telling the operator which one it hit. Dropping odd entries would be that
+ * same lie one level down, and one of these lists is an authorization list:
+ * getUserInstances feeds usePermission, which falls back to the broader global
+ * role when the per-instance record is missing, so a quietly dropped entry
+ * widens what someone may do. A caller that genuinely wants to degrade can
+ * still catch.
  *
- * It throws rather than answering with an empty list. Returning [] would trade
- * a crash for a silent lie: "there are no instances" and "the response was
- * unreadable" would look the same, and the header would stop telling the
- * operator which one it hit — the notification #150 exists for. A caller that
- * genuinely wants to degrade can still catch.
- *
- * The original array is returned when nothing had to be dropped: these feed
- * jotai atoms and react-query caches, where a fresh array on every call is a
- * re-render on every call.
+ * The array is returned as it came, not copied: these feed jotai atoms and
+ * react-query caches, where a fresh array on every call is a re-render on
+ * every call.
  */
+const isRecord = (value: unknown): boolean =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
 export const parseRecordList = <T>(value: unknown): T[] => {
   if (!Array.isArray(value)) {
     throw new TypeError(`expected a list, got ${value === null ? 'null' : typeof value}`);
   }
-
-  const kept = value.filter(
-    (entry) => entry !== null && typeof entry === 'object'
-  );
-  return (kept.length === value.length ? value : kept) as T[];
+  if (!value.every(isRecord)) {
+    throw new TypeError('expected a list of records');
+  }
+  return value as T[];
 };

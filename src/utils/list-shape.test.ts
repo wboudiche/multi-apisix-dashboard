@@ -16,7 +16,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { parseRecordList } from '@/apis/list-shape';
+import { parseRecordList } from '@/utils/list-shape';
 
 /**
  * axios resolves any 2xx, so a proxy that answers /api/* with the SPA's own
@@ -44,19 +44,24 @@ describe('parseRecordList', () => {
     }
   });
 
-  it('drops entries that are not records', () => {
-    // Array.isArray alone let [null] through, and the .id below it threw with
-    // the same symptom the check was written to remove.
-    // A list that is a list, holding something that is not a record, is still
-    // a list — the entry is dropped rather than the whole answer refused.
-    expect(parseRecordList([null])).toEqual([]);
-    expect(parseRecordList([{ id: 'a' }, null, 'x', { id: 'b' }])).toEqual([
-      { id: 'a' },
-      { id: 'b' },
-    ]);
+  it('refuses a list holding something that is not a record', () => {
+    // Dropping the odd entry quietly would be the same lie one level down, and
+    // one of these lists is an authorization list: getUserInstances feeds
+    // usePermission, which falls back to the broader global role when the
+    // per-instance record is missing. A dropped entry would widen what someone
+    // may do, without a word.
+    for (const bad of [[null], [{ id: 'a' }, 'x'], [{ id: 'a' }, 1]]) {
+      expect(() => parseRecordList(bad)).toThrow(/expected a list of records/i);
+    }
   });
 
-  it('returns the same array when nothing had to be dropped', () => {
+  it('does not mistake an array for a record', () => {
+    // typeof [] === 'object', so a nested-array payload passed the record
+    // check and read as two instances whose ids were both undefined.
+    expect(() => parseRecordList([[], []])).toThrow(/expected a list of records/i);
+  });
+
+  it('returns the very same array it was given', () => {
     // Identity matters: these feed jotai atoms and react-query caches, where a
     // fresh array on every call is a re-render on every call.
     const list = [{ id: 'a' }];

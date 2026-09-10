@@ -23,9 +23,11 @@ import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { instanceApi } from '@/apis/instances';
+import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import IconAdd from '~icons/material-symbols/add';
 import IconInstance from '~icons/material-symbols/lan';
+import IconRefresh from '~icons/material-symbols/refresh';
 
 type InstanceGuardProps = {
   children: ReactNode;
@@ -75,10 +77,23 @@ export const InstanceGuard = ({ children }: InstanceGuardProps) => {
   const { t } = useTranslation();
   const currentInstanceId = useAtomValue(currentInstanceIdAtom);
 
-  const { data: instances, isLoading } = useQuery({
-    queryKey: ['instances'],
+  const currentUser = useAtomValue(currentUserAtom);
+  const {
+    data: instances,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    // Scoped to the user, like the header's health query: logging out navigates
+    // client-side, so without it the next account is waved through on the list
+    // the previous one saw until the refetch lands.
+    queryKey: ['instances', currentUser?.id],
     queryFn: () => instanceApi.list(),
     staleTime: 30_000,
+    // A malformed body throws deterministically (see parseRecordList): retrying
+    // it three times only holds the whole dashboard on a spinner for seven
+    // seconds before saying the same thing.
+    retry: false,
   });
 
   if (isLoading) {
@@ -89,7 +104,25 @@ export const InstanceGuard = ({ children }: InstanceGuardProps) => {
     );
   }
 
-  // (1) No instances registered at all — drive the user to /ui/instances.
+  // (1) The list could not be read. Told apart from having none, because the
+  // difference is what the operator does next: "register your first gateway"
+  // sent to someone who already has five, whose backend is simply unreachable,
+  // costs them the time it takes to work out the advice was wrong.
+  if (isError) {
+    return (
+      <EmptyState
+        title={t('instanceGuard.unreadable.title')}
+        message={t('instanceGuard.unreadable.message')}
+        cta={
+          <Button onClick={() => refetch()} leftSection={<IconRefresh width="16" height="16" />}>
+            {t('instanceGuard.unreadable.cta')}
+          </Button>
+        }
+      />
+    );
+  }
+
+  // (2) No instances registered at all — drive the user to /ui/instances.
   // instanceApi.list always answers with a list (see parseRecordList), so the
   // length is the whole question here.
   if (!instances || instances.length === 0) {
@@ -110,7 +143,7 @@ export const InstanceGuard = ({ children }: InstanceGuardProps) => {
     );
   }
 
-  // (2) Instances exist but none selected — direct the user to the header
+  // (3) Instances exist but none selected — direct the user to the header
   // switcher rather than auto-picking one (auto-pick can mask the wrong
   // selection in multi-instance setups).
   const known = instances.some((inst) => inst.id === currentInstanceId);

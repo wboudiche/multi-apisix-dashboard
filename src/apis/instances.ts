@@ -17,8 +17,9 @@
 
 import axios from 'axios';
 
+import { parseRecordList } from '@/utils/list-shape';
+
 import { apiClient } from './client';
-import { parseRecordList } from './list-shape';
 
 export type Instance = {
   id: string;

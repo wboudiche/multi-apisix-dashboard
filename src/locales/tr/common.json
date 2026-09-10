@@ -45,6 +45,11 @@
     "noSelection": {
       "title": "Örnek seçilmedi",
       "message": "Bu sayfayı görüntülemek için üst kısımdaki seçiciden bir APISIX örneği seçin."
+    },
+    "unreadable": {
+      "title": "Örnek listesi kullanılamıyor",
+      "message": "APISIX örneklerinin listesi okunamadı, bu nedenle henüz çalışılacak bir şey yok. Bu, kayıtlı örnek bulunmamasıyla aynı şey değildir.",
+      "cta": "Yeniden dene"
     }
   },
   "login": {
