@@ -22,9 +22,16 @@ import { currentInstanceIdAtom } from '@/stores/instance';
 export type Role = 'super_admin' | 'instance_admin' | 'developer' | 'viewer';
 
 // Resources that developer role can access (from backend RolePermissions)
+// What a developer works on: their team's own objects, plus the landing page.
+//
+// Not plugin_metadata. The backend has never granted it to this role
+// (models.RolePermissions), so listing it here put an entry in the sidebar
+// that led to a page which could only refuse — and refuse with "ask an admin",
+// which was the one piece of advice that was actually right there. Reaching it
+// by URL still explains itself; it is no longer offered (#172).
 const DEVELOPER_RESOURCES = new Set([
   '/routes', '/services', '/upstreams', '/consumers', '/consumer_groups',
-  '/stream_routes', '/overview', '/plugin_metadata',
+  '/stream_routes', '/overview',
 ]);
 
 // Resources that require super_admin
