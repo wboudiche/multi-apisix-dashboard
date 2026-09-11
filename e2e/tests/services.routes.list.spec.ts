@@ -24,14 +24,14 @@ import { expect } from '@playwright/test';
 
 import { postRouteReq } from '@/apis/routes';
 import { postServiceReq } from '@/apis/services';
+import type { RoutePostType } from '@/components/form-slice/FormPartRoute/schema';
 import { API_ROUTES, API_SERVICES } from '@/config/constant';
-import type { APISIXType } from '@/types/schema/apisix';
 
 test.describe.configure({ mode: 'serial' });
 
 const serviceName = randomId('test-service');
 const anotherServiceName = randomId('another-service');
-const routes: APISIXType['Route'][] = [
+const routes: RoutePostType[] = [
   {
     name: randomId('route1'),
     uri: '/api/v1/test1',
@@ -50,7 +50,7 @@ const routes: APISIXType['Route'][] = [
 ];
 
 // Route that uses upstream directly instead of service_id
-const upstreamRoute: APISIXType['Route'] = {
+const upstreamRoute: RoutePostType = {
   name: randomId('upstream-route'),
   uri: '/api/v1/upstream-test',
   methods: ['GET'],
@@ -60,7 +60,7 @@ const upstreamRoute: APISIXType['Route'] = {
 };
 
 // Route that belongs to another service
-const anotherServiceRoute: APISIXType['Route'] = {
+const anotherServiceRoute: RoutePostType = {
   name: randomId('another-service-route'),
   uri: '/api/v1/another-test',
   methods: ['GET'],

@@ -37,7 +37,7 @@ const PREFIX = randomId('f142');
 const onInstance = () => ({ 'X-Instance-ID': getFixtures().localInstanceId });
 
 const created: string[] = [];
-const put = async (path: string, body: unknown) => {
+const put = async (path: string, body: Record<string, unknown>) => {
   const token = await loginAdmin();
   await apiFetch(`${PROXY}${path}`, token, {
     method: 'PUT',

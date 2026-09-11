@@ -32,18 +32,22 @@ const assert = {
     await expect(title).toBeVisible({ timeout: 15000 });
   },
   isAddPage: async (page: Page) => {
-    await expect(
-      page,
-      { timeout: 15000 }
-    ).toHaveURL((url) => url.pathname.endsWith('/stream_routes/add'));
+    // On the matcher. Passed to expect() it was accepted and ignored — its
+    // second argument takes a message, not options — so this waited the
+    // default 5s while reading as 15s.
+    await expect(page).toHaveURL((url) => url.pathname.endsWith('/stream_routes/add'), {
+      timeout: 15000,
+    });
     const title = page.getByRole('heading', { name: 'Add Stream Route' });
     await expect(title).toBeVisible({ timeout: 15000 });
   },
   isDetailPage: async (page: Page) => {
-    await expect(
-      page,
-      { timeout: 20000 }
-    ).toHaveURL((url) => url.pathname.includes('/stream_routes/detail'));
+    // On the matcher. Passed to expect() it was accepted and ignored — its
+    // second argument takes a message, not options — so this waited the
+    // default 5s while reading as 20s.
+    await expect(page).toHaveURL((url) => url.pathname.includes('/stream_routes/detail'), {
+      timeout: 20000,
+    });
     const title = page.getByRole('heading', {
       name: 'Stream Route Detail',
     });
