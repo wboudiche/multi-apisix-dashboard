@@ -34,6 +34,7 @@ import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartGlobalRules } from '@/components/form-slice/FormPartGlobalRules';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_GLOBAL_RULES } from '@/config/constant';
 import { req } from '@/config/req';
@@ -98,7 +99,7 @@ const GlobalRuleDetailForm = (props: Props) => {
   );
 };
 
-function RouteComponent() {
+function GlobalRuleDetailPage() {
   const { id } = useParams({ from: '/global_rules/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
@@ -135,6 +136,20 @@ function RouteComponent() {
       />
       <GlobalRuleDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { id } = useParams({ from: '/global_rules/detail/$id' });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() => getGlobalRuleQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/global_rules' })}
+    >
+      <GlobalRuleDetailPage />
+    </DetailGate>
   );
 }
 

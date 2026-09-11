@@ -34,6 +34,7 @@ import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartProto } from '@/components/form-slice/FormPartProto';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_PROTOS } from '@/config/constant';
 import { req } from '@/config/req';
@@ -106,7 +107,7 @@ const ProtoDetailForm = ({ id, readOnly, setReadOnly }: ProtoFormProps) => {
   );
 };
 
-function RouteComponent() {
+function ProtoDetailPage() {
   const { id } = useParams({ from: '/protos/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
@@ -147,6 +148,20 @@ function RouteComponent() {
         setReadOnly={setReadOnly}
       />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { id } = useParams({ from: '/protos/detail/$id' });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() => getProtoQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/protos' })}
+    >
+      <ProtoDetailPage />
+    </DetailGate>
   );
 }
 

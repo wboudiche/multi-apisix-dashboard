@@ -39,6 +39,7 @@ import {
 } from '@/components/form-slice/FormPartSSL/schema';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_SSLS } from '@/config/constant';
 import { req } from '@/config/req';
@@ -113,7 +114,7 @@ const SSLDetailForm = (props: Props & { id: string }) => {
   );
 };
 
-function RouteComponent() {
+function SSLDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/ssls/detail/$id' });
   const [readOnly, setReadOnly] = useBoolean(true);
@@ -150,6 +151,20 @@ function RouteComponent() {
       />
       <SSLDetailForm id={id} readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { id } = useParams({ from: '/ssls/detail/$id' });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() => getSSLQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/ssls' })}
+    >
+      <SSLDetailPage />
+    </DetailGate>
   );
 }
 

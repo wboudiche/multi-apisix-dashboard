@@ -24,6 +24,8 @@ import {
 } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
+import { getConsumerQueryOptions } from '@/apis/hooks';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import IconCredential from '~icons/material-symbols/key-outline';
 import IconConsumer from '~icons/material-symbols/person-outline';
@@ -61,7 +63,15 @@ function RouteComponent() {
           </Tabs.Tab>
         </Tabs.List>
       </Tabs>
-      <Outlet />
+      {/* The consumer's credentials are under it, so the gate here covers
+          both tabs, and remounts them on a switch. */}
+      <DetailGate
+        record={() => getConsumerQueryOptions(username as string)}
+        id={username as string}
+        onBack={() => navigate({ to: '/consumers' })}
+      >
+        <Outlet />
+      </DetailGate>
     </>
   );
 }

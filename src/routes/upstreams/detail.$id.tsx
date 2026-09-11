@@ -17,11 +17,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Group, Skeleton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import {
-  queryOptions,
-  useMutation,
-  useSuspenseQuery,
-} from '@tanstack/react-query';
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import {
   createFileRoute,
   useNavigate,
@@ -32,7 +28,8 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
-import { getUpstreamReq, putUpstreamReq } from '@/apis/upstreams';
+import { getUpstreamQueryOptions } from '@/apis/hooks';
+import { putUpstreamReq } from '@/apis/upstreams';
 import { FormPartBasic } from '@/components/form-slice/FormPartBasic';
 import {
   FormSectionChecks,
@@ -45,6 +42,7 @@ import { produceToUpstreamForm } from '@/components/form-slice/FormPartUpstream/
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { FormWizard } from '@/components/form-slice/FormWizard';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_UPSTREAMS } from '@/config/constant';
 import { req } from '@/config/req';
@@ -56,12 +54,6 @@ type Props = {
   readOnly: boolean;
   setReadOnly: (v: boolean) => void;
 };
-
-const getUpstreamQueryOptions = (id: string) =>
-  queryOptions({
-    queryKey: ['upstream', id],
-    queryFn: () => getUpstreamReq(req, id),
-  });
 
 const UpstreamDetailForm = (
   props: Props & Pick<APISIXType['Upstream'], 'id'>
@@ -156,7 +148,7 @@ const UpstreamDetailForm = (
   );
 };
 
-function RouteComponent() {
+function UpstreamDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/upstreams/detail/$id' });
   const [readOnly, setReadOnly] = useBoolean(true);
@@ -197,6 +189,20 @@ function RouteComponent() {
         setReadOnly={setReadOnly}
       />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { id } = useParams({ from: '/upstreams/detail/$id' });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() => getUpstreamQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/upstreams' })}
+    >
+      <UpstreamDetailPage />
+    </DetailGate>
   );
 }
 

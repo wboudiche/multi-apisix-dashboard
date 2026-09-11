@@ -53,6 +53,7 @@ import { produceToUpstreamForm } from '@/components/form-slice/FormPartUpstream/
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { FormWizard } from '@/components/form-slice/FormWizard';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
@@ -208,9 +209,14 @@ const ReassignTeamModal = (props: ReassignTeamModalProps) => {
     enabled: opened,
   });
 
-  useEffect(() => {
+  // Each opening starts from the route's current team. Adjusted while
+  // rendering when `opened` or the team changes — React's replacement for
+  // setting state from an effect, which rendered the stale choice first.
+  const [shownFor, setShownFor] = useState({ opened, currentTeamId });
+  if (shownFor.opened !== opened || shownFor.currentTeamId !== currentTeamId) {
+    setShownFor({ opened, currentTeamId });
     if (opened) setSelectedTeamId(currentTeamId || NO_TEAM);
-  }, [opened, currentTeamId]);
+  }
 
   // "No team" is offered as an ordinary option rather than hidden behind a
   // clear icon: detaching is a deliberate choice with consequences, so it
@@ -425,7 +431,13 @@ function RouteComponent() {
   const { id } = useParams({ from: '/routes/detail/$id' });
   const navigate = useNavigate();
   return (
-    <RouteDetail id={id} onDeleteSuccess={() => navigate({ to: '/routes' })} />
+    <DetailGate
+      record={() => getRouteQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/routes' })}
+    >
+      <RouteDetail id={id} onDeleteSuccess={() => navigate({ to: '/routes' })} />
+    </DetailGate>
   );
 }
 

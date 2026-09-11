@@ -34,6 +34,7 @@ import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartPluginConfig } from '@/components/form-slice/FormPartPluginConfig';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_CONSUMER_GROUPS } from '@/config/constant';
 import { req } from '@/config/req';
@@ -106,7 +107,7 @@ const ConsumerGroupDetailForm = (props: Props) => {
   );
 };
 
-function RouteComponent() {
+function ConsumerGroupDetailPage() {
   const { id } = useParams({ from: '/consumer_groups/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
@@ -147,6 +148,20 @@ function RouteComponent() {
         setReadOnly={setReadOnly}
       />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { id } = useParams({ from: '/consumer_groups/detail/$id' });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() => getConsumerGroupQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/consumer_groups' })}
+    >
+      <ConsumerGroupDetailPage />
+    </DetailGate>
   );
 }
 

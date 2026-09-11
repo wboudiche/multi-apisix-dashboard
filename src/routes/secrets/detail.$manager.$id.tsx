@@ -34,6 +34,7 @@ import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartSecret } from '@/components/form-slice/FormPartSecret';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_SECRETS } from '@/config/constant';
 import { req } from '@/config/req';
@@ -112,7 +113,7 @@ const SecretDetailForm = (props: Props) => {
   );
 };
 
-function RouteComponent() {
+function SecretDetailPage() {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
   const { canEdit } = usePermission();
@@ -149,6 +150,25 @@ function RouteComponent() {
       />
       <SecretDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { manager, id } = useParams({ from: '/secrets/detail/$manager/$id' });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() =>
+        getSecretQueryOptions({
+          id,
+          manager: manager as APISIXType['Secret']['manager'],
+        })
+      }
+      id={`${manager}/${id}`}
+      onBack={() => navigate({ to: '/secrets' })}
+    >
+      <SecretDetailPage />
+    </DetailGate>
   );
 }
 

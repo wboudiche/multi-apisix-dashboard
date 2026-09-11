@@ -20,6 +20,8 @@ import {
   useParams,
 } from '@tanstack/react-router';
 
+import { getRouteQueryOptions } from '@/apis/hooks';
+import { DetailGate } from '@/components/page/DetailGate';
 import { RouteDetail } from '@/routes/routes/detail.$id';
 import { CommonFormContext } from '@/utils/form-context';
 
@@ -30,15 +32,23 @@ function RouteComponent() {
   const navigate = useNavigate();
   return (
     <CommonFormContext.Provider value={{ readOnlyFields: ['service_id'] }}>
-      <RouteDetail
+      <DetailGate
+        record={() => getRouteQueryOptions(routeId)}
         id={routeId}
-        onDeleteSuccess={() =>
-          navigate({
-            to: '/services/detail/$id/routes',
-            params: { id },
-          })
+        onBack={() =>
+          navigate({ to: '/services/detail/$id/routes', params: { id } })
         }
-      />
+      >
+        <RouteDetail
+          id={routeId}
+          onDeleteSuccess={() =>
+            navigate({
+              to: '/services/detail/$id/routes',
+              params: { id },
+            })
+          }
+        />
+      </DetailGate>
     </CommonFormContext.Provider>
   );
 }

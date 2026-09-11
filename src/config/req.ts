@@ -16,7 +16,14 @@
  */
 
 import { notifications } from '@mantine/notifications';
-import axios, { AxiosError, type AxiosResponse, HttpStatusCode } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  HttpStatusCode,
+} from 'axios';
 import { getDefaultStore } from 'jotai';
 
 import {
@@ -85,6 +92,89 @@ req.interceptors.request.use((conf) => {
 
   return conf;
 });
+
+type NamedHeaders = Record<string, unknown>;
+type Read = (url: string, config?: AxiosRequestConfig) => Promise<unknown>;
+type Write = (
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig
+) => Promise<unknown>;
+
+/**
+ * `req`, with every request addressed to `instanceId` rather than to whichever
+ * instance is selected when it runs.
+ *
+ * A query keyed on an instance has to be answered by that instance. A retry,
+ * or a refetch from a page already unmounted, runs after a switch; addressed
+ * to the instance selected by then, it would store one instance's answer under
+ * the other's key, to be shown there later (#187). The resource request
+ * functions take their client as an argument, so a query hands them this one.
+ * `headers` go along — a query that expects a 404 can skip its toast.
+ *
+ * An empty id names no instance: those requests go to the selected one.
+ */
+export const reqFor = (
+  instanceId: string,
+  headers: NamedHeaders = {}
+): AxiosInstance => {
+  const named: NamedHeaders = instanceId
+    ? { ...headers, 'X-Instance-ID': instanceId }
+    : headers;
+  if (Object.keys(named).length === 0) return req;
+
+  const withNamed = (config?: AxiosRequestConfig): AxiosRequestConfig => ({
+    ...config,
+    headers: {
+      ...(config?.headers as NamedHeaders | undefined),
+      ...named,
+    } as AxiosRequestConfig['headers'],
+  });
+
+  return new Proxy(req, {
+    get(target, prop, receiver) {
+      switch (prop) {
+        case 'request':
+          return (config: AxiosRequestConfig) =>
+            target.request(withNamed(config));
+        case 'get':
+        case 'delete':
+        case 'head':
+        case 'options':
+          return (url: string, config?: AxiosRequestConfig) =>
+            (target[prop] as Read)(url, withNamed(config));
+        case 'post':
+        case 'put':
+        case 'patch':
+        case 'postForm':
+        case 'putForm':
+        case 'patchForm':
+          return (url: string, data?: unknown, config?: AxiosRequestConfig) =>
+            (target[prop] as Write)(url, data, withNamed(config));
+        default:
+          return Reflect.get(target, prop, receiver);
+      }
+    },
+    apply: (target, _this, [config]: [AxiosRequestConfig]) =>
+      target.request(withNamed(config)),
+  });
+};
+
+/**
+ * The instance a request was addressed to. The request interceptor above
+ * always writes it into the headers when there is one.
+ */
+const addressedTo = (config?: { headers?: unknown }): string => {
+  const { headers } = config ?? {};
+  const named =
+    headers instanceof AxiosHeaders
+      ? headers.get('X-Instance-ID')
+      : (headers as NamedHeaders | undefined)?.['X-Instance-ID'];
+  if (typeof named === 'string' && named) return named;
+  return getDefaultStore().get(currentInstanceIdAtom)
+    || localStorage.getItem('instance:current_id')
+    || '';
+};
 
 export type APISIXRespErr = {
   error_msg?: string;
@@ -169,11 +259,19 @@ req.interceptors.response.use(
     ) {
       res.data.list = [];
     }
-    // A successful proxy response means the gateway is reachable again;
-    // clear any stale banner state.
+    // A successful proxy response means that gateway is reachable again, so
+    // its banner goes. Only its own: a request can be addressed to an
+    // instance other than the selected one (reqFor), and an answer from one
+    // says nothing about another (#187).
     if (isProxyRequest(res.config)) {
       const store = getDefaultStore();
-      if (store.get(proxyErrorAtom)) store.set(proxyErrorAtom, null);
+      const banner = store.get(proxyErrorAtom);
+      if (
+        banner &&
+        (!banner.instanceId || banner.instanceId === addressedTo(res.config))
+      ) {
+        store.set(proxyErrorAtom, null);
+      }
     }
     return res;
   },
@@ -249,10 +347,9 @@ req.interceptors.response.use(
       if (proxy && (status === HttpStatusCode.BadGateway
         || status === HttpStatusCode.GatewayTimeout
         || status === HttpStatusCode.Unauthorized)) {
+        // The instance that failed, which is not always the one selected.
         const store = getDefaultStore();
-        const instanceId = store.get(currentInstanceIdAtom)
-          || localStorage.getItem('instance:current_id')
-          || '';
+        const instanceId = addressedTo(err.config);
         store.set(proxyErrorAtom, {
           instanceId,
           status,

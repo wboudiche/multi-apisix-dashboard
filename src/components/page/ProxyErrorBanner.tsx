@@ -22,7 +22,7 @@ import { useAtom, useAtomValue } from 'jotai';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { instancesAtom } from '@/stores/instance';
+import { currentInstanceIdAtom, instancesAtom } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
 import IconError from '~icons/material-symbols/error-outline';
 import IconRefresh from '~icons/material-symbols/refresh';
@@ -32,6 +32,7 @@ export const ProxyErrorBanner = () => {
   const { t } = useTranslation();
   const [err, setErr] = useAtom(proxyErrorAtom);
   const instances = useAtomValue(instancesAtom);
+  const currentInstanceId = useAtomValue(currentInstanceIdAtom);
   const queryClient = useQueryClient();
 
   const instanceName = useMemo(
@@ -39,7 +40,14 @@ export const ProxyErrorBanner = () => {
     [instances, err]
   );
 
-  if (!err) return null;
+  // The selected instance's banner only. An answer clears the banner of the
+  // instance that gave it, and a request can go to an instance other than the
+  // selected one (#187) — so after a switch away from an unreachable gateway,
+  // its banner is kept, for when it is selected again, but not shown over the
+  // pages of one that is fine.
+  if (!err || (err.instanceId && err.instanceId !== currentInstanceId)) {
+    return null;
+  }
 
   return (
     <Alert
