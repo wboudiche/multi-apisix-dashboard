@@ -26,7 +26,7 @@ import JSZip from 'jszip';
 
 import { getRouteListReq } from '@/apis/routes';
 import { postUpstreamReq } from '@/apis/upstreams';
-import { API_ROUTES, API_UPSTREAMS,PAGE_SIZE_MAX } from '@/config/constant';
+import { API_ROUTES, API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 const readFixture = (name: string): string =>
@@ -70,12 +70,17 @@ test.describe.configure({ mode: 'default' });
 let provisionedUpstreamId: string | undefined;
 
 test.afterEach(async () => {
-  await deleteImportedRoutes();
-  if (provisionedUpstreamId) {
-    await e2eReq
-      .delete(`${API_UPSTREAMS}/${provisionedUpstreamId}`)
-      .catch(() => null);
-    provisionedUpstreamId = undefined;
+  try {
+    await deleteImportedRoutes();
+  } finally {
+    // Tried even when the route sweep throws, whose error still fails the
+    // test. APISIX refuses it while a route still references the upstream.
+    if (provisionedUpstreamId) {
+      await e2eReq
+        .delete(`${API_UPSTREAMS}/${provisionedUpstreamId}`)
+        .catch(() => null);
+      provisionedUpstreamId = undefined;
+    }
   }
 });
 

@@ -127,10 +127,13 @@ export const uiShowAllRows = async (page: Page) => {
 
   // The list's own request: the page's last path segment names the resource,
   // and no other query on these pages asks for that resource at this size.
+  // A successful one only — the list hooks render a gateway error as an empty
+  // table, which would read as every row being absent.
   const resource = url.pathname.split('/').filter(Boolean).pop();
   const listed = page.waitForResponse((res) => {
     const u = new URL(res.url());
     return (
+      res.ok() &&
       res.request().method() === 'GET' &&
       u.pathname.endsWith(`/apisix/admin/${resource}`) &&
       u.searchParams.get('page_size') === String(PAGE_SIZE_MAX)

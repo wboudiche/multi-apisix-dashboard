@@ -26,10 +26,11 @@ import {
 
 import { API_UPSTREAMS } from '@/config/constant';
 
-// Stream routes have no human name. We synthesise a unique server_port
-// from the ownership helper's `name` argument (deterministic hash into
-// the 9000-9999 range) and use that port as the visible row identifier.
-// This spec's own, so cleanup can match every row that carries it.
+// Stream routes have no human name. We synthesise a server_port from the
+// ownership helper's `name` argument (deterministic hash into the 9000-9999
+// range); a row is identified by that port together with SERVER_ADDR.
+// The address is this spec's alone, so cleanup can match every row that
+// carries it and the port.
 const SERVER_ADDR = '127.0.1.99';
 
 const portFromName = (name: string): number => {

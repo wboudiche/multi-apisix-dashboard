@@ -28,7 +28,7 @@ import {
 import { expect } from '@playwright/test';
 
 import { postUpstreamReq } from '@/apis/upstreams';
-import { API_STREAM_ROUTES,API_UPSTREAMS } from '@/config/constant';
+import { API_STREAM_ROUTES, API_UPSTREAMS } from '@/config/constant';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -42,11 +42,11 @@ test.beforeAll(async () => {
   });
 });
 
-// A /24 of loopback this run owns: 127.X.Y.0, X at least 2 so it cannot meet
-// the fixed 127.0.x and 127.1.x addresses other specs use. A row an earlier,
-// interrupted run left behind cannot collide with this one, and afterAll can
-// sweep this run's stream routes by prefix without touching anyone else's
-// (#151).
+// A /24 of loopback picked at random per run: 127.X.Y.0, X at least 2, so it
+// never meets the fixed 127.0.x addresses other specs use. A row an earlier,
+// interrupted run left behind is all but certain to sit in another /24 — two
+// runs draw the same one about once in 65,000 — and afterAll can sweep this
+// run's stream routes by prefix without touching anyone else's (#151).
 const RUN_NET = `127.${2 + Math.floor(Math.random() * 253)}.${Math.floor(
   Math.random() * 256
 )}.`;

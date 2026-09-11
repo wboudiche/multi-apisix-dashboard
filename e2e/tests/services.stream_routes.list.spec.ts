@@ -32,11 +32,12 @@ test.describe.configure({ mode: 'serial' });
 
 const serviceName = randomId('test-service');
 const anotherServiceName = randomId('another-service');
-// A /24 of loopback this run owns: 127.X.Y.0, X at least 2 so it cannot meet
-// the fixed 127.0.x and 127.1.x addresses other specs use. A row an earlier,
-// interrupted run left behind cannot collide with this one, and cells cannot
-// match an earlier run's (#151). Every host is three digits, so none is a
-// substring of another — getByRole matches a name by substring.
+// A /24 of loopback picked at random per run: 127.X.Y.0, X at least 2, so it
+// never meets the fixed 127.0.x addresses other specs use. A row an earlier,
+// interrupted run left behind is all but certain to sit in another /24 — two
+// runs draw the same one about once in 65,000 — so cells do not match an
+// earlier run's (#151). Every host is three digits, so none is a substring of
+// another — getByRole matches a name by substring.
 const RUN_NET = `127.${2 + Math.floor(Math.random() * 253)}.${Math.floor(
   Math.random() * 256
 )}.`;
