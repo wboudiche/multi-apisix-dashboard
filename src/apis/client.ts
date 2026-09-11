@@ -16,6 +16,7 @@
  */
 import axios from 'axios';
 
+import { selectedInstanceId } from '@/stores/instance';
 import { appUrl } from '@/utils/app-url';
 import { assertJsonBody } from '@/utils/response-shape';
 
@@ -29,10 +30,16 @@ apiClient.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
-    const instanceId = localStorage.getItem('instance:current_id') || '';
+    // The instance a caller names, as `req` keeps one; otherwise this tab's.
+    // Not localStorage alone: every tab shares it, and a tab that had not
+    // switched sent its writes — Reassign Team among them — to whichever
+    // instance another tab had switched to last (#193).
+    const named = config.headers.get('X-Instance-ID');
+    const instanceId = (typeof named === 'string' && named) || selectedInstanceId();
     if (instanceId) {
-        config.headers['X-Instance-ID'] = instanceId;
+        config.headers.set('X-Instance-ID', instanceId);
     }
+    // The team selected on that instance.
     const teamId = localStorage.getItem(`team:current_id:${instanceId}`) || '';
     if (teamId) {
         config.headers['X-Team-ID'] = teamId;

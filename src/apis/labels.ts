@@ -33,11 +33,11 @@ type LabelListResponse = {
 };
 
 export const labelApi = {
+  // The catalogue is per instance. apiClient addresses the request to this
+  // tab's; a header read from localStorage here named whichever instance
+  // another tab had switched to last (#193).
   list: async (): Promise<LabelTaxonomy[]> => {
-    const instanceId = localStorage.getItem('instance:current_id') || '';
-    const response = await apiClient.get<LabelListResponse>('/api/v1/labels', {
-      headers: { 'X-Instance-ID': instanceId },
-    });
+    const response = await apiClient.get<LabelListResponse>('/api/v1/labels');
     return response.data?.list || [];
   },
 };

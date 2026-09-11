@@ -17,7 +17,7 @@
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import type { AxiosRequestConfig } from 'axios';
 
-import { isProxyUnreachable, selectedInstance } from '@/apis/hooks';
+import { isProxyUnreachable } from '@/apis/hooks';
 import type { PluginConfig } from '@/components/form-slice/FormItemPlugins/PluginEditorDrawer';
 import {
   API_PLUGIN_METADATA,
@@ -25,6 +25,7 @@ import {
   API_PLUGINS_LIST,
 } from '@/config/constant';
 import { req } from '@/config/req';
+import { selectedInstanceId } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 
 
@@ -39,7 +40,8 @@ export type NeedPluginSchema = {
 // from that page went to the instance now selected (#180). Hooks pass the
 // atom's value, so a switch re-renders them onto the new key; callers outside
 // React get this tab's selected instance, as genListQueryOptions does.
-const keyInstance = (instanceId?: string) => instanceId ?? selectedInstance();
+const keyInstance = (instanceId?: string) =>
+  instanceId ?? selectedInstanceId();
 
 // And every request goes to the instance its key names, not to whichever is
 // selected when it runs. A retry, or a refetch landing after a switch — a
