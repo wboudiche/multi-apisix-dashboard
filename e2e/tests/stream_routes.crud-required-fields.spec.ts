@@ -19,7 +19,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiHasToastMsg, uiShowAllRows } from '@e2e/utils/ui';
 import {
   uiCheckStreamRouteRequiredFields,
   uiFillStreamRouteRequiredFields,
@@ -28,7 +28,7 @@ import {
 import { expect } from '@playwright/test';
 
 import { postUpstreamReq } from '@/apis/upstreams';
-import { API_UPSTREAMS } from '@/config/constant';
+import { API_STREAM_ROUTES,API_UPSTREAMS } from '@/config/constant';
 
 // The redesigned form references an existing upstream; seed one via the API
 const upstreamName = randomId('sr-req-upstream');
@@ -40,9 +40,23 @@ test.beforeAll(async () => {
   });
 });
 
+// A /24 of loopback this run owns: 127.X.Y.0, X at least 2 so it cannot meet
+// the fixed 127.0.x and 127.1.x addresses other specs use. A row an earlier,
+// interrupted run left behind cannot collide with this one, and afterAll can
+// sweep this run's stream routes by prefix without touching anyone else's
+// (#151).
+const RUN_NET = `127.${2 + Math.floor(Math.random() * 253)}.${Math.floor(
+  Math.random() * 256
+)}.`;
+
 // Only the upstream this spec seeded; the gateway's other ones are not
 // this spec's to remove.
 test.afterAll(async () => {
+  // The stream route first. The test deletes it through the UI, which only
+  // happens once every step before it has passed, so a failing run used to
+  // leave it behind — pushing the next run's row onto page 2 and failing that
+  // one too.
+  await deleteByPrefix(API_STREAM_ROUTES, 'server_addr', RUN_NET);
   await deleteByPrefix(API_UPSTREAMS, 'name', upstreamName);
 });
 
@@ -52,6 +66,7 @@ test.describe.configure({ mode: 'serial' });
 test('CRUD stream route with required fields', async ({ page }) => {
   // Navigate to stream routes page
   await streamRoutesPom.toIndex(page);
+  await uiShowAllRows(page);
   await expect(page.getByRole('heading', { name: 'Stream Routes' })).toBeVisible();
 
   // Navigate to add page
@@ -62,7 +77,7 @@ test('CRUD stream route with required fields', async ({ page }) => {
   const uniqueId = randomId('test');
   const uniqueIpSuffix = parseInt(uniqueId.slice(-6), 36) % 240 + 10; // 10-249
   const streamRouteData = {
-    server_addr: `127.0.1.${uniqueIpSuffix}`,
+    server_addr: `${RUN_NET}${uniqueIpSuffix}`,
     server_port: 9000 + parseInt(uniqueId.slice(-4), 36) % 1000, // Unique port
   };
 
@@ -116,6 +131,7 @@ test('CRUD stream route with required fields', async ({ page }) => {
 
   // Navigate back to index and ensure the row exists
   await streamRoutesPom.toIndex(page);
+  await uiShowAllRows(page);
   const row = page.getByRole('row').filter({ hasText: streamRouteData.server_addr });
   await expect(row.first()).toBeVisible({ timeout: 10000 }); // Longer timeout for parallel tests
 
@@ -130,6 +146,8 @@ test('CRUD stream route with required fields', async ({ page }) => {
   await page.waitForURL((url) => url.pathname.endsWith('/stream_routes'));
 
   await streamRoutesPom.isIndexPage(page);
+  // On every row, not page 1: there a row pushed to page 2 reads as deleted.
+  await uiShowAllRows(page);
   await expect(
     page.getByRole('row').filter({ hasText: streamRouteData.server_addr })
   ).toHaveCount(0);

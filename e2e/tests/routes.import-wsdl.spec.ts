@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { routesPom } from '@e2e/pom/routes';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
@@ -26,7 +27,7 @@ import JSZip from 'jszip';
 
 import { getRouteListReq } from '@/apis/routes';
 import { postUpstreamReq } from '@/apis/upstreams';
-import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_ROUTES, API_UPSTREAMS,PAGE_SIZE_MAX } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 const readFixture = (name: string): string =>
@@ -58,7 +59,13 @@ const deleteImportedRoutes = async () => {
 
 test.beforeEach(deleteImportedRoutes);
 
-test.afterEach(deleteImportedRoutes);
+test.afterEach(async () => {
+  await deleteImportedRoutes();
+  // The upstream the existing-upstream test provisions, after the routes that
+  // reference it. It was never removed, so every run left one (#151); the
+  // prefix sweeps this spec's own earlier ones too.
+  await deleteByPrefix(API_UPSTREAMS, 'name', 'wsdl-existing-upstream');
+});
 
 const openImporter = async (page: Page) => {
   await routesPom.toIndex(page);

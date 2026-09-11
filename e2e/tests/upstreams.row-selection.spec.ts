@@ -59,11 +59,15 @@ test.afterEach(async () => {
   }
 });
 
+// Every row, not page 1: with ten or more upstreams already on the gateway the
+// seeded ones land past it (#151).
+const ALL_UPSTREAMS = `/ui/upstreams?page=1&page_size=${PAGE_SIZE_MAX}`;
+
 const rowFor = (page: import('@playwright/test').Page, id: string) =>
   page.getByRole('row').filter({ hasText: id });
 
 test('checking one row selects that row alone', async ({ page }) => {
-  await page.goto('/ui/upstreams');
+  await page.goto(ALL_UPSTREAMS);
   await expect(rowFor(page, IDS[0])).toHaveCount(1, { timeout: 20000 });
 
   await rowFor(page, IDS[0]).getByRole('checkbox').check();
@@ -76,7 +80,7 @@ test('checking one row selects that row alone', async ({ page }) => {
 });
 
 test('batch delete removes exactly the rows that were checked', async ({ page }) => {
-  await page.goto('/ui/upstreams');
+  await page.goto(ALL_UPSTREAMS);
   await expect(rowFor(page, IDS[0])).toHaveCount(1, { timeout: 20000 });
 
   await rowFor(page, IDS[0]).getByRole('checkbox').check();

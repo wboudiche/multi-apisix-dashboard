@@ -16,6 +16,7 @@
  */
 import { permission } from '@e2e/pom/permission';
 import { getFixtures } from '@e2e/utils/fixtures';
+import { uiShowAllRows } from '@e2e/utils/ui';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 /**
@@ -98,6 +99,7 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
       );
       await permission.switchInstance(page, INSTANCE_NAME);
       await opts.createMinimal(page, resourceName);
+      await uiShowAllRows(page);
 
       const row = opts.pom.locator.rowByName(page, resourceName);
       await expect(row).toBeVisible();
@@ -116,6 +118,7 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
       );
       await permission.switchInstance(page, INSTANCE_NAME);
       await opts.pom.goto.toIndex(page);
+      await uiShowAllRows(page);
       await expect(
         opts.pom.locator.rowByName(page, resourceName)
       ).toHaveCount(0);
@@ -131,6 +134,7 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
       );
       await permission.switchInstance(page, INSTANCE_NAME);
       await opts.pom.goto.toIndex(page);
+      await uiShowAllRows(page);
       await expect(
         opts.pom.locator.rowByName(page, resourceName)
       ).toHaveCount(0);
@@ -146,6 +150,7 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
       );
       await permission.switchInstance(page, INSTANCE_NAME);
       await opts.pom.goto.toIndex(page);
+      await uiShowAllRows(page);
       await expect(
         opts.pom.locator.rowByName(page, resourceName)
       ).toBeVisible();

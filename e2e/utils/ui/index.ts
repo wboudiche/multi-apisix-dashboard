@@ -17,6 +17,7 @@
 import type { CommonPOM } from '@e2e/pom/type';
 import { expect, type Locator, type Page } from '@playwright/test';
 
+import { PAGE_SIZE_MAX } from '@/config/constant';
 import type { FileRouteTypes } from '@/routeTree.gen';
 
 import { env } from '../env';
@@ -100,4 +101,21 @@ export const uiFillMonacoEditor = async (
   await editorTextbox.fill(value);
   await editor.blur();
   await page.waitForTimeout(800);
+};
+
+/**
+ * Reload the current list page with every row on it, not just the first ten.
+ *
+ * List pages open on page 1 at PAGE_SIZE_MIN. A spec looking there for the row
+ * it just created is betting the gateway holds fewer than ten others — true of
+ * CI's fresh stack, false of any local one an earlier run left rows in (#151).
+ * Checks of absence are worse off: on page 1, a row pushed to page 2 reads as
+ * gone. The list pages read page and page_size from the URL, bounded by
+ * PAGE_SIZE_MAX.
+ */
+export const uiShowAllRows = async (page: Page) => {
+  const url = new URL(page.url());
+  url.searchParams.set('page', '1');
+  url.searchParams.set('page_size', String(PAGE_SIZE_MAX));
+  await page.goto(url.toString());
 };
