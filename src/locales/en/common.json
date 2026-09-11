@@ -24,6 +24,12 @@
       "cta": "Try again"
     }
   },
+  "detailGate": {
+    "notFound": {
+      "title": "Not on this instance",
+      "message": "“{{id}}” does not exist on {{instance}}."
+    }
+  },
   "instances": {
     "enabled": "Enabled",
     "disabled": "Disabled",

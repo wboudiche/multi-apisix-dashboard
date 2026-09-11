@@ -35,6 +35,7 @@ import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
 import { FormPartStreamRoute } from '@/components/form-slice/FormPartStreamRoute';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_routes/ErrorComponent';
 import { API_STREAM_ROUTES } from '@/config/constant';
@@ -158,10 +159,16 @@ function RouteComponent() {
   const { id } = useParams({ from: '/stream_routes/detail/$id' });
   const navigate = useNavigate();
   return (
-    <StreamRouteDetail
+    <DetailGate
+      record={() => getStreamRouteQueryOptions(id)}
       id={id}
-      onDeleteSuccess={() => navigate({ to: '/stream_routes' })}
-    />
+      onBack={() => navigate({ to: '/stream_routes' })}
+    >
+      <StreamRouteDetail
+        id={id}
+        onDeleteSuccess={() => navigate({ to: '/stream_routes' })}
+      />
+    </DetailGate>
   );
 }
 

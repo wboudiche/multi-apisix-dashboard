@@ -52,6 +52,12 @@
       "cta": "重试"
     }
   },
+  "detailGate": {
+    "notFound": {
+      "title": "此实例中不存在",
+      "message": "{{instance}} 上不存在“{{id}}”。"
+    }
+  },
   "login": {
     "adminNote": "账户由您的管理员创建。",
     "brandKicker": "多实例控制台",

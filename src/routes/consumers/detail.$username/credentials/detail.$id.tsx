@@ -34,6 +34,7 @@ import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartCredential } from '@/components/form-slice/FormPartCredential';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_CREDENTIALS } from '@/config/constant';
 import { req } from '@/config/req';
@@ -111,7 +112,7 @@ const CredentialDetailForm = (props: CredentialFormProps) => {
   );
 };
 
-function RouteComponent() {
+function CredentialDetailPage() {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
   const { canEdit } = usePermission();
@@ -153,6 +154,27 @@ function RouteComponent() {
       />
       <CredentialDetailForm readOnly={readOnly} setReadOnly={setReadOnly} />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { username, id } = useParams({
+    from: '/consumers/detail/$username/credentials/detail/$id',
+  });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() => getCredentialQueryOptions(username, id)}
+      id={id}
+      onBack={() =>
+        navigate({
+          to: '/consumers/detail/$username/credentials',
+          params: { username },
+        })
+      }
+    >
+      <CredentialDetailPage />
+    </DetailGate>
   );
 }
 

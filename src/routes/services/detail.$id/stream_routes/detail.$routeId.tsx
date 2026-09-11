@@ -20,6 +20,8 @@ import {
   useParams,
 } from '@tanstack/react-router';
 
+import { getStreamRouteQueryOptions } from '@/apis/hooks';
+import { DetailGate } from '@/components/page/DetailGate';
 import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_routes/ErrorComponent';
 import { StreamRouteDetail } from '@/routes/stream_routes/detail.$id';
 import { CommonFormContext } from '@/utils/form-context';
@@ -31,15 +33,23 @@ function RouteComponent() {
   const navigate = useNavigate();
   return (
     <CommonFormContext.Provider value={{ readOnlyFields: ['service_id'] }}>
-      <StreamRouteDetail
+      <DetailGate
+        record={() => getStreamRouteQueryOptions(routeId)}
         id={routeId}
-        onDeleteSuccess={() =>
-          navigate({
-            to: '/services/detail/$id/stream_routes',
-            params: { id },
-          })
+        onBack={() =>
+          navigate({ to: '/services/detail/$id/stream_routes', params: { id } })
         }
-      />
+      >
+        <StreamRouteDetail
+          id={routeId}
+          onDeleteSuccess={() =>
+            navigate({
+              to: '/services/detail/$id/stream_routes',
+              params: { id },
+            })
+          }
+        />
+      </DetailGate>
     </CommonFormContext.Provider>
   );
 }

@@ -52,6 +52,12 @@
       "cta": "Reintentar"
     }
   },
+  "detailGate": {
+    "notFound": {
+      "title": "No está en esta instancia",
+      "message": "«{{id}}» no existe en {{instance}}."
+    }
+  },
   "login": {
     "adminNote": "Las cuentas las crea tu administrador.",
     "brandKicker": "Panel multiinstancia",

@@ -34,6 +34,7 @@ import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartPluginConfig } from '@/components/form-slice/FormPartPluginConfig';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
 import { req } from '@/config/req';
@@ -104,7 +105,7 @@ const PluginConfigDetailForm = (props: Props) => {
   );
 };
 
-function RouteComponent() {
+function PluginConfigDetailPage() {
   const { id } = useParams({ from: '/plugin_configs/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
@@ -145,6 +146,20 @@ function RouteComponent() {
         setReadOnly={setReadOnly}
       />
     </>
+  );
+}
+
+function RouteComponent() {
+  const { id } = useParams({ from: '/plugin_configs/detail/$id' });
+  const navigate = useNavigate();
+  return (
+    <DetailGate
+      record={() => getPluginConfigQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/plugin_configs' })}
+    >
+      <PluginConfigDetailPage />
+    </DetailGate>
   );
 }
 

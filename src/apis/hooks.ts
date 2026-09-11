@@ -20,7 +20,8 @@ import { useAtomValue } from 'jotai';
 
 import { getRouteListReq, getRouteReq } from '@/apis/routes';
 import { getUpstreamListReq, getUpstreamReq } from '@/apis/upstreams';
-import { req } from '@/config/req';
+import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
+import { reqFor } from '@/config/req';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type {
   APISIXDetailResponse,
@@ -66,6 +67,13 @@ export const isProxyUnreachable = (err: unknown) => {
   return status === 502 || status === 504 || status === 401;
 };
 
+/** The instance has no such record. */
+export const isNotFound = (err: unknown) =>
+  (err as { response?: { status?: number } })?.response?.status === 404;
+
+// The selected instance, as the request interceptor reads it outside React.
+const selectedInstance = () => localStorage.getItem('instance:current_id') || '';
+
 const genDetailQueryOptions =
   <T extends unknown[], R>(
     key: string,
@@ -75,11 +83,21 @@ const genDetailQueryOptions =
     ) => Promise<APISIXDetailResponse<R>>
   ) =>
     (...args: T) => {
+      // A record is one instance's, so the instance is in the key and the
+      // request goes to it: a refetch that runs after a switch — a save's, on
+      // a page already unmounted — must still ask that instance (#187). Read
+      // when the options are built; DetailGate remounts a detail page on a
+      // switch, so that build already sees the instance switched to.
+      const instanceId = selectedInstance();
       return queryOptions({
-        queryKey: [key, ...args],
+        queryKey: [key, instanceId, ...args],
         queryFn: async () => {
           try {
-            return await getDetailReq(req, ...args);
+            // A 404 is DetailGate's to explain, not a toast's.
+            return await getDetailReq(
+              reqFor(instanceId, { [SKIP_INTERCEPTOR_HEADER]: ['404'] }),
+              ...args
+            );
           } catch (err) {
             if (isProxyUnreachable(err)) {
               return { value: {} } as APISIXDetailResponse<R>;
@@ -87,6 +105,9 @@ const genDetailQueryOptions =
             throw err;
           }
         },
+        // Not there is not a failure that heals: retrying only holds the page
+        // on a skeleton for seven seconds before saying so.
+        retry: (failureCount, err) => !isNotFound(err) && failureCount < 3,
       });
     };
 /** simple factory func for list query options which support extends PageSearchType */
@@ -97,7 +118,7 @@ const genListQueryOptions =
   ) =>
     (props: P, instanceIdOverride?: string) => {
       // Use the override (from reactive hook) or fall back to localStorage (for loaders)
-      const instanceId = instanceIdOverride ?? (localStorage.getItem('instance:current_id') || '');
+      const instanceId = instanceIdOverride ?? selectedInstance();
       return queryOptions({
         queryKey: [key, instanceId, props],
         queryFn: async () => {
@@ -107,7 +128,9 @@ const genListQueryOptions =
             return { list: [], total: 0 } as APISIXListResponse<R>;
           }
           try {
-            return await listReq(req, props);
+            // Answered by the instance in the key, whichever is selected when
+            // the query runs (#187).
+            return await listReq(reqFor(instanceId), props);
           } catch (err) {
             if (isProxyUnreachable(err)) {
               return { list: [], total: 0 } as APISIXListResponse<R>;
@@ -258,9 +281,11 @@ export const getCredentialQueryOptions = genDetailQueryOptions(
   getCredentialReq
 );
 export const getCredentialListQueryOptions = (username: string) => {
+  // A consumer's credentials are one instance's, like the consumer (#187).
+  const instanceId = selectedInstance();
   return queryOptions({
-    queryKey: ['credentials', username],
-    queryFn: () => getCredentialListReq(req, { username }),
+    queryKey: ['credentials', instanceId, username],
+    queryFn: () => getCredentialListReq(reqFor(instanceId), { username }),
   });
 };
 export const useCredentialsList = (username: string) => {

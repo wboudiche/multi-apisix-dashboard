@@ -25,6 +25,8 @@ import {
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { getServiceQueryOptions } from '@/apis/hooks';
+import { DetailGate } from '@/components/page/DetailGate';
 import { Tabs, type TabsItem } from '@/components/page/Tabs';
 
 const defaultTab = 'detail';
@@ -76,11 +78,19 @@ export const DetailTabs = () => {
   );
 };
 
+// The service's routes and stream routes are under it, so the gate here covers
+// every page of the service, and remounts them all on a switch.
 function RouteComponent() {
+  const { id } = useParams({ from: '/services/detail/$id' });
+  const navigate = useNavigate();
   return (
-    <>
+    <DetailGate
+      record={() => getServiceQueryOptions(id)}
+      id={id}
+      onBack={() => navigate({ to: '/services' })}
+    >
       <Outlet />
-    </>
+    </DetailGate>
   );
 }
 

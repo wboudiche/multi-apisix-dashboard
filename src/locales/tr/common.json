@@ -52,6 +52,12 @@
       "cta": "Yeniden dene"
     }
   },
+  "detailGate": {
+    "notFound": {
+      "title": "Bu örnekte yok",
+      "message": "“{{id}}”, {{instance}} üzerinde yok."
+    }
+  },
   "login": {
     "adminNote": "Hesaplar yöneticiniz tarafından oluşturulur.",
     "brandKicker": "Çoklu örnek panosu",

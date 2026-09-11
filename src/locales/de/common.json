@@ -52,6 +52,12 @@
       "cta": "Erneut versuchen"
     }
   },
+  "detailGate": {
+    "notFound": {
+      "title": "Nicht auf dieser Instanz",
+      "message": "„{{id}}“ existiert auf {{instance}} nicht."
+    }
+  },
   "login": {
     "adminNote": "Konten werden von Ihrem Administrator angelegt.",
     "brandKicker": "Multi-Instanz-Dashboard",

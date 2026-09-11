@@ -19,7 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getServiceListReq } from '@/apis/services';
 import { getUpstreamListReq } from '@/apis/upstreams';
 import { PAGE_SIZE_MAX } from '@/config/constant';
-import { req } from '@/config/req';
+import { reqFor } from '@/config/req';
 
 /**
  * The whole upstream list for an instance, fetched once.
@@ -32,11 +32,15 @@ import { req } from '@/config/req';
  *
  * `enabled` exists because the column can be switched off, and is off entirely
  * on the routes list nested under a service.
+ *
+ * Answered by the instance in the key, whichever is selected when the query
+ * runs (#187).
  */
 export const useAllUpstreams = (instanceId: string, enabled = true) =>
   useQuery({
     queryKey: ['upstreams', instanceId, 'all'],
-    queryFn: () => getUpstreamListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
+    queryFn: () =>
+      getUpstreamListReq(reqFor(instanceId), { page: 1, page_size: PAGE_SIZE_MAX }),
     staleTime: 60_000,
     enabled,
   });
@@ -52,7 +56,8 @@ export const useAllUpstreams = (instanceId: string, enabled = true) =>
 export const useAllServices = (instanceId: string, enabled = true) =>
   useQuery({
     queryKey: ['services', instanceId, 'all'],
-    queryFn: () => getServiceListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
+    queryFn: () =>
+      getServiceListReq(reqFor(instanceId), { page: 1, page_size: PAGE_SIZE_MAX }),
     staleTime: 60_000,
     enabled,
   });
