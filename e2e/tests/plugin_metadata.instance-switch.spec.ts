@@ -25,7 +25,7 @@ import { API_PLUGIN_METADATA } from '@/config/constant';
 
 /**
  * The Plugin Metadata page kept its queries in cache under keys that did not
- * name the instance, and switching instance in the header does not remount
+ * name the instance, and switching instance in the header did not remount
  * the page. So after a switch it went on showing the previous instance's
  * metadata — while a save from the same drawer is addressed to the instance
  * now selected, because `req` reads the instance afresh for every request
@@ -305,10 +305,19 @@ test('a save that lands after a switch leaves the previous instance its own meta
     await expect(card(page)).toBeVisible({ timeout: 30000 });
     await expect.poll(inFlight).toBe(0);
 
+    // The save's own refetch, whichever instance answers it — armed before
+    // the release, so the wait for the page to settle cannot resolve before
+    // that refetch has started.
+    const refetched = page.waitForRequest(
+      (r) =>
+        r.method() === 'GET' &&
+        r.url().includes(`/apisix/admin/plugin_metadata/${PLUGIN}`)
+    );
     releasePut();
     await expect(
       page.getByText(`Edit Plugin Metadata of ${PLUGIN} Successfully`)
     ).toBeVisible();
+    await refetched;
     await expect.poll(inFlight).toBe(0);
 
     // Back on staging with staging's own answers held: what the page shows now
