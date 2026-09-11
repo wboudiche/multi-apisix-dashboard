@@ -53,10 +53,9 @@ test.describe.configure({ mode: 'serial' });
 // do not fit in Playwright's 30s default.
 const TIMEOUT_MS = 120_000;
 
-// e2eReq is bound to the local instance. Staging gets a copy too, for the
-// instance-switch test below: the page does not refetch plugin metadata when
-// the instance changes, so after a switch it may still be showing staging's
-// cards. Seeding both keeps that test about Edit, whichever card it lands on.
+// e2eReq is bound to the local instance. Staging gets a copy too: the
+// instance-switch tests below open the page on staging, as a viewer, and need
+// the card there before they switch to local.
 const onStaging = () => ({
   headers: { 'X-Instance-ID': getFixtures().stagingInstanceId },
 });

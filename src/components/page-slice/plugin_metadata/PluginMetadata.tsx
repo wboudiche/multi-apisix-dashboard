@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Alert, Drawer, Group } from '@mantine/core';
+import { Alert, Center, Drawer, Group, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { toJS } from 'mobx';
@@ -142,6 +142,13 @@ export const PluginMetadata = () => {
 
   return (
     <Drawer.Stack>
+      {/* Until the instance's metadata has arrived. Without it, a slow
+          gateway reads as one with nothing configured. */}
+      {isLoading && (
+        <Center py="md" data-testid="plugin-metadata-loading">
+          <Loader size="sm" />
+        </Center>
+      )}
       {isForbidden && (
         <Alert color="yellow" variant="light" mb="md">
           {t('pluginMetadata.forbidden')}

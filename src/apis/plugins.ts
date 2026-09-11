@@ -31,9 +31,20 @@ export type NeedPluginSchema = {
   schema: APISIXType['PluginSchemaKeys'];
 };
 
-export const getPluginsListQueryOptions = () => {
+// Every key here names the instance its answer came from. `req` addresses
+// each request to the instance in localStorage at the time, and switching
+// instance in the header does not remount a page — so a key without the
+// instance served one gateway's plugins and metadata on another's page, while
+// a save from that page went to the instance now selected (#180). Hooks pass
+// the atom's value, so a switch re-renders them onto the new key; the
+// localStorage fallback is for callers outside React, as in
+// genListQueryOptions.
+const keyInstance = (instanceId?: string) =>
+  instanceId ?? (localStorage.getItem('instance:current_id') || '');
+
+export const getPluginsListQueryOptions = (instanceId?: string) => {
   return queryOptions({
-    queryKey: ['plugins-list'],
+    queryKey: ['plugins-list', keyInstance(instanceId)],
     queryFn: () =>
       req
         .get<unknown, APISIXType['RespPluginList']>(API_PLUGINS_LIST)
@@ -42,11 +53,17 @@ export const getPluginsListQueryOptions = () => {
 };
 
 export const getPluginsListWithSchemaQueryOptions = (
-  props: APISIXType['PluginsQuery'] & NeedPluginSchema = { schema: 'schema' }
+  props: APISIXType['PluginsQuery'] & NeedPluginSchema = { schema: 'schema' },
+  instanceId?: string
 ) => {
   const { subsystem, schema } = props;
   return queryOptions({
-    queryKey: ['plugins-list-with-schema', subsystem, schema],
+    queryKey: [
+      'plugins-list-with-schema',
+      keyInstance(instanceId),
+      subsystem,
+      schema,
+    ],
     queryFn: () =>
       req
         .get<unknown, APISIXType['RespPlugins']>(API_PLUGINS, {
@@ -67,10 +84,11 @@ export const getPluginsListWithSchemaQueryOptions = (
 
 export const getPluginSchemaQueryOptions = (
   name: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  instanceId?: string
 ) => {
   return queryOptions({
-    queryKey: ['plugin-schema', name],
+    queryKey: ['plugin-schema', keyInstance(instanceId), name],
     queryFn: name
       ? () =>
           req
@@ -99,10 +117,11 @@ export const deletePluginMetadataReq = (name: string) => {
 
 export const getPluginMetadataQueryOptions = (
   plugin_name: string,
-  headers?: AxiosRequestConfig<unknown>['headers']
+  headers?: AxiosRequestConfig<unknown>['headers'],
+  instanceId?: string
 ) =>
   queryOptions({
-    queryKey: ['plugin_metadata', plugin_name],
+    queryKey: ['plugin_metadata', keyInstance(instanceId), plugin_name],
     queryFn: () =>
       req
         .get<unknown, APISIXType['RespPluginMetadataDetail']>(

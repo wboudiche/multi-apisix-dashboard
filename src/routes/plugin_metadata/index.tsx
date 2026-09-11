@@ -15,18 +15,28 @@
  * limitations under the License.
  */
 import { createFileRoute } from '@tanstack/react-router';
+import { useAtomValue } from 'jotai';
 import { useTranslation } from 'react-i18next';
 
 import PageHeader from '@/components/page/PageHeader';
 import { PluginMetadata } from '@/components/page-slice/plugin_metadata/PluginMetadata';
+import { currentInstanceIdAtom } from '@/stores/instance';
 
 function RouteComponent() {
   const { t } = useTranslation();
+  // One page per instance. The page builds its cards, and the drawer's
+  // contents, from its queries through effects that wait while the queries
+  // load — so without a remount a switch in the header left the previous
+  // instance's cards on screen until the new instance answered, and Edit
+  // there opened the previous instance's configuration for a Save addressed
+  // to the new one (#180). The keyed queries make the fresh page fetch; the
+  // key here makes sure nothing of the old one is offered meanwhile.
+  const instanceId = useAtomValue(currentInstanceIdAtom);
 
   return (
     <>
       <PageHeader title={t('sources.pluginMetadata')} />
-      <PluginMetadata />
+      <PluginMetadata key={instanceId} />
     </>
   );
 }

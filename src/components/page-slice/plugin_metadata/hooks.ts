@@ -16,6 +16,7 @@
  */
 import { useListState, useMap } from '@mantine/hooks';
 import { useQueries, useSuspenseQuery } from '@tanstack/react-query';
+import { useAtomValue } from 'jotai';
 import { useDeepCompareEffect } from 'react-use';
 
 import {
@@ -24,13 +25,21 @@ import {
 } from '@/apis/plugins';
 import type { PluginConfig } from '@/components/form-slice/FormItemPlugins/PluginEditorDrawer';
 import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
+import { currentInstanceIdAtom } from '@/stores/instance';
 
 export type PluginInfo = PluginConfig & { schema: object };
 
 // waiting apisix api to help handle the request
 export const usePluginMetadataList = () => {
+  // Read reactively, as genUseList does: a switch in the header does not
+  // remount this page, so it is the instance in the keys that makes the page
+  // fetch the new instance's metadata instead of showing the last one's (#180).
+  const instanceId = useAtomValue(currentInstanceIdAtom);
   const pluginsListQuery = useSuspenseQuery(
-    getPluginsListWithSchemaQueryOptions({ schema: 'metadata_schema' })
+    getPluginsListWithSchemaQueryOptions(
+      { schema: 'metadata_schema' },
+      instanceId
+    )
   );
 
   const { names, originObj } = pluginsListQuery.data;
@@ -46,7 +55,7 @@ export const usePluginMetadataList = () => {
             // raise one notification per plugin, burying the page under them.
             // The refusal is reported once, below, instead.
             [SKIP_INTERCEPTOR_HEADER]: ['403', '404', '500'],
-          }),
+          }, instanceId),
           retry: false,
         }))
       : [],
