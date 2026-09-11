@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 import axios from 'axios';
+import { getDefaultStore } from 'jotai';
 
+import { authActionsAtom, logoutActionAtom } from '@/stores/auth';
 import { appUrl } from '@/utils/app-url';
 
 import { authApi } from './auth';
@@ -46,45 +48,52 @@ export const isSessionInvalid = (body: unknown): boolean =>
   body !== null &&
   (body as { code?: unknown }).code === SESSION_INVALID_CODE;
 
-const ACCESS = 'auth:access_token';
 const REFRESH = 'auth:refresh_token';
-const EXPIRY = 'auth:token_expiry';
-const USER = 'auth:user';
 
 export const clearStoredSession = () => {
-  localStorage.removeItem(ACCESS);
-  localStorage.removeItem(REFRESH);
-  localStorage.removeItem(EXPIRY);
-  // The user record too. It is read back into currentUserAtom on load
-  // (stores/auth.ts) and by mustChangePassword in __root.tsx, so leaving it
-  // behind means the next visit starts as someone who has no session.
-  localStorage.removeItem(USER);
+  // Through the store, not localStorage directly. The atoms in stores/auth.ts
+  // are initialised from localStorage once, at module evaluation, and nothing
+  // re-reads it — so clearing the keys behind their backs leaves every
+  // component still rendering from a session that is gone. logoutActionAtom
+  // clears the atoms and the keys together, `auth:user` included, and is what
+  // the Logout menu item already uses.
+  getDefaultStore().set(logoutActionAtom);
+};
+
+/** Where the login page looks for why it is being shown. */
+export const SIGNED_OUT_REASON_KEY = 'auth:signed_out_reason';
+
+/**
+ * Leave the login page something to say.
+ *
+ * Ending a session is a full page load, which destroys any notification still
+ * on screen, so without this the operator arrives at a form with no idea why —
+ * halfway through a batch delete, say, with four of twelve routes gone and
+ * nothing to explain the rest. sessionStorage rather than a query parameter:
+ * it is this tab's business and does not belong in a URL anyone might share.
+ *
+ * Separate from endSession because the router guard ends a session too, and it
+ * redirects through the router rather than by reloading the page.
+ */
+export const noteSignedOut = (reason = 'session_ended') => {
+  try {
+    sessionStorage.setItem(SIGNED_OUT_REASON_KEY, reason);
+  } catch {
+    // Private mode, or storage disabled. Losing the explanation must not lose
+    // the redirect.
+  }
 };
 
 /**
  * Drop the session and go to the login form.
  *
  * A full page load rather than a router navigation: what is being reacted to
- * is a session that no longer exists, and every query cache, atom and in-flight
- * request in the tab was built on it.
+ * is a session that no longer exists, and every query cache, atom and
+ * in-flight request in the tab was built on it.
  */
-/** Where the login page looks for why it is being shown. */
-export const SIGNED_OUT_REASON_KEY = 'auth:signed_out_reason';
-
 export const endSession = (reason = 'session_ended') => {
   clearStoredSession();
-  // Left for the login page to pick up. Ending a session is a full page load,
-  // which destroys any notification still on screen, so without this the
-  // operator arrives at a form with no idea why — halfway through a batch
-  // delete, say, with four of twelve routes gone and nothing to explain the
-  // rest. sessionStorage rather than a query parameter: it is this tab's
-  // business and does not belong in a URL anyone might share or bookmark.
-  try {
-    sessionStorage.setItem(SIGNED_OUT_REASON_KEY, reason);
-  } catch {
-    // Private mode, or storage disabled. The redirect matters more than the
-    // explanation; losing the explanation must not lose the redirect.
-  }
+  noteSignedOut(reason);
   window.location.href = appUrl('/login');
 };
 
@@ -132,9 +141,20 @@ const performRefresh = async (): Promise<string> => {
     }
     throw error;
   });
-  localStorage.setItem(ACCESS, data.access_token);
-  localStorage.setItem(REFRESH, data.refresh_token);
-  localStorage.setItem(EXPIRY, String(Date.now() + data.expires_in * 1000));
+
+  // Through the store rather than straight into localStorage. The atoms are
+  // initialised from localStorage once and never re-read it, so writing behind
+  // them renews the session for every request while isAuthenticatedAtom still
+  // reports false — and __root.tsx then renders the page with no Header, no
+  // Navbar and no InstanceGuard, on a session that was just renewed.
+  getDefaultStore().set(authActionsAtom, {
+    type: 'login',
+    payload: {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+    },
+  });
   return data.access_token;
 };
 

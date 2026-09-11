@@ -21,6 +21,7 @@ import { useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 
+import { endSession, refreshSession, SessionOverError } from '@/apis/session';
 import { Header } from '@/components/Header';
 import { Navbar } from '@/components/Navbar';
 import { InstanceGuard } from '@/components/page/InstanceGuard';
@@ -34,14 +35,22 @@ import {
 import i18n from '@/config/i18n';
 import { isAuthenticatedAtom } from '@/stores/auth';
 
-/** Check if the user has a valid token in localStorage */
-function isAuthenticated(): boolean {
+/**
+ * What the stored session is worth right now.
+ *
+ * `expired` is deliberately not the same answer as `absent`. Access tokens
+ * last 15 minutes and refresh tokens 7 days, so a tab left alone over lunch
+ * has a lapsed access token and a session that is good for another week — and
+ * treating those alike signed the operator out on their next click with the
+ * means to renew sitting in the same localStorage (#174).
+ */
+function sessionState(): 'valid' | 'expired' | 'absent' {
   const token = localStorage.getItem('auth:access_token');
-  if (!token) return false;
+  if (!token) return 'absent';
   const expiryStr = localStorage.getItem('auth:token_expiry');
-  if (!expiryStr) return !!token;
+  if (!expiryStr) return 'valid';
   const expiry = parseInt(expiryStr, 10);
-  return expiry === 0 || expiry > Date.now();
+  return expiry === 0 || expiry > Date.now() ? 'valid' : 'expired';
 }
 
 /** Check if the stored user still has to change their password */
@@ -126,16 +135,48 @@ const Root = () => {
 
 export const Route = createRootRoute({
   component: Root,
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     // Allow the login page without authentication
     const isLoginPage = location.pathname === '/login' || location.pathname === '/ui/login';
     if (isLoginPage) return;
 
-    // Redirect to login if not authenticated
-    if (!isAuthenticated()) {
+    const state = sessionState();
+
+    // Nothing stored at all: not a session that ended, so nothing to explain.
+    if (state === 'absent') {
       throw redirect({
         to: '/login',
       });
+    }
+
+    if (state === 'expired') {
+      // The same rule the request layer follows: only the backend refusing the
+      // refresh token ends a session. A dropped connection or a restarting
+      // backend means try again, and the requests on the page being navigated
+      // to will report it themselves — signing someone out for one would cost
+      // them their work to recover from something already fixed.
+      //
+      // The redirect is thrown after the try, not inside it: redirect() works
+      // by throwing, and this catch would swallow it.
+      let sessionOver = false;
+      try {
+        await refreshSession();
+      } catch (error) {
+        sessionOver = error instanceof SessionOverError;
+      }
+      if (sessionOver) {
+        // endSession rather than clearing and redirecting through the router.
+        // It reloads the page, and that is load-bearing: the query cache, the
+        // atoms and every in-flight request in this tab were built on the
+        // session that just ended. A client-side redirect leaves them, and
+        // `ensureQueryData` in the loaders returns cached data without
+        // revalidating — so the next person to sign in sees the last one's
+        // lists until the refetch lands.
+        endSession();
+        throw redirect({
+          to: '/login',
+        });
+      }
     }
 
     // A pending forced password change locks the app down to the dedicated
