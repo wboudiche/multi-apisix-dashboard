@@ -16,7 +16,7 @@
  */
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
 import type { AxiosInstance } from 'axios';
-import { useAtomValue } from 'jotai';
+import { getDefaultStore, useAtomValue } from 'jotai';
 
 import { getRouteListReq, getRouteReq } from '@/apis/routes';
 import { getUpstreamListReq, getUpstreamReq } from '@/apis/upstreams';
@@ -71,8 +71,15 @@ export const isProxyUnreachable = (err: unknown) => {
 export const isNotFound = (err: unknown) =>
   (err as { response?: { status?: number } })?.response?.status === 404;
 
-// The selected instance, as the request interceptor reads it outside React.
-const selectedInstance = () => localStorage.getItem('instance:current_id') || '';
+// This tab's selected instance, read as the request interceptor reads it: the
+// atom, which is this tab's own, and localStorage only before the atom has
+// one. localStorage alone is every tab's — another tab switching writes it and
+// nothing here listens — so keying on it gave this tab another tab's instance,
+// while this tab's saves, addressed from the atom, went to its own.
+const selectedInstance = () =>
+  getDefaultStore().get(currentInstanceIdAtom)
+  || localStorage.getItem('instance:current_id')
+  || '';
 
 const genDetailQueryOptions =
   <T extends unknown[], R>(

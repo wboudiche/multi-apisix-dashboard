@@ -93,7 +93,7 @@ req.interceptors.request.use((conf) => {
   return conf;
 });
 
-type Headers = Record<string, unknown>;
+type NamedHeaders = Record<string, unknown>;
 type Read = (url: string, config?: AxiosRequestConfig) => Promise<unknown>;
 type Write = (
   url: string,
@@ -116,9 +116,9 @@ type Write = (
  */
 export const reqFor = (
   instanceId: string,
-  headers: Headers = {}
+  headers: NamedHeaders = {}
 ): AxiosInstance => {
-  const named: Headers = instanceId
+  const named: NamedHeaders = instanceId
     ? { ...headers, 'X-Instance-ID': instanceId }
     : headers;
   if (Object.keys(named).length === 0) return req;
@@ -126,7 +126,7 @@ export const reqFor = (
   const withNamed = (config?: AxiosRequestConfig): AxiosRequestConfig => ({
     ...config,
     headers: {
-      ...(config?.headers as Headers | undefined),
+      ...(config?.headers as NamedHeaders | undefined),
       ...named,
     } as AxiosRequestConfig['headers'],
   });
@@ -169,7 +169,7 @@ const addressedTo = (config?: { headers?: unknown }): string => {
   const named =
     headers instanceof AxiosHeaders
       ? headers.get('X-Instance-ID')
-      : (headers as Headers | undefined)?.['X-Instance-ID'];
+      : (headers as NamedHeaders | undefined)?.['X-Instance-ID'];
   if (typeof named === 'string' && named) return named;
   return getDefaultStore().get(currentInstanceIdAtom)
     || localStorage.getItem('instance:current_id')
