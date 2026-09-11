@@ -19,7 +19,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiGoto } from '@e2e/utils/ui';
+import { uiGoto, uiShowAllRows } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { postServiceReq } from '@/apis/services';
@@ -32,24 +32,33 @@ test.describe.configure({ mode: 'serial' });
 
 const serviceName = randomId('test-service');
 const anotherServiceName = randomId('another-service');
+// A /24 of loopback picked at random per run: 127.X.Y.0, X at least 2, so it
+// never meets the fixed 127.0.x addresses other specs use. A row an earlier,
+// interrupted run left behind is all but certain to sit in another /24 — two
+// runs draw the same one about once in 65,000 — so cells do not match an
+// earlier run's (#151). Every host is three digits, so none is a substring of
+// another — getByRole matches a name by substring.
+const RUN_NET = `127.${2 + Math.floor(Math.random() * 253)}.${Math.floor(
+  Math.random() * 256
+)}.`;
 const streamRoutes = [
   {
-    server_addr: '127.0.0.1',
+    server_addr: `${RUN_NET}101`,
     server_port: 8080,
   },
   {
-    server_addr: '127.0.0.2',
+    server_addr: `${RUN_NET}102`,
     server_port: 8081,
   },
   {
-    server_addr: '127.0.0.3',
+    server_addr: `${RUN_NET}103`,
     server_port: 8082,
   },
 ];
 
 // Stream route that uses upstream directly instead of service_id
 const upstreamStreamRoute = {
-  server_addr: '127.0.0.40',
+  server_addr: `${RUN_NET}140`,
   server_port: 9090,
   upstream: {
     nodes: [{ host: 'example.com', port: 80, weight: 100 }],
@@ -58,7 +67,7 @@ const upstreamStreamRoute = {
 
 // Stream route that belongs to another service
 const anotherServiceStreamRoute = {
-  server_addr: '127.0.0.20',
+  server_addr: `${RUN_NET}120`,
   server_port: 9091,
 };
 
@@ -94,14 +103,18 @@ test.beforeAll(async () => {
     createdStreamRoutes.push(streamRouteResponse.data.value.id);
   }
 
-  // Create a stream route that uses upstream directly instead of service_id
-  await postStreamRouteReq(e2eReq, upstreamStreamRoute);
+  // Create a stream route that uses upstream directly instead of service_id.
+  // Recorded like the rest: these two were created without keeping their ids,
+  // so afterAll never deleted them and every run left both behind (#151).
+  const upstreamRouteRes = await postStreamRouteReq(e2eReq, upstreamStreamRoute);
+  createdStreamRoutes.push(upstreamRouteRes.data.value.id);
 
   // Create a stream route under another service
-  await postStreamRouteReq(e2eReq, {
+  const otherServiceRouteRes = await postStreamRouteReq(e2eReq, {
     ...anotherServiceStreamRoute,
     service_id: anotherServiceId,
   });
+  createdStreamRoutes.push(otherServiceRouteRes.data.value.id);
 });
 
 test.afterAll(async () => {
@@ -155,6 +168,9 @@ test('should only show stream routes with current service_id', async ({
     );
     const title = page.getByRole('heading', { name: 'Stream Routes' });
     await expect(title).toBeVisible();
+    // Every row: the global list is where an earlier run's rows push these past
+    // page 1.
+    await uiShowAllRows(page);
 
     // All stream routes should be visible in the global stream routes list
     await expect(

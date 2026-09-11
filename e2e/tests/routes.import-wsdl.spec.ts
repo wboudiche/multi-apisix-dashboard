@@ -26,7 +26,7 @@ import JSZip from 'jszip';
 
 import { getRouteListReq } from '@/apis/routes';
 import { postUpstreamReq } from '@/apis/upstreams';
-import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_ROUTES, API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 const readFixture = (name: string): string =>
@@ -58,7 +58,31 @@ const deleteImportedRoutes = async () => {
 
 test.beforeEach(deleteImportedRoutes);
 
-test.afterEach(deleteImportedRoutes);
+// The tests here share gateway state — the afterEach sweeps every
+// BillingService* route — so they stay in one worker, in order. Under
+// fullyParallel they would otherwise spread across workers and clean up under
+// each other's feet.
+test.describe.configure({ mode: 'default' });
+
+// The upstream the existing-upstream test provisions. It was never removed,
+// so every run left one behind (#151). Deleted by id, after the routes that
+// reference it.
+let provisionedUpstreamId: string | undefined;
+
+test.afterEach(async () => {
+  try {
+    await deleteImportedRoutes();
+  } finally {
+    // Tried even when the route sweep throws, whose error still fails the
+    // test. APISIX refuses it while a route still references the upstream.
+    if (provisionedUpstreamId) {
+      await e2eReq
+        .delete(`${API_UPSTREAMS}/${provisionedUpstreamId}`)
+        .catch(() => null);
+      provisionedUpstreamId = undefined;
+    }
+  }
+});
 
 const openImporter = async (page: Page) => {
   await routesPom.toIndex(page);
@@ -137,6 +161,7 @@ test('existing-upstream mode links imported routes by upstream_id', async ({ pag
     nodes: [{ host: 'billing-soap', port: 8080, weight: 1 }],
   });
   const upstreamId = upstreamRes.data.value.id;
+  provisionedUpstreamId = upstreamId;
 
   await openImporter(page);
 

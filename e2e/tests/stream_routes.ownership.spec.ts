@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 import { streamRoutesPom } from '@e2e/pom/stream_routes';
+import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
@@ -25,9 +26,13 @@ import {
 
 import { API_UPSTREAMS } from '@/config/constant';
 
-// Stream routes have no human name. We synthesise a unique server_port
-// from the ownership helper's `name` argument (deterministic hash into
-// the 9000-9999 range) and use that port as the visible row identifier.
+// Stream routes have no human name. We synthesise a server_port from the
+// ownership helper's `name` argument (deterministic hash into the 9000-9999
+// range); a row is identified by that port together with SERVER_ADDR.
+// The address is this spec's alone, so cleanup can match every row that
+// carries it and the port.
+const SERVER_ADDR = '127.0.1.99';
+
 const portFromName = (name: string): number => {
   let hash = 0;
   for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
@@ -39,10 +44,18 @@ ownershipMatrixSuite({
   pom: {
     goto: { toIndex: streamRoutesPom.toIndex },
     locator: {
+      // Both cells, exactly. A four-digit port matched anywhere in a row's text
+      // can hit another row once the list shows every row rather than ten.
       rowByName: (page, name) =>
         page
           .getByRole('row')
-          .filter({ hasText: String(portFromName(name)) }),
+          .filter({ has: page.getByRole('cell', { name: SERVER_ADDR, exact: true }) })
+          .filter({
+            has: page.getByRole('cell', {
+              name: String(portFromName(name)),
+              exact: true,
+            }),
+          }),
     },
   },
   createMinimal: async (page, name) => {
@@ -67,7 +80,7 @@ ownershipMatrixSuite({
 
     await streamRoutesPom.toAdd(page);
     await uiFillStreamRouteRequiredFields(page, {
-      server_addr: '127.0.1.99',
+      server_addr: SERVER_ADDR,
       server_port: port,
     });
     await uiSelectStreamRouteUpstream(page, upstreamName);
@@ -78,16 +91,25 @@ ownershipMatrixSuite({
   cleanup: async (_page, name) => {
     const port = portFromName(name);
     try {
+      // Matched on address and port, and every match deleted. The old lookup
+      // matched on port alone, in 9000-9999 — the range the CRUD specs'
+      // stream routes also drew from — so it could remove some other row that
+      // happened to share the port and leave this one behind. The address is
+      // this spec's alone, so a row carrying both is its own. (e2eReq sends no
+      // page params, and without them the backend returns every row.)
       const list = await e2eReq.get('/stream_routes');
-      const row = list.data?.list?.find(
-        (r: { value: { server_port?: number } }) =>
-          r.value?.server_port === port
+      const rows = (list.data?.list ?? []).filter(
+        (r: { value: { server_addr?: string; server_port?: number } }) =>
+          r.value?.server_addr === SERVER_ADDR && r.value?.server_port === port
       );
-      if (row?.value?.id) {
-        await e2eReq.delete(`/stream_routes/${row.value.id}`);
+      for (const r of rows) {
+        await e2eReq.delete(`/stream_routes/${r.value.id}`);
       }
     } catch {
       /* best-effort */
     }
+    // The upstream createMinimal seeded, after the route that references it.
+    // It was never removed, so every run left one.
+    await deleteByPrefix(API_UPSTREAMS, 'name', `sr-own-upstream-${port}`);
   },
 });
