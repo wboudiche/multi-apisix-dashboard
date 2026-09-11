@@ -152,14 +152,19 @@ export const PluginMetadata = () => {
           search={pluginsOb.search}
           setSearch={pluginsOb.setSearch}
         />
-        {canEdit && (
-          <SelectPluginsDrawer
-            plugins={pluginsOb.unSelected}
-            onAdd={(name) => pluginsOb.on('add', name)}
-            opened={pluginsOb.selectPluginsOpened}
-            setOpened={pluginsOb.setSelectPluginsOpened}
-          />
-        )}
+        {/* Always mounted, even for a viewer: drawers share one portal and
+            one z-index, so mount order decides which is on top. Mounted only
+            for a writer, it came in after the plugin editor on a switch to an
+            instance where the account is admin, and sat over the Add Plugin
+            drawer it opens. SelectPluginsDrawer asks for `disabled` for
+            exactly this reason; `disabled` hides its button. */}
+        <SelectPluginsDrawer
+          plugins={pluginsOb.unSelected}
+          onAdd={(name) => pluginsOb.on('add', name)}
+          opened={pluginsOb.selectPluginsOpened}
+          setOpened={pluginsOb.setSelectPluginsOpened}
+          disabled={!canEdit}
+        />
       </Group>
       <PluginCardList
         mode={canEdit ? 'edit' : 'view'}

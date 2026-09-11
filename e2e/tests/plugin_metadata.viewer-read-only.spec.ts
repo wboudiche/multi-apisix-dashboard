@@ -139,70 +139,129 @@ test('an admin keeps every control a viewer loses', async ({ browser }) => {
   }
 });
 
+/**
+ * Arrive on the page as a viewer — deterministically — then become admin
+ * without a remount.
+ *
+ * One account, two roles, the per-instance model the dashboard is built on:
+ * viewer on staging, instance_admin on local. Switching instance in the header
+ * does not remount the page; only the role underneath it changes. Anything the
+ * page decided once, at mount, from the role is then wrong.
+ *
+ * The header badge is waited for before the page is reached. Until
+ * userInstancesAtom loads, the effective role is the account's global one —
+ * '' for anyone but a super_admin — and canEdit is true for ''. Reaching the
+ * page before that would mount it as a writer and make these tests pass by
+ * the luck of a race rather than by the code being right. And it is reached
+ * through the sidebar, client-side, so the page stays mounted from here on.
+ */
+const openAsViewerThenBecomeAdmin = async (page: Page, username: string) => {
+  await permission.loginAs(page, username, PASSWORD);
+  await permission.switchInstance(page, 'Staging APISIX');
+  await page.goto('/ui/routes');
+  await expect(
+    page.locator('header').getByText('viewer', { exact: true })
+  ).toBeVisible({ timeout: 30000 });
+
+  await page.getByRole('link', { name: 'Plugin Metadata', exact: true }).click();
+  const card = page.getByTestId(`plugin-${PLUGIN}`);
+  await expect(card.getByRole('button', { name: 'View' })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(card.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+
+  // In the header, the way a person would — not permission.switchInstance,
+  // whose reload would remount the page and hide exactly what these catch.
+  const switcher = page.locator('header input[placeholder="Select instance"]');
+  await switcher.click();
+  await page.getByRole('option', { name: 'Local APISIX' }).click();
+  await expect(switcher).toHaveValue('Local APISIX');
+  await expect(
+    page.locator('header').getByText('instance admin', { exact: true })
+  ).toBeVisible({ timeout: 30000 });
+
+  return card;
+};
+
+const provisionViewerThenAdmin = async (prefix: string) => {
+  const fx = getFixtures();
+  const token = await adminToken();
+  const user = await ensureUser(token, {
+    username: `${prefix}-user`,
+    password: PASSWORD,
+  });
+  await ensureUserInstanceRole(token, user.id, fx.stagingInstanceId, {
+    role: 'viewer',
+    team_id: fx.viewersTeamId,
+  });
+  await ensureUserInstanceRole(token, user.id, fx.localInstanceId, {
+    role: 'instance_admin',
+    team_id: fx.backendTeamId,
+  });
+  return `${prefix}-user`;
+};
+
 test('Edit still works after switching from a viewer instance to an admin one', async ({
   browser,
 }) => {
-  // One account, two roles — the per-instance model the dashboard is built on:
-  // viewer on staging, instance_admin on local. Switching instance in the
-  // header does not remount the page; only the role underneath it changes.
-  //
-  // PluginCardList builds its card list from a mobx observable whose
-  // initializer closes over onEdit and onDelete once, at first render, and
-  // resyncs only `mode` afterwards. So handlers passed conditionally on the
-  // role are frozen at whatever the first role allowed: open the page as a
-  // viewer, switch to where you are admin, and Edit and Delete appear — and do
-  // nothing. The visibility-only assertions above cannot see that; this
-  // clicks.
+  // PluginCardList builds its cards from a mobx observable whose initializer
+  // closes over onEdit and onDelete once, at first render, and resyncs only
+  // `mode`. Handlers withheld from a viewer therefore stayed withheld after
+  // the switch: Edit and Delete shown, and a click that went nowhere.
   test.setTimeout(TIMEOUT_MS);
-  const prefix = randomId('pm-switch');
-  const fx = getFixtures();
+  const prefix = randomId('pm-switch-edit');
   const context = await browser.newContext({ storageState: undefined });
 
   try {
     const page = await context.newPage();
-    const token = await adminToken();
-    const user = await ensureUser(token, {
-      username: `${prefix}-user`,
-      password: PASSWORD,
-    });
-    await ensureUserInstanceRole(token, user.id, fx.stagingInstanceId, {
-      role: 'viewer',
-      team_id: fx.viewersTeamId,
-    });
-    await ensureUserInstanceRole(token, user.id, fx.localInstanceId, {
-      role: 'instance_admin',
-      team_id: fx.backendTeamId,
-    });
+    const username = await provisionViewerThenAdmin(prefix);
+    const card = await openAsViewerThenBecomeAdmin(page, username);
 
-    // Open the page where this account is only a viewer: the card is there,
-    // read-only. This is the render whose handlers the list keeps.
-    await permission.loginAs(page, `${prefix}-user`, PASSWORD);
-    await permission.switchInstance(page, 'Staging APISIX');
-    await page.goto('/ui/plugin_metadata');
-    const card = page.getByTestId(`plugin-${PLUGIN}`);
-    await expect(card.getByRole('button', { name: 'View' })).toBeVisible({
-      timeout: 30000,
-    });
-    await expect(card.getByRole('button', { name: 'Edit' })).toHaveCount(0);
-
-    // Switch in the header, the way a person would — not through
-    // permission.switchInstance, whose reload would remount the page and hide
-    // exactly what this is here to catch.
-    const switcher = page.locator('header input[placeholder="Select instance"]');
-    await switcher.click();
-    await page.getByRole('option', { name: 'Local APISIX' }).click();
-    await expect(switcher).toHaveValue('Local APISIX');
-
-    // Now admin: the card turns editable. The failure this is here for comes
-    // after this line — Edit shown, and a click that goes nowhere.
     await expect(card.getByRole('button', { name: 'Edit' })).toBeVisible({
       timeout: 30000,
     });
-
     await card.getByRole('button', { name: 'Edit' }).click();
     await expect(page.getByRole('dialog', { name: 'Edit Plugin' })).toBeVisible({
       timeout: 10000,
     });
+  } finally {
+    await context.close();
+    await deleteUsersByPrefix(prefix);
+  }
+});
+
+test('Add is usable after switching from a viewer instance to an admin one', async ({
+  browser,
+}) => {
+  // Drawers share one portal and one z-index, so which one is on top is
+  // decided by mount order. Mounting Select Plugins only for a writer meant a
+  // page opened as a viewer mounted it after the plugin editor, at the switch
+  // — and it then sat over the Add Plugin drawer it opens. SelectPluginsDrawer
+  // says as much about itself: pass `disabled`, do not unmount.
+  //
+  // Nothing is saved. The click on the editor's own control is the assertion:
+  // Playwright refuses to click an element something else is covering.
+  test.setTimeout(TIMEOUT_MS);
+  const prefix = randomId('pm-switch-add');
+  const context = await browser.newContext({ storageState: undefined });
+
+  try {
+    const page = await context.newPage();
+    const username = await provisionViewerThenAdmin(prefix);
+    await openAsViewerThenBecomeAdmin(page, username);
+
+    await page.getByRole('button', { name: 'Select Plugins' }).click();
+    const picker = page.getByRole('dialog', { name: 'Select Plugins' });
+    await expect(picker).toBeVisible();
+    await picker.getByPlaceholder('Search').fill('tcp-logger');
+    await picker
+      .getByTestId('plugin-tcp-logger')
+      .getByRole('button', { name: 'Add' })
+      .click();
+
+    const editor = page.getByRole('dialog', { name: 'Add Plugin' });
+    await expect(editor).toBeVisible();
+    await editor.locator('label:has-text("JSON")').click({ timeout: 10000 });
   } finally {
     await context.close();
     await deleteUsersByPrefix(prefix);
