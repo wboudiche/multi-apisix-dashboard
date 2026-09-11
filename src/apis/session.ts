@@ -71,20 +71,30 @@ export const clearStoredSession = () => {
 /** Where the login page looks for why it is being shown. */
 export const SIGNED_OUT_REASON_KEY = 'auth:signed_out_reason';
 
-export const endSession = (reason = 'session_ended') => {
-  clearStoredSession();
-  // Left for the login page to pick up. Ending a session is a full page load,
-  // which destroys any notification still on screen, so without this the
-  // operator arrives at a form with no idea why — halfway through a batch
-  // delete, say, with four of twelve routes gone and nothing to explain the
-  // rest. sessionStorage rather than a query parameter: it is this tab's
-  // business and does not belong in a URL anyone might share or bookmark.
+/**
+ * Leave the login page something to say.
+ *
+ * Ending a session is a full page load, which destroys any notification still
+ * on screen, so without this the operator arrives at a form with no idea why —
+ * halfway through a batch delete, say, with four of twelve routes gone and
+ * nothing to explain the rest. sessionStorage rather than a query parameter:
+ * it is this tab's business and does not belong in a URL anyone might share.
+ *
+ * Separate from endSession because the router guard ends a session too, and it
+ * redirects through the router rather than by reloading the page.
+ */
+export const noteSignedOut = (reason = 'session_ended') => {
   try {
     sessionStorage.setItem(SIGNED_OUT_REASON_KEY, reason);
   } catch {
-    // Private mode, or storage disabled. The redirect matters more than the
-    // explanation; losing the explanation must not lose the redirect.
+    // Private mode, or storage disabled. Losing the explanation must not lose
+    // the redirect.
   }
+};
+
+export const endSession = (reason = 'session_ended') => {
+  clearStoredSession();
+  noteSignedOut(reason);
   window.location.href = appUrl('/login');
 };
 
