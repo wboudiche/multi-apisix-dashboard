@@ -167,8 +167,15 @@ export const PluginMetadata = () => {
         mah="60vh"
         search={pluginsOb.search}
         plugins={pluginsOb.selected}
-        onDelete={canEdit ? pluginsOb.delete : undefined}
-        onEdit={canEdit ? (name) => pluginsOb.on('edit', name) : undefined}
+        // Always passed; only `mode` is gated. PluginCardList keeps the
+        // handlers from its first render — a mobx observable's initializer
+        // closes over them, and only `mode` is resynced afterwards — so a
+        // handler withheld while the role was viewer stayed undefined after a
+        // switch to an instance where the same account is admin: Edit and
+        // Delete shown, and inert. PluginCard renders them in 'edit' mode
+        // only, so a viewer still never reaches them.
+        onDelete={pluginsOb.delete}
+        onEdit={(name) => pluginsOb.on('edit', name)}
         // 'view' opens the same drawer read-only: fields disabled and no
         // save button (PluginEditorDrawer), so there is nothing to submit.
         onView={(name) => pluginsOb.on('view', name)}
