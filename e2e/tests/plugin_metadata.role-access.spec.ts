@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { permission } from '@e2e/pom/permission';
 import { adminToken, deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
@@ -33,43 +34,25 @@ import { expect, type Page, test } from '@playwright/test';
 const FORBIDDEN = 'may not read plugin metadata';
 const PASSWORD = 'E2e-Role!Access#1';
 
-const signIn = async (page: Page, username: string, password: string) => {
-  await page.goto('/ui/login');
-  await page.getByRole('textbox', { name: 'Username' }).fill(username);
-  await page.getByPlaceholder('Enter your password').fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
-    timeout: 20000,
-  });
-};
 
 /**
- * Reach the page with an instance chosen, the way a person would.
+ * Reach the page with a known instance active.
  *
- * InstanceGuard deliberately does not auto-pick one — branch (3) of
- * InstanceGuard.tsx says auto-picking can mask the wrong selection in a
- * multi-instance setup — so a freshly created account lands on "no instance
- * selected" until someone chooses from the header switcher. That is the
- * design, not a fault, and a test that skipped it would be testing a state no
- * operator is ever in.
+ * Not by clicking the header switcher: it races the app's own auto-select,
+ * which picks the first instance the backend returns (Header/index.tsx). The
+ * POM helper exists for that race, seeds the id the atom reads on init, and —
+ * the part that matters — ends by asserting which instance is actually
+ * selected. Without that, these tests pass only because the fixture gives each
+ * of these accounts a role on exactly one gateway.
  */
 const openPluginMetadata = async (page: Page, instanceName: string) => {
-  await page.goto('/ui/routes');
-
-  const switcher = page.locator('header input[placeholder="Select instance"]');
-  await expect(switcher).toBeVisible({ timeout: 30000 });
-  if ((await switcher.inputValue()) === '') {
-    await switcher.click();
-    await page.getByRole('option', { name: instanceName }).click();
-  }
-
-  // The filter bar's Search, not Create: a viewer has no Create button, and
-  // one of the roles under test here is the viewer.
-  await expect(page.getByRole('button', { name: 'Search' })).toBeVisible({
-    timeout: 30000,
-  });
+  await permission.switchInstance(page, instanceName);
   await page.goto('/ui/plugin_metadata');
-  await expect(page.getByText('Select Plugins')).toBeVisible({ timeout: 30000 });
+  // The control, by role, rather than the text: "Select Plugins" is also the
+  // title of the drawer this button opens.
+  await expect(
+    page.getByRole('button', { name: 'Select Plugins' })
+  ).toBeVisible({ timeout: 30000 });
 };
 
 /**
@@ -108,14 +91,16 @@ test('an instance admin is not told to ask an admin', async ({ browser }) => {
     const user = await ensureUser(token, {
       username: `${prefix}-user`,
       password: PASSWORD,
-      must_change_password: false,
+      // ensureUser opts every seeded account out of the forced first-login
+      // change; CreateUserInput has no field for it, and passing one silently
+      // did nothing — e2e/tests is outside tsconfig.app.json, so nothing said so.
     });
     await ensureUserInstanceRole(token, user.id, fx.localInstanceId, {
       role: 'instance_admin',
       team_id: fx.backendTeamId,
     });
 
-    await signIn(page, `${prefix}-user`, PASSWORD);
+    await permission.loginAs(page, `${prefix}-user`, PASSWORD);
     await openPluginMetadata(page, 'Local APISIX');
 
     /* eslint-disable playwright/no-wait-for-timeout --
@@ -140,7 +125,7 @@ test('a viewer may read it too', async ({ browser }) => {
 
   try {
     const page = await context.newPage();
-    await signIn(page, fx.users.viewer.username, fx.users.viewer.password);
+    await permission.loginAs(page, fx.users.viewer.username, fx.users.viewer.password);
     await openPluginMetadata(page, 'Local APISIX');
 
     /* eslint-disable playwright/no-wait-for-timeout --
@@ -167,7 +152,7 @@ test('a developer is not offered a page that can only refuse', async ({
 
   try {
     const page = await context.newPage();
-    await signIn(page, fx.users.dev.username, fx.users.dev.password);
+    await permission.loginAs(page, fx.users.dev.username, fx.users.dev.password);
 
     // Asserted first, so the absence below means something: it is checked
     // against a sidebar that has rendered.
