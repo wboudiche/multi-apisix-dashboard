@@ -76,7 +76,7 @@ export const isNotFound = (err: unknown) =>
 // one. localStorage alone is every tab's — another tab switching writes it and
 // nothing here listens — so keying on it gave this tab another tab's instance,
 // while this tab's saves, addressed from the atom, went to its own.
-const selectedInstance = () =>
+export const selectedInstance = () =>
   getDefaultStore().get(currentInstanceIdAtom)
   || localStorage.getItem('instance:current_id')
   || '';
@@ -124,7 +124,8 @@ const genListQueryOptions =
     listReq: (req: AxiosInstance, props: P) => Promise<APISIXListResponse<R>>
   ) =>
     (props: P, instanceIdOverride?: string) => {
-      // Use the override (from reactive hook) or fall back to localStorage (for loaders)
+      // The hook passes the instance it reads reactively; loaders pass none and
+      // get this tab's selected instance.
       const instanceId = instanceIdOverride ?? selectedInstance();
       return queryOptions({
         queryKey: [key, instanceId, props],

@@ -17,7 +17,7 @@
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import type { AxiosRequestConfig } from 'axios';
 
-import { isProxyUnreachable } from '@/apis/hooks';
+import { isProxyUnreachable, selectedInstance } from '@/apis/hooks';
 import type { PluginConfig } from '@/components/form-slice/FormItemPlugins/PluginEditorDrawer';
 import {
   API_PLUGIN_METADATA,
@@ -33,15 +33,13 @@ export type NeedPluginSchema = {
 };
 
 // Every key here names the instance its answer came from. `req` addresses
-// each request to the instance in localStorage at the time, and switching
-// instance in the header does not remount a page — so a key without the
-// instance served one gateway's plugins and metadata on another's page, while
-// a save from that page went to the instance now selected (#180). Hooks pass
-// the atom's value, so a switch re-renders them onto the new key; the
-// localStorage fallback is for callers outside React, as in
-// genListQueryOptions.
-const keyInstance = (instanceId?: string) =>
-  instanceId ?? (localStorage.getItem('instance:current_id') || '');
+// each request to the instance selected at the time, and switching instance
+// in the header does not remount every page — so a key without the instance
+// served one gateway's plugins and metadata on another's page, while a save
+// from that page went to the instance now selected (#180). Hooks pass the
+// atom's value, so a switch re-renders them onto the new key; callers outside
+// React get this tab's selected instance, as genListQueryOptions does.
+const keyInstance = (instanceId?: string) => instanceId ?? selectedInstance();
 
 // And every request goes to the instance its key names, not to whichever is
 // selected when it runs. A retry, or a refetch landing after a switch — a
