@@ -23,6 +23,7 @@ import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { authApi } from '@/apis/auth';
+import { SIGNED_OUT_REASON_KEY } from '@/apis/session';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import {
   accessTokenAtom,
@@ -122,6 +123,18 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Why this page is being shown, when the app sent the operator here rather
+  // than them arriving on their own. Read once and cleared, so a later reload
+  // does not keep repeating it.
+  const [signedOutReason] = useState(() => {
+    try {
+      const reason = sessionStorage.getItem(SIGNED_OUT_REASON_KEY);
+      if (reason) sessionStorage.removeItem(SIGNED_OUT_REASON_KEY);
+      return reason;
+    } catch {
+      return null;
+    }
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -270,6 +283,15 @@ const Login = () => {
               </button>
             </div>
             {forgotOpen && <p className={classes.forgotHint}>{t('login.forgotHint')}</p>}
+            {!error && signedOutReason && (
+              <div className={classes.error} role="status">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v6M12 16h.01" />
+                </svg>
+                <span>{t('login.sessionEnded')}</span>
+              </div>
+            )}
             {error && (
               <div className={classes.error} role="alert">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">

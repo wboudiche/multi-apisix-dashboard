@@ -863,10 +863,11 @@
   },
   "error": {
     "forbidden": "You do not have permission to do that on this instance.",
-    "unauthorized": "Your session has expired. Please sign in again.",
+    "unauthorized": "The gateway rejected this request. Its admin key may be wrong.",
     "notFound": "Not found.",
     "generic": "The request failed ({{status}}).",
-    "malformedResponse": "The server did not answer with data for {{- url}}. The dashboard may be behind a misconfigured proxy."
+    "malformedResponse": "The server did not answer with data for {{- url}}. The dashboard may be behind a misconfigured proxy.",
+    "refreshFailed": "Could not renew your session: {{- reason}}. Your sign-in is still valid — try again."
   },
   "labelFilter": {
     "selectKey": "Select key",
@@ -925,7 +926,8 @@
     "username": "Username",
     "usernamePlaceholder": "Enter your username",
     "welcome": "Welcome, {{username}}!",
-    "welcomeBack": "Welcome back"
+    "welcomeBack": "Welcome back",
+    "sessionEnded": "Your session ended and you were signed out. Anything in progress may not have finished."
   },
   "listWarning": {
     "title": "Incomplete results",

@@ -18,13 +18,19 @@
 import { notifications } from '@mantine/notifications';
 import axios, { AxiosError, type AxiosResponse, HttpStatusCode } from 'axios';
 import { getDefaultStore } from 'jotai';
-import { stringify } from 'qs';
 
+import {
+  endSession,
+  isSessionInvalid,
+  refreshSession,
+  SessionOverError,
+} from '@/apis/session';
 import {
   API_PREFIX,
   SKIP_INTERCEPTOR_HEADER,
 } from '@/config/constant';
 import i18n from '@/config/i18n';
+import { serializeParams } from '@/config/params';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
 import {
@@ -45,16 +51,7 @@ export const CREATE_ONLY = { headers: { 'If-None-Match': '*' } } as const;
 export const req = axios.create();
 
 req.interceptors.request.use((conf) => {
-  conf.paramsSerializer = (p) => {
-    // from { filter: { service_id: 1 } }
-    // to `filter=service_id%3D1`
-    if (p.filter) {
-      p.filter = stringify(p.filter);
-    }
-    return stringify(p, {
-      arrayFormat: 'repeat',
-    });
-  };
+  conf.paramsSerializer = serializeParams;
   if (!conf.baseURL) {
     conf.baseURL = API_PREFIX;
   }
@@ -194,11 +191,59 @@ req.interceptors.response.use(
       const status = res.status;
       const proxy = isProxyRequest(err.config);
 
+      // A 401 the dashboard raised about this session, as opposed to one
+      // APISIX raised about an admin key the proxy relayed untouched. Only the
+      // first is worth ending a session over; treating them alike would sign
+      // someone out because a gateway is misconfigured, which logging in again
+      // cannot fix.
+      if (status === HttpStatusCode.Unauthorized && isSessionInvalid(res.data)) {
+        const original = err.config as (typeof err.config & { _retry?: boolean });
+        if (original && !original._retry) {
+          original._retry = true;
+          // The request interceptor reads the token from localStorage, so the
+          // retry picks up whatever the refresh wrote.
+          return refreshSession().then(
+            () => req(original),
+            (refreshError: unknown) => {
+              // Only the backend refusing the refresh token ends the session.
+              // A dropped connection or a restarting backend says try again,
+              // and signing someone out for one would cost them whatever they
+              // were in the middle of to recover from something already fixed.
+              if (refreshError instanceof SessionOverError) {
+                endSession();
+                return Promise.reject(err);
+              }
+              notifications.show({
+                id: 'session-refresh-failed',
+                message: i18n.t('error.refreshFailed', {
+                  reason:
+                    refreshError instanceof Error
+                      ? refreshError.message
+                      : String(refreshError),
+                }),
+                color: 'red',
+              });
+              return Promise.reject(refreshError);
+            }
+          );
+        }
+        endSession();
+        return Promise.reject(err);
+      }
+
       // Proxy 502/504 = the dashboard backend couldn't reach the configured
       // APISIX. Route this through the persistent banner instead of a toast
       // so the user has retry/edit affordances; suppress the toast to avoid
       // a duplicate signal.
-      if (proxy && (status === HttpStatusCode.BadGateway || status === HttpStatusCode.GatewayTimeout)) {
+      // An unmarked 401 on a proxy path is APISIX refusing the admin key —
+      // the session is fine and the instance is not usable until someone edits
+      // it. That is the same situation as a 502: the banner names the gateway,
+      // says the admin key may be wrong, and offers Retry and Edit instance,
+      // and it stays on screen. A toast would be gone five seconds later,
+      // while the loader is still retrying.
+      if (proxy && (status === HttpStatusCode.BadGateway
+        || status === HttpStatusCode.GatewayTimeout
+        || status === HttpStatusCode.Unauthorized)) {
         const store = getDefaultStore();
         const instanceId = store.get(currentInstanceIdAtom)
           || localStorage.getItem('instance:current_id')
@@ -210,6 +255,7 @@ req.interceptors.response.use(
         });
         return Promise.reject(err);
       }
+
 
       const d = res.data;
       const message =
@@ -223,9 +269,6 @@ req.interceptors.response.use(
         message,
         color: 'red',
       });
-      if (status === HttpStatusCode.Unauthorized) {
-        return Promise.resolve({ data: {} });
-      }
     }
     return Promise.reject(err);
   }
