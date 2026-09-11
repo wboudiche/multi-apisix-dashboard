@@ -16,13 +16,13 @@
  */
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
 import type { AxiosInstance } from 'axios';
-import { getDefaultStore, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 
 import { getRouteListReq, getRouteReq } from '@/apis/routes';
 import { getUpstreamListReq, getUpstreamReq } from '@/apis/upstreams';
 import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { reqFor } from '@/config/req';
-import { currentInstanceIdAtom } from '@/stores/instance';
+import { currentInstanceIdAtom, selectedInstanceId } from '@/stores/instance';
 import type {
   APISIXDetailResponse,
   APISIXListResponse,
@@ -71,15 +71,6 @@ export const isProxyUnreachable = (err: unknown) => {
 export const isNotFound = (err: unknown) =>
   (err as { response?: { status?: number } })?.response?.status === 404;
 
-// This tab's selected instance, read as the request interceptor reads it: the
-// atom, which is this tab's own, and localStorage only before the atom has
-// one. localStorage alone is every tab's — another tab switching writes it and
-// nothing here listens — so keying on it gave this tab another tab's instance,
-// while this tab's saves, addressed from the atom, went to its own.
-export const selectedInstance = () =>
-  getDefaultStore().get(currentInstanceIdAtom)
-  || localStorage.getItem('instance:current_id')
-  || '';
 
 const genDetailQueryOptions =
   <T extends unknown[], R>(
@@ -95,7 +86,7 @@ const genDetailQueryOptions =
       // a page already unmounted — must still ask that instance (#187). Read
       // when the options are built; DetailGate remounts a detail page on a
       // switch, so that build already sees the instance switched to.
-      const instanceId = selectedInstance();
+      const instanceId = selectedInstanceId();
       return queryOptions({
         queryKey: [key, instanceId, ...args],
         queryFn: async () => {
@@ -126,7 +117,7 @@ const genListQueryOptions =
     (props: P, instanceIdOverride?: string) => {
       // The hook passes the instance it reads reactively; loaders pass none and
       // get this tab's selected instance.
-      const instanceId = instanceIdOverride ?? selectedInstance();
+      const instanceId = instanceIdOverride ?? selectedInstanceId();
       return queryOptions({
         queryKey: [key, instanceId, props],
         queryFn: async () => {
@@ -290,7 +281,7 @@ export const getCredentialQueryOptions = genDetailQueryOptions(
 );
 export const getCredentialListQueryOptions = (username: string) => {
   // A consumer's credentials are one instance's, like the consumer (#187).
-  const instanceId = selectedInstance();
+  const instanceId = selectedInstanceId();
   return queryOptions({
     queryKey: ['credentials', instanceId, username],
     queryFn: () => getCredentialListReq(reqFor(instanceId), { username }),

@@ -38,7 +38,7 @@ import {
 } from '@/config/constant';
 import i18n from '@/config/i18n';
 import { serializeParams } from '@/config/params';
-import { currentInstanceIdAtom } from '@/stores/instance';
+import { selectedInstanceId } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
 import {
   assertJsonBody,
@@ -77,9 +77,7 @@ req.interceptors.request.use((conf) => {
   // (e.g. when TanStack Router loaders fire before the Header component mounts)
   const named = conf.headers.get('X-Instance-ID');
   const instanceId = (typeof named === 'string' && named)
-    || getDefaultStore().get(currentInstanceIdAtom)
-    || localStorage.getItem('instance:current_id')
-    || '';
+    || selectedInstanceId();
   if (instanceId) {
     conf.headers.set('X-Instance-ID', instanceId);
   }
@@ -171,9 +169,7 @@ const addressedTo = (config?: { headers?: unknown }): string => {
       ? headers.get('X-Instance-ID')
       : (headers as NamedHeaders | undefined)?.['X-Instance-ID'];
   if (typeof named === 'string' && named) return named;
-  return getDefaultStore().get(currentInstanceIdAtom)
-    || localStorage.getItem('instance:current_id')
-    || '';
+  return selectedInstanceId();
 };
 
 export type APISIXRespErr = {
