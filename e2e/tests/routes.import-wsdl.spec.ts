@@ -18,7 +18,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { routesPom } from '@e2e/pom/routes';
-import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
@@ -59,12 +58,25 @@ const deleteImportedRoutes = async () => {
 
 test.beforeEach(deleteImportedRoutes);
 
+// The tests here share gateway state — the afterEach sweeps every
+// BillingService* route — so they stay in one worker, in order. Under
+// fullyParallel they would otherwise spread across workers and clean up under
+// each other's feet.
+test.describe.configure({ mode: 'default' });
+
+// The upstream the existing-upstream test provisions. It was never removed,
+// so every run left one behind (#151). Deleted by id, after the routes that
+// reference it.
+let provisionedUpstreamId: string | undefined;
+
 test.afterEach(async () => {
   await deleteImportedRoutes();
-  // The upstream the existing-upstream test provisions, after the routes that
-  // reference it. It was never removed, so every run left one (#151); the
-  // prefix sweeps this spec's own earlier ones too.
-  await deleteByPrefix(API_UPSTREAMS, 'name', 'wsdl-existing-upstream');
+  if (provisionedUpstreamId) {
+    await e2eReq
+      .delete(`${API_UPSTREAMS}/${provisionedUpstreamId}`)
+      .catch(() => null);
+    provisionedUpstreamId = undefined;
+  }
 });
 
 const openImporter = async (page: Page) => {
@@ -144,6 +156,7 @@ test('existing-upstream mode links imported routes by upstream_id', async ({ pag
     nodes: [{ host: 'billing-soap', port: 8080, weight: 1 }],
   });
   const upstreamId = upstreamRes.data.value.id;
+  provisionedUpstreamId = upstreamId;
 
   await openImporter(page);
 

@@ -104,18 +104,39 @@ export const uiFillMonacoEditor = async (
 };
 
 /**
- * Reload the current list page with every row on it, not just the first ten.
+ * Reload the current list page with every row on it, and wait until it is on
+ * screen.
  *
  * List pages open on page 1 at PAGE_SIZE_MIN. A spec looking there for the row
  * it just created is betting the gateway holds fewer than ten others — true of
  * CI's fresh stack, false of any local one an earlier run left rows in (#151).
- * Checks of absence are worse off: on page 1, a row pushed to page 2 reads as
- * gone. The list pages read page and page_size from the URL, bounded by
- * PAGE_SIZE_MAX.
+ * The list pages read page and page_size from the URL. PAGE_SIZE_MAX is the
+ * largest size the dashboard itself asks for; the URL schema does not cap it.
+ *
+ * Waiting matters as much as widening. page.goto returns at `load`, before the
+ * list's request comes back, and the table renders only once the route loader
+ * has it — so a check of *absence* made straight after the reload passes on a
+ * page with no table yet, whether or not the row exists. The first version of
+ * this helper did exactly that, and turned the CRUD specs' "the delete worked"
+ * check into one that could not fail.
  */
 export const uiShowAllRows = async (page: Page) => {
   const url = new URL(page.url());
   url.searchParams.set('page', '1');
   url.searchParams.set('page_size', String(PAGE_SIZE_MAX));
+
+  // The list's own request: the page's last path segment names the resource,
+  // and no other query on these pages asks for that resource at this size.
+  const resource = url.pathname.split('/').filter(Boolean).pop();
+  const listed = page.waitForResponse((res) => {
+    const u = new URL(res.url());
+    return (
+      res.request().method() === 'GET' &&
+      u.pathname.endsWith(`/apisix/admin/${resource}`) &&
+      u.searchParams.get('page_size') === String(PAGE_SIZE_MAX)
+    );
+  });
   await page.goto(url.toString());
+  await listed;
+  await expect(page.locator('.ant-table').first()).toBeVisible();
 };

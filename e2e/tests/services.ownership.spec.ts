@@ -19,8 +19,6 @@ import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { uiFillServiceRequiredFields } from '@e2e/utils/ui/services';
 
-import { PAGE_SIZE_MAX } from '@/config/constant';
-
 ownershipMatrixSuite({
   resourceLabel: 'service',
   pom: {
@@ -39,12 +37,7 @@ ownershipMatrixSuite({
   },
   cleanup: async (_page, name) => {
     try {
-      // Every page. Without page_size this read ten rows, so past ten services
-      // it found nothing and deleted nothing — the same one-page read that
-      // left stream_routes.ownership's routes behind (#151).
-      const list = await e2eReq.get('/services', {
-        params: { page: 1, page_size: PAGE_SIZE_MAX },
-      });
+      const list = await e2eReq.get('/services');
       const row = list.data?.list?.find(
         (r: { value: { name?: string } }) => r.value?.name === name
       );

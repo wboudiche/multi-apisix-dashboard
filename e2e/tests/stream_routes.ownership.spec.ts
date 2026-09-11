@@ -24,7 +24,7 @@ import {
   uiSelectStreamRouteUpstream,
 } from '@e2e/utils/ui/stream_routes';
 
-import { API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_UPSTREAMS } from '@/config/constant';
 
 // Stream routes have no human name. We synthesise a unique server_port
 // from the ownership helper's `name` argument (deterministic hash into
@@ -43,10 +43,18 @@ ownershipMatrixSuite({
   pom: {
     goto: { toIndex: streamRoutesPom.toIndex },
     locator: {
+      // Both cells, exactly. A four-digit port matched anywhere in a row's text
+      // can hit another row once the list shows every row rather than ten.
       rowByName: (page, name) =>
         page
           .getByRole('row')
-          .filter({ hasText: String(portFromName(name)) }),
+          .filter({ has: page.getByRole('cell', { name: SERVER_ADDR, exact: true }) })
+          .filter({
+            has: page.getByRole('cell', {
+              name: String(portFromName(name)),
+              exact: true,
+            }),
+          }),
     },
   },
   createMinimal: async (page, name) => {
@@ -82,13 +90,13 @@ ownershipMatrixSuite({
   cleanup: async (_page, name) => {
     const port = portFromName(name);
     try {
-      // Every page, not the first. Without page_size this read ten rows, so
-      // once the gateway held more it found nothing and deleted nothing — the
-      // cleanup was itself a source of the leftovers it runs after (#151).
-      // All matches, since the address is this spec's alone.
-      const list = await e2eReq.get('/stream_routes', {
-        params: { page: 1, page_size: PAGE_SIZE_MAX },
-      });
+      // Matched on address and port, and every match deleted. The old lookup
+      // matched on port alone, in 9000-9999 — the range the CRUD specs'
+      // stream routes also drew from — so it could remove some other row that
+      // happened to share the port and leave this one behind. The address is
+      // this spec's alone, so a row carrying both is its own. (e2eReq sends no
+      // page params, and without them the backend returns every row.)
+      const list = await e2eReq.get('/stream_routes');
       const rows = (list.data?.list ?? []).filter(
         (r: { value: { server_addr?: string; server_port?: number } }) =>
           r.value?.server_addr === SERVER_ADDR && r.value?.server_port === port

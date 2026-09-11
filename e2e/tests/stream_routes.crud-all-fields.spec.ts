@@ -66,7 +66,6 @@ test.afterAll(async () => {
 test('CRUD stream route with all fields', async ({ page }) => {
   // Navigate to stream routes page
   await streamRoutesPom.toIndex(page);
-  await uiShowAllRows(page);
   await expect(page.getByRole('heading', { name: 'Stream Routes' })).toBeVisible();
 
   // Navigate to add page
