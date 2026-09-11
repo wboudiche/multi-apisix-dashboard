@@ -34,11 +34,17 @@ import {
   PluginEditorDrawer,
 } from '@/components/form-slice/FormItemPlugins/PluginEditorDrawer';
 import { SelectPluginsDrawer } from '@/components/form-slice/FormItemPlugins/SelectPluginsDrawer';
+import { usePermission } from '@/hooks/usePermission';
 
 import { type PluginInfo, usePluginMetadataList } from './hooks';
 
 export const PluginMetadata = () => {
   const { t } = useTranslation();
+  // A viewer reads plugin metadata since #176 but cannot write it — the
+  // backend refuses every non-GET — so the page offers them somewhere to look
+  // rather than Edit, Delete and Select Plugins, all of which it knows will
+  // fail. The same gating every other resource page applies (#178).
+  const { canEdit } = usePermission();
 
   const getMetadataListReq = usePluginMetadataList();
   const putMetadata = useMutation({
@@ -146,21 +152,38 @@ export const PluginMetadata = () => {
           search={pluginsOb.search}
           setSearch={pluginsOb.setSearch}
         />
+        {/* Always mounted, even for a viewer: drawers share one portal and
+            one z-index, so mount order decides which is on top. Mounted only
+            for a writer, it came in after the plugin editor on a switch to an
+            instance where the account is admin, and sat over the Add Plugin
+            drawer it opens. SelectPluginsDrawer asks for `disabled` for
+            exactly this reason; `disabled` hides its button. */}
         <SelectPluginsDrawer
           plugins={pluginsOb.unSelected}
           onAdd={(name) => pluginsOb.on('add', name)}
           opened={pluginsOb.selectPluginsOpened}
           setOpened={pluginsOb.setSelectPluginsOpened}
+          disabled={!canEdit}
         />
       </Group>
       <PluginCardList
-        mode="edit"
+        mode={canEdit ? 'edit' : 'view'}
         placeholder={t('pluginMetadata.search')}
         mah="60vh"
         search={pluginsOb.search}
         plugins={pluginsOb.selected}
+        // Always passed; only `mode` is gated. PluginCardList keeps the
+        // handlers from its first render — a mobx observable's initializer
+        // closes over them, and only `mode` is resynced afterwards — so a
+        // handler withheld while the role was viewer stayed undefined after a
+        // switch to an instance where the same account is admin: Edit and
+        // Delete shown, and inert. PluginCard renders them in 'edit' mode
+        // only, so a viewer still never reaches them.
         onDelete={pluginsOb.delete}
         onEdit={(name) => pluginsOb.on('edit', name)}
+        // 'view' opens the same drawer read-only: fields disabled and no
+        // save button (PluginEditorDrawer), so there is nothing to submit.
+        onView={(name) => pluginsOb.on('view', name)}
       />
       <PluginEditorDrawer
         mode={pluginsOb.mode}

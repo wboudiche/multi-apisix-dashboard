@@ -48,10 +48,18 @@ const PASSWORD = 'E2e-Role!Access#1';
 const openPluginMetadata = async (page: Page, instanceName: string) => {
   await permission.switchInstance(page, instanceName);
   await page.goto('/ui/plugin_metadata');
-  // The control, by role, rather than the text: "Select Plugins" is also the
-  // title of the drawer this button opens.
+  // The page's search box, not the Select Plugins button: that button is a
+  // write control, and since #178 a viewer — one of the roles under test here
+  // — is rightly not offered it. The search box renders for every role, from
+  // the same component and at the same moment, once the plugin catalogue's
+  // suspense query resolves, so it still says the catalogue loaded — which is
+  // what catches a missing `plugins:read`.
+  //
+  // Exact, because getByPlaceholder matches substrings by default. The Select
+  // Plugins drawer carries a second "Search" box of its own, but only while it
+  // is open, and nothing here opens it.
   await expect(
-    page.getByRole('button', { name: 'Select Plugins' })
+    page.getByPlaceholder('Search', { exact: true })
   ).toBeVisible({ timeout: 30000 });
 };
 
