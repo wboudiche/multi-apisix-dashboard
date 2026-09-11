@@ -17,6 +17,7 @@
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import type { AxiosRequestConfig } from 'axios';
 
+import { isProxyUnreachable } from '@/apis/hooks';
 import type { PluginConfig } from '@/components/form-slice/FormItemPlugins/PluginEditorDrawer';
 import {
   API_PLUGIN_METADATA,
@@ -31,26 +32,51 @@ export type NeedPluginSchema = {
   schema: APISIXType['PluginSchemaKeys'];
 };
 
-export const getPluginsListQueryOptions = () => {
+// Every key here names the instance its answer came from. `req` addresses
+// each request to the instance in localStorage at the time, and switching
+// instance in the header does not remount a page — so a key without the
+// instance served one gateway's plugins and metadata on another's page, while
+// a save from that page went to the instance now selected (#180). Hooks pass
+// the atom's value, so a switch re-renders them onto the new key; the
+// localStorage fallback is for callers outside React, as in
+// genListQueryOptions.
+const keyInstance = (instanceId?: string) =>
+  instanceId ?? (localStorage.getItem('instance:current_id') || '');
+
+// And every request goes to the instance its key names, not to whichever is
+// selected when it runs. A retry, or a refetch landing after a switch — a
+// save's onSuccess refetching a page already unmounted — would otherwise write
+// one instance's answer under the other's key, to be shown there later
+// (#180). req keeps an X-Instance-ID it is given.
+const toInstance = (instanceId: string) =>
+  instanceId ? { 'X-Instance-ID': instanceId } : {};
+
+export const getPluginsListQueryOptions = (instanceId?: string) => {
+  const instance = keyInstance(instanceId);
   return queryOptions({
-    queryKey: ['plugins-list'],
+    queryKey: ['plugins-list', instance],
     queryFn: () =>
       req
-        .get<unknown, APISIXType['RespPluginList']>(API_PLUGINS_LIST)
+        .get<unknown, APISIXType['RespPluginList']>(API_PLUGINS_LIST, {
+          headers: toInstance(instance),
+        })
         .then((v) => v.data),
   });
 };
 
 export const getPluginsListWithSchemaQueryOptions = (
-  props: APISIXType['PluginsQuery'] & NeedPluginSchema = { schema: 'schema' }
+  props: APISIXType['PluginsQuery'] & NeedPluginSchema = { schema: 'schema' },
+  instanceId?: string
 ) => {
   const { subsystem, schema } = props;
+  const instance = keyInstance(instanceId);
   return queryOptions({
-    queryKey: ['plugins-list-with-schema', subsystem, schema],
+    queryKey: ['plugins-list-with-schema', instance, subsystem, schema],
     queryFn: () =>
       req
         .get<unknown, APISIXType['RespPlugins']>(API_PLUGINS, {
           params: { subsystem, all: true },
+          headers: toInstance(instance),
         })
         .then((v) => {
           const data = Object.entries(v.data);
@@ -61,21 +87,38 @@ export const getPluginsListWithSchemaQueryOptions = (
             }
           }
           return { names, originObj: v.data };
+        })
+        // A gateway the proxy cannot reach reads as one with no plugins, the
+        // way genListQueryOptions reads its lists as empty. This query
+        // suspends, and it now runs again on every instance switch: thrown,
+        // its error reached the root route's error boundary and replaced the
+        // whole app — and any half-filled form — with the error page.
+        .catch((err) => {
+          if (isProxyUnreachable(err)) {
+            return {
+              names: [] as string[],
+              originObj: {} as APISIXType['RespPlugins']['data'],
+            };
+          }
+          throw err;
         }),
   });
 };
 
 export const getPluginSchemaQueryOptions = (
   name: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  instanceId?: string
 ) => {
+  const instance = keyInstance(instanceId);
   return queryOptions({
-    queryKey: ['plugin-schema', name],
+    queryKey: ['plugin-schema', instance, name],
     queryFn: name
       ? () =>
           req
             .get<unknown, APISIXType['RespPluginSchema']>(
-              `${API_PLUGINS}/${name}`
+              `${API_PLUGINS}/${name}`,
+              { headers: toInstance(instance) }
             )
             .then((v) => v.data)
       : skipToken,
@@ -99,15 +142,18 @@ export const deletePluginMetadataReq = (name: string) => {
 
 export const getPluginMetadataQueryOptions = (
   plugin_name: string,
-  headers?: AxiosRequestConfig<unknown>['headers']
-) =>
-  queryOptions({
-    queryKey: ['plugin_metadata', plugin_name],
+  headers?: AxiosRequestConfig<unknown>['headers'],
+  instanceId?: string
+) => {
+  const instance = keyInstance(instanceId);
+  return queryOptions({
+    queryKey: ['plugin_metadata', instance, plugin_name],
     queryFn: () =>
       req
         .get<unknown, APISIXType['RespPluginMetadataDetail']>(
           `${API_PLUGIN_METADATA}/${plugin_name}`,
-          { headers }
+          { headers: { ...headers, ...toInstance(instance) } }
         )
         .then((v) => v.data),
   });
+};

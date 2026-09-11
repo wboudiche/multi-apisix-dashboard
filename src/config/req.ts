@@ -62,17 +62,22 @@ req.interceptors.request.use((conf) => {
     conf.headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // Get current instance ID and add it as header for proxy requests
+  // The instance a caller names wins; otherwise the one selected now. A query
+  // keyed on an instance has to be answered by that instance even when it runs
+  // after a switch — a retry, or a refetch from a page already unmounted — or
+  // it writes one instance's answer under the other's key (#180).
   // Fall back to localStorage directly in case the atom hasn't been hydrated yet
   // (e.g. when TanStack Router loaders fire before the Header component mounts)
-  const instanceId = getDefaultStore().get(currentInstanceIdAtom)
+  const named = conf.headers.get('X-Instance-ID');
+  const instanceId = (typeof named === 'string' && named)
+    || getDefaultStore().get(currentInstanceIdAtom)
     || localStorage.getItem('instance:current_id')
     || '';
   if (instanceId) {
     conf.headers.set('X-Instance-ID', instanceId);
   }
 
-  // Get current team ID for admin team switching
+  // The team selected on that instance, for admin team switching
   const teamId = localStorage.getItem(`team:current_id:${instanceId}`) || '';
   if (teamId) {
     conf.headers.set('X-Team-ID', teamId);

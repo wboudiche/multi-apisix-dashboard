@@ -53,10 +53,9 @@ test.describe.configure({ mode: 'serial' });
 // do not fit in Playwright's 30s default.
 const TIMEOUT_MS = 120_000;
 
-// e2eReq is bound to the local instance. Staging gets a copy too, for the
-// instance-switch test below: the page does not refetch plugin metadata when
-// the instance changes, so after a switch it may still be showing staging's
-// cards. Seeding both keeps that test about Edit, whichever card it lands on.
+// e2eReq is bound to the local instance. Staging gets a copy too: the
+// instance-switch tests below open the page on staging, as a viewer, and need
+// the card there before they switch to local.
 const onStaging = () => ({
   headers: { 'X-Instance-ID': getFixtures().stagingInstanceId },
 });
@@ -145,15 +144,18 @@ test('an admin keeps every control a viewer loses', async ({ browser }) => {
  *
  * One account, two roles, the per-instance model the dashboard is built on:
  * viewer on staging, instance_admin on local. Switching instance in the header
- * does not remount the page; only the role underneath it changes. Anything the
- * page decided once, at mount, from the role is then wrong.
+ * used to leave the page mounted with only the role underneath it changed, so
+ * anything the page decided once, at mount, from the role was then wrong
+ * (#178). Since #180 the route remounts the page per instance, so these tests
+ * now pin the outcome — Edit and Add usable after the switch — whichever way
+ * the page gets there.
  *
  * The header badge is waited for before the page is reached. Until
  * userInstancesAtom loads, the effective role is the account's global one —
  * '' for anyone but a super_admin — and canEdit is true for ''. Reaching the
  * page before that would mount it as a writer and make these tests pass by
  * the luck of a race rather than by the code being right. And it is reached
- * through the sidebar, client-side, so the page stays mounted from here on.
+ * through the sidebar, client-side, as a person would.
  */
 const openAsViewerThenBecomeAdmin = async (page: Page, username: string) => {
   await permission.loginAs(page, username, PASSWORD);
@@ -171,7 +173,7 @@ const openAsViewerThenBecomeAdmin = async (page: Page, username: string) => {
   await expect(card.getByRole('button', { name: 'Edit' })).toHaveCount(0);
 
   // In the header, the way a person would — not permission.switchInstance,
-  // whose reload would remount the page and hide exactly what these catch.
+  // whose full reload also reloads the account's roles.
   const switcher = page.locator('header input[placeholder="Select instance"]');
   await switcher.click();
   await page.getByRole('option', { name: 'Local APISIX' }).click();
@@ -207,7 +209,9 @@ test('Edit still works after switching from a viewer instance to an admin one', 
   // PluginCardList builds its cards from a mobx observable whose initializer
   // closes over onEdit and onDelete once, at first render, and resyncs only
   // `mode`. Handlers withheld from a viewer therefore stayed withheld after
-  // the switch: Edit and Delete shown, and a click that went nowhere.
+  // the switch: Edit and Delete shown, and a click that went nowhere (#178).
+  // The switch now remounts the page (#180); this pins that Edit works after
+  // it either way.
   test.setTimeout(TIMEOUT_MS);
   const prefix = randomId('pm-switch-edit');
   const context = await browser.newContext({ storageState: undefined });
@@ -237,7 +241,9 @@ test('Add is usable after switching from a viewer instance to an admin one', asy
   // decided by mount order. Mounting Select Plugins only for a writer meant a
   // page opened as a viewer mounted it after the plugin editor, at the switch
   // — and it then sat over the Add Plugin drawer it opens. SelectPluginsDrawer
-  // says as much about itself: pass `disabled`, do not unmount.
+  // says as much about itself: pass `disabled`, do not unmount (#178). The
+  // switch now remounts the page (#180); this pins that Add is usable after
+  // it either way.
   //
   // Nothing is saved. The click on the editor's own control is the assertion:
   // Playwright refuses to click an element something else is covering.

@@ -21,6 +21,7 @@ import {
   type InputWrapperProps,
 } from '@mantine/core';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { useAtomValue } from 'jotai';
 import { toJS } from 'mobx';
 import { useLocalObservable } from 'mobx-react-lite';
 import { difference } from 'rambdax';
@@ -38,6 +39,7 @@ import {
   type NeedPluginSchema,
 } from '@/apis/plugins';
 import { genControllerProps } from '@/components/form/util';
+import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 
 import type { PluginCardProps } from './PluginCard';
@@ -162,8 +164,11 @@ export const FormItemPlugins = <T extends FieldValues>(
     },
   }));
 
+  // The catalogue is the gateway's own: two instances on different APISIX
+  // versions offer different plugins and schemas (#180).
+  const instanceId = useAtomValue(currentInstanceIdAtom);
   const pluginsListReq = useSuspenseQuery(
-    getPluginsListWithSchemaQueryOptions({ schema })
+    getPluginsListWithSchemaQueryOptions({ schema }, instanceId)
   );
 
   // init the selected plugins
