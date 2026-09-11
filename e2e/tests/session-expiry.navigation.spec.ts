@@ -102,11 +102,41 @@ test('does not sign out when the refresh merely could not be reached', async ({
 
   await page.getByRole('link', { name: 'Upstreams', exact: true }).click();
 
-  /* eslint-disable-next-line playwright/no-wait-for-timeout --
-     Asserting that a redirect never starts has no state to wait for. */
-  await page.waitForTimeout(3000);
-  expect(new URL(page.url()).pathname).not.toBe('/ui/login');
+  // The positive claim, not merely the absence of a redirect: `not.toBe(
+  // '/ui/login')` would also hold if the guard swallowed the navigation and
+  // left us on /ui/routes, so a refresh that hung forever would pass.
+  await expect(page).toHaveURL(/\/ui\/upstreams/, { timeout: 30000 });
   expect(
     await page.evaluate(() => localStorage.getItem('auth:refresh_token'))
   ).not.toBeNull();
+});
+
+test('renders the app shell after renewing on a page load', async ({ page }) => {
+  // The three above expire the token after a successful load, so
+  // isAuthenticatedAtom has already cached `true` and an in-tab navigation
+  // keeps it. The case that matters most does not: a tab reopened after lunch
+  // is a *page load* with the expiry already in the past, so the atom is
+  // initialised from localStorage as false and nothing recomputes it —
+  // refreshSession writes to localStorage, not to the store.
+  //
+  // The guard then lets the navigation through, correctly, and Root renders
+  // with showAppShell false: no Header, no Navbar, no InstanceGuard, on a
+  // session that was just renewed. Before this change that path redirected to
+  // the login page, so the staleness was never reachable.
+  await page.goto('/ui/routes');
+  await expect(page.getByRole('button', { name: 'Create' })).toBeVisible({
+    timeout: 30000,
+  });
+
+  await page.evaluate(() =>
+    localStorage.setItem('auth:token_expiry', String(Date.now() - 1000))
+  );
+
+  await page.reload();
+
+  await expect(page.locator('header')).toBeVisible({ timeout: 30000 });
+  await expect(
+    page.getByRole('link', { name: 'Upstreams', exact: true })
+  ).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe('/ui/routes');
 });

@@ -21,12 +21,7 @@ import { useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 
-import {
-  clearStoredSession,
-  noteSignedOut,
-  refreshSession,
-  SessionOverError,
-} from '@/apis/session';
+import { endSession, refreshSession, SessionOverError } from '@/apis/session';
 import { Header } from '@/components/Header';
 import { Navbar } from '@/components/Navbar';
 import { InstanceGuard } from '@/components/page/InstanceGuard';
@@ -170,8 +165,14 @@ export const Route = createRootRoute({
         sessionOver = error instanceof SessionOverError;
       }
       if (sessionOver) {
-        clearStoredSession();
-        noteSignedOut();
+        // endSession rather than clearing and redirecting through the router.
+        // It reloads the page, and that is load-bearing: the query cache, the
+        // atoms and every in-flight request in this tab were built on the
+        // session that just ended. A client-side redirect leaves them, and
+        // `ensureQueryData` in the loaders returns cached data without
+        // revalidating — so the next person to sign in sees the last one's
+        // lists until the refetch lands.
+        endSession();
         throw redirect({
           to: '/login',
         });
