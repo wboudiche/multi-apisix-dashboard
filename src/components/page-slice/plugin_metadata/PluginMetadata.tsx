@@ -161,10 +161,13 @@ export const PluginMetadata = () => {
         />
         {/* Always mounted, even for a viewer: drawers share one portal and
             one z-index, so mount order decides which is on top. Mounted only
-            for a writer, it came in after the plugin editor on a switch to an
-            instance where the account is admin, and sat over the Add Plugin
-            drawer it opens. SelectPluginsDrawer asks for `disabled` for
-            exactly this reason; `disabled` hides its button. */}
+            for a writer, it came in after the plugin editor whenever the role
+            changed under the mounted page, and sat over the Add Plugin drawer
+            it opens. An instance switch no longer does that — the route
+            remounts the page per instance (#180) — but the role still can,
+            when the account's instance roles arrive after the page has
+            mounted. SelectPluginsDrawer asks for `disabled` for exactly this
+            reason; `disabled` hides its button. */}
         <SelectPluginsDrawer
           plugins={pluginsOb.unSelected}
           onAdd={(name) => pluginsOb.on('add', name)}
@@ -182,10 +185,12 @@ export const PluginMetadata = () => {
         // Always passed; only `mode` is gated. PluginCardList keeps the
         // handlers from its first render — a mobx observable's initializer
         // closes over them, and only `mode` is resynced afterwards — so a
-        // handler withheld while the role was viewer stayed undefined after a
-        // switch to an instance where the same account is admin: Edit and
-        // Delete shown, and inert. PluginCard renders them in 'edit' mode
-        // only, so a viewer still never reaches them.
+        // handler withheld while the role was viewer stayed undefined once the
+        // role changed under the mounted page: Edit and Delete shown, and
+        // inert. An instance switch now remounts the page (#180); the
+        // account's instance roles arriving after mount still change the role
+        // under it. PluginCard renders them in 'edit' mode only, so a viewer
+        // still never reaches them.
         onDelete={pluginsOb.delete}
         onEdit={(name) => pluginsOb.on('edit', name)}
         // 'view' opens the same drawer read-only: fields disabled and no

@@ -31,9 +31,10 @@ export type PluginInfo = PluginConfig & { schema: object };
 
 // waiting apisix api to help handle the request
 export const usePluginMetadataList = () => {
-  // Read reactively, as genUseList does: a switch in the header does not
-  // remount this page, so it is the instance in the keys that makes the page
-  // fetch the new instance's metadata instead of showing the last one's (#180).
+  // The instance in the keys is what keeps a page opened on one instance from
+  // being served another's cache (#180). The route remounts this page on a
+  // switch; read reactively all the same, as genUseList does, so the keys do
+  // not depend on that.
   const instanceId = useAtomValue(currentInstanceIdAtom);
   const pluginsListQuery = useSuspenseQuery(
     getPluginsListWithSchemaQueryOptions(

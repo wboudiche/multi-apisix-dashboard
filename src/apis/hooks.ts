@@ -61,7 +61,7 @@ import { getStreamRouteListReq, getStreamRouteReq } from './stream_routes';
 // instance's admin key was refused. The dashboard's own session rejections are
 // marked and handled in req.ts long before this, so a 401 arriving here is
 // always the gateway's.
-const isProxyUnreachable = (err: unknown) => {
+export const isProxyUnreachable = (err: unknown) => {
   const status = (err as { response?: { status?: number } })?.response?.status;
   return status === 502 || status === 504 || status === 401;
 };
