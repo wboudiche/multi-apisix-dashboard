@@ -34,11 +34,17 @@ import {
   PluginEditorDrawer,
 } from '@/components/form-slice/FormItemPlugins/PluginEditorDrawer';
 import { SelectPluginsDrawer } from '@/components/form-slice/FormItemPlugins/SelectPluginsDrawer';
+import { usePermission } from '@/hooks/usePermission';
 
 import { type PluginInfo, usePluginMetadataList } from './hooks';
 
 export const PluginMetadata = () => {
   const { t } = useTranslation();
+  // A viewer reads plugin metadata since #176 but cannot write it — the
+  // backend refuses every non-GET — so the page offers them somewhere to look
+  // rather than Edit, Delete and Select Plugins, all of which it knows will
+  // fail. The same gating every other resource page applies (#178).
+  const { canEdit } = usePermission();
 
   const getMetadataListReq = usePluginMetadataList();
   const putMetadata = useMutation({
@@ -146,21 +152,26 @@ export const PluginMetadata = () => {
           search={pluginsOb.search}
           setSearch={pluginsOb.setSearch}
         />
-        <SelectPluginsDrawer
-          plugins={pluginsOb.unSelected}
-          onAdd={(name) => pluginsOb.on('add', name)}
-          opened={pluginsOb.selectPluginsOpened}
-          setOpened={pluginsOb.setSelectPluginsOpened}
-        />
+        {canEdit && (
+          <SelectPluginsDrawer
+            plugins={pluginsOb.unSelected}
+            onAdd={(name) => pluginsOb.on('add', name)}
+            opened={pluginsOb.selectPluginsOpened}
+            setOpened={pluginsOb.setSelectPluginsOpened}
+          />
+        )}
       </Group>
       <PluginCardList
-        mode="edit"
+        mode={canEdit ? 'edit' : 'view'}
         placeholder={t('pluginMetadata.search')}
         mah="60vh"
         search={pluginsOb.search}
         plugins={pluginsOb.selected}
-        onDelete={pluginsOb.delete}
-        onEdit={(name) => pluginsOb.on('edit', name)}
+        onDelete={canEdit ? pluginsOb.delete : undefined}
+        onEdit={canEdit ? (name) => pluginsOb.on('edit', name) : undefined}
+        // 'view' opens the same drawer read-only: fields disabled and no
+        // save button (PluginEditorDrawer), so there is nothing to submit.
+        onView={(name) => pluginsOb.on('view', name)}
       />
       <PluginEditorDrawer
         mode={pluginsOb.mode}
