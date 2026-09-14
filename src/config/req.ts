@@ -69,12 +69,11 @@ req.interceptors.request.use((conf) => {
     conf.headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // The instance a caller names wins; otherwise the one selected now. A query
-  // keyed on an instance has to be answered by that instance even when it runs
-  // after a switch — a retry, or a refetch from a page already unmounted — or
-  // it writes one instance's answer under the other's key (#180).
-  // Fall back to localStorage directly in case the atom hasn't been hydrated yet
-  // (e.g. when TanStack Router loaders fire before the Header component mounts)
+  // The instance a caller names wins; otherwise this tab's selected one (see
+  // selectedInstanceId). A query keyed on an instance has to be answered by
+  // that instance even when it runs after a switch — a retry, or a refetch
+  // from a page already unmounted — or it writes one instance's answer under
+  // the other's key (#180).
   const named = conf.headers.get('X-Instance-ID');
   const instanceId = (typeof named === 'string' && named)
     || selectedInstanceId();

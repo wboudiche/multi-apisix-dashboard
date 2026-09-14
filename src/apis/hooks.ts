@@ -71,7 +71,6 @@ export const isProxyUnreachable = (err: unknown) => {
 export const isNotFound = (err: unknown) =>
   (err as { response?: { status?: number } })?.response?.status === 404;
 
-
 const genDetailQueryOptions =
   <T extends unknown[], R>(
     key: string,
