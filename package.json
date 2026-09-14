@@ -33,7 +33,7 @@
     "fast-xml-parser": "^5.9.3",
     "i18next": "^26.3.4",
     "immer": "^11.1.11",
-    "jotai": "^2.12.5",
+    "jotai": "^3.0.0",
     "jszip": "^3.10.1",
     "mobx": "^6.13.7",
     "mobx-persist-store": "^1.1.8",
