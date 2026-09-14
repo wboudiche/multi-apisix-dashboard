@@ -15,7 +15,15 @@
  * limitations under the License.
  */
 import { Alert, Box, Button, Group, Modal, Stack, Stepper, Text } from '@mantine/core';
-import { type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type BaseSyntheticEvent,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -36,7 +44,8 @@ export type WizardStep = {
 
 export type FormWizardProps = {
   steps: WizardStep[];
-  onComplete: (data: any) => void;
+  /** What `form.handleSubmit(...)` returns: it validates and submits the form itself. */
+  onComplete: (e?: BaseSyntheticEvent) => unknown;
   loading?: boolean;
   onCancel?: () => void;
   onBackToList?: () => void;
@@ -48,10 +57,26 @@ export type FormWizardProps = {
 export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList, readOnly = false, allowFreeSelect = false, error }: FormWizardProps) => {
   const { t } = useTranslation();
   const [active, setActive] = useState(0);
-  const { trigger, formState, getValues } = useFormContext();
+  const { trigger, formState, getValues, reset } = useFormContext();
   const submittedRef = useRef(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
+
+  // A field registered while the form is disabled stays on react-hook-form's
+  // list of disabled fields until it is registered again — which only a step
+  // on screen does — and handleSubmit leaves every one of them out of what it
+  // submits. A detail page opens read-only with its first step mounted, so a
+  // step jumped to from there and edited saved without the first step's
+  // fields: a route went to PUT /routes/undefined, an upstream was created
+  // under that id, a service lost its name (#215). Resetting to the values the
+  // form already holds, as it turns editable, empties that list.
+  const wasReadOnly = useRef(readOnly);
+  useEffect(() => {
+    if (wasReadOnly.current && !readOnly) {
+      reset(getValues(), { keepDefaultValues: true });
+    }
+    wasReadOnly.current = readOnly;
+  }, [readOnly, reset, getValues]);
 
   const validateStepsUpTo = async (targetStep: number): Promise<boolean> => {
     for (let i = active; i < targetStep; i++) {
@@ -108,8 +133,8 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
   // Mark as submitted when onComplete is called
   const handleComplete = useCallback(() => {
     submittedRef.current = true;
-    onComplete(getValues());
-  }, [onComplete, getValues]);
+    onComplete();
+  }, [onComplete]);
 
   // Handle cancel with unsaved changes check
   const handleCancel = useCallback(() => {
@@ -306,7 +331,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
       )}
 
       <Box style={{ minHeight: '300px' }} className="animate-fade-in">
-        <Suspense fallback={<Text size="sm" color="var(--text-muted)" p="xl">Loading configuration...</Text>}>
+        <Suspense fallback={<Text size="sm" color="var(--text-muted)" p="xl">{t('form.loadingConfiguration')}</Text>}>
           {steps[active].content}
         </Suspense>
       </Box>
@@ -333,7 +358,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
               onClick={handleCancel}
               className="Button-secondary"
             >
-              {(t as any)('form.btn.cancel') || 'Cancel'}
+              {t('form.btn.cancel')}
             </Button>
           )}
         </Group>
@@ -346,7 +371,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
               leftSection={<IconChevronLeft width="18" height="18" />}
               style={{ fontWeight: 600 }}
             >
-              {(t as any)('form.btn.back') || 'Back'}
+              {t('form.btn.back')}
             </Button>
           )}
 
@@ -355,7 +380,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
               onClick={nextStep}
               rightSection={<IconChevronRight width="18" height="18" />}
             >
-              {(t as any)('form.btn.next') || 'Next'}
+              {t('form.btn.next')}
             </Button>
           ) : readOnly ? (
             onBackToList && (
@@ -364,7 +389,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
                 leftSection={<IconListAlt width="18" height="18" />}
                 variant="gradient"
               >
-                {(t as any)('form.btn.backToList')}
+                {t('form.btn.backToList')}
               </Button>
             )
           ) : (
@@ -374,7 +399,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
               leftSection={<IconCheck width="18" height="18" />}
               style={{ boxShadow: 'var(--shadow-glow)' }}
             >
-              {(t as any)('form.btn.submit') || 'Submit'}
+              {t('form.btn.submit')}
             </Button>
           )}
         </Group>
