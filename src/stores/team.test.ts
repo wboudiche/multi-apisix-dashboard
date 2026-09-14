@@ -20,6 +20,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type TeamModule = typeof import('./team');
 type InstanceModule = typeof import('./instance');
+type AuthModule = typeof import('./auth');
 type ReqModule = typeof import('@/config/req');
 type ClientModule = typeof import('@/apis/client');
 
@@ -35,10 +36,16 @@ vi.stubGlobal('localStorage', {
     storage.delete(key);
   },
   clear: () => storage.clear(),
+  key: (index: number) => [...storage.keys()][index] ?? null,
+  get length() {
+    return storage.size;
+  },
 });
 
 let currentTeamIdAtom: TeamModule['currentTeamIdAtom'];
+let clearTeamPicks: TeamModule['clearTeamPicks'];
 let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
+let currentUserAtom: AuthModule['currentUserAtom'];
 let req: ReqModule['req'];
 let reqFor: ReqModule['reqFor'];
 let apiClient: ClientModule['apiClient'];
@@ -56,8 +63,9 @@ const answer = async (config: InternalAxiosRequestConfig) => {
 };
 
 beforeAll(async () => {
-  ({ currentTeamIdAtom } = await import('./team'));
+  ({ currentTeamIdAtom, clearTeamPicks } = await import('./team'));
   ({ currentInstanceIdAtom } = await import('./instance'));
+  ({ currentUserAtom } = await import('./auth'));
   ({ req, reqFor } = await import('@/config/req'));
   ({ apiClient } = await import('@/apis/client'));
   req.defaults.adapter = answer;
@@ -72,10 +80,21 @@ const lastTeam = () => sent[sent.length - 1]?.headers.get('X-Team-ID');
 const anotherTabPicks = (instance: string, team: string) =>
   storage.set(`team:current_id:${instance}`, team);
 
+// Only a super admin gets the teams list, and so a team switcher: the tests
+// that pick teams are about one.
+const account = (role: string) => ({
+  id: `user-${role || 'none'}`,
+  username: role || 'instance-admin',
+  email: '',
+  role,
+  created_at: '',
+});
+
 let n = 0;
 beforeEach(() => {
   storage.clear();
   sent.length = 0;
+  store().set(currentUserAtom, account('super_admin'));
   // A fresh instance id per test: the team atom keeps what it read for an
   // instance, so reusing one would carry a test's choice into the next.
   n += 1;
@@ -134,6 +153,37 @@ describe('the team this tab works with', () => {
 
     await req.get('/routes');
     expect(lastTeam()).toBe('T2');
+  });
+
+  it('is none for an account without a team switcher, whatever was picked', async () => {
+    // An instance admin is an admin to the proxy — its X-Team-ID becomes the
+    // owner of what it creates or edits — but it gets no teams list and so no
+    // switcher: a team sent for it is one it cannot see (#203).
+    store().set(currentTeamIdAtom, 'T1');
+    anotherTabPicks(here(), 'T2');
+    store().set(currentUserAtom, account(''));
+
+    await req.get('/routes');
+    await apiClient.get('/api/v1/labels');
+    expect(sent).toHaveLength(2);
+    expect(sent.map((c) => c.headers.get('X-Team-ID'))).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('is none, on any instance, once a new session starts', () => {
+    // A pick belongs to the account that made it. Signing out from the menu
+    // and in as someone else happens in one tab, without a reload (#203).
+    const other = `${here()}-other`;
+    store().set(currentTeamIdAtom, 'T1');
+    anotherTabPicks(other, 'T9');
+
+    clearTeamPicks();
+
+    expect(store().get(currentTeamIdAtom)).toBe('');
+    expect(storage.has(`team:current_id:${here()}`)).toBe(false);
+    expect(storage.has(`team:current_id:${other}`)).toBe(false);
   });
 
   it('is this tab’s choice for an instance a request names', async () => {

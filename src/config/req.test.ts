@@ -25,6 +25,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 type ReqModule = typeof import('./req');
 type InstanceModule = typeof import('@/stores/instance');
 type ProxyErrorModule = typeof import('@/stores/proxyError');
+type AuthModule = typeof import('@/stores/auth');
 
 // req and the stores it reads touch localStorage as their modules load, and
 // this suite runs in node: a Map stands in for it, installed before they are
@@ -44,6 +45,7 @@ vi.stubGlobal('localStorage', {
 let req: ReqModule['req'];
 let reqFor: ReqModule['reqFor'];
 let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
+let currentUserAtom: AuthModule['currentUserAtom'];
 let proxyErrorAtom: ProxyErrorModule['proxyErrorAtom'];
 
 // What the gateway answers, and every request that reached it.
@@ -74,6 +76,7 @@ const badGateway: Answer = (config) =>
 beforeAll(async () => {
   ({ req, reqFor } = await import('./req'));
   ({ currentInstanceIdAtom } = await import('@/stores/instance'));
+  ({ currentUserAtom } = await import('@/stores/auth'));
   ({ proxyErrorAtom } = await import('@/stores/proxyError'));
   req.defaults.adapter = (config) => {
     sent.push(config);
@@ -92,6 +95,14 @@ beforeEach(() => {
   storage.set('team:current_id:B', 'team-b');
   store().set(currentInstanceIdAtom, 'A');
   store().set(proxyErrorAtom, null);
+  // A super admin: the only account that sends a team (#203).
+  store().set(currentUserAtom, {
+    id: 'user-sa',
+    username: 'sa',
+    email: '',
+    role: 'super_admin',
+    created_at: '',
+  });
 });
 
 describe('the instance a request is addressed to', () => {
