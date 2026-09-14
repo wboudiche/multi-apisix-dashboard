@@ -138,15 +138,24 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
     onComplete();
   }, [onComplete]);
 
+  // Cancel puts the form back to its default values — on a detail page, the
+  // resource as last loaded — before handing back to the page. Going read-only
+  // alone kept the edits, showed them as the resource's, and the next save
+  // sent them (#219).
+  const cancel = useCallback(() => {
+    reset();
+    onCancel?.();
+  }, [reset, onCancel]);
+
   // Handle cancel with unsaved changes check
   const handleCancel = useCallback(() => {
     if (formState.isDirty && !submittedRef.current) {
-      pendingNavigationRef.current = () => onCancel?.();
+      pendingNavigationRef.current = cancel;
       setShowLeaveModal(true);
     } else {
-      onCancel?.();
+      cancel();
     }
-  }, [formState.isDirty, onCancel]);
+  }, [formState.isDirty, cancel]);
 
   // [Feature 10] Keyboard navigation
   useEffect(() => {
