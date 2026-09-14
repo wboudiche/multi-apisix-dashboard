@@ -275,12 +275,16 @@ func (s *AuthService) UpdateUser(ctx context.Context, user *models.User) error {
 // again finishes the job, where the other order would leave assignments that
 // nothing lists and nothing can reach.
 func (s *AuthService) DeleteUser(ctx context.Context, userID string) error {
-	// The trailing slash keeps the prefix to this user's keys, and not those of
-	// every user whose id merely starts with this one.
+	// The trailing slash keeps the prefix to this user's keys: not those of
+	// every user whose id merely starts with this one, and, for an empty id,
+	// none at all rather than every assignment there is.
 	if err := s.etcd.DeletePrefix(ctx, models.KeyPrefixUserInstances+userID+"/"); err != nil {
 		return fmt.Errorf("user %s not deleted: its instance assignments could not be removed: %w", userID, err)
 	}
-	return s.etcd.Delete(ctx, models.KeyPrefixUsers+userID)
+	if err := s.etcd.Delete(ctx, models.KeyPrefixUsers+userID); err != nil {
+		return fmt.Errorf("user %s: its instance assignments are removed, but the user could not be: %w", userID, err)
+	}
+	return nil
 }
 
 func (s *AuthService) GetUserInstance(ctx context.Context, userID, instanceID string) (*models.UserInstance, error) {
