@@ -28,6 +28,7 @@ import { randomId } from '@e2e/utils/common';
 import { env } from '@e2e/utils/env';
 import { getFixtures } from '@e2e/utils/fixtures';
 import {
+  apiFetch,
   ensureTeam,
   ensureUser,
   ensureUserInstanceRole,
@@ -192,4 +193,39 @@ test('a deleted user can no longer log in', async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForTimeout(2000);
   await expect(page).toHaveURL(/\/login/);
+});
+
+test('a deleted user leaves no assignment, and no team membership, behind', async () => {
+  // Deleting a user removed its record and nothing else. Its instance
+  // assignments — a role and a team each — stayed in etcd, and the team went
+  // on listing as a member a user that no longer exists (#206).
+  const fx = getFixtures();
+  const token = await adminToken();
+  const user = await ensureUser(token, {
+    username: `${PREFIX}-leaves`,
+    password: PASSWORD,
+  });
+  for (const instanceId of [fx.localInstanceId, fx.stagingInstanceId]) {
+    await ensureUserInstanceRole(token, user.id, instanceId, {
+      role: 'viewer',
+      team_id: teamId,
+    });
+  }
+  // `list` is null for a team with no members at all.
+  const membershipsOfUser = async () => {
+    const res = (await apiFetch(`/api/v1/teams/${teamId}/members`, token)) as {
+      list: { user_id: string }[] | null;
+    };
+    return (res.list ?? []).filter((m) => m.user_id === user.id).length;
+  };
+  // Asserted first, so the absence below is not read off a list that never
+  // had the user in it.
+  expect(await membershipsOfUser()).toBe(2);
+
+  await apiFetch(`/api/v1/users/${user.id}`, token, { method: 'DELETE' });
+
+  expect(await membershipsOfUser()).toBe(0);
+  expect(
+    await apiFetch(`/api/v1/user-access/${user.id}/instances`, token)
+  ).toEqual([]);
 });
