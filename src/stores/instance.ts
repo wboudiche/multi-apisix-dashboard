@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { atom } from 'jotai';
+import { atom, getDefaultStore } from 'jotai';
 
 import type { Instance } from '@/apis/instances';
 
@@ -47,6 +47,20 @@ export const currentInstanceIdAtom = atom(
     }
   }
 );
+
+/**
+ * This tab's selected instance, for code outside React.
+ *
+ * The atom is this tab's own; localStorage is every tab's, and nothing
+ * listens for another tab writing it. So the atom first, and localStorage only
+ * before the atom has an instance. Read from localStorage alone, a tab that
+ * had not switched addressed its requests — and keyed its queries — to
+ * whichever instance another tab had switched to last (#187, #193).
+ */
+export const selectedInstanceId = (): string =>
+  getDefaultStore().get(currentInstanceIdAtom)
+  || storage.get('instance:current_id')
+  || '';
 
 // Instances list
 export const instancesAtom = atom<Instance[]>([]);
