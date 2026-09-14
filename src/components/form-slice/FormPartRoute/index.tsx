@@ -33,6 +33,7 @@ import { FormItemSwitch } from '@/components/form/Switch';
 import { FormItemTagsInput } from '@/components/form/TagInput';
 import { FormItemTextarea } from '@/components/form/Textarea';
 import { FormItemTextInput } from '@/components/form/TextInput';
+import { usePermission } from '@/hooks/usePermission';
 import { APISIX } from '@/types/schema/apisix';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 import { zGetDefault } from '@/utils/zod';
@@ -226,14 +227,21 @@ export const FormSectionPlugins = () => {
   const { t } = useTranslation();
   const { control } = useFormContext<RoutePostType>();
 
-  // Not useSuspenseQuery, unlike the service and upstream selects above: a
-  // developer has no plugin_configs permission at all (see RolePermissions in
-  // api/internal/models/models.go), so listing them 403s for that role.
-  // Suspending on it would take the whole route form down rather than just
-  // this one field.
+  // Whether this role may list plugin configs at all. The page permissions
+  // mirror RolePermissions in api/internal/models/models.go, where a developer
+  // has no plugin_configs entry. Asked anyway, the list came back 403, which
+  // req's interceptor shows as a red "Role not permitted" over a form that had
+  // done nothing wrong — on every save (#189). False while the role is still
+  // loading too, so the list is never asked for on a guess.
+  const mayList = usePermission().canAccessRoute('/plugin_configs');
+
+  // Not useSuspenseQuery, unlike the service and upstream selects above: the
+  // list can still fail, and suspending on it would take the whole route form
+  // down rather than just this one field.
   const { data: pluginConfigs, isError } = useQuery({
     ...getPluginConfigListQueryOptions({ page: 1, page_size: 500 }),
     retry: false,
+    enabled: mayList,
   });
 
   const pluginConfigOptions = useMemo(
@@ -258,10 +266,10 @@ export const FormSectionPlugins = () => {
 
   return (
     <FormSection legend={t('form.plugins.label')}>
-      {isError ? (
-        // The list could not be read — most likely this role may not see it.
-        // Fall back to the free-text id rather than offering an empty dropdown
-        // that would take away the ability to set the field at all.
+      {!mayList || isError ? (
+        // This role may not list them, or the list could not be read. Fall
+        // back to the free-text id rather than offering an empty dropdown that
+        // would take away the ability to set the field at all.
         <FormItemTextInput
           control={control}
           name="plugin_config_id"
@@ -325,7 +333,7 @@ export const FormSectionService = () => {
         clearable
         onChange={(val) => {
           if (val) {
-            setValue('upstream_id', undefined as any);
+            setValue('upstream_id', undefined);
           }
         }}
       />
