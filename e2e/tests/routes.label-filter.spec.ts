@@ -103,30 +103,40 @@ const forgetLabel = (token: string, instanceId: string, key: string) =>
   }).catch(() => undefined);
 
 test('offers the catalogue of the instance selected, after a switch', async ({ page }) => {
-  // The catalogue is per instance. This passed before #190 changed how the
-  // filter builds its options, and pins that a switch in the header still
-  // brings the new instance's catalogue rather than keeping the previous one.
+  // The catalogue is per instance, and the filter read it once, when it
+  // mounted. A switch in the header remounts the list only when the new
+  // instance's routes have to be fetched: when they are already cached the
+  // page stays up, and the filter went on offering the instance just left
+  // (#190). CI found it, where earlier specs have cached the routes; this
+  // caches them first on purpose.
   const fx = getFixtures();
   const token = await loginAdmin();
   const localKey = labelKey('e2e_local');
   const stagingKey = labelKey('e2e_staging');
+  const switcher = page.locator('header input[placeholder="Select instance"]');
+  // In the header, as a person would: no reload.
+  const switchTo = async (name: string) => {
+    await switcher.click();
+    await page.getByRole('option', { name }).click();
+    await expect(switcher).toHaveValue(name);
+  };
   try {
     const localName = await defineLabel(token, fx.localInstanceId, localKey);
     const stagingName = await defineLabel(token, fx.stagingInstanceId, stagingKey);
 
-    await permission.switchInstance(page, 'Local APISIX');
+    // Staging's routes, cached before anything else.
+    await permission.switchInstance(page, 'Staging APISIX');
     await page.goto('/ui/routes');
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
+    await switchTo('Local APISIX');
+
     await page.getByRole('button', { name: 'Expand' }).click();
     const keys = page.getByPlaceholder('Select key');
     await keys.click();
     await expect(page.getByRole('option', { name: localName })).toBeVisible({ timeout: 20000 });
     await page.keyboard.press('Escape');
 
-    // In the header, as a person would: no reload.
-    const switcher = page.locator('header input[placeholder="Select instance"]');
-    await switcher.click();
-    await page.getByRole('option', { name: 'Staging APISIX' }).click();
-    await expect(switcher).toHaveValue('Staging APISIX');
+    await switchTo('Staging APISIX');
 
     await keys.click();
     await expect(page.getByRole('option', { name: stagingName })).toBeVisible({ timeout: 20000 });

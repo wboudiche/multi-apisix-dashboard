@@ -16,10 +16,13 @@
  */
 
 import { ActionIcon, Badge, Group, Select } from '@mantine/core';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAtomValue } from 'jotai';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { labelApi, type LabelTaxonomy } from '@/apis/labels';
+import { currentInstanceIdAtom } from '@/stores/instance';
 import IconPlus from '~icons/material-symbols/add';
 import IconClose from '~icons/material-symbols/close';
 
@@ -35,34 +38,30 @@ export type LabelFilterProps = {
   inUse?: ReadonlyArray<Record<string, string> | undefined>;
 };
 
+const NO_LABELS: LabelTaxonomy[] = [];
+
 export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
   const { t } = useTranslation();
-  const [taxonomy, setTaxonomy] = useState<LabelTaxonomy[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
+
+  // The catalogue is per instance, so it is keyed by the one selected. It was
+  // read once, when the filter mounted, and a switch in the header remounts the
+  // list only when the new instance's routes have to be fetched: with them
+  // cached, the filter went on offering the instance just left (#190).
+  //
   // Substituting an empty catalogue for a failed request made the two
   // indistinguishable: a 401, a 500 or an unreachable backend all rendered as
-  // "no labels defined", with nothing logged and nothing shown.
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
-
-  useEffect(() => {
-    let active = true;
-    labelApi
-      .list()
-      .then((labels) => {
-        if (!active) return;
-        setTaxonomy(labels);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (!active) return;
-        setTaxonomy([]);
-        setStatus('error');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // "no labels defined", with nothing logged and nothing shown. Not retried,
+  // so a failure says so as soon as it happens.
+  const instanceId = useAtomValue(currentInstanceIdAtom);
+  const catalogue = useQuery({
+    queryKey: ['labels', instanceId],
+    queryFn: () => labelApi.list(),
+    retry: false,
+  });
+  const taxonomy = catalogue.data ?? NO_LABELS;
+  const status = catalogue.isPending ? 'loading' : catalogue.isError ? 'error' : 'ready';
 
   // A catalogue that failed to load leaves the filter unavailable, as it did:
   // what is in use is offered beside the catalogue, not instead of it.
