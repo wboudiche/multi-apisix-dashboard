@@ -349,6 +349,30 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// userDeletionRefusal says why targetID may not be deleted, as an HTTP status
+// and a message, or 0 when it may be; users is every user there is.
+//
+// An id nobody holds is not found: etcd's delete of a missing key succeeds, so
+// deleting one answered "User deleted". And the only super_admin may not go:
+// that is the state UpdateUser refuses to reach by demotion, a deployment
+// nobody can administer again without editing etcd by hand (#210).
+func userDeletionRefusal(users []*models.User, targetID string) (int, string) {
+	found := false
+	for _, u := range users {
+		if u != nil && u.ID == targetID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return http.StatusNotFound, "User not found"
+	}
+	if wouldRemoveLastSuperAdmin(users, targetID, "") {
+		return http.StatusConflict, "This is the only super admin. Promote another user before deleting this account."
+	}
+	return 0, ""
+}
+
 // DeleteUser deletes a user (super_admin only)
 func (h *AuthHandler) DeleteUser(c *gin.Context) {
 	role := middleware.GetRole(c)
@@ -358,6 +382,16 @@ func (h *AuthHandler) DeleteUser(c *gin.Context) {
 	}
 
 	userID := c.Param("id")
+
+	users, err := h.authService.ListUsers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if status, message := userDeletionRefusal(users, userID); status != 0 {
+		c.JSON(status, gin.H{"error": message})
+		return
+	}
 
 	if err := h.authService.DeleteUser(c.Request.Context(), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

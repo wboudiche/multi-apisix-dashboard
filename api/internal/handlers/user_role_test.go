@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
@@ -82,6 +83,45 @@ func TestWouldRemoveLastSuperAdmin(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("wouldRemoveLastSuperAdmin(target=%q, newRole=%q) = %v, want %v",
 					tt.target, tt.newRole, got, tt.want)
+			}
+		})
+	}
+}
+
+// Deleting the only super_admin reaches the state demoting it does, and went
+// through unguarded; and a delete of an id nobody holds answered 200, since
+// etcd's delete of a missing key succeeds (#210).
+func TestUserDeletionRefusal(t *testing.T) {
+	only := []*models.User{
+		{ID: "a", Username: "admin", Role: models.RoleSuperAdmin},
+		{ID: "b", Username: "dev"},
+	}
+	two := []*models.User{
+		{ID: "a", Username: "admin", Role: models.RoleSuperAdmin},
+		{ID: "b", Username: "admin2", Role: models.RoleSuperAdmin},
+	}
+
+	tests := []struct {
+		name   string
+		users  []*models.User
+		target string
+		want   int // 0: not refused
+	}{
+		{"the only super_admin", only, "a", http.StatusConflict},
+		{"one of two super_admins", two, "a", 0},
+		{"a user with no global role", only, "b", 0},
+		{"an id nobody holds", only, "missing", http.StatusNotFound},
+		{"an empty id", only, "", http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status, message := userDeletionRefusal(tt.users, tt.target)
+			if status != tt.want {
+				t.Errorf("userDeletionRefusal(target=%q) status = %d, want %d", tt.target, status, tt.want)
+			}
+			if status != 0 && message == "" {
+				t.Errorf("userDeletionRefusal(target=%q) refused with no message", tt.target)
 			}
 		})
 	}
