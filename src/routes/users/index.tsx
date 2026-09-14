@@ -133,6 +133,9 @@ const UsersPage = () => {
   }, [isSuperAdmin]);
 
   useEffect(() => {
+    // A fetch on mount. The setState this rule flags is that request's own
+    // loading flag, raised as it starts — not state derived from other state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 
@@ -311,6 +314,20 @@ const UsersPage = () => {
           title: 'Success',
           message: 'User deleted successfully',
           color: 'green',
+        });
+        loadData();
+      } else {
+        // A refused delete — the last super admin, an id already gone — said
+        // nothing, the row still there as though the click had missed (#210).
+        // The list is reloaded too: a user already gone leaves it.
+        const body = (await response.json().catch(() => null)) as {
+          error?: unknown;
+        } | null;
+        notifications.show({
+          title: 'Error',
+          message:
+            typeof body?.error === 'string' ? body.error : 'Failed to delete user',
+          color: 'red',
         });
         loadData();
       }

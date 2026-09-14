@@ -32,6 +32,7 @@ import {
   ensureTeam,
   ensureUser,
   ensureUserInstanceRole,
+  HttpError,
 } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
@@ -228,4 +229,55 @@ test('a deleted user leaves no assignment, and no team membership, behind', asyn
   expect(
     await apiFetch(`/api/v1/user-access/${user.id}/instances`, token)
   ).toEqual([]);
+});
+
+test('deleting a user nobody has is answered as not found', async () => {
+  // etcd's delete of a missing key succeeds, so a stale or mistyped id was
+  // answered "User deleted" (#210).
+  const failure = await apiFetch(
+    `/api/v1/users/${PREFIX}-nobody`,
+    await adminToken(),
+    { method: 'DELETE' }
+  ).catch((e: unknown) => e);
+
+  expect(failure).toBeInstanceOf(HttpError);
+  expect((failure as HttpError).status).toBe(404);
+});
+
+test('a delete the backend refuses is reported, and the user stays listed', async ({
+  page,
+}) => {
+  // The page read only a success: a refused delete closed the confirmation
+  // and said nothing, the row still there as though the click had missed
+  // (#210).
+  const username = `${PREFIX}-refused`;
+  const user = await ensureUser(await adminToken(), {
+    username,
+    password: PASSWORD,
+  });
+  // Refused here rather than by the backend. The refusal a real account can
+  // provoke is deleting the last super admin, and against a backend without
+  // the guard, trying it would take the suite's admin with it.
+  const refusal = 'This is the only super admin. Promote another user before deleting this account.';
+  await page.route(`**/api/v1/users/${user.id}`, (route) =>
+    route.request().method() === 'DELETE'
+      ? route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: refusal }),
+        })
+      : route.fallback()
+  );
+
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+  const row = adminPom.rowByText(page, username);
+  await expect(row).toBeVisible();
+  page.on('dialog', (dialog) => void dialog.accept());
+  await row.getByRole('button', { name: 'Delete' }).click();
+
+  await expect(
+    page.locator('.mantine-Notification-root').filter({ hasText: refusal })
+  ).toBeVisible({ timeout: 10000 });
+  await expect(adminPom.rowByText(page, username)).toBeVisible();
 });
