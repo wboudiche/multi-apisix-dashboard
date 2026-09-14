@@ -26,6 +26,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 
+import { followOtherTabs } from './apis/session';
 import { queryClient, router } from './config/global';
 
 // APISIX Brand Colors
@@ -158,6 +159,9 @@ const theme = createTheme({
     },
   },
 });
+
+// A tab follows the account the other tabs sign into (#205).
+followOtherTabs();
 
 // Render the app
 const rootElement = document.getElementById('root')!;

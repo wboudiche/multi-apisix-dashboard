@@ -17,7 +17,11 @@
 import axios from 'axios';
 import { getDefaultStore } from 'jotai';
 
-import { authActionsAtom, logoutActionAtom } from '@/stores/auth';
+import {
+  authActionsAtom,
+  currentUserAtom,
+  logoutActionAtom,
+} from '@/stores/auth';
 import { appUrl } from '@/utils/app-url';
 
 import { authApi } from './auth';
@@ -164,4 +168,59 @@ export const refreshSession = (): Promise<string> => {
     refreshing = null;
   });
   return refreshing;
+};
+
+const USER_KEY = 'auth:user';
+
+type StorageChange = { key: string | null; newValue: string | null };
+
+const accountIn = (raw: string | null): string | undefined => {
+  if (!raw) return undefined;
+  try {
+    const id = (JSON.parse(raw) as { id?: unknown }).id;
+    return typeof id === 'string' ? id : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Whether a change another tab made to localStorage moves this tab onto a
+ * different account — someone else signing in there, or that tab signing out.
+ *
+ * Only the account counts. Renewals rewrite the tokens every few minutes, and
+ * every tab reads the token afresh for each request already; following them
+ * would reload every other tab for nothing. A `storage` event with no key is
+ * a clear(), after which the account is whatever is stored now.
+ */
+export const changesAccount = (
+  change: StorageChange,
+  mine: string | undefined,
+  stored: () => string | null
+): boolean => {
+  if (change.key !== null && change.key !== USER_KEY) return false;
+  const theirs = accountIn(change.key === null ? stored() : change.newValue);
+  return theirs !== mine;
+};
+
+/**
+ * Keep this tab on the account the other tabs have signed into.
+ *
+ * Every tab sends the token localStorage holds, but the auth atoms read it
+ * once, when the page loads, and so does everything built on them — the role,
+ * the team picks. A tab left open while another signed in as someone else
+ * went on as the account it had opened with, sending the new account's token
+ * with the old one's role and team, and the proxy recorded that team as the
+ * owner of what it wrote (#205). When another tab changes the account, this
+ * one starts over from the app's root: into the app as that account, or to
+ * the login form if there is none.
+ */
+export const followOtherTabs = () => {
+  window.addEventListener('storage', (event) => {
+    if (event.storageArea !== localStorage) return;
+    const mine = getDefaultStore().get(currentUserAtom)?.id;
+    if (changesAccount(event, mine, () => localStorage.getItem(USER_KEY))) {
+      window.location.replace(appUrl('/'));
+    }
+  });
 };

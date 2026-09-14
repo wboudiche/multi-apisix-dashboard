@@ -37,12 +37,15 @@ import { expect, type Page, test } from '@playwright/test';
  * read the team from localStorage on every request, where the last tab to
  * pick one had put its own: a tab showing one team created resources owned by
  * another (#195). An account with no switcher still sent a team, and a pick
- * outlived the account that made it (#203).
+ * outlived the account that made it (#203). And a tab left open kept the
+ * account it had opened with after another tab signed in as someone else
+ * (#205).
  */
 
 const PROXY = '/api/v1/apisix/admin';
 const GROUP_TWO_TABS = randomId('e2e-team-tab');
 const GROUP_INSTANCE_ADMIN = randomId('e2e-team-iadmin');
+const GROUP_IDLE_TAB = randomId('e2e-team-idle');
 const fx = () => getFixtures();
 const onLocal = () => ({ 'X-Instance-ID': fx().localInstanceId });
 const PASSWORD = 'E2e-Team!Admin#1';
@@ -65,7 +68,7 @@ test.describe.configure({ mode: 'serial' });
 
 test.afterAll(async () => {
   const token = await loginAdmin();
-  for (const id of [GROUP_TWO_TABS, GROUP_INSTANCE_ADMIN]) {
+  for (const id of [GROUP_TWO_TABS, GROUP_INSTANCE_ADMIN, GROUP_IDLE_TAB]) {
     // The ownership record first: deleting the group does not remove it.
     await apiFetch(`/api/v1/apisix/ownership/consumer_groups/${id}`, token, {
       method: 'PUT',
@@ -258,6 +261,59 @@ test('an instance admin, who has no team switcher, sends no team', async ({
     // No team sent, so none recorded: what the header shows, which is none.
     expect(created.headers()['x-team-id']).toBeUndefined();
     await expect.poll(() => ownerOnLocal(token, GROUP_INSTANCE_ADMIN)).toBe('');
+  } finally {
+    await context.close();
+    await deleteUsersByPrefix(prefix);
+  }
+});
+
+test('a tab left open follows another tab signing in as someone else', async ({
+  browser,
+}) => {
+  // Every tab sends the token localStorage holds, but each kept its own idea
+  // of who is signed in: the auth atoms read localStorage once, when the page
+  // loads. A super admin's idle tab, after another tab signed in as an
+  // instance admin, went on as the super admin — sending the instance
+  // admin's token with the super admin's role and team pick, so the proxy
+  // recorded that team as the owner of what it wrote (#205).
+  test.setTimeout(TIMEOUT_MS);
+  const prefix = randomId('e2e-tab-sync-user');
+  const setup = await adminToken();
+  const user = await ensureUser(setup, {
+    username: `${prefix}-user`,
+    password: PASSWORD,
+  });
+  await ensureUserInstanceRole(setup, user.id, fx().localInstanceId, {
+    role: 'instance_admin',
+    team_id: fx().backendTeamId,
+  });
+  const token = await loginAdmin();
+  const context = await browser.newContext({ storageState: undefined });
+
+  try {
+    const idle = await context.newPage();
+    await openAsAdminOnLocal(idle, '/ui/consumer_groups');
+    await pickTeam(idle, 'Frontend Team');
+
+    // Another tab of the same browser signs out and in as someone else.
+    const other = await context.newPage();
+    await other.goto('/ui/routes');
+    await expect(teamSwitcher(other)).toBeVisible({ timeout: 30000 });
+    await permission.logout(other);
+    await signInHere(other, `${prefix}-user`, PASSWORD);
+
+    // The idle tab says who is signed in now.
+    await idle.bringToFront();
+    await expect(
+      idle.locator('header').getByText(`${prefix}-user`, { exact: true })
+    ).toBeVisible({ timeout: 30000 });
+
+    // And writes as that account: no team sent, none recorded.
+    await consumerGroupsPom.getConsumerGroupNavBtn(idle).click();
+    await consumerGroupsPom.isIndexPage(idle);
+    const created = await createConsumerGroup(idle, GROUP_IDLE_TAB);
+    expect(created.headers()['x-team-id']).toBeUndefined();
+    await expect.poll(() => ownerOnLocal(token, GROUP_IDLE_TAB)).toBe('');
   } finally {
     await context.close();
     await deleteUsersByPrefix(prefix);
