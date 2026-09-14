@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
@@ -266,7 +267,19 @@ func (s *AuthService) UpdateUser(ctx context.Context, user *models.User) error {
 	return s.etcd.PutJSON(ctx, models.KeyPrefixUsers+user.ID, user)
 }
 
+// DeleteUser removes the user and every instance assignment it holds.
+//
+// Each assignment carries a role and a team, and left behind they kept a
+// deleted user on every team it had been assigned to (#206). They go first:
+// should the record then fail to go, the user is still listed and deleting it
+// again finishes the job, where the other order would leave assignments that
+// nothing lists and nothing can reach.
 func (s *AuthService) DeleteUser(ctx context.Context, userID string) error {
+	// The trailing slash keeps the prefix to this user's keys, and not those of
+	// every user whose id merely starts with this one.
+	if err := s.etcd.DeletePrefix(ctx, models.KeyPrefixUserInstances+userID+"/"); err != nil {
+		return fmt.Errorf("user %s not deleted: its instance assignments could not be removed: %w", userID, err)
+	}
 	return s.etcd.Delete(ctx, models.KeyPrefixUsers+userID)
 }
 
