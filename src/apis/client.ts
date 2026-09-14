@@ -17,6 +17,7 @@
 import axios from 'axios';
 
 import { selectedInstanceId } from '@/stores/instance';
+import { selectedTeamId } from '@/stores/team';
 import { appUrl } from '@/utils/app-url';
 import { assertJsonBody } from '@/utils/response-shape';
 
@@ -39,8 +40,10 @@ apiClient.interceptors.request.use((config) => {
     if (instanceId) {
         config.headers.set('X-Instance-ID', instanceId);
     }
-    // The team selected on that instance.
-    const teamId = localStorage.getItem(`team:current_id:${instanceId}`) || '';
+    // The team this tab has on that instance: for the selected one, the team
+    // its header shows; for one a request names, this tab's pick for it, or
+    // the stored team before it has made one (see selectedTeamId, #195).
+    const teamId = selectedTeamId(instanceId);
     if (teamId) {
         config.headers['X-Team-ID'] = teamId;
     }

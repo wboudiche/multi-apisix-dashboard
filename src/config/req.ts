@@ -40,6 +40,7 @@ import i18n from '@/config/i18n';
 import { serializeParams } from '@/config/params';
 import { selectedInstanceId } from '@/stores/instance';
 import { proxyErrorAtom } from '@/stores/proxyError';
+import { selectedTeamId } from '@/stores/team';
 import {
   assertJsonBody,
   MalformedResponseError,
@@ -81,8 +82,12 @@ req.interceptors.request.use((conf) => {
     conf.headers.set('X-Instance-ID', instanceId);
   }
 
-  // The team selected on that instance, for admin team switching
-  const teamId = localStorage.getItem(`team:current_id:${instanceId}`) || '';
+  // The team this tab has on that instance: for the selected one, the team
+  // its header shows; for one a request names, this tab's pick for it, or the
+  // stored team before it has made one (see selectedTeamId, #195). For an
+  // admin, the proxy records it as the owner of whatever the request creates
+  // or updates.
+  const teamId = selectedTeamId(instanceId);
   if (teamId) {
     conf.headers.set('X-Team-ID', teamId);
   }
