@@ -17,6 +17,7 @@
 
 import { atom, getDefaultStore } from 'jotai';
 
+import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 
 // Custom storage helper to avoid JSON.stringify adding quotes to strings
@@ -32,8 +33,10 @@ const storage = {
   },
 };
 
+const TEAM_KEY = 'team:current_id:';
+
 const storedTeam = (instanceId: string) =>
-  storage.get(`team:current_id:${instanceId}`) || '';
+  storage.get(`${TEAM_KEY}${instanceId}`) || '';
 
 // The team this tab has picked, per instance, once it has picked one.
 // localStorage keeps the last pick any tab made — a new tab starts from it —
@@ -60,9 +63,9 @@ export const currentTeamIdAtom = atom(
     if (!instanceId) return;
     set(_pickedTeamAtom, { ...get(_pickedTeamAtom), [instanceId]: newValue });
     if (newValue) {
-      storage.set(`team:current_id:${instanceId}`, newValue);
+      storage.set(`${TEAM_KEY}${instanceId}`, newValue);
     } else {
-      storage.remove(`team:current_id:${instanceId}`);
+      storage.remove(`${TEAM_KEY}${instanceId}`);
     }
   }
 );
@@ -70,15 +73,23 @@ export const currentTeamIdAtom = atom(
 /**
  * The team this tab sends for `instanceId`, for the request interceptors.
  *
+ * None unless the account is a super admin. The proxy records an admin's team
+ * as the owner of whatever it creates or edits, but only a super admin gets
+ * the teams list, and so a switcher to see and change the team: an instance
+ * admin, an admin to the proxy too, sent a team it could not see (#203). For
+ * the other roles the backend takes the team from the account's assignment
+ * and ignores the header.
+ *
  * For the selected instance, exactly the team the header shows. For another
  * one — a request can name its instance — this tab's pick for it, or the
  * stored team before it has made one. Read from localStorage alone, it was
- * whichever team the last tab to pick had put there: for an admin, the owner
- * of every resource this tab created (#195).
+ * whichever team the last tab to pick had put there (#195).
  */
 export const selectedTeamId = (instanceId: string): string => {
-  if (!instanceId) return '';
   const store = getDefaultStore();
+  if (!instanceId || store.get(currentUserAtom)?.role !== 'super_admin') {
+    return '';
+  }
   if (instanceId === store.get(currentInstanceIdAtom)) {
     return store.get(currentTeamIdAtom);
   }
@@ -86,5 +97,27 @@ export const selectedTeamId = (instanceId: string): string => {
   return instanceId in picked ? picked[instanceId] : storedTeam(instanceId);
 };
 
-// Simple string atom for the current team name, set by the header component
-export const currentTeamNameAtom = atom<string>('');
+/**
+ * Forget every team pick — this tab's, and the ones stored for new tabs.
+ *
+ * Called when a session starts. A pick belongs to the account that made it,
+ * and signing out from the header menu and in as someone else happens in one
+ * tab, without a reload: the next account started from the last one's team
+ * (#203). Done at the start of a session rather than the end, so however
+ * this tab's last session ended — the menu, an expiry — it leaves no pick
+ * behind here. Another tab left open keeps its own picks, and its own idea of
+ * who is signed in, until it reloads (#205).
+ */
+export const clearTeamPicks = () => {
+  // The stored keys first: resetting the picks makes a mounted
+  // currentTeamIdAtom recompute at once, reading its fallback from
+  // localStorage — and it would keep whatever was still there. Listed before
+  // any is removed, since removing one reorders the rest.
+  const stored: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(TEAM_KEY)) stored.push(key);
+  }
+  stored.forEach(storage.remove);
+  getDefaultStore().set(_pickedTeamAtom, {});
+};

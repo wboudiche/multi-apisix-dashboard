@@ -22,6 +22,7 @@ type ClientModule = typeof import('./client');
 type LabelsModule = typeof import('./labels');
 type TeamsModule = typeof import('./teams');
 type InstanceModule = typeof import('@/stores/instance');
+type AuthModule = typeof import('@/stores/auth');
 
 // The stores touch localStorage as their modules load, and this suite runs in
 // node: a Map stands in for it, installed before they are imported.
@@ -41,6 +42,7 @@ let apiClient: ClientModule['apiClient'];
 let labelApi: LabelsModule['labelApi'];
 let teamApi: TeamsModule['teamApi'];
 let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
+let currentUserAtom: AuthModule['currentUserAtom'];
 const sent: InternalAxiosRequestConfig[] = [];
 
 beforeAll(async () => {
@@ -48,6 +50,7 @@ beforeAll(async () => {
   ({ labelApi } = await import('./labels'));
   ({ teamApi } = await import('./teams'));
   ({ currentInstanceIdAtom } = await import('@/stores/instance'));
+  ({ currentUserAtom } = await import('@/stores/auth'));
   apiClient.defaults.adapter = async (config) => {
     sent.push(config);
     return {
@@ -75,6 +78,14 @@ beforeEach(() => {
   sent.length = 0;
   storage.set('team:current_id:A', 'team-a');
   storage.set('team:current_id:B', 'team-b');
+  // A super admin: the only account that sends a team (#203).
+  getDefaultStore().set(currentUserAtom, {
+    id: 'user-sa',
+    username: 'sa',
+    email: '',
+    role: 'super_admin',
+    created_at: '',
+  });
 });
 
 describe('the instance the dashboard’s own client addresses', () => {

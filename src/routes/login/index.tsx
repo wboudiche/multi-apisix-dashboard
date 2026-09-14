@@ -32,6 +32,7 @@ import {
   refreshTokenAtom,
   tokenExpiryAtom,
 } from '@/stores/auth';
+import { clearTeamPicks } from '@/stores/team';
 
 import classes from './style.module.css';
 
@@ -169,6 +170,9 @@ const Login = () => {
       setRefreshToken(response.refresh_token);
       setTokenExpiry(Date.now() + response.expires_in * 1000);
       sessionStarted = true;
+      // A new session starts with no team picked: the tab's picks and the
+      // stored ones belong to whoever signed in before (#203).
+      clearTeamPicks();
 
       // Get current user
       const user = await authApi.getCurrentUser();
