@@ -51,6 +51,15 @@ const openPluginsStep = async (page: Page) => {
   await page.getByRole('button', { name: 'Edit' }).click();
 };
 
+/** Signs in as the developer in a page of its own context, from the form. */
+const signInAsDeveloper = async (page: Page) => {
+  await page.goto('/ui/login');
+  await page.getByRole('textbox', { name: 'Username' }).fill(fx().users.dev.username);
+  await page.getByPlaceholder('Enter your password').fill(fx().users.dev.password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 });
+};
+
 test.beforeEach(async () => {
   const token = await loginAdmin();
   await apiFetch(`${PROXY}/plugin_configs/${CONFIG_ID}`, token, {
@@ -117,12 +126,7 @@ test('still lets a developer set the id when the list cannot be read', async ({
   const context = await browser.newContext({ storageState: undefined });
   const page = await context.newPage();
   try {
-    await page.goto('/ui/login');
-    await page.getByRole('textbox', { name: 'Username' }).fill(fx().users.dev.username);
-    await page.getByPlaceholder('Enter your password').fill(fx().users.dev.password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 });
-
+    await signInAsDeveloper(page);
     await openPluginsStep(page);
 
     const field = page.getByRole('textbox', { name: 'Plugin Config ID' });
@@ -138,6 +142,48 @@ test('still lets a developer set the id when the list cannot be read', async ({
 
     await field.fill('some-known-config-id');
     await expect(field).toHaveValue('some-known-config-id');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a developer saving a route is not told they may not', async ({ browser }) => {
+  // The plugins step listed plugin configs for every role, and a developer may
+  // not read them: the 403 came back as a red "Role not permitted for this
+  // resource", just before the green "Edit Route Successfully" of a save that
+  // had worked (#189). A request the role may not make is not made.
+  const context = await browser.newContext({ storageState: undefined });
+  const page = await context.newPage();
+  const listed: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/apisix/admin/plugin_configs')) listed.push(request.url());
+  });
+  try {
+    await signInAsDeveloper(page);
+    // Edit from the first step and walk through every one, as a save is made:
+    // openPluginsStep jumps there read-only, which is fine for looking at the
+    // field but not for saving from.
+    await page.goto(`/ui/routes/detail/${ROUTE_ID}`);
+    await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+      ROUTE_ID,
+      { timeout: 15000 }
+    );
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    for (let step = 0; step < 3; step++) {
+      await page.getByRole('button', { name: 'Next' }).click();
+    }
+    await expect(page.getByRole('textbox', { name: 'Plugin Config ID' })).toBeVisible({
+      timeout: 15000,
+    });
+
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Submit' }).click();
+    await expect(page.getByText('Edit Route Successfully')).toBeVisible({ timeout: 15000 });
+
+    expect(listed).toEqual([]);
+    await expect(
+      page.locator('.mantine-Notification-root').filter({ hasText: 'Role not permitted' })
+    ).toHaveCount(0);
   } finally {
     await context.close();
   }
