@@ -69,11 +69,13 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
   // step jumped to from there and edited saved without the first step's
   // fields: a route went to PUT /routes/undefined, an upstream was created
   // under that id, a service lost its name (#215). Resetting to the values the
-  // form already holds, as it turns editable, empties that list.
+  // form already holds, as it turns editable, empties that list. The dirty
+  // state is kept: recomputed here, it came out dirty with nothing typed, and
+  // Cancel then asked about unsaved changes.
   const wasReadOnly = useRef(readOnly);
   useEffect(() => {
     if (wasReadOnly.current && !readOnly) {
-      reset(getValues(), { keepDefaultValues: true });
+      reset(getValues(), { keepDefaultValues: true, keepDirty: true });
     }
     wasReadOnly.current = readOnly;
   }, [readOnly, reset, getValues]);

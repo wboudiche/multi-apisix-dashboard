@@ -53,8 +53,8 @@ const saveFromJumpedStep = async (page: Page, url: string, name: string, step: R
   });
   await page.getByRole('button', { name: step }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  // Exact: the last step's own button is named "Preview Review and submit".
   await page.getByRole('button', { name: 'Next', exact: true }).click();
+  // Exact: the last step's own button is named "Preview Review and submit".
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
 };
 
@@ -142,3 +142,66 @@ test('an upstream saves whole from a step reached while read-only', async ({ pag
     await remove(token, 'upstreams', [id, 'undefined']);
   }
 });
+
+/**
+ * Resetting the form as it turns editable must not make it dirty: the wizard
+ * asks before leaving a form with unsaved changes, and a first version of the
+ * fix for #215 had it ask after Edit and Cancel with nothing typed.
+ */
+const PAGES = [
+  {
+    type: 'routes',
+    singular: 'route',
+    body: (id: string) => ({ name: id, uri: `/${id}`, upstream }),
+    step: /^Plugins Config/,
+  },
+  {
+    type: 'services',
+    singular: 'service',
+    body: (id: string) => ({ name: id, desc: 'kept', upstream }),
+    step: /^Plugin/,
+  },
+  {
+    type: 'upstreams',
+    singular: 'upstream',
+    body: (id: string) => ({ name: id, desc: 'kept', ...upstream }),
+    step: /^Connection/,
+  },
+] as const;
+
+/** Open a detail page, go to `step` if given while read-only, and Edit. */
+const openForEdit = async (page: Page, url: string, name: string, step: RegExp | null) => {
+  await page.goto(url);
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(name, {
+    timeout: 15000,
+  });
+  if (step) await page.getByRole('button', { name: step }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+};
+
+for (const kind of PAGES) {
+  for (const step of [null, kind.step]) {
+    test(`${kind.singular}: cancelling an untouched edit${step ? ' from a step jumped to' : ''} asks nothing`, async ({
+      page,
+    }) => {
+      const token = await loginAdmin();
+      const id = randomId(`e2e-cancel-${kind.singular}`);
+      await apiFetch(`${PROXY}/${kind.type}/${id}`, token, {
+        method: 'PUT',
+        headers: onLocal(),
+        json: kind.body(id),
+      });
+
+      try {
+        await openForEdit(page, `/ui/${kind.type}/detail/${id}`, id, step);
+        await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+
+        // Back to read-only, without a question about changes nobody made.
+        await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+        await expect(page.getByRole('dialog', { name: 'Unsaved Changes' })).toHaveCount(0);
+      } finally {
+        await remove(token, kind.type, [id]);
+      }
+    });
+  }
+}
