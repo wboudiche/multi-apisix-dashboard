@@ -79,6 +79,8 @@ type RoutesFilterBarProps = {
   isAdmin: boolean;
   teamOptions: FilterOption[];
   upstreamOptions: FilterOption[];
+  /** The labels the instance's routes carry, offered beside the catalogue. */
+  labelsInUse?: ReadonlyArray<Record<string, string> | undefined>;
 };
 
 const LABEL_WIDTH = 80;
@@ -110,6 +112,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
   isAdmin,
   teamOptions,
   upstreamOptions,
+  labelsInUse,
 }) => {
   const { t } = useTranslation();
   // Open when one of the filters that only lives in this panel is already
@@ -296,6 +299,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
               <LabelFilter
                 value={asList(draft.label)}
                 onChange={(v) => set('label', v.length > 0 ? v : undefined)}
+                inUse={labelsInUse}
               />
             </Grid.Col>
 

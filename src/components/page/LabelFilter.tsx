@@ -23,12 +23,19 @@ import { labelApi, type LabelTaxonomy } from '@/apis/labels';
 import IconPlus from '~icons/material-symbols/add';
 import IconClose from '~icons/material-symbols/close';
 
+import { labelOptions } from './label-options';
+
 export type LabelFilterProps = {
   value: string[];
   onChange: (labels: string[]) => void;
+  /**
+   * The labels of the resources being filtered, offered beside the catalogue:
+   * it is what may be applied from now on, not all that is there (#190).
+   */
+  inUse?: ReadonlyArray<Record<string, string> | undefined>;
 };
 
-export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
+export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
   const { t } = useTranslation();
   const [taxonomy, setTaxonomy] = useState<LabelTaxonomy[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -57,16 +64,23 @@ export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
     };
   }, []);
 
+  // A catalogue that failed to load leaves the filter unavailable, as it did:
+  // what is in use is offered beside the catalogue, not instead of it.
+  const options = useMemo(
+    () => (status === 'ready' ? labelOptions(taxonomy, inUse ?? []) : []),
+    [status, taxonomy, inUse]
+  );
+
   const keyOptions = useMemo(
-    () => taxonomy.map((l) => ({ value: l.key, label: l.display_name || l.key })),
-    [taxonomy]
+    () => options.map((o) => ({ value: o.key, label: o.label })),
+    [options]
   );
 
   const valueOptions = useMemo(() => {
     if (!selectedKey) return [];
-    const label = taxonomy.find((l) => l.key === selectedKey);
-    return (label?.values || []).map((v) => ({ value: v, label: v }));
-  }, [selectedKey, taxonomy]);
+    const option = options.find((o) => o.key === selectedKey);
+    return (option?.values || []).map((v) => ({ value: v, label: v }));
+  }, [selectedKey, options]);
 
   const canAdd = selectedKey && selectedValue;
 
@@ -129,6 +143,7 @@ export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
         size="input-sm"
         disabled={!canAdd}
         onClick={handleAdd}
+        aria-label={t('labelFilter.add')}
       >
         <IconPlus width="14" height="14" />
       </ActionIcon>

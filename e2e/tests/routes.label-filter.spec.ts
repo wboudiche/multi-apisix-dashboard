@@ -14,6 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { permission } from '@e2e/pom/permission';
+import { randomId } from '@e2e/utils/common';
+import { getFixtures } from '@e2e/utils/fixtures';
+import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
@@ -45,6 +49,21 @@ test('distinguishes an empty catalogue from a broken one', async ({ page }) => {
   await page.route('**/api/v1/labels', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
   );
+  // And no route carrying a label either: those are offered beside the
+  // catalogue (#190), and one left behind by another spec would fill the
+  // dropdown this test needs empty. Only the full-list read the filter makes;
+  // the table's own page is left alone.
+  await page.route(
+    (url) =>
+      url.pathname.endsWith('/apisix/admin/routes') &&
+      url.searchParams.get('page_size') === '500',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ list: [], total: 0 }),
+      })
+  );
 
   await page.goto('/ui/routes');
   await page.getByRole('button', { name: 'Expand' }).click();
@@ -58,4 +77,117 @@ test('distinguishes an empty catalogue from a broken one', async ({ page }) => {
   ).toHaveCount(0);
   await select.click();
   await expect(page.getByText('No label keys are defined yet')).toBeVisible();
+});
+
+const onInstance = (id: string) => ({ 'X-Instance-ID': id });
+
+/** A catalogue key: lowercase letters, digits and underscores, at most 32. */
+const labelKey = (prefix: string) =>
+  `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
+
+/** Adds a catalogue entry on one instance; returns what the key select shows. */
+const defineLabel = async (token: string, instanceId: string, key: string) => {
+  const displayName = `E2E ${key}`;
+  await apiFetch('/api/v1/labels', token, {
+    method: 'POST',
+    headers: onInstance(instanceId),
+    json: { key, display_name: displayName, color: 'blue', values: ['one'] },
+  });
+  return displayName;
+};
+
+const forgetLabel = (token: string, instanceId: string, key: string) =>
+  apiFetch(`/api/v1/labels/${key}`, token, {
+    method: 'DELETE',
+    headers: onInstance(instanceId),
+  }).catch(() => undefined);
+
+test('offers the catalogue of the instance selected, after a switch', async ({ page }) => {
+  // The catalogue is per instance. This passed before #190 changed how the
+  // filter loads it, and pins that a switch in the header still brings the
+  // new instance's catalogue rather than keeping the previous one.
+  const fx = getFixtures();
+  const token = await loginAdmin();
+  const localKey = labelKey('e2e_local');
+  const stagingKey = labelKey('e2e_staging');
+  const localName = await defineLabel(token, fx.localInstanceId, localKey);
+  const stagingName = await defineLabel(token, fx.stagingInstanceId, stagingKey);
+
+  try {
+    await permission.switchInstance(page, 'Local APISIX');
+    await page.goto('/ui/routes');
+    await page.getByRole('button', { name: 'Expand' }).click();
+    const keys = page.getByPlaceholder('Select key');
+    await keys.click();
+    await expect(page.getByRole('option', { name: localName })).toBeVisible({ timeout: 20000 });
+    await page.keyboard.press('Escape');
+
+    // In the header, as a person would: no reload.
+    const switcher = page.locator('header input[placeholder="Select instance"]');
+    await switcher.click();
+    await page.getByRole('option', { name: 'Staging APISIX' }).click();
+    await expect(switcher).toHaveValue('Staging APISIX');
+
+    await keys.click();
+    await expect(page.getByRole('option', { name: stagingName })).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('option', { name: localName })).toHaveCount(0);
+  } finally {
+    await forgetLabel(token, fx.localInstanceId, localKey);
+    await forgetLabel(token, fx.stagingInstanceId, stagingKey);
+  }
+});
+
+test('offers, and filters by, a label the routes carry that the catalogue does not', async ({
+  page,
+}) => {
+  // A catalogue entry removed while routes still carry it, or labels written
+  // before the catalogue knew them, stay on the routes and in the table — and
+  // could not be picked, because the filter offered the catalogue alone
+  // (#190).
+  const fx = getFixtures();
+  const token = await loginAdmin();
+  const key = labelKey('e2e_inuse');
+  const tagged = randomId('e2e-label-tagged');
+  const untagged = randomId('e2e-label-untagged');
+  const upstream = { type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } };
+  const onLocal = onInstance(fx.localInstanceId);
+  await defineLabel(token, fx.localInstanceId, key);
+
+  try {
+    await apiFetch(`/api/v1/apisix/admin/routes/${tagged}`, token, {
+      method: 'PUT',
+      headers: onLocal,
+      json: { name: tagged, uri: `/${tagged}`, labels: { [key]: 'one' }, upstream },
+    });
+    await apiFetch(`/api/v1/apisix/admin/routes/${untagged}`, token, {
+      method: 'PUT',
+      headers: onLocal,
+      json: { name: untagged, uri: `/${untagged}`, upstream },
+    });
+    // Gone from the catalogue, still on the route.
+    await forgetLabel(token, fx.localInstanceId, key);
+
+    await permission.switchInstance(page, 'Local APISIX');
+    await page.goto('/ui/routes');
+    await page.getByRole('button', { name: 'Expand' }).click();
+    await page.getByPlaceholder('Select key').click();
+    await page.getByRole('option', { name: key, exact: true }).click({ timeout: 20000 });
+    await page.getByPlaceholder('Select value').click();
+    await page.getByRole('option', { name: 'one', exact: true }).click();
+    await page.getByRole('button', { name: 'Add to filter' }).click();
+    await page.getByRole('button', { name: 'Search' }).click();
+
+    await expect(page.getByRole('row').filter({ hasText: tagged })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.getByRole('row').filter({ hasText: untagged })).toHaveCount(0);
+  } finally {
+    for (const id of [tagged, untagged]) {
+      await apiFetch(`/api/v1/apisix/admin/routes/${id}`, token, {
+        method: 'DELETE',
+        headers: onLocal,
+      }).catch(() => undefined);
+    }
+    await forgetLabel(token, fx.localInstanceId, key);
+  }
 });
