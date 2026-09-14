@@ -23,7 +23,7 @@
  * backend's SetUserInstanceRole is a pure upsert (PutJSON — idempotent).
  */
 
-const API_URL = process.env['E2E_API_URL'] ?? 'http://127.0.0.1:8086';
+export const API_URL = process.env['E2E_API_URL'] ?? 'http://127.0.0.1:8086';
 
 // ---------------------------------------------------------------------------
 // Shared types mirroring api/internal/models/models.go

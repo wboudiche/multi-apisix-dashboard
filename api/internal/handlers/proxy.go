@@ -176,6 +176,110 @@ func createOnlyRequested(method, ifNoneMatch string) bool {
 	return method == http.MethodPut && strings.TrimSpace(ifNoneMatch) == "*"
 }
 
+// collectionPutID returns the id a PUT addressed to a collection names in its
+// body — the username for a consumer, the id for everything else — or "" when
+// it names none. APISIX writes such a PUT to <collection>/<that id>, so that is
+// the resource the proxy's checks have to look at (#191).
+//
+// It has to be the key APISIX will write. Whatever APISIX might key otherwise
+// than it reads here is an error, for the caller to refuse — never "", which
+// would skip the checks: a body that does not decode, an id of another type, a
+// number APISIX would rewrite (2.0 is written to /2), and characters APISIX
+// does not accept, which rules out an id naming another path as well.
+func collectionPutID(resourceType string, body []byte) (string, error) {
+	if len(body) == 0 {
+		return "", nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+
+	var resource map[string]any
+	if err := decoder.Decode(&resource); err != nil || resource == nil {
+		return "", fmt.Errorf("body is not a JSON object")
+	}
+
+	field, dots := "id", true
+	if resourceType == "consumers" {
+		field, dots = "username", false
+	}
+
+	raw, present := resource[field]
+	if !present {
+		return "", nil
+	}
+
+	var id string
+	switch v := raw.(type) {
+	case string:
+		id = v
+	case json.Number:
+		if !apisixIntegerID(v.String()) {
+			return "", fmt.Errorf("numeric %s %s is not one APISIX writes as it reads", field, v)
+		}
+		id = v.String()
+	default:
+		return "", fmt.Errorf("%s is neither a string nor a number", field)
+	}
+
+	if id == "" {
+		return "", nil
+	}
+	if id == "." || id == ".." || !apisixIDChars(id, dots) {
+		return "", fmt.Errorf("invalid %s %q", field, id)
+	}
+	return id, nil
+}
+
+// apisixIDChars reports whether s holds only what APISIX's schemas accept in an
+// id: letters, digits, "-" and "_", and "." where dots is set — an id may hold
+// dots, a consumer's username may not.
+func apisixIDChars(s string, dots bool) bool {
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
+		case r == '.' && dots:
+		default:
+			return false
+		}
+	}
+	return s != ""
+}
+
+// apisixIntegerID reports whether a JSON number is one APISIX keys exactly as
+// written: a positive integer, digits only, of at most 14 of them. APISIX
+// reads numbers as doubles and prints them with %.14g, so 2.0 comes back as 2,
+// 1e2 as 100, and a longer integer in exponent form.
+func apisixIntegerID(n string) bool {
+	if n == "" || len(n) > 14 || n[0] == '0' {
+		return false
+	}
+	for _, r := range n {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// invalidProxyPath reports whether a path must be refused before anything
+// reads it: a "." or ".." segment, or an empty one between two others. APISIX
+// resolves the first and collapses the second — /routes/../ssls/s1 is written
+// to /ssls/s1, /routes//r1 to /routes/r1 — while the checks read the path as
+// it is: a different resource type, or no resource at all (#191).
+func invalidProxyPath(path string) bool {
+	trimmed := strings.Trim(path, "/")
+	if trimmed == "" {
+		return false
+	}
+	for _, seg := range strings.Split(trimmed, "/") {
+		if seg == "" || seg == "." || seg == ".." {
+			return true
+		}
+	}
+	return false
+}
+
 // Messages for the proxy's authorization refusals.
 const (
 	unassignedResourceMsg = "This resource is not assigned to a team. Ask an admin to assign it before editing."
@@ -335,12 +439,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// APISIX, which collapses "..". Without this guard a developer could send
 	// "/routes/../ssls/<id>" — passing the routes permission check while the
 	// request actually lands on the forbidden ssls resource.
-	for _, seg := range strings.Split(path, "/") {
-		if seg == ".." || seg == "." {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
-			c.Abort()
-			return
-		}
+	// An empty segment is refused for the same reason (see invalidProxyPath).
+	if invalidProxyPath(path) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
+		c.Abort()
+		return
 	}
 
 	resourceType, resourceID := h.getResourceMetadata(path)
@@ -355,18 +458,48 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
+	// Read before the checks below: a PUT addressed to a collection names its
+	// resource in the body rather than the path (see collectionPutID).
+	var bodyBytes []byte
+	if c.Request.Body != nil {
+		bodyBytes, _ = io.ReadAll(c.Request.Body)
+	}
+
+	// checkPath is what the checks below look at: the request's own path, or,
+	// for a PUT addressed to a collection, the resource APISIX will write. By
+	// its path alone such a PUT had no id, so it went through neither the
+	// create-only guard nor the ownership check — onto another team's resource
+	// as readily as onto a new one, whose ownership the write then recorded as
+	// the writer's team (#191).
+	checkPath := path
+	if c.Request.Method == http.MethodPut && resourceType != "" && resourceID == "" {
+		id, err := collectionPutID(resourceType, bodyBytes)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":     "Invalid resource id",
+				"error_msg": "Invalid resource id",
+			})
+			c.Abort()
+			return
+		}
+		if id != "" {
+			resourceID = id
+			checkPath = "/" + resourceType + "/" + id
+		}
+	}
+
 	// An Add flow declares that it means to create. APISIX would happily upsert,
 	// replacing whatever is already at that id and returning a success the UI
 	// reports as "Add ... Successfully" - the only trace being a changed
 	// update_time on a row the user thought they were adding.
 	//
 	// resourceID is only used here to confirm the request targets a specific
-	// resource rather than a collection; the existence check uses the whole
-	// path, which is what makes this work for secrets too - they are addressed
-	// as /secrets/{manager}/{id}, where getResourceMetadata reports the manager
-	// as the id.
+	// resource rather than a collection; the existence check uses the whole of
+	// checkPath, which is what makes this work for secrets too - they are
+	// addressed as /secrets/{manager}/{id}, where getResourceMetadata reports
+	// the manager as the id.
 	if createOnlyRequested(c.Request.Method, c.GetHeader("If-None-Match")) && resourceID != "" {
-		exists, err := h.resourceExists(c.Request.Context(), instance, path)
+		exists, err := h.resourceExists(c.Request.Context(), instance, checkPath)
 		if err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{
 				"error":     couldNotVerifyMsg,
@@ -395,7 +528,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// to an id that does not exist yet, which is how consumers and
 				// consumer_groups are made - or it targets a resource that
 				// exists without a team, which only an admin may change.
-				exists, err := h.resourceExists(c.Request.Context(), instance, path)
+				exists, err := h.resourceExists(c.Request.Context(), instance, checkPath)
 				if err != nil {
 					// Fail closed: an unverifiable target is not a licence to
 					// overwrite it.
@@ -461,11 +594,6 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin" + path
 	if len(query) > 0 {
 		targetURL += "?" + query.Encode()
-	}
-
-	var bodyBytes []byte
-	if c.Request.Body != nil {
-		bodyBytes, _ = io.ReadAll(c.Request.Body)
 	}
 
 	// The dashboard injects its own fields into GET responses (see step 4). A
