@@ -57,7 +57,7 @@ import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
-import { useAllServices,useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
@@ -648,6 +648,12 @@ function RouteComponent() {
   );
   const [currentInstanceId] = useAtom(currentInstanceIdAtom);
   const { data: filterUpstreams } = useAllUpstreams(currentInstanceId);
+  // An import labels the routes it writes — the WSDL one always does — so the
+  // labels the filter offers are read again along with the table (#190).
+  const onImported = () => {
+    void refetch();
+    void queryClient.invalidateQueries({ queryKey: ['routes', currentInstanceId, 'all'] });
+  };
   const upstreamOptions = useMemo(
     () =>
       (filterUpstreams?.list ?? []).map((u) => ({
@@ -801,12 +807,12 @@ function RouteComponent() {
       <ImportRoutesModal
         opened={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        onSuccess={refetch}
+        onSuccess={onImported}
       />
       <ImportWsdlModal
         opened={wsdlModalOpen}
         onClose={() => setWsdlModalOpen(false)}
-        onSuccess={refetch}
+        onSuccess={onImported}
       />
     </Box>
   );

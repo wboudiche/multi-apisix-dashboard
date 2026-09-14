@@ -16,6 +16,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 
+import { getRouteListReq } from '@/apis/routes';
 import { getServiceListReq } from '@/apis/services';
 import { getUpstreamListReq } from '@/apis/upstreams';
 import { PAGE_SIZE_MAX } from '@/config/constant';
@@ -59,5 +60,22 @@ export const useAllServices = (instanceId: string, enabled = true) =>
     queryFn: () =>
       getServiceListReq(reqFor(instanceId), { page: 1, page_size: PAGE_SIZE_MAX }),
     staleTime: 60_000,
+    enabled,
+  });
+
+/**
+ * The whole route list for an instance.
+ *
+ * The label filter offers the labels the routes carry beside the catalogue,
+ * and the table shows one page of them at a time (#190). Unlike its siblings
+ * it is read afresh each time the filter mounts: labels change with every
+ * route written, and an import labels a whole batch at once.
+ */
+export const useAllRoutes = (instanceId: string, enabled = true) =>
+  useQuery({
+    queryKey: ['routes', instanceId, 'all'],
+    queryFn: () =>
+      getRouteListReq(reqFor(instanceId), { page: 1, page_size: PAGE_SIZE_MAX }),
+    staleTime: 0,
     enabled,
   });

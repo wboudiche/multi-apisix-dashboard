@@ -876,6 +876,7 @@
     "refreshFailed": "Could not renew your session: {{- reason}}. Your sign-in is still valid — try again."
   },
   "labelFilter": {
+    "add": "Add to filter",
     "selectKey": "Select key",
     "selectValue": "Select value",
     "loading": "Loading labels…",

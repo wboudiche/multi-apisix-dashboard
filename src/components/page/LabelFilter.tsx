@@ -16,57 +16,70 @@
  */
 
 import { ActionIcon, Badge, Group, Select } from '@mantine/core';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAtomValue } from 'jotai';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { labelApi, type LabelTaxonomy } from '@/apis/labels';
+import { currentInstanceIdAtom } from '@/stores/instance';
 import IconPlus from '~icons/material-symbols/add';
 import IconClose from '~icons/material-symbols/close';
+
+import { labelOptions } from './label-options';
 
 export type LabelFilterProps = {
   value: string[];
   onChange: (labels: string[]) => void;
+  /**
+   * The labels of the resources being filtered, offered beside the catalogue:
+   * it is what may be applied from now on, not all that is there (#190).
+   */
+  inUse?: ReadonlyArray<Record<string, string> | undefined>;
 };
 
-export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
+const NO_LABELS: LabelTaxonomy[] = [];
+
+export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
   const { t } = useTranslation();
-  const [taxonomy, setTaxonomy] = useState<LabelTaxonomy[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
+
+  // The catalogue is per instance, so it is keyed by the one selected. It was
+  // read once, when the filter mounted, and a switch in the header remounts the
+  // list only when the new instance's routes have to be fetched: with them
+  // cached, the filter went on offering the instance just left (#190).
+  //
   // Substituting an empty catalogue for a failed request made the two
   // indistinguishable: a 401, a 500 or an unreachable backend all rendered as
-  // "no labels defined", with nothing logged and nothing shown.
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
+  // "no labels defined", with nothing logged and nothing shown. Not retried,
+  // so a failure says so as soon as it happens.
+  const instanceId = useAtomValue(currentInstanceIdAtom);
+  const catalogue = useQuery({
+    queryKey: ['labels', instanceId],
+    queryFn: () => labelApi.list(),
+    retry: false,
+  });
+  const taxonomy = catalogue.data ?? NO_LABELS;
+  const status = catalogue.isPending ? 'loading' : catalogue.isError ? 'error' : 'ready';
 
-  useEffect(() => {
-    let active = true;
-    labelApi
-      .list()
-      .then((labels) => {
-        if (!active) return;
-        setTaxonomy(labels);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (!active) return;
-        setTaxonomy([]);
-        setStatus('error');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // A catalogue that failed to load leaves the filter unavailable, as it did:
+  // what is in use is offered beside the catalogue, not instead of it.
+  const options = useMemo(
+    () => (status === 'ready' ? labelOptions(taxonomy, inUse ?? []) : []),
+    [status, taxonomy, inUse]
+  );
 
   const keyOptions = useMemo(
-    () => taxonomy.map((l) => ({ value: l.key, label: l.display_name || l.key })),
-    [taxonomy]
+    () => options.map((o) => ({ value: o.key, label: o.label })),
+    [options]
   );
 
   const valueOptions = useMemo(() => {
     if (!selectedKey) return [];
-    const label = taxonomy.find((l) => l.key === selectedKey);
-    return (label?.values || []).map((v) => ({ value: v, label: v }));
-  }, [selectedKey, taxonomy]);
+    const option = options.find((o) => o.key === selectedKey);
+    return (option?.values || []).map((v) => ({ value: v, label: v }));
+  }, [selectedKey, options]);
 
   const canAdd = selectedKey && selectedValue;
 
@@ -129,6 +142,7 @@ export const LabelFilter = ({ value, onChange }: LabelFilterProps) => {
         size="input-sm"
         disabled={!canAdd}
         onClick={handleAdd}
+        aria-label={t('labelFilter.add')}
       >
         <IconPlus width="14" height="14" />
       </ActionIcon>

@@ -26,11 +26,14 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { useAtomValue } from 'jotai';
 import type { FC } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { LabelFilter } from '@/components/page/LabelFilter';
+import { useAllRoutes } from '@/hooks/useAllUpstreams';
+import { currentInstanceIdAtom } from '@/stores/instance';
 import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
 import IconArrowDropUp from '~icons/material-symbols/arrow-drop-up';
 
@@ -102,6 +105,24 @@ const TextFilter: FC<{
     />
   </Group>
 );
+
+/**
+ * The label filter, offering beside the catalogue the labels the instance's
+ * routes carry (#190).
+ *
+ * Its own component so the whole route list is read where the filter is
+ * mounted — only while the panel holding it is open — and read again each time
+ * it opens, rather than once per page for a panel that starts closed.
+ */
+const RouteLabelFilter: FC<{ value: string[]; onChange: (labels: string[]) => void }> = ({
+  value,
+  onChange,
+}) => {
+  const instanceId = useAtomValue(currentInstanceIdAtom);
+  const { data } = useAllRoutes(instanceId);
+  const inUse = useMemo(() => (data?.list ?? []).map((r) => r.value.labels), [data]);
+  return <LabelFilter value={value} onChange={onChange} inUse={inUse} />;
+};
 
 export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
   params,
@@ -293,7 +314,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
                 <Text size="sm" fw={500}>{t('routes.list.filterLabels')}</Text>
                 <Text size="xs" c="dimmed">{t('routes.list.filterMultiHint')}</Text>
               </Group>
-              <LabelFilter
+              <RouteLabelFilter
                 value={asList(draft.label)}
                 onChange={(v) => set('label', v.length > 0 ? v : undefined)}
               />
