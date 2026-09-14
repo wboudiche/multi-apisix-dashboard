@@ -18,7 +18,7 @@
 import { notifications } from '@mantine/notifications';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { useSetAtom } from 'jotai';
+import { useAtom, useSetAtom } from 'jotai';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
@@ -143,7 +143,7 @@ const Login = () => {
   const setAccessToken = useSetAtom(accessTokenAtom);
   const setRefreshToken = useSetAtom(refreshTokenAtom);
   const setTokenExpiry = useSetAtom(tokenExpiryAtom);
-  const setCurrentUser = useSetAtom(currentUserAtom);
+  const [currentUser, setCurrentUser] = useAtom(currentUserAtom);
   const discardSession = useSetAtom(logoutActionAtom);
 
   const checkCapsLock = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -164,6 +164,16 @@ const Login = () => {
 
     try {
       const response = await authApi.login({ username, password });
+
+      // The account signed in before goes first, ahead of tokens that are not
+      // its own: it is stored again only once the identity call below answers,
+      // and until then a tab left open had nothing to follow and sent these
+      // tokens as that account, with its role and team pick (#205). Not the
+      // same account signing in again: that changes nothing the other tabs
+      // depend on, and starting them over would cost whatever they had open.
+      // Usernames are unique; one typed otherwise than stored counts as
+      // another account, which costs only the reload.
+      if (currentUser?.username !== username) setCurrentUser(null);
 
       // Store tokens
       setAccessToken(response.access_token);
