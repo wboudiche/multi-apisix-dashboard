@@ -387,3 +387,38 @@ test('a tab left open does not go on as its account while another tab signs in',
     await deleteUsersByPrefix(prefix);
   }
 });
+
+test('a tab left open stays put when another tab signs in again as the same account', async ({
+  browser,
+}) => {
+  // A sign-in from the login form drops the account signed in before, so the
+  // other tabs start over (#205) — when it is another account. The same one
+  // again changes nothing they depend on, and starting them over would cost
+  // whatever they had open, for nothing.
+  test.setTimeout(TIMEOUT_MS);
+  const fixtures = fx();
+  const context = await browser.newContext({ storageState: undefined });
+
+  try {
+    const idle = await context.newPage();
+    await openAsAdminOnLocal(idle, '/ui/routes');
+    // Gone if the page is loaded again.
+    await idle.evaluate(() => {
+      (window as { stayed?: boolean }).stayed = true;
+    });
+
+    const other = await context.newPage();
+    await other.goto('/ui/login');
+    await signInHere(other, fixtures.users.admin.username, fixtures.users.admin.password);
+    // In, with its account stored: the other tabs have heard all of it.
+    await expect(
+      other.locator('header').getByText(fixtures.users.admin.username, { exact: true })
+    ).toBeVisible({ timeout: 30000 });
+
+    expect(
+      await idle.evaluate(() => (window as { stayed?: boolean }).stayed)
+    ).toBe(true);
+  } finally {
+    await context.close();
+  }
+});
