@@ -115,7 +115,18 @@ describe('the team this tab works with', () => {
 
     expect(store().get(currentTeamIdAtom)).toBe('');
     await req.get('/routes');
+    expect(sent).toHaveLength(1);
     expect(lastTeam()).toBeUndefined();
+  });
+
+  it('is still this tab’s pick after a switch to another instance and back', () => {
+    const other = `${here()}-other`;
+    store().set(currentTeamIdAtom, 'T1');
+    store().set(currentInstanceIdAtom, other);
+    anotherTabPicks(here(), 'T2');
+    store().set(currentInstanceIdAtom, here());
+
+    expect(store().get(currentTeamIdAtom)).toBe('T1');
   });
 
   it('is the stored one before this tab has picked any', async () => {

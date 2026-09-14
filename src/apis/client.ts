@@ -40,8 +40,9 @@ apiClient.interceptors.request.use((config) => {
     if (instanceId) {
         config.headers.set('X-Instance-ID', instanceId);
     }
-    // The team this tab has on that instance — the one its header shows — not
-    // whichever team the last tab to pick one left in localStorage (#195).
+    // The team this tab has on that instance: for the selected one, the team
+    // its header shows; for one a request names, this tab's pick for it, or
+    // the stored team before it has made one (see selectedTeamId, #195).
     const teamId = selectedTeamId(instanceId);
     if (teamId) {
         config.headers['X-Team-ID'] = teamId;

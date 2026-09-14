@@ -82,9 +82,11 @@ req.interceptors.request.use((conf) => {
     conf.headers.set('X-Instance-ID', instanceId);
   }
 
-  // The team this tab has on that instance — the one its header shows, which
-  // for an admin owns what this request creates — not whichever team the last
-  // tab to pick one left in localStorage (#195).
+  // The team this tab has on that instance: for the selected one, the team
+  // its header shows; for one a request names, this tab's pick for it, or the
+  // stored team before it has made one (see selectedTeamId, #195). For an
+  // admin, the proxy records it as the owner of whatever the request creates
+  // or updates.
   const teamId = selectedTeamId(instanceId);
   if (teamId) {
     conf.headers.set('X-Team-ID', teamId);
