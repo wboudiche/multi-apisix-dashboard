@@ -117,12 +117,32 @@ test('picks a plugin config by name instead of typing its id', async ({ page }) 
   await expect(field).toHaveValue(CONFIG_NAME);
 });
 
-test('still lets a developer set the id when the list cannot be read', async ({
+test('falls back to the free-text id when the list cannot be read', async ({ page }) => {
+  // A role that may list them can still fail to: a gateway down, a proxy in
+  // the way. The field is free text then too, rather than an empty dropdown.
+  await page.route(
+    (url) => url.pathname.endsWith('/apisix/admin/plugin_configs'),
+    (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error_msg: 'unavailable' }),
+      })
+  );
+  await openPluginsStep(page);
+
+  const field = page.getByRole('textbox', { name: 'Plugin Config ID' });
+  await expect(field).toBeVisible({ timeout: 15000 });
+  await field.click();
+  await expect(page.getByText('No plugin configs on this gateway yet')).toHaveCount(0);
+});
+
+test('still lets a developer set the id, without the list they may not read', async ({
   browser,
 }) => {
-  // A developer has no plugin_configs entry in RolePermissions, so listing them
-  // 403s. The field must fall back to free text rather than leaving them with
-  // an empty dropdown and no way to set it at all.
+  // A developer has no plugin_configs entry in RolePermissions, so the list is
+  // not asked for (#189). The field must be free text rather than leaving them
+  // with an empty dropdown and no way to set it at all.
   const context = await browser.newContext({ storageState: undefined });
   const page = await context.newPage();
   try {
