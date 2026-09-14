@@ -176,10 +176,14 @@ describe('the team this tab works with', () => {
     // A pick belongs to the account that made it. Signing out from the menu
     // and in as someone else happens in one tab, without a reload (#203).
     const other = `${here()}-other`;
+    // Mounted, as the header's switcher mounts it: a mounted atom recomputes
+    // the moment the picks change, and reads whatever is still stored then.
+    const unsubscribe = store().sub(currentTeamIdAtom, () => {});
     store().set(currentTeamIdAtom, 'T1');
     anotherTabPicks(other, 'T9');
 
     clearTeamPicks();
+    unsubscribe();
 
     expect(store().get(currentTeamIdAtom)).toBe('');
     expect(storage.has(`team:current_id:${here()}`)).toBe(false);

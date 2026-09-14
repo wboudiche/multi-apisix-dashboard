@@ -47,11 +47,17 @@ const fx = () => getFixtures();
 const onLocal = () => ({ 'X-Instance-ID': fx().localInstanceId });
 const PASSWORD = 'E2e-Team!Admin#1';
 
-const ownerOnLocal = async (token: string, id: string): Promise<string> => {
+// undefined when the group is not listed at all, so that "no owner" cannot
+// be read off a group that is not there.
+const ownerOnLocal = async (
+  token: string,
+  id: string
+): Promise<string | undefined> => {
   const res = (await apiFetch(`${PROXY}/consumer_groups`, token, {
     headers: onLocal(),
   })) as { list: { value: { id: string; __team_id?: string } }[] };
-  return res.list.find((r) => r.value.id === id)?.value.__team_id ?? '';
+  const row = res.list.find((r) => r.value.id === id);
+  return row ? (row.value.__team_id ?? '') : undefined;
 };
 
 // The tests create consumer groups and sign in and out; one at a time.

@@ -103,16 +103,21 @@ export const selectedTeamId = (instanceId: string): string => {
  * Called when a session starts. A pick belongs to the account that made it,
  * and signing out from the header menu and in as someone else happens in one
  * tab, without a reload: the next account started from the last one's team
- * (#203). Done at the start of a session rather than the end, so no way of
- * ending one — the menu, an expiry, a closed tab — can leave a pick behind.
+ * (#203). Done at the start of a session rather than the end, so however
+ * this tab's last session ended — the menu, an expiry — it leaves no pick
+ * behind here. Another tab left open keeps its own picks, and its own idea of
+ * who is signed in, until it reloads (#205).
  */
 export const clearTeamPicks = () => {
-  getDefaultStore().set(_pickedTeamAtom, {});
-  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+  // The stored keys first: resetting the picks makes a mounted
+  // currentTeamIdAtom recompute at once, reading its fallback from
+  // localStorage — and it would keep whatever was still there. Listed before
+  // any is removed, since removing one reorders the rest.
+  const stored: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (key?.startsWith(TEAM_KEY)) storage.remove(key);
+    if (key?.startsWith(TEAM_KEY)) stored.push(key);
   }
+  stored.forEach(storage.remove);
+  getDefaultStore().set(_pickedTeamAtom, {});
 };
-
-// Simple string atom for the current team name, set by the header component
-export const currentTeamNameAtom = atom<string>('');
