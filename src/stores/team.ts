@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { atom } from 'jotai';
+import { atom, getDefaultStore } from 'jotai';
 
 import { currentInstanceIdAtom } from '@/stores/instance';
 
@@ -32,19 +32,33 @@ const storage = {
   },
 };
 
+const storedTeam = (instanceId: string) =>
+  storage.get(`team:current_id:${instanceId}`) || '';
+
+// The team this tab has picked, per instance, once it has picked one.
+// localStorage keeps the last pick any tab made — a new tab starts from it —
+// but it is every tab's, and nothing listens for another tab writing it.
+const _pickedTeamAtom = atom<Record<string, string>>({});
+
 // Jotai atom for current team ID, scoped per instance
 // localStorage key: team:current_id:{instanceId}
-// When instance changes, the atom reads the stored team for that instance
 // "" means "All Teams" (no filtering)
+//
+// This tab's pick for the instance, or the stored team before it has made one.
+// The pick is state the atom depends on: the setter used to write localStorage
+// alone, which changed nothing the atom depended on, so the header's switcher
+// went on showing the previous team after a pick (#195).
 export const currentTeamIdAtom = atom(
   (get) => {
     const instanceId = get(currentInstanceIdAtom);
     if (!instanceId) return '';
-    return storage.get(`team:current_id:${instanceId}`) || '';
+    const picked = get(_pickedTeamAtom);
+    return instanceId in picked ? picked[instanceId] : storedTeam(instanceId);
   },
-  (get, _set, newValue: string) => {
+  (get, set, newValue: string) => {
     const instanceId = get(currentInstanceIdAtom);
     if (!instanceId) return;
+    set(_pickedTeamAtom, { ...get(_pickedTeamAtom), [instanceId]: newValue });
     if (newValue) {
       storage.set(`team:current_id:${instanceId}`, newValue);
     } else {
@@ -52,6 +66,25 @@ export const currentTeamIdAtom = atom(
     }
   }
 );
+
+/**
+ * The team this tab sends for `instanceId`, for the request interceptors.
+ *
+ * For the selected instance, exactly the team the header shows. For another
+ * one — a request can name its instance — this tab's pick for it, or the
+ * stored team before it has made one. Read from localStorage alone, it was
+ * whichever team the last tab to pick had put there: for an admin, the owner
+ * of every resource this tab created (#195).
+ */
+export const selectedTeamId = (instanceId: string): string => {
+  if (!instanceId) return '';
+  const store = getDefaultStore();
+  if (instanceId === store.get(currentInstanceIdAtom)) {
+    return store.get(currentTeamIdAtom);
+  }
+  const picked = store.get(_pickedTeamAtom);
+  return instanceId in picked ? picked[instanceId] : storedTeam(instanceId);
+};
 
 // Simple string atom for the current team name, set by the header component
 export const currentTeamNameAtom = atom<string>('');
