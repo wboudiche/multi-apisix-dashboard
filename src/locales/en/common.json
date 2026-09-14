@@ -99,6 +99,7 @@
     "singular": "Credential"
   },
   "form": {
+    "loadingConfiguration": "Loading configuration…",
     "basic": {
       "desc": "Description",
       "id": "ID",
