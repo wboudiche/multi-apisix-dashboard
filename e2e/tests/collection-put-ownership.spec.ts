@@ -16,7 +16,7 @@
  */
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
-import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
+import { API_URL, apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { expect, test } from '@playwright/test';
 
 /**
@@ -111,6 +111,66 @@ for (const c of CASES) {
     expect(await stored(c.type, id)).toEqual({ team: fx().frontendTeamId, desc: 'theirs' });
   });
 }
+
+test('a path with an empty segment is refused, whatever the method', async () => {
+  // APISIX collapses it, writing /routes//<id> to /routes/<id>, while the
+  // proxy, reading the path segment by segment, saw no resource at all and ran
+  // none of the checks that need one (#191).
+  const id = randomId('coll').replace(/-/g, '_');
+  created.push(`routes/${id}`);
+  await apiFetch(`${PROXY}/routes/${id}`, await loginAdmin(), {
+    method: 'PUT',
+    headers: { ...onInstance(), 'X-Team-ID': fx().frontendTeamId },
+    json: { uri: `/${id}`, desc: 'theirs', upstream },
+  });
+  expect(await stored('routes', id)).toEqual({ team: fx().frontendTeamId, desc: 'theirs' });
+
+  const dev = await devToken();
+  await expect(
+    apiFetch(`${PROXY}/routes//${id}`, dev, {
+      method: 'PUT',
+      headers: onInstance(),
+      json: { uri: `/${id}`, desc: 'mine now', upstream },
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(
+    apiFetch(`${PROXY}/routes//${id}`, dev, { method: 'DELETE', headers: onInstance() })
+  ).rejects.toMatchObject({ status: 400 });
+
+  expect(await stored('routes', id)).toEqual({ team: fx().frontendTeamId, desc: 'theirs' });
+});
+
+test('a numeric id APISIX would key differently is refused', async () => {
+  // APISIX keys a number by its value, writing {"id": <n>.0} to /routes/<n>,
+  // while the proxy read the literal and checked a resource that did not
+  // exist (#191).
+  const id = String(9_000_000_000 + Math.floor(Math.random() * 999_999_999));
+  created.push(`routes/${id}`);
+  await apiFetch(`${PROXY}/routes/${id}`, await loginAdmin(), {
+    method: 'PUT',
+    headers: { ...onInstance(), 'X-Team-ID': fx().frontendTeamId },
+    json: { uri: `/${id}`, desc: 'theirs', upstream },
+  });
+  expect(await stored('routes', id)).toEqual({ team: fx().frontendTeamId, desc: 'theirs' });
+
+  // Sent raw: JSON.stringify writes <n>.0 as <n>.
+  const body = JSON.stringify({ id: 0, uri: `/${id}`, desc: 'mine now', upstream }).replace(
+    '"id":0',
+    `"id":${id}.0`
+  );
+  const res = await fetch(`${API_URL}${PROXY}/routes`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${await devToken()}`,
+      ...onInstance(),
+    },
+    body,
+  });
+  expect(res.status).toBe(400);
+
+  expect(await stored('routes', id)).toEqual({ team: fx().frontendTeamId, desc: 'theirs' });
+});
 
 test('a developer still creates a consumer the way the Add page sends it, and owns it', async () => {
   const id = randomId('coll').replace(/-/g, '_');

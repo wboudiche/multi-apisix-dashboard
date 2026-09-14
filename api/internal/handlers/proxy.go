@@ -181,42 +181,103 @@ func createOnlyRequested(method, ifNoneMatch string) bool {
 // it names none. APISIX writes such a PUT to <collection>/<that id>, so that is
 // the resource the proxy's checks have to look at (#191).
 //
-// An id that would name another path — with a slash, or "." or ".." — is an
-// error rather than "": the caller must refuse it, not skip the checks.
+// It has to be the key APISIX will write. Whatever APISIX might key otherwise
+// than it reads here is an error, for the caller to refuse — never "", which
+// would skip the checks: a body that does not decode, an id of another type, a
+// number APISIX would rewrite (2.0 is written to /2), and characters APISIX
+// does not accept, which rules out an id naming another path as well.
 func collectionPutID(resourceType string, body []byte) (string, error) {
 	if len(body) == 0 {
 		return "", nil
 	}
 
-	// UseNumber, so a numeric id is read digit for digit, as APISIX reads it.
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
 
 	var resource map[string]any
 	if err := decoder.Decode(&resource); err != nil || resource == nil {
-		// Not a JSON object: APISIX refuses it, so nothing is written.
-		return "", nil
+		return "", fmt.Errorf("body is not a JSON object")
 	}
 
-	field := "id"
+	field, dots := "id", true
 	if resourceType == "consumers" {
-		field = "username"
+		field, dots = "username", false
+	}
+
+	raw, present := resource[field]
+	if !present {
+		return "", nil
 	}
 
 	var id string
-	switch v := resource[field].(type) {
+	switch v := raw.(type) {
 	case string:
 		id = v
 	case json.Number:
+		if !apisixIntegerID(v.String()) {
+			return "", fmt.Errorf("numeric %s %s is not one APISIX writes as it reads", field, v)
+		}
 		id = v.String()
 	default:
-		return "", nil
+		return "", fmt.Errorf("%s is neither a string nor a number", field)
 	}
 
-	if strings.Contains(id, "/") || id == "." || id == ".." {
+	if id == "" {
+		return "", nil
+	}
+	if id == "." || id == ".." || !apisixIDChars(id, dots) {
 		return "", fmt.Errorf("invalid %s %q", field, id)
 	}
 	return id, nil
+}
+
+// apisixIDChars reports whether s holds only what APISIX's schemas accept in an
+// id: letters, digits, "-" and "_", and "." where dots is set — an id may hold
+// dots, a consumer's username may not.
+func apisixIDChars(s string, dots bool) bool {
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
+		case r == '.' && dots:
+		default:
+			return false
+		}
+	}
+	return s != ""
+}
+
+// apisixIntegerID reports whether a JSON number is one APISIX keys exactly as
+// written: a positive integer, digits only, of at most 14 of them. APISIX
+// reads numbers as doubles and prints them with %.14g, so 2.0 comes back as 2,
+// 1e2 as 100, and a longer integer in exponent form.
+func apisixIntegerID(n string) bool {
+	if n == "" || len(n) > 14 || n[0] == '0' {
+		return false
+	}
+	for _, r := range n {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// invalidProxyPath reports whether a path must be refused before anything
+// reads it: a "." or ".." segment, or an empty one between two others. APISIX
+// resolves the first and collapses the second — /routes/../ssls/s1 is written
+// to /ssls/s1, /routes//r1 to /routes/r1 — while the checks read the path as
+// it is: a different resource type, or no resource at all (#191).
+func invalidProxyPath(path string) bool {
+	trimmed := strings.Trim(path, "/")
+	if trimmed == "" {
+		return false
+	}
+	for _, seg := range strings.Split(trimmed, "/") {
+		if seg == "" || seg == "." || seg == ".." {
+			return true
+		}
+	}
+	return false
 }
 
 // Messages for the proxy's authorization refusals.
@@ -378,12 +439,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// APISIX, which collapses "..". Without this guard a developer could send
 	// "/routes/../ssls/<id>" — passing the routes permission check while the
 	// request actually lands on the forbidden ssls resource.
-	for _, seg := range strings.Split(path, "/") {
-		if seg == ".." || seg == "." {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
-			c.Abort()
-			return
-		}
+	// An empty segment is refused for the same reason (see invalidProxyPath).
+	if invalidProxyPath(path) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
+		c.Abort()
+		return
 	}
 
 	resourceType, resourceID := h.getResourceMetadata(path)
