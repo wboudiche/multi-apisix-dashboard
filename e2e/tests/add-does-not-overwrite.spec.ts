@@ -113,6 +113,60 @@ for (const resource of RESOURCES) {
   });
 }
 
+// The Add Consumer page does not address the consumer by path: it PUTs the
+// collection with the username in the body, which is how APISIX makes
+// consumers. The guard read the id from the path, found none, and let a
+// second add overwrite the first — while the consumer case above, addressed by
+// path, passed (#191).
+test('adding a consumer twice the way the Add page sends it is refused', async () => {
+  const token = await loginAdmin();
+  const id = randomId('dupe').replace(/-/g, '_');
+  const headers = { ...onInstance(), ...CREATE_ONLY };
+
+  created.push(`${PROXY}/consumers/${id}`);
+  await apiFetch(`${PROXY}/consumers`, token, {
+    method: 'PUT',
+    headers,
+    json: { username: id, desc: 'original' },
+  });
+
+  const secondAdd = apiFetch(`${PROXY}/consumers`, token, {
+    method: 'PUT',
+    headers,
+    json: { username: id, desc: 'overwritten' },
+  });
+  await expect(secondAdd).rejects.toMatchObject({ status: 409 });
+  await expect(secondAdd).rejects.toThrow(/already exists/);
+
+  const stored = (await apiFetch(`${PROXY}/consumers/${id}`, token, {
+    headers: onInstance(),
+  })) as { value: { desc: string } };
+  expect(stored.value.desc).toBe('original');
+});
+
+test('editing a consumer the way the Edit page sends it still replaces it', async () => {
+  const token = await loginAdmin();
+  const id = randomId('edit').replace(/-/g, '_');
+
+  created.push(`${PROXY}/consumers/${id}`);
+  await apiFetch(`${PROXY}/consumers`, token, {
+    method: 'PUT',
+    headers: { ...onInstance(), ...CREATE_ONLY },
+    json: { username: id, desc: 'original' },
+  });
+  // The collection again, and no If-None-Match: the Edit flow.
+  await apiFetch(`${PROXY}/consumers`, token, {
+    method: 'PUT',
+    headers: onInstance(),
+    json: { username: id, desc: 'edited on purpose' },
+  });
+
+  const stored = (await apiFetch(`${PROXY}/consumers/${id}`, token, {
+    headers: onInstance(),
+  })) as { value: { desc: string } };
+  expect(stored.value.desc).toBe('edited on purpose');
+});
+
 // Editing is overwriting — the guard must not touch it.
 test('editing an existing record still replaces it', async () => {
   const token = await loginAdmin();

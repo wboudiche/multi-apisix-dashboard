@@ -176,6 +176,49 @@ func createOnlyRequested(method, ifNoneMatch string) bool {
 	return method == http.MethodPut && strings.TrimSpace(ifNoneMatch) == "*"
 }
 
+// collectionPutID returns the id a PUT addressed to a collection names in its
+// body — the username for a consumer, the id for everything else — or "" when
+// it names none. APISIX writes such a PUT to <collection>/<that id>, so that is
+// the resource the proxy's checks have to look at (#191).
+//
+// An id that would name another path — with a slash, or "." or ".." — is an
+// error rather than "": the caller must refuse it, not skip the checks.
+func collectionPutID(resourceType string, body []byte) (string, error) {
+	if len(body) == 0 {
+		return "", nil
+	}
+
+	// UseNumber, so a numeric id is read digit for digit, as APISIX reads it.
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+
+	var resource map[string]any
+	if err := decoder.Decode(&resource); err != nil || resource == nil {
+		// Not a JSON object: APISIX refuses it, so nothing is written.
+		return "", nil
+	}
+
+	field := "id"
+	if resourceType == "consumers" {
+		field = "username"
+	}
+
+	var id string
+	switch v := resource[field].(type) {
+	case string:
+		id = v
+	case json.Number:
+		id = v.String()
+	default:
+		return "", nil
+	}
+
+	if strings.Contains(id, "/") || id == "." || id == ".." {
+		return "", fmt.Errorf("invalid %s %q", field, id)
+	}
+	return id, nil
+}
+
 // Messages for the proxy's authorization refusals.
 const (
 	unassignedResourceMsg = "This resource is not assigned to a team. Ask an admin to assign it before editing."
@@ -355,18 +398,48 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
+	// Read before the checks below: a PUT addressed to a collection names its
+	// resource in the body rather than the path (see collectionPutID).
+	var bodyBytes []byte
+	if c.Request.Body != nil {
+		bodyBytes, _ = io.ReadAll(c.Request.Body)
+	}
+
+	// checkPath is what the checks below look at: the request's own path, or,
+	// for a PUT addressed to a collection, the resource APISIX will write. By
+	// its path alone such a PUT had no id, so it went through neither the
+	// create-only guard nor the ownership check — onto another team's resource
+	// as readily as onto a new one, whose ownership the write then recorded as
+	// the writer's team (#191).
+	checkPath := path
+	if c.Request.Method == http.MethodPut && resourceType != "" && resourceID == "" {
+		id, err := collectionPutID(resourceType, bodyBytes)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":     "Invalid resource id",
+				"error_msg": "Invalid resource id",
+			})
+			c.Abort()
+			return
+		}
+		if id != "" {
+			resourceID = id
+			checkPath = "/" + resourceType + "/" + id
+		}
+	}
+
 	// An Add flow declares that it means to create. APISIX would happily upsert,
 	// replacing whatever is already at that id and returning a success the UI
 	// reports as "Add ... Successfully" - the only trace being a changed
 	// update_time on a row the user thought they were adding.
 	//
 	// resourceID is only used here to confirm the request targets a specific
-	// resource rather than a collection; the existence check uses the whole
-	// path, which is what makes this work for secrets too - they are addressed
-	// as /secrets/{manager}/{id}, where getResourceMetadata reports the manager
-	// as the id.
+	// resource rather than a collection; the existence check uses the whole of
+	// checkPath, which is what makes this work for secrets too - they are
+	// addressed as /secrets/{manager}/{id}, where getResourceMetadata reports
+	// the manager as the id.
 	if createOnlyRequested(c.Request.Method, c.GetHeader("If-None-Match")) && resourceID != "" {
-		exists, err := h.resourceExists(c.Request.Context(), instance, path)
+		exists, err := h.resourceExists(c.Request.Context(), instance, checkPath)
 		if err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{
 				"error":     couldNotVerifyMsg,
@@ -395,7 +468,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// to an id that does not exist yet, which is how consumers and
 				// consumer_groups are made - or it targets a resource that
 				// exists without a team, which only an admin may change.
-				exists, err := h.resourceExists(c.Request.Context(), instance, path)
+				exists, err := h.resourceExists(c.Request.Context(), instance, checkPath)
 				if err != nil {
 					// Fail closed: an unverifiable target is not a licence to
 					// overwrite it.
@@ -461,11 +534,6 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin" + path
 	if len(query) > 0 {
 		targetURL += "?" + query.Encode()
-	}
-
-	var bodyBytes []byte
-	if c.Request.Body != nil {
-		bodyBytes, _ = io.ReadAll(c.Request.Body)
 	}
 
 	// The dashboard injects its own fields into GET responses (see step 4). A
