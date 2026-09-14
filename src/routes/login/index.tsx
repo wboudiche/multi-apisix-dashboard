@@ -165,6 +165,12 @@ const Login = () => {
     try {
       const response = await authApi.login({ username, password });
 
+      // The account signed in before goes first, ahead of tokens that are not
+      // its own: it is stored again only once the identity call below answers,
+      // and until then a tab left open had nothing to follow and sent these
+      // tokens as that account, with its role and team pick (#205).
+      setCurrentUser(null);
+
       // Store tokens
       setAccessToken(response.access_token);
       setRefreshToken(response.refresh_token);

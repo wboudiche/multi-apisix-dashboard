@@ -105,8 +105,8 @@ export const selectedTeamId = (instanceId: string): string => {
  * tab, without a reload: the next account started from the last one's team
  * (#203). Done at the start of a session rather than the end, so however
  * this tab's last session ended — the menu, an expiry — it leaves no pick
- * behind here. Another tab left open keeps its own picks, and its own idea of
- * who is signed in, until it reloads (#205).
+ * behind here. Another tab left open starts over when the account changes
+ * (followOtherTabs, #205), and its own picks go with it.
  */
 export const clearTeamPicks = () => {
   // The stored keys first: resetting the picks makes a mounted

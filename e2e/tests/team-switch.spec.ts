@@ -319,3 +319,71 @@ test('a tab left open follows another tab signing in as someone else', async ({
     await deleteUsersByPrefix(prefix);
   }
 });
+
+test('a tab left open does not go on as its account while another tab signs in', async ({
+  browser,
+}) => {
+  // The login form is reachable while signed in, and signing in from it
+  // stores the new account's tokens before asking whose they are; the account
+  // itself is stored only once that answer is back. In between, a tab left
+  // open had nothing to follow and sent the new tokens as the old account,
+  // with its role and team pick (#205).
+  test.setTimeout(TIMEOUT_MS);
+  const prefix = randomId('e2e-tab-relogin-user');
+  const setup = await adminToken();
+  const user = await ensureUser(setup, {
+    username: `${prefix}-user`,
+    password: PASSWORD,
+  });
+  await ensureUserInstanceRole(setup, user.id, fx().localInstanceId, {
+    role: 'instance_admin',
+    team_id: fx().backendTeamId,
+  });
+  const context = await browser.newContext({ storageState: undefined });
+  let release = () => {};
+
+  try {
+    const idle = await context.newPage();
+    await openAsAdminOnLocal(idle, '/ui/routes');
+    await pickTeam(idle, 'Frontend Team');
+    const signedIn = (username: string) =>
+      idle.locator('header').getByText(username, { exact: true });
+    await expect(signedIn(fx().users.admin.username)).toBeVisible();
+
+    // Another tab signs in as someone else from the login form, with no
+    // sign-out first, and its question of who that is gets no answer yet.
+    const other = await context.newPage();
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = () => {};
+    const identityAsked = new Promise<void>((resolve) => {
+      asked = resolve;
+    });
+    await other.route('**/api/v1/user', async (route) => {
+      asked();
+      await released;
+      await route.continue();
+    });
+    await other.goto('/ui/login');
+    await other.getByRole('textbox', { name: 'Username' }).fill(`${prefix}-user`);
+    await other.getByPlaceholder('Enter your password').fill(PASSWORD);
+    await other.getByRole('button', { name: 'Sign in' }).click();
+    await identityAsked;
+
+    // Its tokens are stored by now. The idle tab no longer goes on as the
+    // super admin.
+    await idle.bringToFront();
+    await expect(signedIn(fx().users.admin.username)).toHaveCount(0, {
+      timeout: 30000,
+    });
+
+    // And once the other tab knows who signed in, so does this one.
+    release();
+    await expect(signedIn(`${prefix}-user`)).toBeVisible({ timeout: 30000 });
+  } finally {
+    release();
+    await context.close();
+    await deleteUsersByPrefix(prefix);
+  }
+});
