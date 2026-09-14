@@ -97,7 +97,14 @@ const ProtoDetailForm = ({ id, readOnly, setReadOnly }: ProtoFormProps) => {
         {!readOnly && (
           <Group>
             <FormSubmitBtn>{t('form.btn.save')}</FormSubmitBtn>
-            <Button variant="outline" onClick={() => setReadOnly(true)}>
+            <Button
+              variant="outline"
+              // Back to the resource as loaded, not the edit being dropped (#219).
+              onClick={() => {
+                form.reset();
+                setReadOnly(true);
+              }}
+            >
               {t('form.btn.cancel')}
             </Button>
           </Group>

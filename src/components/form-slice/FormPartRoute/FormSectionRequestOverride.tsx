@@ -23,7 +23,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -153,22 +153,21 @@ export const FormSectionRequestOverride = () => {
   const plugins = useWatch({ name: 'plugins' });
   const isReadOnly = formState.disabled;
 
-  const [state, setState] = useState(() =>
-    parseConfig((getValues('plugins') as Record<string, unknown>)?.['proxy-rewrite'] as ProxyRewriteConfig | undefined)
-  );
-  const [initialized, setInitialized] = useState(false);
+  const rewrite = (plugins as Record<string, unknown> | undefined)?.['proxy-rewrite'] as
+    | ProxyRewriteConfig
+    | undefined;
+  const [state, setState] = useState(() => parseConfig(rewrite));
 
-  // Sync from form to local state on mount / external plugin editor changes
-  useEffect(() => {
-    if (!initialized) {
-      setInitialized(true);
-      return;
-    }
-    const current = (plugins as Record<string, unknown>)?.['proxy-rewrite'] as ProxyRewriteConfig | undefined;
-    if (current) {
-      setState(parseConfig(current));
-    }
-  }, [plugins?.['proxy-rewrite']]);
+  // Follow the form when its proxy-rewrite changes — the plugin editor, or a
+  // reset — adjusted during render rather than in an effect. An absent one is
+  // state too, the empty one: skipping it kept an override a reset had just
+  // removed, so a Cancel on the route page left it shown, and the next change
+  // here wrote it back (#219).
+  const [lastRewrite, setLastRewrite] = useState(rewrite);
+  if (rewrite !== lastRewrite) {
+    setLastRewrite(rewrite);
+    setState(parseConfig(rewrite));
+  }
 
   // Sync from local state to form
   const syncToForm = useCallback(
@@ -179,7 +178,8 @@ export const FormSectionRequestOverride = () => {
       if (config) {
         setValue('plugins', { ...currentPlugins, 'proxy-rewrite': config }, { shouldDirty: true });
       } else {
-        const { 'proxy-rewrite': _, ...rest } = currentPlugins;
+        const rest = { ...currentPlugins };
+        delete rest['proxy-rewrite'];
         setValue('plugins', rest, { shouldDirty: true });
       }
     },
