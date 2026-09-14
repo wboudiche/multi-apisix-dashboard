@@ -104,16 +104,16 @@ const forgetLabel = (token: string, instanceId: string, key: string) =>
 
 test('offers the catalogue of the instance selected, after a switch', async ({ page }) => {
   // The catalogue is per instance. This passed before #190 changed how the
-  // filter loads it, and pins that a switch in the header still brings the
-  // new instance's catalogue rather than keeping the previous one.
+  // filter builds its options, and pins that a switch in the header still
+  // brings the new instance's catalogue rather than keeping the previous one.
   const fx = getFixtures();
   const token = await loginAdmin();
   const localKey = labelKey('e2e_local');
   const stagingKey = labelKey('e2e_staging');
-  const localName = await defineLabel(token, fx.localInstanceId, localKey);
-  const stagingName = await defineLabel(token, fx.stagingInstanceId, stagingKey);
-
   try {
+    const localName = await defineLabel(token, fx.localInstanceId, localKey);
+    const stagingName = await defineLabel(token, fx.stagingInstanceId, stagingKey);
+
     await permission.switchInstance(page, 'Local APISIX');
     await page.goto('/ui/routes');
     await page.getByRole('button', { name: 'Expand' }).click();
@@ -188,6 +188,53 @@ test('offers, and filters by, a label the routes carry that the catalogue does n
         headers: onLocal,
       }).catch(() => undefined);
     }
+    await forgetLabel(token, fx.localInstanceId, key);
+  }
+});
+
+test('offers a label written while the page is open, when the filter opens again', async ({
+  page,
+}) => {
+  // The labels in use were read once per minute and never refreshed by a
+  // route write: straight after an import that labels routes, the table showed
+  // the new labels and the filter did not offer them (#190).
+  const fx = getFixtures();
+  const token = await loginAdmin();
+  const key = labelKey('e2e_fresh');
+  const route = randomId('e2e-label-fresh');
+  const onLocal = onInstance(fx.localInstanceId);
+
+  try {
+    await permission.switchInstance(page, 'Local APISIX');
+    await page.goto('/ui/routes');
+    await page.getByRole('button', { name: 'Expand' }).click();
+    await expect(page.getByPlaceholder('Select key')).toBeEnabled({ timeout: 20000 });
+    await page.getByRole('button', { name: 'Collapse' }).click();
+
+    // Written while the page stays open, as an import would.
+    await defineLabel(token, fx.localInstanceId, key);
+    await apiFetch(`/api/v1/apisix/admin/routes/${route}`, token, {
+      method: 'PUT',
+      headers: onLocal,
+      json: {
+        name: route,
+        uri: `/${route}`,
+        labels: { [key]: 'one' },
+        upstream: { type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } },
+      },
+    });
+    await forgetLabel(token, fx.localInstanceId, key);
+
+    await page.getByRole('button', { name: 'Expand' }).click();
+    await page.getByPlaceholder('Select key').click();
+    await expect(page.getByRole('option', { name: key, exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+  } finally {
+    await apiFetch(`/api/v1/apisix/admin/routes/${route}`, token, {
+      method: 'DELETE',
+      headers: onLocal,
+    }).catch(() => undefined);
     await forgetLabel(token, fx.localInstanceId, key);
   }
 });

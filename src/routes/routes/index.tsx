@@ -57,7 +57,7 @@ import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
-import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
@@ -648,14 +648,12 @@ function RouteComponent() {
   );
   const [currentInstanceId] = useAtom(currentInstanceIdAtom);
   const { data: filterUpstreams } = useAllUpstreams(currentInstanceId);
-  // Every route's labels, for the label filter to offer beside the catalogue:
-  // the table holds one page of them, and the catalogue is not all that the
-  // routes carry (#190).
-  const { data: allRoutes } = useAllRoutes(currentInstanceId);
-  const labelsInUse = useMemo(
-    () => (allRoutes?.list ?? []).map((r) => r.value.labels),
-    [allRoutes]
-  );
+  // An import labels the routes it writes — the WSDL one always does — so the
+  // labels the filter offers are read again along with the table (#190).
+  const onImported = () => {
+    void refetch();
+    void queryClient.invalidateQueries({ queryKey: ['routes', currentInstanceId, 'all'] });
+  };
   const upstreamOptions = useMemo(
     () =>
       (filterUpstreams?.list ?? []).map((u) => ({
@@ -702,7 +700,6 @@ function RouteComponent() {
         isAdmin={isAdmin}
         teamOptions={teamOptions}
         upstreamOptions={upstreamOptions}
-        labelsInUse={labelsInUse}
       />
 
       <Paper p="md" radius="sm" shadow="sm" w="100%" style={{ borderTop: '2px solid #F8423F' }}>
@@ -810,12 +807,12 @@ function RouteComponent() {
       <ImportRoutesModal
         opened={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        onSuccess={refetch}
+        onSuccess={onImported}
       />
       <ImportWsdlModal
         opened={wsdlModalOpen}
         onClose={() => setWsdlModalOpen(false)}
-        onSuccess={refetch}
+        onSuccess={onImported}
       />
     </Box>
   );

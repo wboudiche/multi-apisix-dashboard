@@ -71,6 +71,16 @@ describe('the labels the filter offers', () => {
     ]);
   });
 
+  it('take a catalogue entry that has no values, as the backend sends it', () => {
+    // The backend accepts an entry with no values and sends them as null. The
+    // filter used to fall back to an empty list for that; spreading it threw
+    // while the routes page rendered.
+    const noValues = { ...entry('env', []), values: null as unknown as string[] };
+    expect(labelOptions([noValues], [{ env: 'prod' }])).toEqual([
+      { key: 'env', label: 'env', values: ['prod'] },
+    ]);
+  });
+
   it('pass over routes that carry no labels', () => {
     expect(labelOptions([], [undefined, {}, { team: 'a' }])).toEqual([
       { key: 'team', label: 'team', values: ['a'] },

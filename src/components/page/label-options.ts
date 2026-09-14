@@ -41,7 +41,8 @@ export const labelOptions = (
   const options = catalogue.map((l) => ({
     key: l.key,
     label: l.display_name || l.key,
-    values: [...l.values],
+    // null for an entry created with no values, which the backend accepts.
+    values: [...(l.values ?? [])],
     added: [] as string[],
   }));
   const byKey = new Map(options.map((o) => [o.key.toLowerCase(), o]));
