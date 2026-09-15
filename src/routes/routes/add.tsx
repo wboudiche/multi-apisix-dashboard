@@ -94,6 +94,12 @@ const PluginStepLabel = () => {
 
 const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
   const { navigate, defaultValues, onDraftDiscarded } = props;
+  // A draft keeps to the page it was started on. A service's route add page
+  // passes its service_id as a default and keeps a draft of its own, so no
+  // draft carries one service's id to another page, or away from it (#228).
+  const draftKey = defaultValues?.service_id
+    ? `${DRAFT_KEY}:service:${defaultValues.service_id}`
+    : DRAFT_KEY;
   const { t } = useTranslation();
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -111,7 +117,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
   // the component not re-rendering when the value appears.
   const [savedDraft] = useState<Partial<RoutePostType> | undefined>(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_KEY);
+      const saved = localStorage.getItem(draftKey);
       return saved ? (JSON.parse(saved) as Partial<RoutePostType>) : undefined;
     } catch {
       return undefined;
@@ -126,7 +132,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
     defaultValues: (savedDraft as RoutePostType) || defaultValues,
   });
 
-  const { clearDraft } = useFormDraftAutoSave(DRAFT_KEY, form);
+  const { clearDraft } = useFormDraftAutoSave(draftKey, form);
 
   useEffect(() => {
     if (savedDraft && !draftNotifiedRef.current) {
