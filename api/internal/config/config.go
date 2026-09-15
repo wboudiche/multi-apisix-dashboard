@@ -31,6 +31,9 @@ type Config struct {
 type ServerConfig struct {
 	Port string
 	Host string
+	// UIDir is the directory holding the built frontend (vite dist/). Empty
+	// disables static serving, which is the dev and test default.
+	UIDir string
 }
 
 type EtcdConfig struct {
@@ -54,8 +57,9 @@ type SecurityConfig struct {
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port: getEnv("PORT", "8080"),
-			Host: getEnv("HOST", "0.0.0.0"),
+			Port:  getEnv("PORT", "8080"),
+			Host:  getEnv("HOST", "0.0.0.0"),
+			UIDir: os.Getenv("UI_DIR"),
 		},
 		Etcd: EtcdConfig{
 			Endpoints: parseEnvList("ETCD_ENDPOINTS", "http://localhost:2379"),
