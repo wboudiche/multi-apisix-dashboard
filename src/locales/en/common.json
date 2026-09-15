@@ -945,5 +945,33 @@
   "pageError": {
     "retry": "Retry",
     "goHome": "Go Home"
+  },
+  "overview": {
+    "title": "Dashboard Overview",
+    "subtitle": "System health and resource utilization summary",
+    "refresh": "Refresh Data",
+    "gatewayHealth": "Gateway Health",
+    "online": "Online",
+    "healthyGateways": "Healthy Gateways",
+    "disconnectedGateways": "Disconnected Gateways",
+    "operationalStatus": "Operational Status",
+    "allClear": "All Clear",
+    "issuesDetected": "Issues Detected",
+    "resourceMatrix": "Global Resource Matrix",
+    "resourceMatrixDesc": "Consolidated resources across all accessible instances",
+    "totalRoutes": "Total Routes",
+    "totalServices": "Total Services",
+    "totalUpstreams": "Total Upstreams",
+    "systemConfig": "System Configuration",
+    "systemConfigDesc": "All data persistent in etcd cluster",
+    "connectivity": "Instance Connectivity",
+    "columnInstance": "Gateway Instance",
+    "columnConnectivity": "Connectivity",
+    "columnLastCheck": "Last Check",
+    "columnDiagnostic": "Diagnostic",
+    "logError": "Log Error",
+    "stable": "Stable",
+    "loadFailedTitle": "Error",
+    "loadFailed": "Failed to load dashboard overview"
   }
 }

@@ -285,6 +285,9 @@ const InstancesPage = () => {
 
   useEffect(() => {
     loadInstances();
+    // A fetch on mount. loadHealth sets state only once its request has
+    // answered, which this rule cannot tell from state derived from other state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHealth();
   }, [loadInstances, loadHealth]);
 

@@ -36,6 +36,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # eslint with --max-warnings=0. main failed it for long enough that it
+      # was left out of CI (#212); it is clean now, and this keeps it clean.
+      - name: Lint
+        run: pnpm lint
+
       # Type-checks and bundles. `pnpm build` is `tsc -b && vite build`, so this
       # also catches a vite config that no longer compiles — the failure mode
       # behind #139, which only surfaced inside a docker build step.

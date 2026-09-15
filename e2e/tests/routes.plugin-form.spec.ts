@@ -228,4 +228,29 @@ test.describe('Route Plugin Form Editor', () => {
     const pluginTag = page.locator('[data-testid="plugin-limit-conn"]');
     await expect(pluginTag).toBeVisible({ timeout: 15000 });
   });
+
+  test('opens a schema plugin on its form, and drops a form edit closed unsaved', async ({
+    page,
+  }) => {
+    await navigateToPluginsStep(page);
+    await addLimitConnPlugin(page);
+    const editor = page.getByRole('dialog', { name: 'Add Plugin', exact: true });
+
+    // On its form straight away, without the toggle being touched.
+    const conn = editor.getByLabel('conn', { exact: true });
+    await expect(conn).toBeVisible({ timeout: 10000 });
+    await conn.click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.type('999');
+    await expect(conn).toHaveValue('999');
+
+    // Closed without saving, then the same plugin opened again from the list
+    // still open underneath.
+    await editor.locator('.mantine-Drawer-close').click();
+    await expect(editor).toBeHidden();
+    await page.locator('[role="dialog"]').first().getByRole('button', { name: 'Add' }).first().click();
+
+    await expect(conn).toBeVisible({ timeout: 10000 });
+    await expect(conn).not.toHaveValue('999');
+  });
 });
