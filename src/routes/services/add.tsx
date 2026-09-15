@@ -36,11 +36,7 @@ import { FormWizard } from '@/components/form-slice/FormWizard';
 import PageHeader from '@/components/page/PageHeader';
 import { req } from '@/config/req';
 import { useFormDraftAutoSave } from '@/hooks/useFormDraftAutoSave';
-import {
-  produceCleanEmpty,
-  produceRmUpstreamWhenHas,
-} from '@/utils/form-producer';
-import { pipeProduce } from '@/utils/producer';
+import { produceServiceBody } from '@/utils/service-body';
 
 const DRAFT_KEY = 'apisix-service-draft';
 
@@ -115,13 +111,7 @@ const ServiceAddForm = () => {
 
   const postService = useMutation({
     mutationFn: (d: ServicePostType) =>
-      postServiceReq(
-        req,
-        pipeProduce(
-          produceRmUpstreamWhenHas('upstream_id'),
-          produceCleanEmpty
-        )(d)
-      ),
+      postServiceReq(req, produceServiceBody(d)),
     async onSuccess() {
       clearDraft();
       notifications.show({

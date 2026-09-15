@@ -52,30 +52,3 @@ export const produceRmUpstreamWhenHas = (
       delete draft.upstream;
     }
   });
-
-export const produceCleanEmpty = produce((draft) => {
-  const clean = (value: unknown) => {
-    if (!value || typeof value !== 'object') return;
-    const obj = value as Record<string, unknown>;
-    Object.keys(obj).forEach((key) => {
-      const val = obj[key];
-      if (val === '') {
-        delete obj[key];
-      } else if (Array.isArray(val)) {
-        if (val.length === 0) {
-          delete obj[key];
-        } else {
-          val.forEach(clean);
-        }
-      } else if (val !== null && typeof val === 'object') {
-        // typeof null === 'object', and the emptiness check below would call
-        // Object.keys(null). A null is left where it is.
-        clean(val);
-        if (Object.keys(val).length === 0) {
-          delete obj[key];
-        }
-      }
-    });
-  };
-  clean(draft);
-});
