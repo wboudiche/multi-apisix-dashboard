@@ -118,7 +118,15 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
   const [savedDraft] = useState<Partial<RoutePostType> | undefined>(() => {
     try {
       const saved = localStorage.getItem(draftKey);
-      return saved ? (JSON.parse(saved) as Partial<RoutePostType>) : undefined;
+      if (!saved) return undefined;
+      const draft = JSON.parse(saved) as Partial<RoutePostType>;
+      // A draft on a service's page is for that service. One saved there while
+      // another upstream mode could still clear service_id (#231) would create
+      // the route outside the service.
+      if (defaultValues?.service_id && draft.service_id !== defaultValues.service_id) {
+        return undefined;
+      }
+      return draft;
     } catch {
       return undefined;
     }
