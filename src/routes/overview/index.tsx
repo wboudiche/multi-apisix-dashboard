@@ -36,7 +36,8 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import IconActivity from '~icons/material-symbols/activity-zone-outline';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
@@ -70,10 +71,11 @@ type OverviewData = {
 };
 
 const Overview = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchOverview = async (forceRefresh = false) => {
+  const fetchOverview = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('auth:access_token');
@@ -85,21 +87,24 @@ const Overview = () => {
       }
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to load dashboard overview',
+        title: t('overview.loadFailedTitle'),
+        message: t('overview.loadFailed'),
         color: 'red',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
+    // A fetch on mount, then every 30s. The setState this rule flags is that
+    // request's own loading flag, raised as it starts — not state derived from
+    // other state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOverview(true);
-    // Poll every 30s
     const timer = setInterval(() => fetchOverview(true), 30000);
     return () => clearInterval(timer);
-  }, []);
+  }, [fetchOverview]);
 
   if (loading && !data) {
     return (
@@ -116,9 +121,9 @@ const Overview = () => {
       <Box className="PageTitle-root" mb="xl">
         <Group justify="space-between">
           <Box>
-            <Title order={1}>Dashboard Overview</Title>
+            <Title order={1}>{t('overview.title')}</Title>
             <Text c="dimmed" mt={4}>
-              System health and resource utilization summary
+              {t('overview.subtitle')}
             </Text>
           </Box>
           <Button 
@@ -127,7 +132,7 @@ const Overview = () => {
             onClick={() => fetchOverview(true)}
             loading={loading}
           >
-            Refresh Data
+            {t('overview.refresh')}
           </Button>
         </Group>
       </Box>
@@ -137,7 +142,7 @@ const Overview = () => {
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Paper className="Card-root" p="xl" h="100%">
             <Group justify="space-between" mb="md">
-              <Text fw={600} size="lg">Gateway Health</Text>
+              <Text fw={600} size="lg">{t('overview.gatewayHealth')}</Text>
               <ThemeIcon variant="light" color="apisix-red" size="lg" radius="md">
                 <IconActivity width="20" height="20" />
               </ThemeIcon>
@@ -152,22 +157,22 @@ const Overview = () => {
                   <Center>
                     <Stack gap={0} align="center">
                       <Text fw={700} size="xl">{data?.active_instances}/{data?.total_instances}</Text>
-                      <Text size="xs" c="dimmed">Online</Text>
+                      <Text size="xs" c="dimmed">{t('overview.online')}</Text>
                     </Stack>
                   </Center>
                 }
                 sections={[
-                  { value: activePercent, color: 'green', tooltip: 'Healthy Gateways' },
-                  { value: 100 - activePercent, color: 'red', tooltip: 'Disconnected Gateways' },
+                  { value: activePercent, color: 'green', tooltip: t('overview.healthyGateways') },
+                  { value: 100 - activePercent, color: 'red', tooltip: t('overview.disconnectedGateways') },
                 ]}
               />
             </Center>
             
             <Stack gap="xs" mt="lg">
               <Group justify="space-between">
-                <Text size="sm" c="dimmed">Operational Status</Text>
+                <Text size="sm" c="dimmed">{t('overview.operationalStatus')}</Text>
                 <Badge color={activePercent === 100 ? 'green' : 'orange'} variant="light">
-                  {activePercent === 100 ? 'All Clear' : 'Issues Detected'}
+                  {activePercent === 100 ? t('overview.allClear') : t('overview.issuesDetected')}
                 </Badge>
               </Group>
             </Stack>
@@ -179,8 +184,8 @@ const Overview = () => {
           <Paper className="Card-root" p="xl" h="100%">
             <Group justify="space-between" mb="xl">
               <Box>
-                <Text fw={600} size="lg">Global Resource Matrix</Text>
-                <Text size="xs" c="dimmed">Consolidated resources across all accessible instances</Text>
+                <Text fw={600} size="lg">{t('overview.resourceMatrix')}</Text>
+                <Text size="xs" c="dimmed">{t('overview.resourceMatrixDesc')}</Text>
               </Box>
               <ThemeIcon variant="light" color="blue" size="lg" radius="md">
                 <IconServer width="20" height="20" />
@@ -191,21 +196,21 @@ const Overview = () => {
               <Box>
                 <Group gap="xs" mb="xs">
                   <IconRoute width="18" height="18" color="var(--brand)" />
-                  <Text size="sm" fw={500} c="dimmed">Total Routes</Text>
+                  <Text size="sm" fw={500} c="dimmed">{t('overview.totalRoutes')}</Text>
                 </Group>
                 <Title order={2}>{data?.global_stats.routes}</Title>
               </Box>
               <Box>
                 <Group gap="xs" mb="xs">
                   <IconService width="18" height="18" color="var(--brand)" />
-                  <Text size="sm" fw={500} c="dimmed">Total Services</Text>
+                  <Text size="sm" fw={500} c="dimmed">{t('overview.totalServices')}</Text>
                 </Group>
                 <Title order={2}>{data?.global_stats.services}</Title>
               </Box>
               <Box>
                 <Group gap="xs" mb="xs">
                   <IconUpstream width="18" height="18" color="var(--brand)" />
-                  <Text size="sm" fw={500} c="dimmed">Total Upstreams</Text>
+                  <Text size="sm" fw={500} c="dimmed">{t('overview.totalUpstreams')}</Text>
                 </Group>
                 <Title order={2}>{data?.global_stats.upstreams}</Title>
               </Box>
@@ -213,8 +218,8 @@ const Overview = () => {
 
             <Paper withBorder p="md" mt="xl" bg="var(--surface-1)" radius="md">
               <Group justify="space-between">
-                <Text size="sm" fw={500}>System Configuration</Text>
-                <Text size="xs" c="dimmed">All data persistent in etcd cluster</Text>
+                <Text size="sm" fw={500}>{t('overview.systemConfig')}</Text>
+                <Text size="xs" c="dimmed">{t('overview.systemConfigDesc')}</Text>
               </Group>
             </Paper>
           </Paper>
@@ -223,14 +228,14 @@ const Overview = () => {
         {/* Detailed Instance Health List */}
         <Grid.Col span={12}>
           <Paper className="Card-root" p="xl">
-            <Title order={3} mb="lg">Instance Connectivity</Title>
+            <Title order={3} mb="lg">{t('overview.connectivity')}</Title>
             <Table horizontalSpacing="md" verticalSpacing="sm">
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Gateway Instance</Table.Th>
-                  <Table.Th>Connectivity</Table.Th>
-                  <Table.Th>Last Check</Table.Th>
-                  <Table.Th style={{ textAlign: 'right' }}>Diagnostic</Table.Th>
+                  <Table.Th>{t('overview.columnInstance')}</Table.Th>
+                  <Table.Th>{t('overview.columnConnectivity')}</Table.Th>
+                  <Table.Th>{t('overview.columnLastCheck')}</Table.Th>
+                  <Table.Th style={{ textAlign: 'right' }}>{t('overview.columnDiagnostic')}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -259,10 +264,10 @@ const Overview = () => {
                     <Table.Td style={{ textAlign: 'right' }}>
                       {inst.error ? (
                         <Tooltip label={inst.error}>
-                          <Badge color="red" variant="dot" size="sm">Log Error</Badge>
+                          <Badge color="red" variant="dot" size="sm">{t('overview.logError')}</Badge>
                         </Tooltip>
                       ) : (
-                        <Badge color="green" variant="dot" size="sm">Stable</Badge>
+                        <Badge color="green" variant="dot" size="sm">{t('overview.stable')}</Badge>
                       )}
                     </Table.Td>
                   </Table.Tr>

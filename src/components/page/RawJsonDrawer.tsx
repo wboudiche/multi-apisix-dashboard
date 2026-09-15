@@ -16,7 +16,7 @@
  */
 import { Alert, Button, CopyButton, Drawer, Group, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { monaco, setupMonacoEditor } from '@/utils/monaco';
@@ -48,13 +48,18 @@ export const RawJsonDrawer = ({ opened, onClose, title, json, onSave, loading }:
     return JSON.stringify(json, null, 2);
   }, [json]);
 
-  useEffect(() => {
+  // Load the resource into the editor when the drawer opens, and again if the
+  // resource changes while it is open: while rendering, compared with what it
+  // last saw, rather than in an effect.
+  const [lastSeen, setLastSeen] = useState({ opened: false, formatted: '' });
+  if (lastSeen.opened !== opened || lastSeen.formatted !== formatted) {
+    setLastSeen({ opened, formatted });
     if (opened && formatted) {
       setValue(formatted);
       setError(null);
       setSaveError(null);
     }
-  }, [opened, formatted]);
+  }
 
   const handleEditorChange = useCallback((val: string | undefined) => {
     const v = val || '';

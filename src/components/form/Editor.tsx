@@ -17,7 +17,7 @@
 import { InputWrapper, type InputWrapperProps, Skeleton } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { clsx } from 'clsx';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   type FieldValues,
   useController,
@@ -73,7 +73,6 @@ export const FormItemEditor = <T extends FieldValues>(
     fieldState,
   } = useController<T>(enhancedControllerProps);
 
-  const [internalLoading, setLoading] = useState(false);
   const lineHeight = 25;
   const paddingVertical = 20;
   const minLines = 3;
@@ -86,8 +85,6 @@ export const FormItemEditor = <T extends FieldValues>(
   const editorHeight = lineCount * lineHeight + paddingVertical;
 
   useEffect(() => {
-    setLoading(true);
-
     const schemas = [];
     if (customSchema) {
       schemas.push({
@@ -102,8 +99,6 @@ export const FormItemEditor = <T extends FieldValues>(
       trailingCommas: 'error',
       enableSchemaRequest: false,
     });
-
-    setLoading(false);
   }, [customSchema]);
 
   const options = useMemo<monaco.editor.IStandaloneEditorConstructionOptions>(() => ({
@@ -137,7 +132,7 @@ export const FormItemEditor = <T extends FieldValues>(
       {...wrapperProps}
     >
       <input name={restField.name} type="hidden" />
-      {(isLoading || internalLoading) && (
+      {isLoading && (
         <Skeleton
           style={{
             position: 'absolute',

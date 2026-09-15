@@ -71,6 +71,9 @@ const TeamsPage = () => {
   }, [t]);
 
   useEffect(() => {
+    // A fetch on mount. The setState this rule flags is that request's own
+    // loading flag, raised as it starts — not state derived from other state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTeams();
   }, [loadTeams]);
 

@@ -33,7 +33,7 @@ import {
   Textarea,
   TextInput,
 } from '@mantine/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type RouteTestResponse, testRoute } from '@/apis/route-test';
@@ -94,29 +94,38 @@ export const RouteTestDrawer = ({
   const [activeTab, setActiveTab] = useState<string | null>('headers');
   const [responseTab, setResponseTab] = useState<string | null>('body');
 
-  useEffect(() => {
-    if (!opened) return;
-    setPath(defaultPath);
-    setMethod(defaultMethod);
-    setResponse(null);
-    setError(null);
-    // The drawer stays mounted between opens, so headers are rebuilt for the
-    // route it was (re)opened on — otherwise a previous route's Host/SOAPAction
-    // (and a content type ratcheted to text/xml) would leak into the next test.
-    // A per-operation SOAP route is matched purely on SOAPAction, so seed that
-    // header (the routing discriminator) plus SOAP 1.1's text/xml content type.
-    const seeded: HeaderRow[] = [
-      {
-        key: 'Content-Type',
-        value: defaultSoapAction ? 'text/xml' : 'application/json',
-      },
-    ];
-    if (defaultHost) seeded.push({ key: 'Host', value: defaultHost });
-    if (defaultSoapAction) {
-      seeded.push({ key: 'SOAPAction', value: defaultSoapAction });
+  // Reset for the route the drawer is (re)opened on, and again if that route's
+  // defaults change while it is open: while rendering, compared with the
+  // defaults it last reset for, rather than in an effect.
+  const openedFor = opened
+    ? JSON.stringify([defaultPath, defaultMethod, defaultHost ?? null, defaultSoapAction ?? null])
+    : null;
+  const [lastOpenedFor, setLastOpenedFor] = useState<string | null>(null);
+  if (openedFor !== lastOpenedFor) {
+    setLastOpenedFor(openedFor);
+    if (openedFor !== null) {
+      setPath(defaultPath);
+      setMethod(defaultMethod);
+      setResponse(null);
+      setError(null);
+      // The drawer stays mounted between opens, so headers are rebuilt for the
+      // route it was (re)opened on — otherwise a previous route's Host/SOAPAction
+      // (and a content type ratcheted to text/xml) would leak into the next test.
+      // A per-operation SOAP route is matched purely on SOAPAction, so seed that
+      // header (the routing discriminator) plus SOAP 1.1's text/xml content type.
+      const seeded: HeaderRow[] = [
+        {
+          key: 'Content-Type',
+          value: defaultSoapAction ? 'text/xml' : 'application/json',
+        },
+      ];
+      if (defaultHost) seeded.push({ key: 'Host', value: defaultHost });
+      if (defaultSoapAction) {
+        seeded.push({ key: 'SOAPAction', value: defaultSoapAction });
+      }
+      setHeaders(seeded);
     }
-    setHeaders(seeded);
-  }, [opened, defaultPath, defaultMethod, defaultHost, defaultSoapAction]);
+  }
 
   const handleSend = useCallback(async () => {
     setLoading(true);

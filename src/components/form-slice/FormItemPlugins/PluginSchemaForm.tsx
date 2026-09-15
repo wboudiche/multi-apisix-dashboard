@@ -26,7 +26,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import IconAdd from '~icons/material-symbols/add';
 import IconDelete from '~icons/material-symbols/delete-outline';
@@ -345,10 +345,13 @@ export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
   const { schema, value: externalValue, onChange, disabled } = props;
   const [localValue, setLocalValue] = useState<Record<string, unknown>>(externalValue);
 
-  // Sync from external
-  useEffect(() => {
+  // Follow the value handed in whenever it changes, while rendering rather
+  // than in an effect.
+  const [lastExternal, setLastExternal] = useState(externalValue);
+  if (externalValue !== lastExternal) {
+    setLastExternal(externalValue);
     setLocalValue(externalValue);
-  }, [externalValue]);
+  }
 
   const handleFieldChange = useCallback(
     (fieldName: string, fieldValue: unknown) => {

@@ -89,7 +89,7 @@ type SchemaObj = {
   >;
 };
 
-const hasFormableProperties = (schema: SchemaObj | undefined): boolean => {
+const hasFormableProperties = (schema: SchemaObj | undefined): schema is SchemaObj => {
   if (!schema?.properties) return false;
   return Object.keys(schema.properties).some((k) => k !== '_meta');
 };
@@ -187,17 +187,29 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     defaultValues: { config: getDefaultConfig(name, config) },
   });
 
-  // Reset state when plugin changes
-  useEffect(() => {
-    methods.setValue('config', getDefaultConfig(name, config));
+  // Reset when the drawer is handed another plugin. Its own state follows
+  // while rendering, compared with the plugin it last reset for; the JSON
+  // field lives in react-hook-form, outside React state, and is still set from
+  // an effect.
+  const [lastPlugin, setLastPlugin] = useState({ name, config, canShowForm });
+  if (
+    lastPlugin.name !== name ||
+    lastPlugin.config !== config ||
+    lastPlugin.canShowForm !== canShowForm
+  ) {
+    setLastPlugin({ name, config, canShowForm });
     setFormValue(getDefaultConfigObj(name, config));
     setEditorMode(canShowForm ? 'form' : 'json');
+  }
+
+  useEffect(() => {
+    methods.setValue('config', getDefaultConfig(name, config));
   }, [config, name, methods, canShowForm]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     onClose();
     methods.reset();
-  };
+  }, [onClose, methods]);
 
   // Sync form → JSON when switching to JSON mode
   const handleModeChange = useCallback(
@@ -285,7 +297,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
         <>
           <ScrollArea.Autosize mah="65vh" type="scroll">
             <PluginSchemaForm
-              schema={schemaObj as any}
+              schema={schemaObj}
               value={formValue}
               onChange={setFormValue}
               disabled={mode === 'view'}

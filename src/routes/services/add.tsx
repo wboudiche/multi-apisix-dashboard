@@ -19,7 +19,7 @@ import { Button, Group } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -91,17 +91,21 @@ const ServiceAddForm = () => {
   const router = useRouter();
   const draftNotifiedRef = useRef(false);
 
-  const savedDraft = useRef<Partial<ServicePostType> | undefined>(undefined);
-  if (!savedDraft.current) {
+  // Read once at mount, as on the route add page: a ref read while rendering
+  // is what react-hooks/refs objects to, and discarding the draft has to
+  // re-render to take the Discard Draft button away.
+  const [savedDraft, setSavedDraft] = useState<Partial<ServicePostType> | undefined>(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) savedDraft.current = JSON.parse(saved);
-    } catch { /* ignore */ }
-  }
+      return saved ? (JSON.parse(saved) as Partial<ServicePostType>) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
 
   const form = useForm({
     resolver: zodResolver(ServicePostSchema),
-    defaultValues: savedDraft.current || defaultValues,
+    defaultValues: savedDraft || defaultValues,
     shouldUnregister: false,
     shouldFocusError: true,
     mode: 'onTouched',
@@ -129,7 +133,7 @@ const ServiceAddForm = () => {
   });
 
   useEffect(() => {
-    if (savedDraft.current && !draftNotifiedRef.current) {
+    if (savedDraft && !draftNotifiedRef.current) {
       draftNotifiedRef.current = true;
       notifications.show({
         message: t('form.draft.restored'),
@@ -137,7 +141,7 @@ const ServiceAddForm = () => {
         autoClose: 5000,
       });
     }
-  }, [t]);
+  }, [t, savedDraft]);
 
   const steps = [
     {
@@ -192,7 +196,7 @@ const ServiceAddForm = () => {
 
   return (
     <FormProvider {...form}>
-      {savedDraft.current && (
+      {savedDraft && (
         <Group justify="flex-end" mb="xs">
           <Button
             variant="subtle"
@@ -201,7 +205,7 @@ const ServiceAddForm = () => {
             onClick={() => {
               clearDraft();
               form.reset(defaultValues);
-              savedDraft.current = undefined;
+              setSavedDraft(undefined);
             }}
           >
             {t('form.draft.discard')}

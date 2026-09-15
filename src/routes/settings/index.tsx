@@ -19,7 +19,7 @@ import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type PasswordPolicy, policyApi } from '@/apis/policy';
@@ -32,9 +32,13 @@ const Settings = () => {
   const { data } = useQuery({ queryKey: ['password-policy'], queryFn: policyApi.get });
   const [form, setForm] = useState<PasswordPolicy | null>(null);
 
-  useEffect(() => {
+  // Take each policy the query answers with — the first load, and the refetch
+  // after a save — while rendering rather than in an effect.
+  const [lastData, setLastData] = useState<PasswordPolicy | undefined>(undefined);
+  if (data !== lastData) {
+    setLastData(data);
     if (data) setForm(data);
-  }, [data]);
+  }
 
   const mutation = useMutation({
     mutationFn: policyApi.update,
