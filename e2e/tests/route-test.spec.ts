@@ -160,8 +160,7 @@ test.describe('Route Test Drawer', () => {
     // Remove the last header
     await drawer.locator('.mantine-ActionIcon-root').last().click();
 
-    const finalRemoveBtns = await drawer.locator('.mantine-ActionIcon-root').count();
-    expect(finalRemoveBtns).toBe(afterRemoveBtns - 1);
+    await expect(drawer.locator('.mantine-ActionIcon-root')).toHaveCount(afterRemoveBtns - 1);
 
     await page.screenshot({ path: '/tmp/route-test-headers.png', fullPage: true });
   });

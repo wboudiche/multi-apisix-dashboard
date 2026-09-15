@@ -213,11 +213,6 @@ export const instanceApi = {
     return response.data;
   },
 
-  // Remove user role from instance
-  removeUserRole: async (userId: string, instanceId: string): Promise<void> => {
-    await apiClient.delete(`/api/v1/users/${userId}/instances/${instanceId}/role`);
-  },
-
   // Get user's instances
   getUserInstances: async (userId: string): Promise<UserInstanceRole[]> => {
     const response = await apiClient.get<UserInstanceRole[]>(`/api/v1/user-access/${userId}/instances`);

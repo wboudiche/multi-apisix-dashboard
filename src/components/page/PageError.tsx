@@ -17,6 +17,7 @@
 import { Box, Button, Code, Group, Paper, Stack, Text, Title } from '@mantine/core';
 import { useNavigate } from '@tanstack/react-router';
 import { type FC } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import IconHome from '~icons/material-symbols/home';
 import IconRefresh from '~icons/material-symbols/refresh';
@@ -40,6 +41,7 @@ export const PageError: FC<PageErrorProps> = ({
     onRetry,
 }) => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const errorMessage = error instanceof Error
         ? error.message
@@ -133,7 +135,7 @@ export const PageError: FC<PageErrorProps> = ({
                                 leftSection={<IconRefresh width="16" height="16" />}
                                 onClick={onRetry || (() => window.location.reload())}
                             >
-                                Retry
+                                {t('pageError.retry')}
                             </Button>
                         )}
                         {showHome && (
@@ -144,7 +146,7 @@ export const PageError: FC<PageErrorProps> = ({
                                 onClick={() => navigate({ to: '/' })}
                                 className="Button-secondary"
                             >
-                                Go Home
+                                {t('pageError.goHome')}
                             </Button>
                         )}
                     </Group>

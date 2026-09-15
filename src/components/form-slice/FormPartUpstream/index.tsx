@@ -312,13 +312,20 @@ export const FormSectionConnection = ({ simplified }: { simplified?: boolean }) 
   );
 };
 
+const BALANCER_LABELS: Record<(typeof APISIX.UpstreamBalancer.options)[number]['value'], string> = {
+  roundrobin: 'Round Robin',
+  chash: 'CHash',
+  ewma: 'EWMA',
+  least_conn: 'Least Conn',
+};
+
 export const FormPartUpstreamFlat = () => {
   const { t } = useTranslation();
   const { control } = useFormContext<FormPartUpstreamType>();
   const np = useNamePrefix();
 
-  const loadBalancingType = useWatch({ control, name: np('type'), defaultValue: (APISIX.UpstreamBalancer.options[0] as any).value });
-  const passHost = useWatch({ control, name: np('pass_host'), defaultValue: (APISIX.UpstreamPassHost.options[0] as any).value });
+  const loadBalancingType = useWatch({ control, name: np('type'), defaultValue: APISIX.UpstreamBalancer.options[0].value });
+  const passHost = useWatch({ control, name: np('pass_host'), defaultValue: APISIX.UpstreamPassHost.options[0].value });
 
   return (
     <Stack gap="md">
@@ -328,8 +335,8 @@ export const FormPartUpstreamFlat = () => {
         label={t('form.upstreams.type')}
         description={t('form.upstreams.typeDesc')}
         withAsterisk
-        defaultValue={(APISIX.UpstreamBalancer.options[0] as any).value}
-        data={(APISIX.UpstreamBalancer.options as any[]).map((v) => ({ value: v.value, label: v.value === 'roundrobin' ? 'Round Robin' : v.value === 'chash' ? 'CHash' : v.value === 'ewma' ? 'EWMA' : v.value === 'least_conn' ? 'Least Conn' : v.value }))}
+        defaultValue={APISIX.UpstreamBalancer.options[0].value}
+        data={APISIX.UpstreamBalancer.options.map((v) => ({ value: v.value, label: BALANCER_LABELS[v.value] }))}
       />
 
       {loadBalancingType === 'chash' && (
@@ -338,8 +345,8 @@ export const FormPartUpstreamFlat = () => {
             control={control}
             name={np('hash_on')}
             label={t('form.upstreams.hashOn')}
-            defaultValue={(APISIX.UpstreamHashOn.options[0] as any).value}
-            data={(APISIX.UpstreamHashOn.options as any[]).map((v) => v.value)}
+            defaultValue={APISIX.UpstreamHashOn.options[0].value}
+            data={APISIX.UpstreamHashOn.options.map((v) => v.value)}
             description={t('form.upstreams.hashOnDesc')}
           />
           <FormItemTextInput
@@ -359,8 +366,8 @@ export const FormPartUpstreamFlat = () => {
         name={np('pass_host')}
         label={t('form.upstreams.passHost')}
         description={t('form.upstreams.passHostDesc')}
-        defaultValue={(APISIX.UpstreamPassHost.options[0] as any).value}
-        data={(APISIX.UpstreamPassHost.options as any[]).map((v) => ({
+        defaultValue={APISIX.UpstreamPassHost.options[0].value}
+        data={APISIX.UpstreamPassHost.options.map((v) => ({
           value: v.value,
           label: v.value === 'pass' ? 'Keep the same Host from client request' : v.value === 'node' ? 'Use the IP or hostname of the node' : 'Rewrite Host'
         }))}

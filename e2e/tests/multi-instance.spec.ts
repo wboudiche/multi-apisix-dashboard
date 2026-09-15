@@ -205,7 +205,7 @@ test.describe('Multi-Instance', () => {
     });
     expect(res.status).toBe(200);
     const instances = await res.json();
-    expect(instances.length).toBe(1);
+    expect(instances).toHaveLength(1);
     expect(instances[0].name).toBe('Local APISIX');
   });
 

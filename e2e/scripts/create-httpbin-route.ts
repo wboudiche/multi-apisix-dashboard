@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { chromium, expect } from '@playwright/test';
+import { chromium, expect, type Locator, type Page } from '@playwright/test';
 
 const BASE_URL = 'http://localhost:5173/ui';
 
-async function fillEditor(page: any, dialog: any, value: string) {
+async function fillEditor(page: Page, dialog: Locator, value: string) {
   await dialog.getByTestId('editor-loading')
     .waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
   const editor = dialog.locator('.monaco-editor').first();
