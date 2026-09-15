@@ -83,7 +83,7 @@ func main() {
 	}
 
 	// Setup router
-	router := setupRouter(authService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler)
+	router := setupRouter(authService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, cfg.Server.UIDir)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -97,7 +97,7 @@ func main() {
 	}
 }
 
-func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler) *gin.Engine {
+func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, uiDir string) *gin.Engine {
 	router := gin.Default()
 
 	// CORS
@@ -122,6 +122,13 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "premium_dashboard_ready"})
 	})
+
+	// Built frontend, only when the deployment ships one (the docker image
+	// sets UI_DIR=/app/ui). Registered as NoRoute so every API route wins.
+	if uiDir != "" {
+		log.Printf("Serving UI from %s under %s", uiDir, "/ui")
+		router.NoRoute(handlers.NewSPAHandler(uiDir))
+	}
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
