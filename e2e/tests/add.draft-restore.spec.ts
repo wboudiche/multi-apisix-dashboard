@@ -14,8 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { deleteRoutesByNamePrefix, deleteServicesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
+import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiAddRouteNode, uiRouteWizardNext, uiRouteWizardSubmit } from '@e2e/utils/ui/routes';
+import { uiAddServiceNode } from '@e2e/utils/ui/services';
 import { expect, type Page } from '@playwright/test';
 
 /**
@@ -42,29 +46,127 @@ for (const kind of KINDS) {
     page,
   }) => {
     const name = randomId(`e2e_draft_${kind.name}`);
+    const description = `${name} description`;
     await page.goto(kind.path);
     await dropDraft(page, kind.key);
     await page.reload();
 
     try {
       const nameInput = page.locator('input[name="name"]');
+      const descInput = page.locator('textarea[name="desc"]');
       await nameInput.fill(name);
+      await descInput.fill(description);
       // Written after the auto-save's 1.5 s debounce.
-      await expect.poll(() => storedDraft(page, kind.key), { timeout: 10000 }).toContain(name);
+      await expect
+        .poll(() => storedDraft(page, kind.key), { timeout: 10000 })
+        .toContain(description);
 
       // The dirty form asks before the page goes; accept, as a reload would.
       page.on('dialog', (dialog) => dialog.accept());
       await page.reload();
 
       await expect(nameInput).toHaveValue(name);
+      await expect(descInput).toHaveValue(description);
       const discard = page.getByRole('button', { name: 'Discard Draft' });
       await expect(discard).toBeVisible();
 
       await discard.click();
       await expect(discard).toBeHidden();
       await expect.poll(() => storedDraft(page, kind.key)).toBeNull();
+      // Back to the page's own defaults: nothing of the draft is left showing (#224).
+      await expect(nameInput).toHaveValue('');
+      await expect(descInput).toHaveValue('');
     } finally {
       await dropDraft(page, kind.key);
     }
   });
 }
+
+/** Holds `method` requests to a path ending in `path` until released. */
+const holdRequests = async (page: Page, path: string, method: string) => {
+  let release = () => {};
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(
+    (url) => url.pathname.endsWith(path),
+    async (route) => {
+      if (route.request().method() === method) await released;
+      await route.continue();
+    }
+  );
+  return () => release();
+};
+
+// Discard Draft remounts the form, which would drop a submit still in flight:
+// the wizard's Submit back on for a second POST, and the answer landing on a
+// form that is gone. So it is off while the draft is being submitted.
+test('service: Discard Draft is off while the draft is being submitted', async ({ page }) => {
+  const key = 'apisix-service-draft';
+  const name = randomId('e2e_draft_submit');
+  await page.goto('/ui/services/add');
+  await dropDraft(page, key);
+  await page.reload();
+  let release = () => {};
+
+  try {
+    await page.locator('input[name="name"]').fill(name);
+    await expect.poll(() => storedDraft(page, key), { timeout: 10000 }).toContain(name);
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.reload();
+    const discard = page.getByRole('button', { name: 'Discard Draft' });
+    await expect(discard).toBeEnabled();
+
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await uiAddServiceNode(page, '127.0.0.1', 80);
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+
+    release = await holdRequests(page, '/apisix/admin/services', 'POST');
+    await page.getByRole('button', { name: 'Submit', exact: true }).click();
+    await expect(discard).toBeDisabled();
+    release();
+    await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
+  } finally {
+    release();
+    await dropDraft(page, key);
+    await deleteServicesByNamePrefix('e2e_draft_submit');
+  }
+});
+
+// On the route page the POST waits for a duplicate check, a read of the whole
+// route list, and the submit is just as much in flight while it runs.
+test('route: Discard Draft is off while the duplicate check runs', async ({ page }) => {
+  const key = 'apisix-route-draft';
+  const name = randomId('e2e_draft_submit');
+  await page.goto('/ui/routes/add');
+  await dropDraft(page, key);
+  await page.reload();
+  let release = () => {};
+
+  try {
+    await page.locator('input[name="name"]').fill(name);
+    await page.locator('input[name="uri"]').fill(`/${name}`);
+    await expect.poll(() => storedDraft(page, key), { timeout: 10000 }).toContain(`/${name}`);
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.reload();
+    const discard = page.getByRole('button', { name: 'Discard Draft' });
+    await expect(discard).toBeEnabled();
+
+    await uiRouteWizardNext(page);
+    await uiAddRouteNode(page, '127.0.0.1', 80);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+
+    release = await holdRequests(page, '/apisix/admin/routes', 'GET');
+    await uiRouteWizardSubmit(page);
+    await expect(discard).toBeDisabled();
+    release();
+    await uiHasToastMsg(page, { hasText: 'Add Route Successfully' });
+  } finally {
+    release();
+    await dropDraft(page, key);
+    await deleteRoutesByNamePrefix('e2e_draft_submit');
+  }
+});

@@ -92,11 +92,14 @@ const PluginStepLabel = () => {
   );
 };
 
-export const RouteAddForm = (props: Props) => {
-  const { navigate, defaultValues } = props;
+const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
+  const { navigate, defaultValues, onDraftDiscarded } = props;
   const { t } = useTranslation();
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // From Submit until the POST settles, the duplicate check before it included:
+  // postRoute.isPending only covers the POST itself.
+  const [submitting, setSubmitting] = useState(false);
   const draftNotifiedRef = useRef(false);
 
   // [Feature 11] Draft auto-save and restore
@@ -106,7 +109,7 @@ export const RouteAddForm = (props: Props) => {
   // whether to offer "discard draft", both of which happen while rendering.
   // Reading a ref there is what react-hooks/refs objects to, and it can leave
   // the component not re-rendering when the value appears.
-  const [savedDraft, setSavedDraft] = useState<Partial<RoutePostType> | undefined>(() => {
+  const [savedDraft] = useState<Partial<RoutePostType> | undefined>(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       return saved ? (JSON.parse(saved) as Partial<RoutePostType>) : undefined;
@@ -257,10 +260,11 @@ export const RouteAddForm = (props: Props) => {
             variant="subtle"
             color="gray"
             size="compact-xs"
+            // Discarding remounts the form, which would drop a submit in flight.
+            disabled={submitting || postRoute.isPending}
             onClick={() => {
               clearDraft();
-              form.reset(defaultValues as RoutePostType);
-              setSavedDraft(undefined);
+              onDraftDiscarded();
             }}
           >
             {t('form.draft.discard')}
@@ -271,14 +275,19 @@ export const RouteAddForm = (props: Props) => {
         steps={steps}
         onComplete={form.handleSubmit(async (d) => {
           setSubmitError(null);
-          const duplicates = await checkDuplicates(d);
-          if (duplicates.length > 0) {
-            setPendingDuplicate({ data: d, duplicates });
-            return;
+          setSubmitting(true);
+          try {
+            const duplicates = await checkDuplicates(d);
+            if (duplicates.length > 0) {
+              setPendingDuplicate({ data: d, duplicates });
+              return;
+            }
+            await postRoute.mutateAsync(d);
+          } finally {
+            setSubmitting(false);
           }
-          await postRoute.mutateAsync(d);
         })}
-        loading={postRoute.isPending}
+        loading={submitting || postRoute.isPending}
         onCancel={() => nav({ to: '/routes' })}
         error={submitError}
       />
@@ -323,6 +332,18 @@ export const RouteAddForm = (props: Props) => {
         </Stack>
       </Modal>
     </FormProvider>
+  );
+};
+
+// Discard Draft remounts the form rather than resetting it. react-hook-form's
+// useController falls back to the default it took at mount, which was the
+// draft's, so after a reset every field the draft had and the page's defaults
+// lack kept showing the draft (#224). The draft is out of storage by then, so
+// the new form starts from the page's defaults.
+export const RouteAddForm = (props: Props) => {
+  const [formKey, setFormKey] = useState(0);
+  return (
+    <RouteAddFormBody key={formKey} {...props} onDraftDiscarded={() => setFormKey((k) => k + 1)} />
   );
 };
 
