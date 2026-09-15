@@ -69,9 +69,16 @@ test('a route added on a service page keeps to that service', async ({ page }) =
   // The service is the page's, and it provides the upstream.
   await expect(page.getByRole('button', { name: 'Custom Upstream' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Use Existing Upstream' })).toBeDisabled();
+  await expect(
+    page.getByText('Routes added here belong to this service, which provides their upstream')
+  ).toBeVisible();
   const service = page.getByRole('textbox', { name: 'Service', exact: true });
   await expect(service).toHaveValue(serviceName);
   await expect(service).toBeDisabled();
+  // Nor does the select offer to clear it.
+  await expect(
+    page.locator('.mantine-InputWrapper-root').filter({ has: service }).locator('button')
+  ).toHaveCount(0);
 
   // Walk to Preview (Request Override -> Plugins -> Preview) and submit.
   await uiRouteWizardNext(page);

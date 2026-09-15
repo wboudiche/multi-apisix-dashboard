@@ -277,6 +277,11 @@ export const UpstreamModeSelector = () => {
             onClick={() => setMode('service')}
           />
         </SimpleGrid>
+        {serviceFixed && (
+          <Text size="xs" c="dimmed" mt="xs">
+            {t('form.upstreamMode.serviceFixed')}
+          </Text>
+        )}
       </FormSection>
 
       {mode === 'service' && (
@@ -291,7 +296,7 @@ export const UpstreamModeSelector = () => {
               label={t('form.routes.service')}
               data={serviceOptions}
               searchable
-              clearable
+              clearable={!serviceFixed}
             />
           </fieldset>
           {serviceId && serviceId !== SERVICE_NONE && (
