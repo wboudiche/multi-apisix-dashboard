@@ -82,15 +82,14 @@ const defaultValues: any = {
   },
 };
 
-const ServiceAddForm = () => {
+const ServiceAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => void }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const draftNotifiedRef = useRef(false);
 
   // Read once at mount, as on the route add page: a ref read while rendering
-  // is what react-hooks/refs objects to, and discarding the draft has to
-  // re-render to take the Discard Draft button away.
-  const [savedDraft, setSavedDraft] = useState<Partial<ServicePostType> | undefined>(() => {
+  // is what react-hooks/refs objects to.
+  const [savedDraft] = useState<Partial<ServicePostType> | undefined>(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       return saved ? (JSON.parse(saved) as Partial<ServicePostType>) : undefined;
@@ -194,8 +193,7 @@ const ServiceAddForm = () => {
             size="compact-xs"
             onClick={() => {
               clearDraft();
-              form.reset(defaultValues);
-              setSavedDraft(undefined);
+              onDraftDiscarded();
             }}
           >
             {t('form.draft.discard')}
@@ -213,6 +211,16 @@ const ServiceAddForm = () => {
       />
     </FormProvider>
   );
+};
+
+// Discard Draft remounts the form rather than resetting it. react-hook-form's
+// useController falls back to the default it took at mount, which was the
+// draft's, so after a reset every field the draft had and the page's defaults
+// lack kept showing the draft (#224). The draft is out of storage by then, so
+// the new form starts from the page's defaults.
+const ServiceAddForm = () => {
+  const [formKey, setFormKey] = useState(0);
+  return <ServiceAddFormBody key={formKey} onDraftDiscarded={() => setFormKey((k) => k + 1)} />;
 };
 
 function RouteComponent() {

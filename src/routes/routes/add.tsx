@@ -92,8 +92,8 @@ const PluginStepLabel = () => {
   );
 };
 
-export const RouteAddForm = (props: Props) => {
-  const { navigate, defaultValues } = props;
+const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
+  const { navigate, defaultValues, onDraftDiscarded } = props;
   const { t } = useTranslation();
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -106,7 +106,7 @@ export const RouteAddForm = (props: Props) => {
   // whether to offer "discard draft", both of which happen while rendering.
   // Reading a ref there is what react-hooks/refs objects to, and it can leave
   // the component not re-rendering when the value appears.
-  const [savedDraft, setSavedDraft] = useState<Partial<RoutePostType> | undefined>(() => {
+  const [savedDraft] = useState<Partial<RoutePostType> | undefined>(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       return saved ? (JSON.parse(saved) as Partial<RoutePostType>) : undefined;
@@ -259,8 +259,7 @@ export const RouteAddForm = (props: Props) => {
             size="compact-xs"
             onClick={() => {
               clearDraft();
-              form.reset(defaultValues as RoutePostType);
-              setSavedDraft(undefined);
+              onDraftDiscarded();
             }}
           >
             {t('form.draft.discard')}
@@ -323,6 +322,18 @@ export const RouteAddForm = (props: Props) => {
         </Stack>
       </Modal>
     </FormProvider>
+  );
+};
+
+// Discard Draft remounts the form rather than resetting it. react-hook-form's
+// useController falls back to the default it took at mount, which was the
+// draft's, so after a reset every field the draft had and the page's defaults
+// lack kept showing the draft (#224). The draft is out of storage by then, so
+// the new form starts from the page's defaults.
+export const RouteAddForm = (props: Props) => {
+  const [formKey, setFormKey] = useState(0);
+  return (
+    <RouteAddFormBody key={formKey} {...props} onDraftDiscarded={() => setFormKey((k) => k + 1)} />
   );
 };
 

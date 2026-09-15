@@ -42,27 +42,36 @@ for (const kind of KINDS) {
     page,
   }) => {
     const name = randomId(`e2e_draft_${kind.name}`);
+    const description = `${name} description`;
     await page.goto(kind.path);
     await dropDraft(page, kind.key);
     await page.reload();
 
     try {
       const nameInput = page.locator('input[name="name"]');
+      const descInput = page.locator('textarea[name="desc"]');
       await nameInput.fill(name);
+      await descInput.fill(description);
       // Written after the auto-save's 1.5 s debounce.
-      await expect.poll(() => storedDraft(page, kind.key), { timeout: 10000 }).toContain(name);
+      await expect
+        .poll(() => storedDraft(page, kind.key), { timeout: 10000 })
+        .toContain(description);
 
       // The dirty form asks before the page goes; accept, as a reload would.
       page.on('dialog', (dialog) => dialog.accept());
       await page.reload();
 
       await expect(nameInput).toHaveValue(name);
+      await expect(descInput).toHaveValue(description);
       const discard = page.getByRole('button', { name: 'Discard Draft' });
       await expect(discard).toBeVisible();
 
       await discard.click();
       await expect(discard).toBeHidden();
       await expect.poll(() => storedDraft(page, kind.key)).toBeNull();
+      // Back to the page's own defaults: nothing of the draft is left showing (#224).
+      await expect(nameInput).toHaveValue('');
+      await expect(descInput).toHaveValue('');
     } finally {
       await dropDraft(page, kind.key);
     }
