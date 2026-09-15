@@ -67,8 +67,9 @@ export const produceCleanEmpty = produce((draft) => {
         } else {
           val.forEach(clean);
         }
-      // typeof null === 'object'; a null is left to the deep clean that runs after.
       } else if (val !== null && typeof val === 'object') {
+        // typeof null === 'object', and the emptiness check below would call
+        // Object.keys(null). A null is left where it is.
         clean(val);
         if (Object.keys(val).length === 0) {
           delete obj[key];

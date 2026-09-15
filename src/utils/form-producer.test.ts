@@ -30,8 +30,9 @@ describe('produceCleanEmpty', () => {
     ).toEqual({ name: 's' });
   });
 
-  // typeof null === 'object', so an unguarded recursion walks into
-  // Object.keys(null) and throws, and the service add form runs this on submit.
+  // typeof null === 'object', so without a guard the emptiness check after the
+  // recursion calls Object.keys(null) and throws; the service add form runs
+  // this on submit.
   it('does not throw on a null, top-level or nested', () => {
     expect(cleanEmpty({ name: 's', desc: null, upstream: { key: null } })).toEqual(
       { name: 's', desc: null, upstream: { key: null } }
@@ -39,7 +40,7 @@ describe('produceCleanEmpty', () => {
   });
 
   it('lets the service add pipeline drop the null instead of throwing', () => {
-    // The same pipeline the service add page sends its values through.
+    // The service add page's pipeline, without its upstream_id step.
     const produceService = pipeProduce(produceCleanEmpty) as (value: Body) => Body;
 
     expect(produceService({ name: 's', desc: null })).toEqual({ name: 's' });
