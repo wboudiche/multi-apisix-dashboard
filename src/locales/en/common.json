@@ -465,6 +465,7 @@
       "customDesc": "Define upstream nodes and settings inline",
       "required": "Select an upstream, bind a service, or configure a custom upstream with at least one node",
       "serviceProvides": "Upstream configuration is provided by this service",
+      "serviceFixed": "Routes added here belong to this service, which provides their upstream",
       "nodesCount": "{{count}} node(s)",
       "pluginsCount": "{{count}} plugin(s)",
       "scheme": "Scheme"

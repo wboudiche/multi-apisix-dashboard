@@ -34,6 +34,7 @@ import {
   getUpstreamListQueryOptions,
 } from '@/apis/hooks';
 import { FormItemSelect } from '@/components/form/Select';
+import { useFormReadOnlyFields } from '@/utils/form-context';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 import IconCloud from '~icons/material-symbols/cloud-outline';
 import IconDns from '~icons/material-symbols/dns-outline';
@@ -52,15 +53,17 @@ const ModeCard = ({
   title,
   description,
   active,
+  disabled,
   onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   active: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }) => (
-  <UnstyledButton onClick={onClick} style={{ flex: 1 }}>
+  <UnstyledButton onClick={onClick} disabled={disabled} style={{ flex: 1 }}>
     <Card
       padding="md"
       radius="md"
@@ -69,7 +72,8 @@ const ModeCard = ({
         borderColor: active ? 'var(--mantine-color-blue-6)' : undefined,
         borderWidth: active ? 2 : 1,
         background: active ? 'var(--mantine-color-blue-0)' : undefined,
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : undefined,
         transition: 'all 150ms ease',
       }}
     >
@@ -186,6 +190,10 @@ export const UpstreamModeSelector = () => {
   const serviceId = useWatch({ control, name: 'service_id' });
   const upstreamId = useWatch({ control, name: 'upstream_id' });
   const upstreamIdError = errors.upstream_id?.message;
+  // On a service's route add page the route is for that service, and a bound
+  // service provides the upstream, as the route edit form has it. Another mode
+  // would clear service_id and create the route outside the service (#231).
+  const serviceFixed = useFormReadOnlyFields().includes('service_id');
 
   const [mode, setModeState] = useState<UpstreamMode>(() => {
     if (serviceId && serviceId !== SERVICE_NONE) return 'service';
@@ -250,6 +258,7 @@ export const UpstreamModeSelector = () => {
             title={t('form.upstreamMode.custom')}
             description={t('form.upstreamMode.customDesc')}
             active={mode === 'custom'}
+            disabled={serviceFixed}
             onClick={() => setMode('custom')}
           />
           <ModeCard
@@ -257,6 +266,7 @@ export const UpstreamModeSelector = () => {
             title={t('form.upstreamMode.existing')}
             description={t('form.upstreamMode.existingDesc')}
             active={mode === 'existing'}
+            disabled={serviceFixed}
             onClick={() => setMode('existing')}
           />
           <ModeCard
@@ -267,18 +277,28 @@ export const UpstreamModeSelector = () => {
             onClick={() => setMode('service')}
           />
         </SimpleGrid>
+        {serviceFixed && (
+          <Text size="xs" c="dimmed" mt="xs">
+            {t('form.upstreamMode.serviceFixed')}
+          </Text>
+        )}
       </FormSection>
 
       {mode === 'service' && (
         <FormSection legend={t('form.routes.service')}>
-          <FormItemSelect
-            control={control}
-            name="service_id"
-            label={t('form.routes.service')}
-            data={serviceOptions}
-            searchable
-            clearable
-          />
+          {/* A native fieldset, as FormSectionGeneral has: the select's own
+              disabled reaches its controller, which then leaves service_id
+              out of the submitted values. */}
+          <fieldset disabled={serviceFixed} style={{ border: 'none', padding: 0, margin: 0 }}>
+            <FormItemSelect
+              control={control}
+              name="service_id"
+              label={t('form.routes.service')}
+              data={serviceOptions}
+              searchable
+              clearable={!serviceFixed}
+            />
+          </fieldset>
           {serviceId && serviceId !== SERVICE_NONE && (
             <ServiceSummary serviceId={serviceId} />
           )}
