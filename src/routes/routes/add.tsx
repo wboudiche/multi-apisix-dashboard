@@ -97,6 +97,9 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
   const { t } = useTranslation();
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // From Submit until the POST settles, the duplicate check before it included:
+  // postRoute.isPending only covers the POST itself.
+  const [submitting, setSubmitting] = useState(false);
   const draftNotifiedRef = useRef(false);
 
   // [Feature 11] Draft auto-save and restore
@@ -258,7 +261,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
             color="gray"
             size="compact-xs"
             // Discarding remounts the form, which would drop a submit in flight.
-            disabled={postRoute.isPending}
+            disabled={submitting || postRoute.isPending}
             onClick={() => {
               clearDraft();
               onDraftDiscarded();
@@ -272,14 +275,19 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
         steps={steps}
         onComplete={form.handleSubmit(async (d) => {
           setSubmitError(null);
-          const duplicates = await checkDuplicates(d);
-          if (duplicates.length > 0) {
-            setPendingDuplicate({ data: d, duplicates });
-            return;
+          setSubmitting(true);
+          try {
+            const duplicates = await checkDuplicates(d);
+            if (duplicates.length > 0) {
+              setPendingDuplicate({ data: d, duplicates });
+              return;
+            }
+            await postRoute.mutateAsync(d);
+          } finally {
+            setSubmitting(false);
           }
-          await postRoute.mutateAsync(d);
         })}
-        loading={postRoute.isPending}
+        loading={submitting || postRoute.isPending}
         onCancel={() => nav({ to: '/routes' })}
         error={submitError}
       />

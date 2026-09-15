@@ -14,10 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { deleteServicesByNamePrefix } from '@e2e/utils/cleanup';
+import { deleteRoutesByNamePrefix, deleteServicesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiAddRouteNode, uiRouteWizardNext, uiRouteWizardSubmit } from '@e2e/utils/ui/routes';
 import { uiAddServiceNode } from '@e2e/utils/ui/services';
 import { expect, type Page } from '@playwright/test';
 
@@ -81,16 +82,19 @@ for (const kind of KINDS) {
   });
 }
 
-/** Holds the service POST until released, so the submit stays in flight. */
-const holdServicePost = async (page: Page) => {
+/** Holds `method` requests to a path ending in `path` until released. */
+const holdRequests = async (page: Page, path: string, method: string) => {
   let release = () => {};
   const released = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route('**/apisix/admin/services', async (route) => {
-    if (route.request().method() === 'POST') await released;
-    await route.continue();
-  });
+  await page.route(
+    (url) => url.pathname.endsWith(path),
+    async (route) => {
+      if (route.request().method() === method) await released;
+      await route.continue();
+    }
+  );
   return () => release();
 };
 
@@ -103,6 +107,7 @@ test('service: Discard Draft is off while the draft is being submitted', async (
   await page.goto('/ui/services/add');
   await dropDraft(page, key);
   await page.reload();
+  let release = () => {};
 
   try {
     await page.locator('input[name="name"]').fill(name);
@@ -117,13 +122,51 @@ test('service: Discard Draft is off while the draft is being submitted', async (
     await page.getByRole('button', { name: 'Next', exact: true }).click();
     await page.getByRole('button', { name: 'Next', exact: true }).click();
 
-    const release = await holdServicePost(page);
+    release = await holdRequests(page, '/apisix/admin/services', 'POST');
     await page.getByRole('button', { name: 'Submit', exact: true }).click();
     await expect(discard).toBeDisabled();
     release();
     await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
   } finally {
+    release();
     await dropDraft(page, key);
     await deleteServicesByNamePrefix('e2e_draft_submit');
+  }
+});
+
+// On the route page the POST waits for a duplicate check, a read of the whole
+// route list, and the submit is just as much in flight while it runs.
+test('route: Discard Draft is off while the duplicate check runs', async ({ page }) => {
+  const key = 'apisix-route-draft';
+  const name = randomId('e2e_draft_submit');
+  await page.goto('/ui/routes/add');
+  await dropDraft(page, key);
+  await page.reload();
+  let release = () => {};
+
+  try {
+    await page.locator('input[name="name"]').fill(name);
+    await page.locator('input[name="uri"]').fill(`/${name}`);
+    await expect.poll(() => storedDraft(page, key), { timeout: 10000 }).toContain(`/${name}`);
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.reload();
+    const discard = page.getByRole('button', { name: 'Discard Draft' });
+    await expect(discard).toBeEnabled();
+
+    await uiRouteWizardNext(page);
+    await uiAddRouteNode(page, '127.0.0.1', 80);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+    await uiRouteWizardNext(page);
+
+    release = await holdRequests(page, '/apisix/admin/routes', 'GET');
+    await uiRouteWizardSubmit(page);
+    await expect(discard).toBeDisabled();
+    release();
+    await uiHasToastMsg(page, { hasText: 'Add Route Successfully' });
+  } finally {
+    release();
+    await dropDraft(page, key);
+    await deleteRoutesByNamePrefix('e2e_draft_submit');
   }
 });
