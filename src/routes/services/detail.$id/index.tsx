@@ -44,8 +44,7 @@ import { API_SERVICES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
-import { produceRmUpstreamWhenHas } from '@/utils/form-producer';
-import { pipeProduce } from '@/utils/producer';
+import { produceServiceBody } from '@/utils/service-body';
 
 type Props = {
   readOnly: boolean;
@@ -79,7 +78,7 @@ const ServiceDetailForm = (props: Props) => {
     mutationFn: (d: APISIXType['Service']) =>
       putServiceReq(
         req,
-        pipeProduce(produceRmUpstreamWhenHas('upstream_id'))(d)
+        produceServiceBody(d)
       ),
     async onSuccess() {
       notifications.show({
