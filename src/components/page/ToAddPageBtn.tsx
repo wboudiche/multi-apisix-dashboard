@@ -72,10 +72,8 @@ export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
       <ActionIcon
         variant="light"
         color="blue"
-        component={RouteLink as any}
-        to={to}
-        params={params}
         aria-label={t('form.btn.view')}
+        renderRoot={(rootProps) => <RouteLink {...rootProps} to={to} params={params} />}
       >
         <IconVisibility width="18" height="18" />
       </ActionIcon>

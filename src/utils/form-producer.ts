@@ -54,8 +54,9 @@ export const produceRmUpstreamWhenHas = (
   });
 
 export const produceCleanEmpty = produce((draft) => {
-  const clean = (obj: any) => {
-    if (!obj || typeof obj !== 'object') return;
+  const clean = (value: unknown) => {
+    if (!value || typeof value !== 'object') return;
+    const obj = value as Record<string, unknown>;
     Object.keys(obj).forEach((key) => {
       const val = obj[key];
       if (val === '') {
@@ -66,7 +67,9 @@ export const produceCleanEmpty = produce((draft) => {
         } else {
           val.forEach(clean);
         }
-      } else if (typeof val === 'object') {
+      } else if (val !== null && typeof val === 'object') {
+        // typeof null === 'object', and the emptiness check below would call
+        // Object.keys(null). A null is left where it is.
         clean(val);
         if (Object.keys(val).length === 0) {
           delete obj[key];

@@ -82,7 +82,7 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       // reading the body before the suspense query resolves grabs the skeleton
       await expect(page.locator('input[name="id"]')).toHaveValue(createdSecretId);
 
-      const pageContent = await page.textContent('body');
+      const pageContent = await page.locator('body').textContent();
       expect(pageContent).toContain('Secret Manager');
       // Verify AWS-specific fields are present (labels)
       expect(pageContent).toContain('Access Key ID');
