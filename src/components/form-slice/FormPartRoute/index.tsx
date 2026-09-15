@@ -330,7 +330,7 @@ export const FormSectionService = () => {
         label="Service"
         data={serviceOptions}
         searchable
-        clearable
+        clearable={!readOnlyFields.includes('service_id')}
         onChange={(val) => {
           if (val) {
             setValue('upstream_id', undefined);
