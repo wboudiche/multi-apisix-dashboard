@@ -17,6 +17,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"time"
 )
 
@@ -81,9 +82,18 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// parseEnvList reads a comma-separated environment variable into a slice,
+// trimming whitespace and dropping empty items. A variable that is unset or
+// contains nothing but separators yields the single default value.
 func parseEnvList(key, defaultValue string) []string {
-	if value := os.Getenv(key); value != "" {
-		return []string{value}
+	var out []string
+	for _, item := range strings.Split(os.Getenv(key), ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
 	}
-	return []string{defaultValue}
+	if len(out) == 0 {
+		return []string{defaultValue}
+	}
+	return out
 }
