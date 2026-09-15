@@ -191,6 +191,8 @@ const ServiceAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => void
             variant="subtle"
             color="gray"
             size="compact-xs"
+            // Discarding remounts the form, which would drop a submit in flight.
+            disabled={postService.isPending}
             onClick={() => {
               clearDraft();
               onDraftDiscarded();

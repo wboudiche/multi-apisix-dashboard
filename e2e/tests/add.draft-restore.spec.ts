@@ -14,8 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { deleteServicesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
+import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiAddServiceNode } from '@e2e/utils/ui/services';
 import { expect, type Page } from '@playwright/test';
 
 /**
@@ -77,3 +80,50 @@ for (const kind of KINDS) {
     }
   });
 }
+
+/** Holds the service POST until released, so the submit stays in flight. */
+const holdServicePost = async (page: Page) => {
+  let release = () => {};
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/apisix/admin/services', async (route) => {
+    if (route.request().method() === 'POST') await released;
+    await route.continue();
+  });
+  return () => release();
+};
+
+// Discard Draft remounts the form, which would drop a submit still in flight:
+// the wizard's Submit back on for a second POST, and the answer landing on a
+// form that is gone. So it is off while the draft is being submitted.
+test('service: Discard Draft is off while the draft is being submitted', async ({ page }) => {
+  const key = 'apisix-service-draft';
+  const name = randomId('e2e_draft_submit');
+  await page.goto('/ui/services/add');
+  await dropDraft(page, key);
+  await page.reload();
+
+  try {
+    await page.locator('input[name="name"]').fill(name);
+    await expect.poll(() => storedDraft(page, key), { timeout: 10000 }).toContain(name);
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.reload();
+    const discard = page.getByRole('button', { name: 'Discard Draft' });
+    await expect(discard).toBeEnabled();
+
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await uiAddServiceNode(page, '127.0.0.1', 80);
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+
+    const release = await holdServicePost(page);
+    await page.getByRole('button', { name: 'Submit', exact: true }).click();
+    await expect(discard).toBeDisabled();
+    release();
+    await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
+  } finally {
+    await dropDraft(page, key);
+    await deleteServicesByNamePrefix('e2e_draft_submit');
+  }
+});

@@ -142,6 +142,8 @@ const UpstreamAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => voi
             variant="subtle"
             color="gray"
             size="compact-xs"
+            // Discarding remounts the form, which would drop a submit in flight.
+            disabled={postUpstream.isPending}
             onClick={() => {
               clearDraft();
               onDraftDiscarded();
