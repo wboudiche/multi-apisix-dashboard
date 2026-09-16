@@ -62,22 +62,22 @@ func do(r *gin.Engine, method, path string) *httptest.ResponseRecorder {
 func TestResolveUIPath_NeverEscapesRoot(t *testing.T) {
 	root := "/srv/ui"
 	testCases := []struct {
-		name    string
-		urlPath string
+		name     string
+		urlPath  string
 		wantFull string // empty = boundary check only; populated = exact match
-		wantRel string  // relative path (with leading slash)
+		wantRel  string // relative path (with leading slash)
 	}{
 		{
-			name:    "normal asset path",
-			urlPath: "/ui/assets/app.js",
+			name:     "normal asset path",
+			urlPath:  "/ui/assets/app.js",
 			wantFull: filepath.Join(root, "assets", "app.js"),
-			wantRel: "/assets/app.js",
+			wantRel:  "/assets/app.js",
 		},
 		{
-			name:    "simple file in root",
-			urlPath: "/ui/index.html",
+			name:     "simple file in root",
+			urlPath:  "/ui/index.html",
 			wantFull: filepath.Join(root, "index.html"),
-			wantRel: "/index.html",
+			wantRel:  "/index.html",
 		},
 		{
 			name:    "traversal with ..",
