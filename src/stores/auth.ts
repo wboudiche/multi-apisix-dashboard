@@ -124,6 +124,11 @@ export const logoutActionAtom = atom(null, (_get, set) => {
   set(refreshTokenAtom, '');
   set(tokenExpiryAtom, 0);
   set(currentUserAtom, null);
+  // The assignments name an instance and a role, never the account they were
+  // read for, and logging out does not reload the tab. Left behind, they hand
+  // the next account whatever the last one could do, until the header has
+  // fetched its own — the window #181 is about, failing open this time.
+  set(userInstancesAtom, []);
   localStorage.removeItem('auth:access_token');
   localStorage.removeItem('auth:refresh_token');
   localStorage.removeItem('auth:token_expiry');

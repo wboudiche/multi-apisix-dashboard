@@ -57,8 +57,8 @@ export const permission = {
     await page.getByPlaceholder('Enter your password').fill(password);
     await page.getByRole('button', { name: 'Sign in' }).click();
 
-    // Wait for redirect away from /login (router lands on /overview
-    // for admins, or /routes for developers and viewers).
+    // Wait for redirect away from /login (the router lands every account on
+    // /overview, whatever its role).
     await page.waitForURL(
       (url) => !url.pathname.includes('/login'),
       { timeout: 15000 }

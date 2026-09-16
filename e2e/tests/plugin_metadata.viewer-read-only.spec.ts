@@ -151,11 +151,12 @@ test('an admin keeps every control a viewer loses', async ({ browser }) => {
  * the page gets there.
  *
  * The header badge is waited for before the page is reached. Until
- * userInstancesAtom loads, the effective role is the account's global one —
- * '' for anyone but a super_admin — and canEdit is true for ''. Reaching the
- * page before that would mount it as a writer and make these tests pass by
- * the luck of a race rather than by the code being right. And it is reached
- * through the sidebar, client-side, as a person would.
+ * userInstancesAtom loads, the account's role on this instance is not known,
+ * and an unknown role is offered nothing (#181). Reaching the page before that
+ * would mount it with the write controls hidden for a reason these tests are
+ * not about, and let them pass by the luck of a race rather than by the code
+ * being right. And it is reached through the sidebar, client-side, as a person
+ * would.
  */
 const openAsViewerThenBecomeAdmin = async (page: Page, username: string) => {
   await permission.loginAs(page, username, PASSWORD);

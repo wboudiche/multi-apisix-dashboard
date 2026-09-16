@@ -31,6 +31,7 @@ import {
   logoutActionAtom,
   refreshTokenAtom,
   tokenExpiryAtom,
+  userInstancesAtom,
 } from '@/stores/auth';
 import { clearTeamPicks } from '@/stores/team';
 
@@ -145,6 +146,7 @@ const Login = () => {
   const setTokenExpiry = useSetAtom(tokenExpiryAtom);
   const [currentUser, setCurrentUser] = useAtom(currentUserAtom);
   const discardSession = useSetAtom(logoutActionAtom);
+  const setUserInstances = useSetAtom(userInstancesAtom);
 
   const checkCapsLock = (e: React.KeyboardEvent<HTMLInputElement>) => {
     setCapsLock(e.getModifierState('CapsLock'));
@@ -183,6 +185,11 @@ const Login = () => {
       // A new session starts with no team picked: the tab's picks and the
       // stored ones belong to whoever signed in before (#203).
       clearTeamPicks();
+      // And with no role either: the assignments name an instance and a role,
+      // never the account they were read for, so the ones still in the tab
+      // belong to whoever signed in before. Done at the start of a session
+      // like the team picks, since a session can also end by expiry (#181).
+      setUserInstances([]);
 
       // Get current user
       const user = await authApi.getCurrentUser();
