@@ -1,1 +1,14 @@
 **/node_modules
+dist
+bin
+.git
+test-results
+playwright-report
+docs
+.github
+.devcontainer
+deploy
+.superpowers
+.eslintcache
+.env
+.env.*

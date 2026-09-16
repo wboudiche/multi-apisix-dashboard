@@ -1,0 +1,106 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Demo stack: the published dashboard image, one etcd shared by everything
+# (prefixes /apisix-dashboard, /apisix, /apisix2) and two APISIX gateways.
+#
+#   cp .env.example .env && edit JWT_SECRET
+#   docker compose up -d            # pulls ghcr.io/wboudiche/multi-apisix-dashboard
+#   docker compose up -d --build    # builds the image from this checkout instead
+#
+# Only the dashboard (8080) and gateway traffic (9080, 9081) reach the host.
+# The APISIX admin ports stay inside the network.
+
+services:
+  dashboard:
+    image: ghcr.io/wboudiche/multi-apisix-dashboard:latest
+    build:
+      context: ..
+    restart: unless-stopped
+    environment:
+      ETCD_ENDPOINTS: http://etcd:2379
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -hex 32)}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+    ports:
+      - '8080:8080'
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - dashboard
+
+  etcd:
+    image: bitnamilegacy/etcd:3.5
+    restart: unless-stopped
+    environment:
+      ETCD_ENABLE_V2: 'true'
+      ALLOW_NONE_AUTHENTICATION: 'yes'
+      ETCD_ADVERTISE_CLIENT_URLS: 'http://etcd:2379'
+      ETCD_LISTEN_CLIENT_URLS: 'http://0.0.0.0:2379'
+    volumes:
+      - etcd_data:/bitnami/etcd
+    healthcheck:
+      test: ['CMD', 'etcdctl', 'endpoint', 'health']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - dashboard
+
+  apisix:
+    image: apache/apisix:3.16.0-debian
+    restart: unless-stopped
+    volumes:
+      - ./apisix/apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
+    # A unix socket left in logs/ survives a container restart and nginx
+    # refuses to bind a path that already exists, which turns
+    # restart: unless-stopped into a crash loop. Clear them first.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
+    ports:
+      - '9080:9080'
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - dashboard
+
+  apisix2:
+    image: apache/apisix:3.16.0-debian
+    restart: unless-stopped
+    volumes:
+      - ./apisix/apisix_conf_2.yml:/usr/local/apisix/conf/config.yaml:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
+    ports:
+      - '9081:9080'
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - dashboard
+
+networks:
+  dashboard:
+    driver: bridge
+
+volumes:
+  etcd_data:
