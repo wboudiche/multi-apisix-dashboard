@@ -25,9 +25,10 @@ import { expect, type Page } from '@playwright/test';
  *
  * #221 reported a label filter that also returned routes carrying no label at
  * all. It was raised against the bundle baked into the APISIX image, which
- * predates both the move of list filtering into the backend proxy (#80) and the
- * filter's own rework (#159, #217). These tests hold the behaviour the current
- * code has: a label filter narrows, and a route without labels never matches.
+ * predates the move of list filtering into the backend proxy (#80) and the
+ * filter's rework in #159 (#217 only changed which labels it offers). These
+ * tests hold the behaviour the current code has: a label filter narrows, and a
+ * route without labels never matches.
  */
 
 const PROXY = '/api/v1/apisix/admin';
@@ -42,7 +43,8 @@ const tierLabel = `E2E tier ${suffix}`;
 
 const prod = randomId('e2e_lf_prod');
 const staging = randomId('e2e_lf_staging');
-const prodGold = randomId('e2e_lf_prod_gold');
+// No seeded name is a prefix of another: the rows are matched on their text.
+const prodGold = randomId('e2e_lf_gold');
 const unlabelled = randomId('e2e_lf_plain');
 
 const defineLabel = (token: string, key: string, display: string, values: string[]) =>
@@ -103,6 +105,10 @@ test('a label filter leaves out the routes that do not carry it', async ({ page 
   await addLabel(page, envLabel, 'prod');
   await page.getByRole('button', { name: 'Search' }).click();
 
+  // The key belongs to this run alone, so the filtered list is exactly the two
+  // routes carrying it, whatever else the gateway holds. The list is fetched
+  // again on Search, along with the filter's own read of every route.
+  await expect(page.getByRole('row')).toHaveCount(3, { timeout: 20000 });
   await expect(rowFor(page, prod)).toHaveCount(1);
   await expect(rowFor(page, prodGold)).toHaveCount(1);
   // The same key with another value, and a route with no labels at all.
@@ -117,6 +123,7 @@ test('two labels narrow the list rather than widen it', async ({ page }) => {
   await addLabel(page, tierLabel, 'gold');
   await page.getByRole('button', { name: 'Search' }).click();
 
+  await expect(page.getByRole('row')).toHaveCount(2, { timeout: 20000 });
   await expect(rowFor(page, prodGold)).toHaveCount(1);
   // Carries the first label only, so it no longer matches.
   await expect(rowFor(page, prod)).toHaveCount(0);
