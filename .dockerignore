@@ -8,3 +8,7 @@ docs
 .github
 .devcontainer
 deploy
+.superpowers
+.eslintcache
+.env
+.env.*
