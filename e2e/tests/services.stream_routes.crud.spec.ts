@@ -94,8 +94,8 @@ test('should CRUD stream route under service', async ({ page }) => {
     await expect(ID).toBeVisible();
     await expect(ID).toBeDisabled();
 
-    // Verify the Service binding is still present (the select is read-only
-    // under a service)
+    // Verify the Service binding is still present (the detail page shows the
+    // whole form read-only)
     const serviceField = page.getByRole('textbox', { name: 'Service', exact: true });
     await expect(serviceField).toHaveValue(serviceName);
 

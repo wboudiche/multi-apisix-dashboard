@@ -35,6 +35,10 @@ import type { APISIXType } from '@/types/schema/apisix';
  * the select could still be cleared or changed there (#233).
  */
 
+// The tests share one service and edit what beforeAll seeded, so they run in
+// order rather than seeding a service each.
+test.describe.configure({ mode: 'serial' });
+
 const prefix = randomId('e2e_ro_svc');
 const serviceName = `${prefix}_service`;
 const routeName = `${prefix}_route`;
@@ -53,9 +57,10 @@ const expectServiceFrozen = async (page: Page) => {
   const service = page.getByRole('textbox', { name: 'Service', exact: true });
   await expect(service).toHaveValue(serviceName);
   await expect(service).toBeDisabled();
-  await expect(
-    page.locator('.mantine-InputWrapper-root').filter({ has: service }).locator('button')
-  ).toHaveCount(0);
+  // A field that holds no button, rather than a wrapper that matched nothing.
+  const field = page.locator('.mantine-InputWrapper-root').filter({ has: service });
+  await expect(field).toHaveCount(1);
+  await expect(field.locator('button')).toHaveCount(0);
 };
 
 const storedRoute = async (id: string) => {
@@ -75,7 +80,7 @@ test.beforeAll(async () => {
     uri: `/${routeName}`,
     methods: ['GET'],
     service_id: serviceId,
-  } as never);
+  });
   routeId = route.data.value.id;
   const streamRoute = await e2eReq.post<unknown, { data: { value: { id: string } } }>(
     API_STREAM_ROUTES,

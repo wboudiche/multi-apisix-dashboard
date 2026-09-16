@@ -133,8 +133,10 @@ export const FormSection = (props: FormSectionProps) => {
             holds. The Paper that replaced it takes no disabled, so the prop
             did nothing (#233). A native fieldset disables every control
             inside, and react-hook-form keeps their values, which it would not
-            for a disabled controller. */}
-        <fieldset disabled={disabled} className={classes.fieldset}>
+            for a disabled controller. It is presentational: the section's
+            named group is the Paper around it, and a second, unnamed group
+            would only add noise to the accessibility tree. */}
+        <fieldset disabled={disabled} role="presentation" className={classes.fieldset}>
           <Stack gap="md" mt={legend ? 'sm' : 0}>
             {children}
           </Stack>

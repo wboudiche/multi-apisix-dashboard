@@ -112,6 +112,14 @@ test.describe('CRUD secret with all fields (AWS)', () => {
     await test.step('enter edit mode and update fields', async () => {
       await page.getByRole('button', { name: 'Edit' }).click();
 
+      // The manager is part of a secret's identity, so its section stays
+      // read-only on the detail page (#233).
+      await expect(
+        page
+          .getByRole('group', { name: 'Secret Manager' })
+          .locator('input.mantine-Select-input')
+      ).toBeDisabled();
+
       // Update AWS fields
       for (const [label, value] of Object.entries(updatedFields)) {
         await page.getByLabel(label).clear();
