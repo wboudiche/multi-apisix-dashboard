@@ -13,8 +13,15 @@ APISIX Admin API is reachable solely from the dashboard container.
 
 ## Start
 
-Host ports 8080, 9080 and 9081 must be free (the repo's own e2e stack from
-`e2e/server/docker-compose.yml` binds 9080, so stop it or remap first).
+The GHCR image only exists starting with the first `v[0-9]*` release; until then,
+or if the package is left private, `docker compose up -d --build` builds it
+locally instead of pulling.
+
+Host ports 8080, 9080 and 9081 must be free. The repo's own e2e stack
+(`e2e/server/docker-compose.yml`) publishes 9180, 9181 and 2379 by itself; it
+only binds 9080 when started together with the devcontainer override
+(`.devcontainer/docker-compose.override.yml`), so stop that combination or
+remap first if it's running.
 
 ```sh
 cp .env.example .env
@@ -46,7 +53,7 @@ used instead of pulling from GHCR.
 docker compose down -v
 ```
 
+Removes the etcd volume, including every user, team and registered instance.
+
 Keep `.env` in place until the stack is torn down, since the `JWT_SECRET`
 check in the compose file runs on every compose command, including `down`.
-
-Removes the etcd volume, including every user, team and registered instance.
