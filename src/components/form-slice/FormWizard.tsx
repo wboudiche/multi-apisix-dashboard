@@ -173,7 +173,10 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
         if (target.tagName === 'BUTTON' || target.tagName === 'INPUT') return;
         e.preventDefault();
         if (isLastStep) {
-          if (!readOnly) handleComplete();
+          // Not while the submit this would repeat is still in flight. The
+          // button carries `loading` and refuses a second click; Enter went
+          // around it, and the resource was created twice (#229).
+          if (!readOnly && !loading) handleComplete();
         } else {
           nextStep();
         }
@@ -190,7 +193,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, isLastStep, readOnly, handleComplete, handleCancel]);
+  }, [active, isLastStep, readOnly, loading, handleComplete, handleCancel]);
 
   return (
     <Stack gap="xs" mt="xs" className="animate-fade-in">
@@ -366,6 +369,9 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
             <Button
               variant="outline"
               color="gray"
+              // Leaving now would abandon a request that is still creating the
+              // resource the operator has just cancelled (#229).
+              disabled={loading}
               onClick={handleCancel}
               className="Button-secondary"
             >
