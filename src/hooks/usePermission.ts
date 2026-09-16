@@ -62,7 +62,15 @@ const effectiveRoleAtom = atom<Role | undefined>((get) => {
     (ui) => ui.instance_id === instanceId
   )?.role;
 
-  return (instanceRole || user?.role) as Role | undefined;
+  // Not yet known is not a role. Every account but a super_admin carries ''
+  // as its global role, and its instance assignments only land once the
+  // header has fetched them, so until then there is nothing to go on. '' made
+  // canWrite true, which offered a viewer the write controls of the page they
+  // had reached until that request answered (#181) — while canAccessRoute,
+  // reading the same value, refused them every link. undefined fails closed
+  // on both: an admin sees the controls a moment late, rather than a viewer
+  // seeing them a moment early.
+  return (instanceRole || user?.role || undefined) as Role | undefined;
 });
 
 const permissionsAtom = atom<Permissions>((get) => {

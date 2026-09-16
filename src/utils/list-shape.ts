@@ -45,10 +45,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * response was unreadable" would look the same, and the header would stop
  * telling the operator which one it hit. Dropping odd entries would be that
  * same lie one level down, and one of these lists is an authorization list:
- * getUserInstances feeds usePermission, which falls back to the broader global
- * role when the per-instance record is missing, so a quietly dropped entry
- * widens what someone may do. A caller that genuinely wants to degrade can
- * still catch.
+ * getUserInstances feeds usePermission, where a missing per-instance record
+ * leaves the role unknown (#181), so a quietly dropped entry takes away what
+ * someone may do, on a page that gives no reason for it. A caller that
+ * genuinely wants to degrade can still catch.
  *
  * The array is returned as it came, not copied: these feed jotai atoms and
  * react-query caches, where a fresh array on every call is a re-render on
