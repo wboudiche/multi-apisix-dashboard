@@ -1,8 +1,11 @@
 .root {
   margin-block: var(--mantine-font-size-md, 0);
   scroll-margin-top: calc(var(--appshell-header-height, 60px) + 20px);
+}
 
-  & > fieldset {
-    margin-bottom: 0;
-  }
+.fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
 }

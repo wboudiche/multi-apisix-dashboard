@@ -85,7 +85,8 @@ const LegendGroup = ({
 };
 
 export const FormSection = (props: FormSectionProps) => {
-  const { className, legend, extra, children, hideInTOC, ...restProps } = props;
+  const { className, legend, extra, children, hideInTOC, disabled, ...restProps } =
+    props;
   const parentDepth = useContext(SectionDepthCtx);
   const { refreshTOC, maxDepth } = useContext(FormTOCCtx);
   const depth = useMemo(() => parentDepth + 1, [parentDepth]);
@@ -128,9 +129,18 @@ export const FormSection = (props: FormSectionProps) => {
         {...(!shouldHideInTOC && dataAttrs)}
       >
         <LegendGroup legend={legend} extra={extra} />
-        <Stack gap="md" mt={legend ? 'sm' : 0}>
-          {children}
-        </Stack>
+        {/* The section used to be a Mantine Fieldset, which disabled what it
+            holds. The Paper that replaced it takes no disabled, so the prop
+            did nothing (#233). A native fieldset disables every control
+            inside, and react-hook-form keeps their values, which it would not
+            for a disabled controller. It is presentational: the section's
+            named group is the Paper around it, and a second, unnamed group
+            would only add noise to the accessibility tree. */}
+        <fieldset disabled={disabled} role="presentation" className={classes.fieldset}>
+          <Stack gap="md" mt={legend ? 'sm' : 0}>
+            {children}
+          </Stack>
+        </fieldset>
       </Paper>
     </SectionDepthProvider>
   );

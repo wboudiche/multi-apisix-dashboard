@@ -173,7 +173,7 @@ export const FormSectionMatchRules = () => {
 export const FormSectionUpstream = (
   props: { simplified?: boolean } & FormSectionProps
 ) => {
-  const { simplified, legend, ...restProps } = props;
+  const { simplified, legend, disabled, ...restProps } = props;
   const { t } = useTranslation();
   const { control } = useFormContext<RoutePostType>();
   const { data: upstreams } = useSuspenseQuery(
@@ -202,7 +202,7 @@ export const FormSectionUpstream = (
   return (
     <FormSection
       legend={legend === undefined ? t('form.upstreams.title') : legend}
-      disabled={isUpstreamDisabled || restProps.disabled}
+      disabled={isUpstreamDisabled || disabled}
       {...restProps}
     >
       <FormItemSelect
@@ -330,7 +330,7 @@ export const FormSectionService = () => {
         label="Service"
         data={serviceOptions}
         searchable
-        clearable
+        clearable={!readOnlyFields.includes('service_id')}
         onChange={(val) => {
           if (val) {
             setValue('upstream_id', undefined);
