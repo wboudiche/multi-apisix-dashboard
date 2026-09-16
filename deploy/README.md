@@ -13,6 +13,9 @@ APISIX Admin API is reachable solely from the dashboard container.
 
 ## Start
 
+Host ports 8080, 9080 and 9081 must be free (the repo's own e2e stack from
+`e2e/server/docker-compose.yml` binds 9080, so stop it or remap first).
+
 ```sh
 cp .env.example .env
 sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$(openssl rand -hex 32)/" .env
@@ -42,5 +45,8 @@ used instead of pulling from GHCR.
 ```sh
 docker compose down -v
 ```
+
+Keep `.env` in place until the stack is torn down, since the `JWT_SECRET`
+check in the compose file runs on every compose command, including `down`.
 
 Removes the etcd volume, including every user, team and registered instance.

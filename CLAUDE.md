@@ -63,7 +63,7 @@ believing a bug seen on it (#237). E2E runs default to the dev server on
 itself seeds through the dashboard's own API and cannot be pointed at APISIX
 directly.
 
-The dev stack uses the host's etcd via `apisix-docker-etcd-1` (or whichever container publishes `:2379`). APISIX's own etcd (`server-etcd-1`) is **not** exposed on the host and is only reachable from inside the `server_apisix` docker network.
+The e2e compose publishes its etcd on the host at `:2379` (container `server-etcd-1`), and that is the etcd the locally-run backend uses. The `deploy/` compose is a separate, self-contained stack that consumes the published image; its etcd is not published.
 
 ## Architecture
 
@@ -124,6 +124,8 @@ api/
 /roles/<name>
 /config/admin_initialized
 ```
+
+**Static UI** — when `UI_DIR` is set the backend serves that directory under `/ui` (`handlers/spa.go`, registered as `NoRoute`); anything outside `/ui` stays a JSON 404. Unset in dev. The root `Dockerfile` builds the SPA and the binary into one image (`ghcr.io/wboudiche/multi-apisix-dashboard`, pushed by `.github/workflows/docker.yml` on `v[0-9]*` tags); `deploy/docker-compose.yml` runs it with etcd and two APISIX.
 
 The backend does **not** read or write APISIX's own `/apisix/` prefix in etcd. APISIX's data lives separately, accessed only through its Admin API.
 
