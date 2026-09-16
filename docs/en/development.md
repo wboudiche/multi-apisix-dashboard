@@ -56,7 +56,8 @@ Environment variables read by the backend (see `api/internal/config/config.go`):
 |---|---|---|
 | `PORT` | `8080` | **The frontend proxy expects `8086`** — set it explicitly. |
 | `HOST` | `0.0.0.0` | |
-| `ETCD_ENDPOINTS` | `http://localhost:2379` | Comma-separated for HA. |
+| `UI_DIR` | unset | Directory of the built frontend to serve under `/ui`. Unset in dev (vite serves it); the docker image sets `/app/ui`. |
+| `ETCD_ENDPOINTS` | `http://localhost:2379` | Comma-separated for HA (each entry trimmed). |
 | `ETCD_USERNAME` / `ETCD_PASSWORD` | unset | Optional. |
 | `JWT_SECRET` | _required, ≥ 32 bytes_ | The backend refuses to start when this is empty or set to the legacy default `your-secret-key-change-in-production`. Generate one with `openssl rand -hex 32`. |
 | `ADMIN_PASSWORD` | `admin` | Used only on first boot to seed the bootstrap `admin` user. |
@@ -89,6 +90,8 @@ Open <http://127.0.0.1:5173/ui>. The Vite dev server proxies:
 
 - `/apisix/admin/*` → `http://127.0.0.1:8086/api/v1/apisix/admin/*`
 - `/api/*` → `http://127.0.0.1:8086/api/*`
+
+To run the whole dashboard as one container instead, see the root `Dockerfile` and [`deploy/`](../../deploy/README.md).
 
 Log in with `admin / admin`. The browser stores JWTs in localStorage under `auth:access_token` / `auth:refresh_token`; the access token expires in 15 minutes and is refreshed automatically by the axios interceptor in `src/apis/client.ts`.
 
