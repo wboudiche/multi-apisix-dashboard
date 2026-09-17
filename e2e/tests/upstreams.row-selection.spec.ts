@@ -14,12 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { e2eReq } from '@e2e/utils/req';
+import { e2eReq, listEvery } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
-import { getUpstreamListReq } from '@/apis/upstreams';
 import { API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/constant';
+import type { APISIXType } from '@/types/schema/apisix';
 
 /**
  * These list pages feed ProTable the {key, value} envelopes APISIX returns,
@@ -46,9 +46,10 @@ const seed = async () => {
   }
 };
 
+// Every row: a row left on a later page would read as deleted.
 const remaining = async (): Promise<string[]> => {
-  const res = await getUpstreamListReq(e2eReq, { page: 1, page_size: PAGE_SIZE_MAX });
-  return res.list.map((u) => u.value.id).filter((id) => IDS.includes(id));
+  const rows = await listEvery<APISIXType['Upstream']>(API_UPSTREAMS);
+  return rows.map((u) => u.value.id).filter((id) => IDS.includes(id));
 };
 
 test.beforeEach(seed);
