@@ -71,18 +71,14 @@ ownershipMatrixSuite({
     // thousand, and an upstream a crashed or concurrent run left on the same
     // one doubled the option this picks by name.
     const upstreamName = `${name}-upstream`;
-    await e2eReq
-      .post(
-        API_UPSTREAMS,
-        {
-          name: upstreamName,
-          nodes: [{ host: '127.0.0.2', port: 8080, weight: 1 }],
-        },
-        { headers: { 'X-Team-ID': getFixtures().backendTeamId } }
-      )
-      .catch(() => {
-        /* may already exist from a retry */
-      });
+    await e2eReq.post(
+      API_UPSTREAMS,
+      {
+        name: upstreamName,
+        nodes: [{ host: '127.0.0.2', port: 8080, weight: 1 }],
+      },
+      { headers: { 'X-Team-ID': getFixtures().backendTeamId } }
+    );
 
     await streamRoutesPom.toAdd(page);
     await uiFillStreamRouteRequiredFields(page, {

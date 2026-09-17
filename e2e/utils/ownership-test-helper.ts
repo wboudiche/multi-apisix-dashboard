@@ -46,8 +46,8 @@ export type OwnershipMatrixOpts = {
    * the given name, leaving the page on the list view. The seed
    * pre-logs in as dev_user (Backend Team) before this is called.
    *
-   * The create is answered late (see slowWrites), so this has to wait for
-   * it to land before it navigates away.
+   * The create is held back before it is sent (see delayWrites), so this
+   * has to wait for it to land before it navigates away.
    */
   createMinimal: (page: Page, name: string) => Promise<void>;
   /**
@@ -71,21 +71,22 @@ const INSTANCE_NAME = 'Local APISIX';
 const WRITE_DELAY_MS = 1500;
 
 /**
- * Answers the resource's writes late, as a busy gateway does. A create that
- * navigates away before its answer abandons the request with the page, and the
- * resource never exists: the matrix's "can create" failed about half the time
- * locally and never on CI's quicker stack (#183). Slowed on every run, the
- * race is lost every time rather than now and then.
+ * Holds the resource's writes in the browser for a moment before sending them.
+ * A create that navigates away before it has landed abandons the request with
+ * the page, and the resource never exists: the matrix's "can create" failed
+ * about half the time on a busy local stack and never on CI's quicker one
+ * (#183). Held back here, a request the page leaves is never sent at all, so
+ * that race is lost on every run rather than now and then.
  */
-const slowWrites = (page: Page, apiPath: string) =>
+const delayWrites = (page: Page, apiPath: string) =>
   page.route(
     (url) => url.pathname.startsWith(`${API_PREFIX}${apiPath}`),
     async (route) => {
       if (route.request().method() !== 'GET') {
         await new Promise((resolve) => setTimeout(resolve, WRITE_DELAY_MS));
       }
-      // The page may have navigated away while the write waited, which is the
-      // failure the delay exists to expose; the missing row then says so.
+      // The page may have navigated away while the write was held, which is
+      // the failure the delay exists to expose; the missing row then says so.
       await route.continue().catch(() => undefined);
     }
   );
@@ -127,7 +128,7 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
         fx.users.dev.password
       );
       await permission.switchInstance(page, INSTANCE_NAME);
-      await slowWrites(page, opts.apiPath);
+      await delayWrites(page, opts.apiPath);
       await opts.createMinimal(page, resourceName);
       await uiShowAllRows(page);
 
