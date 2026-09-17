@@ -727,10 +727,15 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		// Nor for a write beneath a resource. A consumer's credential reads as
 		// the consumer, and recording it gave the consumer the writer's team:
 		// an admin with another team selected moved it there (#250).
+		//
+		// A resource that already belongs to a team keeps it. Recorded on every
+		// write, an admin editing another team's resource handed it to whichever
+		// team their header had selected, and that team's developers lost sight
+		// of it without a word. Reassigning is its own action (#260).
 		if resourceID != "" && effectiveTeamID != "" && teamScopedResources[resourceType] &&
 			!beneathResource(path) {
 			ownerCtx, cancel := ownershipWriteContext(c.Request.Context())
-			err := h.ownershipService.SetOwner(ownerCtx, &models.Ownership{
+			_, err := h.ownershipService.SetOwnerIfUnowned(ownerCtx, &models.Ownership{
 				InstanceID:   instanceID,
 				ResourceType: resourceType,
 				ResourceID:   resourceID,
