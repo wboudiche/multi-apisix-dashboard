@@ -24,10 +24,10 @@ type ListWarningBannerProps = {
   /**
    * The `__warning` code the proxy attached to a list response, or nothing.
    *
-   * It means the list arrived complete as far as the gateway was asked, but
-   * something the filter depended on could not be read — so what is on screen
-   * is narrower than the truth. The rows are still worth showing; what must not
-   * happen is the shorter list passing for the whole one.
+   * It means something the list depended on could not be read: the rows on
+   * screen are fewer than the truth, or say less about themselves than they
+   * should. They are still worth showing; what must not happen is the list
+   * passing for complete.
    *
    * A code rather than a sentence, so the text is translated here. The backend
    * knows which part it could not read; it does not know what language the
@@ -45,7 +45,19 @@ type ListWarningBannerProps = {
  */
 const WARNING_MESSAGES = {
   service_lookup_failed: 'listWarning.service_lookup_failed',
+  service_upstream_unresolved: 'listWarning.service_upstream_unresolved',
 } as const;
+
+/**
+ * A title of its own for a code the shared one would not be true of: an
+ * unresolved upstream leaves every row on screen, so "incomplete results"
+ * claims too much.
+ */
+const WARNING_TITLES: Partial<
+  Record<keyof typeof WARNING_MESSAGES, 'listWarning.unresolvedTitle'>
+> = {
+  service_upstream_unresolved: 'listWarning.unresolvedTitle',
+};
 
 export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
   const { t } = useTranslation();
@@ -55,7 +67,7 @@ export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
   return (
     <Alert
       icon={<IconWarning width="18" height="18" />}
-      title={t('listWarning.title')}
+      title={t(WARNING_TITLES[warning as keyof typeof WARNING_MESSAGES] ?? 'listWarning.title')}
       color="yellow"
       variant="light"
       mb="md"

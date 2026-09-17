@@ -370,7 +370,7 @@ func TestMultipleTeamsMatchAnyOfThem(t *testing.T) {
 // a gateway the question is which routes reach the failing upstream, so the
 // second form has to resolve rather than be skipped.
 func TestUpstreamFilterResolvesThroughServices(t *testing.T) {
-	services := map[string]string{"svc-1": "up-a", "svc-2": "up-b"}
+	services := serviceUpstreams{"svc-1": {ID: "up-a"}, "svc-2": {ID: "up-b"}}
 
 	direct := map[string]any{"name": "direct", "upstream_id": "up-a"}
 	viaService := map[string]any{"name": "via-service", "service_id": "svc-1"}
@@ -412,7 +412,7 @@ func TestServiceUpstreamsToleratesNumericIDs(t *testing.T) {
 	body := []byte(`{"list":[
 		{"value":{"id":"svc-str","upstream_id":"up-a"}},
 		{"value":{"id":9002,"upstream_id":777}},
-		{"value":{"id":"svc-inline"}}
+		{"value":{"id":"svc-bare"}}
 	]}`)
 
 	got, err := parseServiceUpstreams(body)
@@ -425,15 +425,15 @@ func TestServiceUpstreamsToleratesNumericIDs(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	for k, v := range want {
-		if got[k] != v {
-			t.Errorf("services[%q] = %q, want %q", k, got[k], v)
+		if got[k].ID != v {
+			t.Errorf("services[%q] = %q, want %q", k, got[k].ID, v)
 		}
 	}
 }
 
 // A route can name its service or upstream numerically for the same reason.
 func TestUpstreamFilterMatchesNumericIDs(t *testing.T) {
-	services := map[string]string{"9002": "777"}
+	services := serviceUpstreams{"9002": {ID: "777"}}
 
 	cases := []struct {
 		name string
@@ -508,7 +508,7 @@ func TestFetchServiceUpstreamsReportsWhyItFailed(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got["s1"] != "u1" {
+		if got["s1"].ID != "u1" {
 			t.Errorf("services = %v, want s1 -> u1", got)
 		}
 	})
@@ -519,7 +519,7 @@ func TestFetchServiceUpstreamsReportsWhyItFailed(t *testing.T) {
 // service's upstream at all — and saying it does during an incident points at
 // the wrong backend. Verified against the gateway: it accepts the combination.
 func TestInlineUpstreamBeatsTheServiceItIsBoundTo(t *testing.T) {
-	services := map[string]string{"svc-1": "up-a"}
+	services := serviceUpstreams{"svc-1": {ID: "up-a"}}
 
 	viaService := map[string]any{"name": "via", "service_id": "svc-1"}
 	inlineWins := map[string]any{

@@ -57,10 +57,11 @@ import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
-import { useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { withoutDashboardFields } from '@/utils/dashboard-fields';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
@@ -118,34 +119,30 @@ export const RouteList = (props: RouteListProps) => {
   // id at all. All three have to render as something an operator can read: an
   // empty cell would say "no backend", which is never what any of them means.
   //
-  // Keyed by instance like every other APISIX list (genListQueryOptions does the
-  // same): these live on the gateway, and without it switching instance resolves
-  // ids against the names of the one just left. Skipped entirely when the column
-  // is off — the services routes list, for one, never shows it.
+  // Which of the three a row reaches is resolved by the proxy and written onto
+  // it, by the rules the upstream filter applies (#161). Resolved here instead,
+  // from a service list narrowed to the operator's team and cut at 500 rows, the
+  // column said "no upstream" for routes the filter had just matched.
+  //
+  // The upstream list is still read, for names. Keyed by instance like every
+  // other APISIX list (genListQueryOptions does the same): these live on the
+  // gateway, and without it switching instance resolves ids against the names of
+  // the one just left. Skipped entirely when the column is off — the services
+  // routes list, for one, never shows it.
   const wantsUpstreams = visibleColumns.includes('upstream');
   const { data: upstreams } = useAllUpstreams(currentInstanceId, wantsUpstreams);
-  const { data: services } = useAllServices(currentInstanceId, wantsUpstreams);
   const upstreamNames = useMemo(() => {
     const map = new Map<string, string>();
     upstreams?.list?.forEach((u) => map.set(u.value.id, u.value.name || u.value.id));
     return map;
   }, [upstreams]);
-  const serviceUpstreams = useMemo(() => {
-    const map = new Map<string, string>();
-    services?.list?.forEach((sv) => {
-      if (sv.value.upstream_id) map.set(sv.value.id, sv.value.upstream_id);
-    });
-    return map;
-  }, [services]);
-  // A service can carry its upstream inline, with no id to resolve. Its routes
-  // still have a backend, so they are told apart from routes that have none.
-  const servicesWithInlineUpstream = useMemo(() => {
-    const ids = new Set<string>();
-    services?.list?.forEach((sv) => {
-      if (!sv.value.upstream_id && sv.value.upstream) ids.add(sv.value.id);
-    });
-    return ids;
-  }, [services]);
+
+  // The unresolved-upstream caveat is about the Upstream column. With the column
+  // off — a service's own routes list never shows it — there is nothing on
+  // screen for it to be about, and nothing is missing either.
+  const listWarning = (data as { __warning?: string } | undefined)?.__warning;
+  const shownWarning =
+    listWarning === 'service_upstream_unresolved' && !wantsUpstreams ? undefined : listWarning;
 
   const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
   const allSelected = allIds.length > 0 && allIds.every((id: string) => selectedIds.has(id));
@@ -194,7 +191,8 @@ export const RouteList = (props: RouteListProps) => {
   };
 
   const handleViewJson = (record: Record<string, unknown>) => {
-    setJsonDrawerData({ id: record.id as string, json: record });
+    // The route as APISIX holds it, as the detail page's drawer shows it.
+    setJsonDrawerData({ id: record.id as string, json: withoutDashboardFields(record) });
     setJsonDrawerOpen(true);
   };
 
@@ -291,7 +289,7 @@ export const RouteList = (props: RouteListProps) => {
           </Group>
         </Group>
       )}
-      <ListWarningBanner warning={(data as { __warning?: string } | undefined)?.__warning} />
+      <ListWarningBanner warning={shownWarning} />
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
@@ -379,23 +377,17 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('upstream') && (
                 <Table.Td style={{ background: 'var(--mantine-color-blue-0)' }}>
                   {(() => {
-                    // An id of 0 is an id: APISIX keeps whichever JSON type it
-                    // was created with, so truthiness would drop it.
-                    const ownId =
-                      record.value.upstream_id != null
-                        ? String(record.value.upstream_id)
-                        : undefined;
-                    // A route carrying its own upstream reaches that one, even
-                    // alongside a service_id — APISIX takes the route's over
-                    // the service's. Resolving through the service here would
-                    // name a backend it never touches.
-                    const carriesInline = record.value.upstream != null;
-                    const upstreamId =
-                      ownId ??
-                      (!carriesInline && record.value.service_id != null
-                        ? serviceUpstreams.get(String(record.value.service_id))
-                        : undefined);
+                    // What the proxy resolved for this row: the upstream it
+                    // reaches, as a string whatever JSON type the id was
+                    // stored as, or that it carries one inline.
+                    const upstreamId: string | undefined = record.value.__upstream_id;
                     if (upstreamId) {
+                      // An upstream this operator cannot list is one they cannot
+                      // open either: a link would lead to a refusal. Its id still
+                      // says which backend the route reaches.
+                      if (!isAdmin && !upstreamNames.has(upstreamId)) {
+                        return <Text size="sm">{upstreamId}</Text>;
+                      }
                       return (
                         <RouteAnchor
                           to="/upstreams/detail/$id"
@@ -410,11 +402,7 @@ export const RouteList = (props: RouteListProps) => {
                     // name; saying so beats an empty cell that reads as none.
                     // A service carrying one inline puts its routes in the same
                     // position, one step removed.
-                    if (
-                      carriesInline ||
-                      (record.value.service_id != null &&
-                        servicesWithInlineUpstream.has(String(record.value.service_id)))
-                    ) {
+                    if (record.value.__upstream_inline) {
                       return (
                         <Text size="xs" c="dimmed" fs="italic">
                           {t('routes.list.upstreamInline')}

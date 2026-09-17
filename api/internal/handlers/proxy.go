@@ -61,9 +61,11 @@ var teamScopedResources = map[string]bool{
 //
 // To be stripped back out, an injected field must carry this prefix AND sit at
 // the top level of whatever a client sends back: the strip below is deliberately
-// shallow. That is enough today because the only injection is __team_id on a
-// list row's "value" (see dashboardTeamIDField), and clients round-trip that
-// "value" object itself. A nested injection would need the strip to recurse.
+// shallow. That is enough today because every injection sits at the top of a
+// list row's "value" — __team_id (see dashboardTeamIDField) and, on routes,
+// __upstream_id or __upstream_inline (see upstream_column.go) — and clients
+// round-trip that "value" object itself. A nested injection would need the
+// strip to recurse.
 const dashboardFieldPrefix = "__"
 
 // dashboardTeamIDField is injected into list responses so the UI can show team
@@ -703,28 +705,36 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 				// A route reaches its upstream directly or through a service,
 				// so the upstream filter needs the service table to answer for
-				// the second kind. Fetched only when that filter is present:
-				// every other listing pays nothing.
-				if len(filters.upstreamIDs) > 0 {
+				// the second kind, and so do route rows, which carry the
+				// upstream they reach for the Upstream column to show (#161).
+				// Every other listing pays nothing.
+				annotateRoutes := resourceType == "routes"
+				var serviceTableErr error
+				if len(filters.upstreamIDs) > 0 || annotateRoutes {
 					// A failure is never cached: the next page retries rather
 					// than repeating a wrong answer for the whole window.
 					serviceTable, cached := h.serviceUpstreams.get(instanceID)
-					var err error
 					if !cached {
-						serviceTable, err = fetchServiceUpstreams(c.Request.Context(), instance)
-						if err == nil {
+						lookupCtx := c.Request.Context()
+						if len(filters.upstreamIDs) == 0 {
+							var cancel context.CancelFunc
+							lookupCtx, cancel = context.WithTimeout(lookupCtx, columnServiceLookupTimeout)
+							defer cancel()
+						}
+						serviceTable, serviceTableErr = fetchServiceUpstreams(lookupCtx, instance)
+						if serviceTableErr == nil {
 							h.serviceUpstreams.put(instanceID, serviceTable)
 						}
 					}
-					if err != nil {
+					if serviceTableErr != nil {
 						// Said out loud rather than swallowed. Without the
 						// table, routes bound to a service silently stop
 						// matching — which during an incident reads as "no
 						// route touches this upstream", the most misleading
-						// answer this filter could give.
-						log.Printf("[instance %s] upstream filter could not read services, "+
-							"routes bound to one will not match: %v", instanceID, err)
-						resources.Warning = serviceLookupWarning
+						// answer this filter could give — and their rows say
+						// they reach no upstream at all.
+						log.Printf("[instance %s] could not read services, "+
+							"routes bound to one will not resolve their upstream: %v", instanceID, serviceTableErr)
 					}
 					filters.serviceUpstreams = serviceTable
 				}
@@ -742,6 +752,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 						// Inject __team_id for all users
 						val[dashboardTeamIDField] = ownerTeamID
+						if annotateRoutes {
+							annotateUpstream(val, filters.serviceUpstreams)
+						}
 
 						// Filter for non-admin users. Unowned resources are
 						// admin-only, so they are hidden here too — the same
@@ -764,6 +777,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// set rather than everything on the gateway.
 				resources.Total = len(filtered)
 				resources.List = paginateRows(filtered, page, pageSize)
+				// Decided on the page actually returned: whether anything on it
+				// is short of what the service table would have told it.
+				if serviceTableErr != nil {
+					resources.Warning = serviceTableWarning(len(filters.upstreamIDs) > 0, resources.List)
+				}
 				respBody, _ = json.Marshal(resources)
 			}
 		} else {
@@ -901,14 +919,13 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 	})
 }
 
-// fetchServiceUpstreams maps each service id to the upstream it names.
+// fetchServiceUpstreams maps each service id to the upstream it points at.
 //
-// Only what the upstream filter needs: a route that names a service reaches
-// whatever upstream that service points at, and the filter has to see it. A
-// service carrying an inline upstream has no id to record, so it is absent
-// here and its routes match nothing — the same as a route with an inline
-// upstream of its own.
-func fetchServiceUpstreams(ctx context.Context, instance *models.Instance) (map[string]string, error) {
+// A route that names a service reaches whatever upstream that service points
+// at, and both the upstream filter and the Upstream column have to see it. A
+// service carrying its upstream inline is recorded as such: it has no id to
+// match, but its routes do reach a backend.
+func fetchServiceUpstreams(ctx context.Context, instance *models.Instance) (serviceUpstreams, error) {
 	url := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin/services"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -946,15 +963,20 @@ func fetchServiceUpstreams(ctx context.Context, instance *models.Instance) (map[
 // own reason for keeping it out of what a non-admin can read.
 const serviceLookupWarning = "service_lookup_failed"
 
-// parseServiceUpstreams maps each service id to the upstream it names.
+// serviceColumnWarning is the same failure on a list with no upstream filter.
+// Nothing is missing from it, but routes that reach their upstream only
+// through a service cannot say which, and their rows read as reaching none.
+const serviceColumnWarning = "service_upstream_unresolved"
+
+// parseServiceUpstreams maps each service id to the upstream it points at.
 //
 // Ids are decoded loosely on purpose: APISIX keeps whichever JSON type they
 // arrived as, so one service created with a numeric id used to abort the decode
 // of the whole list and leave every service-bound route out of the filter.
 //
-// A service carrying an inline upstream has no id to record and is absent here,
-// the same as a route with an inline upstream of its own.
-func parseServiceUpstreams(body []byte) (map[string]string, error) {
+// A service carrying its upstream inline is recorded with no id; one reaching
+// no upstream at all is left out.
+func parseServiceUpstreams(body []byte) (serviceUpstreams, error) {
 	// `list` is decoded loosely because APISIX answers an empty collection with
 	// an object rather than an array — the quirk src/config/req.ts already works
 	// around in the browser. Insisting on an array would report "results are
@@ -970,10 +992,10 @@ func parseServiceUpstreams(body []byte) (map[string]string, error) {
 	if !ok {
 		// An object, or absent: either way there is nothing to map, and nothing
 		// went wrong.
-		return map[string]string{}, nil
+		return serviceUpstreams{}, nil
 	}
 
-	mapped := make(map[string]string, len(rows))
+	mapped := make(serviceUpstreams, len(rows))
 	for _, row := range rows {
 		entry, ok := row.(map[string]any)
 		if !ok {
@@ -984,9 +1006,13 @@ func parseServiceUpstreams(body []byte) (map[string]string, error) {
 			continue
 		}
 		id := idField(value, "id")
-		upstreamID := idField(value, "upstream_id")
-		if id != "" && upstreamID != "" {
-			mapped[id] = upstreamID
+		if id == "" {
+			continue
+		}
+		if upstreamID := idField(value, "upstream_id"); upstreamID != "" {
+			mapped[id] = serviceUpstream{ID: upstreamID}
+		} else if _, inline := value["upstream"]; inline {
+			mapped[id] = serviceUpstream{Inline: true}
 		}
 	}
 	return mapped, nil
