@@ -16,7 +16,7 @@
  */
 import { API_ROUTES, API_SERVICES, API_UPSTREAMS } from '@/config/constant';
 
-import { e2eReq } from './req';
+import { e2eReq, listEvery } from './req';
 
 /**
  * Cleanup scoped to what a spec created.
@@ -55,13 +55,9 @@ export const deleteByPrefix = async (
 ): Promise<number> => {
   if (prefixes.length === 0) return 0;
 
-  // No page and no page_size: asked for no particular page, the proxy answers
-  // with every row, and a sweep has to see them all. Now that e2eReq sends the
-  // params it is given (#185), a page_size here would be a real cap, and past
-  // it whatever a failed spec left behind would stay behind.
-  const res = await e2eReq.get<unknown, { data: { list?: { value: Record<string, unknown> }[] } }>(
-    apiBase
-  );
+  // Every row rather than a page of them: past a page_size, whatever a failed
+  // spec left behind would stay behind.
+  const rows = await listEvery(apiBase);
 
   const matches = (value: unknown): boolean => {
     if (typeof value === 'string') {
@@ -77,7 +73,7 @@ export const deleteByPrefix = async (
     return false;
   };
 
-  const doomed = (res.data.list ?? []).filter((row) => matches(row.value[field]));
+  const doomed = rows.filter((row) => matches(row.value[field]));
 
   await Promise.all(
     doomed.map((row) =>

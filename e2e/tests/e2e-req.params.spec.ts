@@ -20,7 +20,7 @@ import { e2eReq } from '@e2e/utils/req';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { expect, test } from '@playwright/test';
 
-import { API_ROUTES } from '@/config/constant';
+import { API_ROUTES, API_SERVICES } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 /**
@@ -35,7 +35,15 @@ const prefix = randomId('e2e_req_params');
 const names = [`${prefix}_a`, `${prefix}_b`];
 const onLocal = () => ({ 'X-Instance-ID': getFixtures().localInstanceId });
 
+// Services, whose labels are not checked against the catalog the way a route's
+// are: the first carries both labels, the second only one of them.
+const services = [
+  { name: `${prefix}_both`, labels: { e2e_req_a: 'on', e2e_req_b: 'on' } },
+  { name: `${prefix}_one`, labels: { e2e_req_a: 'on' } },
+];
+
 type RouteList = { data: { list: { value: APISIXType['Route'] }[]; total: number } };
+type ServiceList = { data: { list: { value: APISIXType['Service'] }[]; total: number } };
 
 test.beforeAll(async () => {
   const token = await loginAdmin();
@@ -46,6 +54,13 @@ test.beforeAll(async () => {
       json: { name, uri: `/${name}`, upstream: { type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } } },
     });
   }
+  for (const service of services) {
+    await apiFetch(`${PROXY}/services/${service.name}`, token, {
+      method: 'PUT',
+      headers: onLocal(),
+      json: service,
+    });
+  }
 });
 
 test.afterAll(async () => {
@@ -54,6 +69,12 @@ test.afterAll(async () => {
     await apiFetch(`${PROXY}/routes/${name}`, token, { method: 'DELETE', headers: onLocal() }).catch(
       () => undefined
     );
+  }
+  for (const service of services) {
+    await apiFetch(`${PROXY}/services/${service.name}`, token, {
+      method: 'DELETE',
+      headers: onLocal(),
+    }).catch(() => undefined);
   }
 });
 
@@ -67,4 +88,16 @@ test('sends the query parameters it is given', async () => {
   expect(res.data.total).toBe(2);
   expect(res.data.list).toHaveLength(1);
   expect(res.data.list[0].value.name).toMatch(new RegExp(`^${prefix}_`));
+});
+
+test('sends a repeated filter the way the gateway reads it', async () => {
+  // Through the dashboard's serializer, `label=a&label=b`: both labels are
+  // required, and only one service carries them both. axios's own would send
+  // `label[]=`, which the proxy does not read, and both would come back.
+  const res = await e2eReq.get<unknown, ServiceList>(API_SERVICES, {
+    params: { name: prefix, label: ['e2e_req_a:on', 'e2e_req_b:on'] },
+  });
+
+  expect(res.data.total).toBe(1);
+  expect(res.data.list.map((row) => row.value.name)).toEqual([`${prefix}_both`]);
 });

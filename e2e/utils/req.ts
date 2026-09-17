@@ -16,9 +16,9 @@
  */
 import { type APIRequestContext, request } from '@playwright/test';
 import axios, { type AxiosAdapter } from 'axios';
-import { stringify } from 'qs';
 
 import { API_PREFIX, BASE_PATH } from '@/config/constant';
+import { serializeParams } from '@/config/params';
 
 import { env } from './env';
 import { getFixtures } from './fixtures';
@@ -90,10 +90,10 @@ export const getE2eReq = async (ctx: APIRequestContext) => {
   return axios.create({
     adapter: getPlaywrightRequestAdapter(ctx),
     baseURL: `${API_URL}${API_PREFIX}`,
-    paramsSerializer: (p) =>
-      stringify(p, {
-        arrayFormat: 'repeat',
-      }),
+    // The dashboard's own serializer, so a spec's params reach the gateway as
+    // the dashboard's would: `filter` encoded the way APISIX reads it rather
+    // than as bracketed keys it ignores, and repeatable filters repeated.
+    paramsSerializer: serializeParams,
     headers: {
       Authorization: `Bearer ${token}`,
       'X-Instance-ID': fx.localInstanceId,
@@ -102,3 +102,16 @@ export const getE2eReq = async (ctx: APIRequestContext) => {
 };
 
 export const e2eReq = await getE2eReq(await request.newContext());
+
+/**
+ * Every row of a resource list, however many there are.
+ *
+ * Asked for no particular page, the gateway answers with the whole list. A
+ * page_size is a real cap now that e2eReq sends the params it is given (#185),
+ * so a read that has to see everything — a sweep, or a count of what should
+ * not exist — asks for no page at all.
+ */
+export const listEvery = async <T = Record<string, unknown>>(apiBase: string) => {
+  const res = await e2eReq.get<unknown, { data: { list?: { value: T }[] } }>(apiBase);
+  return res.data.list ?? [];
+};

@@ -19,14 +19,13 @@ import { fileURLToPath } from 'node:url';
 
 import { routesPom } from '@e2e/pom/routes';
 import { randomId } from '@e2e/utils/common';
-import { e2eReq } from '@e2e/utils/req';
+import { e2eReq, listEvery } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 import JSZip from 'jszip';
 
-import { getRouteListReq } from '@/apis/routes';
 import { postUpstreamReq } from '@/apis/upstreams';
-import { API_ROUTES, API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_ROUTES, API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 const readFixture = (name: string): string =>
@@ -44,10 +43,7 @@ const wsdlSoap12 = readFixture('billing-soap12.wsdl');
  * independent of their order — and of whatever a previous run left behind.
  */
 const deleteImportedRoutes = async () => {
-  const { list } = await getRouteListReq(e2eReq, {
-    page: 1,
-    page_size: PAGE_SIZE_MAX,
-  });
+  const list = await listEvery<APISIXType['Route']>(API_ROUTES);
   const imported = list.filter((d) =>
     d.value.name?.startsWith('BillingService')
   );

@@ -16,7 +16,7 @@
  */
 import { streamRoutesPom } from '@e2e/pom/stream_routes';
 import { randomId } from '@e2e/utils/common';
-import { e2eReq } from '@e2e/utils/req';
+import { e2eReq, listEvery } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import {
   uiFillStreamRouteRequiredFields,
@@ -24,8 +24,8 @@ import {
 } from '@e2e/utils/ui/stream_routes';
 import { expect, type Page } from '@playwright/test';
 
-import { getStreamRouteListReq } from '@/apis/stream_routes';
-import { API_STREAM_ROUTES, API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_STREAM_ROUTES, API_UPSTREAMS } from '@/config/constant';
+import type { APISIXType } from '@/types/schema/apisix';
 
 /**
  * A stream route could be saved with nothing in it at all — APISIX answers a
@@ -43,11 +43,9 @@ const SERVER_ADDR = '127.0.9.9';
 const SERVER_PORT = 9399;
 
 const countMatching = async (): Promise<number> => {
-  const res = await getStreamRouteListReq(e2eReq, {
-    page: 1,
-    page_size: PAGE_SIZE_MAX,
-  });
-  return res.list.filter(
+  // Every row: a page could leave out the very one that should not be there.
+  const rows = await listEvery<APISIXType['StreamRoute']>(API_STREAM_ROUTES);
+  return rows.filter(
     (r) => r.value.server_addr === SERVER_ADDR && r.value.server_port === SERVER_PORT
   ).length;
 };
@@ -72,12 +70,9 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  const res = await getStreamRouteListReq(e2eReq, {
-    page: 1,
-    page_size: PAGE_SIZE_MAX,
-  });
+  const rows = await listEvery<APISIXType['StreamRoute']>(API_STREAM_ROUTES);
   await Promise.all(
-    res.list
+    rows
       .filter((r) => r.value.server_addr === SERVER_ADDR)
       .map((r) => e2eReq.delete(`${API_STREAM_ROUTES}/${r.value.id}`))
   );
