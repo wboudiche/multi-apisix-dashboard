@@ -297,15 +297,11 @@ func invalidProxyPath(path string) bool {
 	return false
 }
 
-// namesResourceItself reports whether path addresses a resource directly,
-// <type>/<id>, rather than something beneath it such as a consumer's
-// credentials, whose path also carries the consumer's name where the id sits.
+// namesResourceItself reports whether path is <type>/<id>, the only shape in
+// which the id getResourceMetadata reads is the resource's own. A consumer's
+// credential, /consumers/<username>/credentials/<id>, reads as the consumer.
 func namesResourceItself(path string) bool {
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) > 0 && parts[0] == "admin" {
-		parts = parts[1:]
-	}
-	return len(parts) == 2
+	return len(strings.Split(strings.Trim(path, "/"), "/")) == 2
 }
 
 // Messages for the proxy's authorization refusals.
@@ -689,7 +685,13 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			}
 		}
 
-		if resourceID != "" && effectiveTeamID != "" {
+		// Only for the types teams share. Nothing reads a record for any other
+		// type - no filter, no write check, no reassign screen - yet an admin
+		// with a team selected left one on every write, and DeleteTeam counted
+		// it. A secret's was worse: /secrets/<manager>/<id> reads as the
+		// manager's id, so one record stood for every secret under that manager
+		// and could not follow any one of them out (#248).
+		if resourceID != "" && effectiveTeamID != "" && teamScopedResources[resourceType] {
 			ownerCtx, cancel := ownershipWriteContext(c.Request.Context())
 			err := h.ownershipService.SetOwner(ownerCtx, &models.Ownership{
 				InstanceID:   instanceID,

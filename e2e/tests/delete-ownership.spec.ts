@@ -46,6 +46,15 @@ const teams: string[] = [];
 test.afterEach(async () => {
   const token = await loginAdmin();
   for (const path of resources.splice(0).reverse()) {
+    // Detached first, which a backend without the fix needs: there, deleting
+    // leaves the record, and with it a team this spec could never delete. The
+    // record is keyed by the first two segments, as the proxy reads them.
+    const [type, id] = path.split('/');
+    await apiFetch(`/api/v1/apisix/ownership/${type}/${id}`, token, {
+      method: 'PUT',
+      headers: onInstance(),
+      json: { team_id: '' },
+    }).catch(() => undefined);
     await apiFetch(`${PROXY}/${path}`, token, { method: 'DELETE', headers: onInstance() }).catch(
       () => undefined
     );
@@ -55,27 +64,57 @@ test.afterEach(async () => {
   }
 });
 
-test('a team whose routes were all deleted can be deleted', async () => {
-  const token = await loginAdmin();
+const createTeam = async (token: string) => {
   const team = (await apiFetch('/api/v1/teams', token, {
     method: 'POST',
     json: { name: randomId('e2e-del-own'), description: '' },
   })) as { id: string };
   teams.push(team.id);
+  return team.id;
+};
+
+/** Deletes a team, and stops tracking it for the teardown once it is gone. */
+const deleteTeam = async (token: string, id: string) => {
+  const res = await apiFetch(`/api/v1/teams/${id}`, token, { method: 'DELETE' });
+  teams.splice(teams.indexOf(id), 1);
+  return res;
+};
+
+test('a team whose routes were all deleted can be deleted', async () => {
+  const token = await loginAdmin();
+  const team = await createTeam(token);
 
   const id = randomId('e2e-del-own');
   resources.push(`routes/${id}`);
   await apiFetch(`${PROXY}/routes/${id}`, token, {
     method: 'PUT',
-    headers: onInstance(team.id),
+    headers: onInstance(team),
     json: route(id),
   });
   await apiFetch(`${PROXY}/routes/${id}`, token, { method: 'DELETE', headers: onInstance() });
 
   // It owns nothing now. Refused with 409 "it owns 1 resources" while the
   // deleted route's record was still counted.
-  await expect(apiFetch(`/api/v1/teams/${team.id}`, token, { method: 'DELETE' })).resolves.toBeNull();
-  teams.splice(teams.indexOf(team.id), 1);
+  await expect(deleteTeam(token, team)).resolves.toBeNull();
+});
+
+test('a secret written with a team selected does not keep that team from being deleted', async () => {
+  // An admin with a team selected sends it on every write. For a secret, the
+  // path /secrets/<manager>/<id> read as the manager's id, so the record stood
+  // for the whole manager, and no delete of one secret could remove it.
+  const token = await loginAdmin();
+  const team = await createTeam(token);
+
+  const path = `secrets/vault/${randomId('e2e-del-own')}`;
+  resources.push(path);
+  await apiFetch(`${PROXY}/${path}`, token, {
+    method: 'PUT',
+    headers: onInstance(team),
+    json: { uri: 'https://vault.example.com', prefix: '/apisix', token: 'e2e' },
+  });
+  await apiFetch(`${PROXY}/${path}`, token, { method: 'DELETE', headers: onInstance() });
+
+  await expect(deleteTeam(token, team)).resolves.toBeNull();
 });
 
 test("another team can create a resource under a deleted resource's id", async () => {

@@ -60,13 +60,11 @@ func TestOwnershipWriteContextIsBounded(t *testing.T) {
 // puts the consumer's name where an id would be (#248).
 func TestNamesResourceItself(t *testing.T) {
 	cases := map[string]bool{
-		"/admin/routes/r1":                      true,
-		"/routes/r1":                            true,
-		"/admin/consumers/alice":                true,
-		"/admin/routes":                         false,
-		"/admin/consumers/alice/credentials/c1": false,
-		"/consumers/alice/credentials/c1":       false,
-		"/admin/plugin_metadata/key-auth/extra": false,
+		"/routes/r1":                      true,
+		"/consumers/alice":                true,
+		"/routes":                         false,
+		"/consumers/alice/credentials/c1": false,
+		"/secrets/vault/s1":               false,
 	}
 	for path, want := range cases {
 		if got := namesResourceItself(path); got != want {
