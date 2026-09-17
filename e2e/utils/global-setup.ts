@@ -49,6 +49,10 @@ const APISIX_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
 const LOCAL_APISIX_URL = process.env['E2E_LOCAL_APISIX_URL'] ?? 'http://127.0.0.1:9180';
 // Staging APISIX URL: override via E2E_STAGING_APISIX_URL for docker-network runs.
 const STAGING_APISIX_URL = process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.0.0.1:9181';
+// The local gateway, which a route test sends its request through. The staging
+// container publishes only its Admin API, so that instance is left without one
+// and a route test against it is refused, as it should be (#152).
+const LOCAL_GATEWAY_URL = process.env['E2E_LOCAL_GATEWAY_URL'] ?? 'http://127.0.0.1:9080';
 
 export default async function globalSetup(): Promise<void> {
   const token = await loginAdmin();
@@ -61,6 +65,7 @@ export default async function globalSetup(): Promise<void> {
     description: 'Primary local APISIX instance used in E2E tests',
     admin_api_url: LOCAL_APISIX_URL,
     admin_key: APISIX_ADMIN_KEY,
+    gateway_url: LOCAL_GATEWAY_URL,
     is_active: true,
   });
 

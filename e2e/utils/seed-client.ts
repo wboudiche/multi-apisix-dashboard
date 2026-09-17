@@ -206,6 +206,16 @@ export async function ensureInstance(token: string, input: CreateInstanceInput):
       );
     }
     assertDisposableGateway(existing.name, existing.admin_api_url);
+
+    // A gateway_url the fixture asks for is set on an instance that has none,
+    // or has another: the seed decides where its gateway is, and a route test
+    // is answered "Instance has no gateway_url configured" without it (#152).
+    if (input.gateway_url && existing.gateway_url !== input.gateway_url) {
+      return (await apiFetch(`/api/v1/instances/${existing.id}`, token, {
+        method: 'PUT',
+        json: { gateway_url: input.gateway_url },
+      })) as Instance;
+    }
     return existing;
   }
 
