@@ -282,11 +282,48 @@ export type CreateUserInput = {
   role?: string;
 };
 
+/**
+ * Whether an account signs in with this password and is ready to be used.
+ *
+ * A password reset by hand, or by an older revision of these fixtures, leaves
+ * an account the seed reports as ready and no spec can log in as. So does one
+ * created outside the seed, which must change its password on first login: the
+ * spec lands on that screen instead of where it was going (#149).
+ */
+async function signsIn(username: string, password: string): Promise<boolean> {
+  const res = await fetch(`${API_URL}/api/v1/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { must_change_password?: boolean };
+  return data.must_change_password !== true;
+}
+
 export async function ensureUser(token: string, input: CreateUserInput): Promise<User> {
   const list = (await apiFetch('/api/v1/users', token)) as User[];
   const existing = list.find((u) => u.username === input.username);
   if (existing) {
-    return existing;
+    if (await signsIn(input.username, input.password)) {
+      return existing;
+    }
+    // A super_admin is never deleted here: the backend keeps the last one, and
+    // the account the seed logs in with is one. Say what to do instead.
+    if (existing.role === 'super_admin') {
+      throw new Error(
+        `[seed] "${input.username}" exists and the fixture cannot sign in as it. It is a ` +
+          'super_admin, which the seed will not delete: reset its password, or point the ' +
+          'fixture at the password it has.'
+      );
+    }
+
+    // The account is there and the fixture cannot log in as it. Recreated
+    // rather than reset: a reset leaves must_change_password set, and no API
+    // clears it. Its instance assignments go with it, and the seed writes
+    // those again straight after.
+    console.log(`[e2e] "${input.username}" did not sign in with the fixture's password; recreating it`);
+    await apiFetch(`/api/v1/users/${existing.id}`, token, { method: 'DELETE' });
   }
 
   const created = await apiFetch('/api/v1/users', token, {
