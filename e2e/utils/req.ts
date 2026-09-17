@@ -16,9 +16,9 @@
  */
 import { type APIRequestContext, request } from '@playwright/test';
 import axios, { type AxiosAdapter } from 'axios';
-import { stringify } from 'qs';
 
 import { API_PREFIX, BASE_PATH } from '@/config/constant';
+import { serializeParams } from '@/config/params';
 
 import { env } from './env';
 import { getFixtures } from './fixtures';
@@ -30,7 +30,7 @@ export const getPlaywrightRequestAdapter = (
   ctx: APIRequestContext
 ): AxiosAdapter => {
   return async (config) => {
-    const { url, data, baseURL } = config;
+    const { url, data } = config;
     if (typeof url === 'undefined') {
       throw new Error('Need to provide a url');
     }
@@ -42,8 +42,11 @@ export const getPlaywrightRequestAdapter = (
       failOnStatusCode: true,
       data,
     };
-    const urlWithBase = `${baseURL}${url}`;
-    const res = await ctx.fetch(urlWithBase, payload);
+    // The URL axios itself would send: base, path, and the params run through
+    // the instance's paramsSerializer. Built from the base and the path alone,
+    // every page, page_size and filter a spec passed was dropped, and the full
+    // list came back as though it had been asked for (#185).
+    const res = await ctx.fetch(axios.getUri(config), payload);
 
     try {
       return {
@@ -87,10 +90,10 @@ export const getE2eReq = async (ctx: APIRequestContext) => {
   return axios.create({
     adapter: getPlaywrightRequestAdapter(ctx),
     baseURL: `${API_URL}${API_PREFIX}`,
-    paramsSerializer: (p) =>
-      stringify(p, {
-        arrayFormat: 'repeat',
-      }),
+    // The dashboard's own serializer, so a spec's params reach the gateway as
+    // the dashboard's would: `filter` encoded the way APISIX reads it rather
+    // than as bracketed keys it ignores, and repeatable filters repeated.
+    paramsSerializer: serializeParams,
     headers: {
       Authorization: `Bearer ${token}`,
       'X-Instance-ID': fx.localInstanceId,
@@ -99,3 +102,16 @@ export const getE2eReq = async (ctx: APIRequestContext) => {
 };
 
 export const e2eReq = await getE2eReq(await request.newContext());
+
+/**
+ * Every row of a resource list, however many there are.
+ *
+ * Asked for no particular page, the gateway answers with the whole list. A
+ * page_size is a real cap now that e2eReq sends the params it is given (#185),
+ * so a read that has to see everything — a sweep, or a count of what should
+ * not exist — asks for no page at all.
+ */
+export const listEvery = async <T = Record<string, unknown>>(apiBase: string) => {
+  const res = await e2eReq.get<unknown, { data: { list?: { value: T }[] } }>(apiBase);
+  return res.data.list ?? [];
+};

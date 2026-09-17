@@ -17,11 +17,11 @@
 import { routesPom } from '@e2e/pom/routes';
 import { randomId } from '@e2e/utils/common';
 import { env } from '@e2e/utils/env';
-import { e2eReq } from '@e2e/utils/req';
+import { e2eReq, listEvery } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { getRouteListReq, putRouteReq } from '@/apis/routes';
+import { putRouteReq } from '@/apis/routes';
 import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -59,9 +59,9 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   // The duplicate gets a server-assigned id, so clean up by name.
-  const res = await getRouteListReq(e2eReq, { page: 1, page_size: PAGE_SIZE_MAX });
+  const rows = await listEvery<APISIXType['Route']>(API_ROUTES);
   await Promise.all(
-    res.list
+    rows
       .filter((item) => item.value.name?.startsWith(ROUTE_ID))
       .map((item) => e2eReq.delete(`${API_ROUTES}/${item.value.id}`))
   );
@@ -88,8 +88,8 @@ test('duplicates a route without leaking dashboard fields to the Admin API', asy
 // level covers them both and pins down the premise: the list really does hand
 // out __team_id.
 test('accepts a write body still carrying the dashboard fields it handed out', async () => {
-  const listed = await getRouteListReq(e2eReq, { page: 1, page_size: PAGE_SIZE_MAX });
-  const row = listed.list.find((item) => item.value.name === ROUTE_NAME);
+  const listed = await listEvery<APISIXType['Route']>(API_ROUTES);
+  const row = listed.find((item) => item.value.name === ROUTE_NAME);
   expect(row).toBeDefined();
 
   const value = row!.value as unknown as Record<string, unknown>;

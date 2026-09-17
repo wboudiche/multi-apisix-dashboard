@@ -95,8 +95,8 @@ ownershipMatrixSuite({
       // matched on port alone, in 9000-9999 — the range the CRUD specs'
       // stream routes also drew from — so it could remove some other row that
       // happened to share the port and leave this one behind. The address is
-      // this spec's alone, so a row carrying both is its own. (e2eReq sends no
-      // page params, and without them the backend returns every row.)
+      // this spec's alone, so a row carrying both is its own. (This read sends
+      // no page params, and without them the backend returns every row.)
       const list = await e2eReq.get('/stream_routes');
       const rows = (list.data?.list ?? []).filter(
         (r: { value: { server_addr?: string; server_port?: number } }) =>
