@@ -72,99 +72,106 @@ const openLastStep = async (page: Page, name: string) => {
 const nextFrame = (page: Page) =>
   page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 
-/** Each test removes the service it made, by its own name. */
-const removeService = (name: string) => deleteByPrefix(API_SERVICES, 'name', name);
+/**
+ * The service a test makes, removed in afterEach rather than in the test's own
+ * finally (#243). Playwright does not stop a test that times out: it runs the
+ * hooks, then closes the page and shuts the worker down, while the body carries
+ * on until one of its waits fails. A wait with no timeout of its own fails only
+ * as the page closes, so the finally behind it raced the shutdown, and a slow
+ * delete lost. The hook is awaited before any of that.
+ *
+ * It cannot see a creation still on its way when it lists: a POST that lands
+ * after that stays on the gateway. Closing the page first would narrow this,
+ * but a timed-out test's error context is a snapshot of that page.
+ */
+let created: string | undefined;
+
+const serviceName = (prefix: string) => {
+  created = randomId(prefix);
+  return created;
+};
+
+test.afterEach(async () => {
+  const name = created;
+  created = undefined;
+  if (name) await deleteByPrefix(API_SERVICES, 'name', name);
+});
 
 test('Enter does not start a second submit while one is in flight', async ({ page }) => {
-  const name = randomId('e2e_wizard_enter');
   const posts = countPosts(page);
+  const submit = await openLastStep(page, serviceName('e2e_wizard_enter'));
+  const release = await holdRequests(page, SERVICES, 'POST');
   try {
-    const submit = await openLastStep(page, name);
-    const release = await holdRequests(page, SERVICES, 'POST');
-    try {
-      await submit.click();
-      await expect.poll(() => posts.length, { timeout: 15000 }).toBe(1);
-      await expect(submit).toBeDisabled();
-      // The wizard leaves Enter on a button to the button, so this only proves
-      // something with the focus elsewhere — where the disabled button left it.
-      await expect(submit).not.toBeFocused();
-      await page.keyboard.press('Enter');
-    } finally {
-      release();
-    }
-
-    // Counted once the round trip has finished: a second submit, validated
-    // before it is sent, would have gone out by then. The first toast is waited
-    // for rather than the only one — a second submit brings a toast of its own,
-    // and it is the count that should say so.
-    await expect(page.getByText('Add Service Successfully').first()).toBeVisible({
-      timeout: 30000,
-    });
-    expect(posts).toHaveLength(1);
+    await submit.click();
+    await expect.poll(() => posts.length, { timeout: 15000 }).toBe(1);
+    await expect(submit).toBeDisabled();
+    // The wizard leaves Enter on a button to the button, so this only proves
+    // something with the focus elsewhere — where the disabled button left it.
+    await expect(submit).not.toBeFocused();
+    await page.keyboard.press('Enter');
   } finally {
-    await removeService(name);
+    release();
   }
+
+  // Counted once the round trip has finished: a second submit, validated
+  // before it is sent, would have gone out by then. The first toast is waited
+  // for rather than the only one — a second submit brings a toast of its own,
+  // and it is the count that should say so.
+  await expect(page.getByText('Add Service Successfully').first()).toBeVisible({
+    timeout: 30000,
+  });
+  expect(posts).toHaveLength(1);
 });
 
 test('Cancel is off while a submit is in flight', async ({ page }) => {
-  const name = randomId('e2e_wizard_cancel');
   const posts = countPosts(page);
   const cancel = page.getByRole('button', { name: 'Cancel', exact: true });
+  const submit = await openLastStep(page, serviceName('e2e_wizard_cancel'));
+  // On before the submit, so that what follows is the submit's doing.
+  await expect(cancel).toBeEnabled();
+  const release = await holdRequests(page, SERVICES, 'POST');
   try {
-    const submit = await openLastStep(page, name);
-    // On before the submit, so that what follows is the submit's doing.
-    await expect(cancel).toBeEnabled();
-    const release = await holdRequests(page, SERVICES, 'POST');
-    try {
-      await submit.click();
-      await expect.poll(() => posts.length, { timeout: 15000 }).toBe(1);
-      await expect(cancel).toBeDisabled();
-    } finally {
-      release();
-    }
-
-    await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
+    await submit.click();
+    await expect.poll(() => posts.length, { timeout: 15000 }).toBe(1);
+    await expect(cancel).toBeDisabled();
   } finally {
-    await removeService(name);
+    release();
   }
+
+  await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
 });
 
 test('Escape, Back and the steps do not leave a submit in flight', async ({ page }) => {
-  const name = randomId('e2e_wizard_leave');
   const posts = countPosts(page);
+  const submit = await openLastStep(page, serviceName('e2e_wizard_leave'));
+  const back = page.getByRole('button', { name: 'Back', exact: true });
+  await expect(back).toBeEnabled();
+  const release = await holdRequests(page, SERVICES, 'POST');
   try {
-    const submit = await openLastStep(page, name);
-    const back = page.getByRole('button', { name: 'Back', exact: true });
-    await expect(back).toBeEnabled();
-    const release = await holdRequests(page, SERVICES, 'POST');
-    try {
-      await submit.click();
-      await expect.poll(() => posts.length, { timeout: 15000 }).toBe(1);
+    await submit.click();
+    await expect.poll(() => posts.length, { timeout: 15000 }).toBe(1);
 
-      await expect(back).toBeDisabled();
+    await expect(back).toBeDisabled();
 
-      // Escape walks back a step at a time and cancels from the first, so as
-      // many presses as the wizard has steps would have left the page.
-      await page.keyboard.press('Escape');
-      await page.keyboard.press('Escape');
-      await page.keyboard.press('Escape');
-      await page.keyboard.press('Escape');
-      await nextFrame(page);
-      await expect(page).toHaveURL(/\/services\/add$/);
-      await expect(submit).toBeVisible();
+    // Escape walks back a step at a time and cancels from the first, so as
+    // many presses as the wizard has steps would have left the page.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await nextFrame(page);
+    await expect(page).toHaveURL(/\/services\/add$/);
+    await expect(submit).toBeVisible();
 
-      // A step button, which otherwise goes back freely. Its name is the step's
-      // label followed by its description, "Basic Name and hosts".
-      await page.getByRole('button', { name: /^Basic\b/ }).click();
-      await nextFrame(page);
-      await expect(submit).toBeVisible();
-    } finally {
-      release();
-    }
-
-    await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
-    expect(posts).toHaveLength(1);
+    // A step button, which otherwise goes back freely. Its name is the step's
+    // label followed by its description, "Basic Name and hosts".
+    await page.getByRole('button', { name: /^Basic\b/ }).click();
+    await nextFrame(page);
+    await expect(submit).toBeVisible();
   } finally {
-    await removeService(name);
+    release();
   }
+
+  await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
+  expect(posts).toHaveLength(1);
 });
