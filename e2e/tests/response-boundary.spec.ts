@@ -138,6 +138,61 @@ authed('reports a misroute that no page renders an error for', async ({ page }) 
   ).toBeVisible({ timeout: 20000 });
 });
 
+authed('reports a users list of another shape instead of rendering it', async ({
+  page,
+}) => {
+  // The users page read with fetch of its own and set whatever parsed into
+  // state: `{"total":0}` was committed, and the next render's `users.map`
+  // threw outside every catch — the router's error component (#165).
+  await page.route('**/api/v1/users', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ total: 0 }),
+    })
+  );
+  await page.goto('/ui/users');
+
+  // .first(): React's development double-mount loads the page twice, so the
+  // same report lands twice.
+  await expect(
+    page
+      .locator('.mantine-Notification-root')
+      .filter({ hasText: '/api/v1/users: expected a list' })
+      .first()
+  ).toBeVisible({ timeout: 20000 });
+  // Still the users page, not the error component.
+  await expect(page.getByRole('heading', { name: 'User Management' })).toBeVisible();
+  await expect(page.getByText('Cannot read properties')).toHaveCount(0);
+});
+
+authed('reports an overview of another shape instead of rendering it', async ({
+  page,
+}) => {
+  // /ui/overview sits outside InstanceGuard, and the page reads
+  // `data?.global_stats.routes` — the optional chain guards the response being
+  // absent, not its shape. A body of another shape threw during render, and
+  // the route has no error component of its own, so it reached the root's and
+  // replaced the page with a stack trace.
+  await page.route('**/api/v1/overview*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ total: 0 }),
+    })
+  );
+  await page.goto('/ui/overview');
+
+  await expect(
+    page
+      .locator('.mantine-Notification-root')
+      .filter({ hasText: '/api/v1/overview: expected an overview' })
+      .first()
+  ).toBeVisible({ timeout: 20000 });
+  await expect(page.getByRole('heading', { name: 'Dashboard Overview' })).toBeVisible();
+  await expect(page.getByText('Cannot read properties')).toHaveCount(0);
+});
+
 test('a failed login does not end the session already in this browser', async ({
   browser,
 }) => {

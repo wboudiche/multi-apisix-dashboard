@@ -25,8 +25,10 @@
  * read as "malformed body, do not retry".
  */
 export class MalformedResponseError extends Error {
-  /** The request, when the thrower knew it. Absent from the shape checks,
-   *  which run on a value that has already left its response behind. */
+  /** The request, when the thrower knew it. A shape check runs on a value that
+   *  has already left its response behind, so it carries one only where the
+   *  caller passes it back in - `parseRecordList(data, url)`, `parseOverview`.
+   *  Worth doing on any page that loads more than one list. */
   readonly url?: string;
 
   constructor(detail: string, url?: string) {

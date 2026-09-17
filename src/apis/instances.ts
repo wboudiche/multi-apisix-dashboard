@@ -18,7 +18,6 @@
 import axios from 'axios';
 
 import { parseRecordList } from '@/utils/list-shape';
-import { MalformedResponseError } from '@/utils/response-shape';
 
 import { apiClient } from './client';
 
@@ -79,29 +78,6 @@ export const getInstanceConflict = (error: unknown): InstanceConflict | null => 
     return null;
   }
   return (error.response.data as InstanceConflict) ?? null;
-};
-
-/**
- * The reason the backend gave for a failure, falling back to `fallback` only
- * when there is nothing to report.
- *
- * Every instance handler answers with `{"error": "<reason>"}`, so collapsing a
- * 403, a binding error and an etcd outage into one generic message throws away
- * the only thing that tells the operator what to do next.
- */
-export const describeError = (error: unknown, fallback: string): string => {
-  if (axios.isAxiosError(error)) {
-    const reason = (error.response?.data as { error?: string } | undefined)?.error;
-    if (reason) return reason;
-    if (error.message) return error.message;
-  }
-  // Not an axios error — the response boundary raises it past axios — and its
-  // message is the only one that names the request that misrouted. Without
-  // this the header and all four call sites on the instances page collapse it
-  // into their generic fallback, which is the thing this function exists to
-  // stop doing.
-  if (error instanceof MalformedResponseError) return error.message;
-  return fallback;
 };
 
 export type InstanceHealth = {

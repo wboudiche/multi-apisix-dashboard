@@ -36,7 +36,7 @@ import type { FC } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { describeError, instanceApi, type InstanceHealth } from '@/apis/instances';
+import { instanceApi, type InstanceHealth } from '@/apis/instances';
 import { type Team, teamApi } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { queryClient } from '@/config/global';
@@ -44,6 +44,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom, instancesAtom, setInstancesAtom } from '@/stores/instance';
 import { currentTeamIdAtom } from '@/stores/team';
+import { describeError } from '@/utils/api-error';
 import IconMenu from '~icons/material-symbols/menu';
 import IconMenuOpen from '~icons/material-symbols/menu-open';
 
