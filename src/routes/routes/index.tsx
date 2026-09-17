@@ -33,6 +33,7 @@ import {
   Table,
   Text,
 } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -44,7 +45,6 @@ import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import { teamApi } from '@/apis/teams';
 import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
-import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
 import { ImportWsdlModal } from '@/components/page/ImportWsdlModal';
 import { ListWarningBanner } from '@/components/page/ListWarningBanner';
@@ -238,7 +238,42 @@ export const RouteList = (props: RouteListProps) => {
     }
   }, [navigate]);
 
-  const handleDelete = useCallback(async (id: string) => {
+  /**
+   * Publishes a route, or takes it offline.
+   *
+   * The button that says Offline used to delete the route, beside a Delete in
+   * the More menu that did the same - two ways to the same irreversible thing,
+   * one of them named after something else entirely (#164). A route carries a
+   * status the list already shows, so Offline now sets it.
+   */
+  const handleSetStatus = useCallback(
+    async (record: Record<string, unknown>, status: 0 | 1) => {
+      const id = record['id'] as string;
+      try {
+        const body = withoutDashboardFields(record);
+        delete body['id'];
+        delete body['create_time'];
+        delete body['update_time'];
+        await req.put(`${API_ROUTES}/${id}`, { ...body, status });
+        notifications.show({
+          message: t(status === 1 ? 'info.publish.success' : 'info.unpublish.success', {
+            name: t('routes.singular'),
+          }),
+          color: 'green',
+        });
+        refetch();
+      } catch (err: unknown) {
+        const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
+        notifications.show({
+          message: e?.response?.data?.error_msg || e?.message || 'Failed to update',
+          color: 'red',
+        });
+      }
+    },
+    [t, refetch]
+  );
+
+  const deleteRoute = useCallback(async (id: string) => {
     try {
       await req.delete(`${API_ROUTES}/${id}`);
       notifications.show({
@@ -255,8 +290,35 @@ export const RouteList = (props: RouteListProps) => {
     }
   }, [t, refetch]);
 
-  const isVisible = (col: string) => visibleColumns.includes(col);
+  /**
+   * Deletes a route, once it has been confirmed.
+   *
+   * The confirmation used to sit on the button beside it, which said Offline
+   * and deleted; this menu item deleted on the spot. Now that Offline takes a
+   * route offline, the one action that removes it is the one that asks (#164).
+   */
+  const handleDelete = useCallback(
+    (id: string) =>
+      modals.openConfirmModal({
+        centered: true,
+        confirmProps: { color: 'red' },
+        title: t('info.delete.title', { name: t('routes.singular') }),
+        children: (
+          <Text>
+            {t('info.delete.content', { name: t('routes.singular') })}
+            <Text component="span" fw={700} mx="0.25em" style={{ wordBreak: 'break-all' }}>
+              {id}
+            </Text>
+            {t('mark.question')}
+          </Text>
+        ),
+        labels: { confirm: t('form.btn.delete'), cancel: t('form.btn.cancel') },
+        onConfirm: () => deleteRoute(id),
+      }),
+    [t, deleteRoute]
+  );
 
+  const isVisible = (col: string) => visibleColumns.includes(col);
   if (isLoading && !data?.list) {
     return (
       <Center py="xl">
@@ -485,20 +547,27 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('operation') && (
                 <Table.Td>
                   <Group gap={8} wrap="nowrap">
-                    <DeleteResourceBtn
-                      name={t('routes.singular')}
-                      target={record.value.id}
-                      api={`${API_ROUTES}/${record.value.id}`}
-                      onSuccess={refetch}
-                      mode="list"
-                      size="xs"
-                      color="red"
-                      variant="filled"
-                      radius="sm"
-                      styles={{ root: { padding: '0 12px' } }}
-                    >
-                      {t('routes.list.actionOffline')}
-                    </DeleteResourceBtn>
+                    {canEdit && (
+                      <Button
+                        size="xs"
+                        color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
+                        variant="filled"
+                        radius="sm"
+                        styles={{ root: { padding: '0 12px' } }}
+                        onClick={() =>
+                          handleSetStatus(
+                            record.value as unknown as Record<string, unknown>,
+                            isResourceEnabled(record.value.status) ? 0 : 1
+                          )
+                        }
+                      >
+                        {t(
+                          isResourceEnabled(record.value.status)
+                            ? 'routes.list.actionOffline'
+                            : 'routes.list.actionPublish'
+                        )}
+                      </Button>
+                    )}
                     <RouteLinkBtn
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}

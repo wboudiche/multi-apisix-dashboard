@@ -656,6 +656,12 @@
       "success": "Delete {{name}} Successfully",
       "title": "Delete {{name}}"
     },
+    "publish": {
+      "success": "Publish {{name}} Successfully"
+    },
+    "unpublish": {
+      "success": "Take {{name}} Offline Successfully"
+    },
     "detail": {
       "title": "{{name}} Detail"
     },
@@ -704,6 +710,7 @@
       "statusPublished": "Published",
       "statusUnpublished": "Unpublished",
       "actionOffline": "Offline",
+      "actionPublish": "Publish",
       "actionConfigure": "Configure",
       "actionMore": "More",
       "filterReset": "Reset",
