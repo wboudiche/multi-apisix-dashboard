@@ -35,7 +35,7 @@ import (
 const serviceUpstreamCacheTTL = 10 * time.Second
 
 type serviceUpstreamEntry struct {
-	services map[string]string
+	services serviceUpstreams
 	storedAt time.Time
 }
 
@@ -61,7 +61,7 @@ func newServiceUpstreamCache(now func() time.Time) *serviceUpstreamCache {
 //
 // A gateway with no services at all is a real answer rather than a miss, so the
 // second return value carries presence instead of the map being non-empty.
-func (c *serviceUpstreamCache) get(instanceID string) (map[string]string, bool) {
+func (c *serviceUpstreamCache) get(instanceID string) (serviceUpstreams, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -72,7 +72,7 @@ func (c *serviceUpstreamCache) get(instanceID string) (map[string]string, bool) 
 	return entry.services, true
 }
 
-func (c *serviceUpstreamCache) put(instanceID string, services map[string]string) {
+func (c *serviceUpstreamCache) put(instanceID string, services serviceUpstreams) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

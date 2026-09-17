@@ -37,14 +37,14 @@ func TestServiceUpstreamCache(t *testing.T) {
 	})
 
 	t.Run("a stored table answers within the window", func(t *testing.T) {
-		cache.put("inst-a", map[string]string{"svc": "up"})
+		cache.put("inst-a", serviceUpstreams{"svc": {ID: "up"}})
 		now = now.Add(serviceUpstreamCacheTTL - time.Millisecond)
 
 		got, ok := cache.get("inst-a")
 		if !ok {
 			t.Fatal("expected a hit inside the window")
 		}
-		if got["svc"] != "up" {
+		if got["svc"].ID != "up" {
 			t.Errorf("got %v, want svc -> up", got)
 		}
 	})
@@ -57,7 +57,7 @@ func TestServiceUpstreamCache(t *testing.T) {
 	})
 
 	t.Run("one instance never answers for another", func(t *testing.T) {
-		cache.put("inst-a", map[string]string{"svc": "up-a"})
+		cache.put("inst-a", serviceUpstreams{"svc": {ID: "up-a"}})
 		if _, ok := cache.get("inst-b"); ok {
 			t.Error("inst-b must not be answered from inst-a's entry")
 		}
@@ -66,7 +66,7 @@ func TestServiceUpstreamCache(t *testing.T) {
 	t.Run("an empty table is a real answer, not a miss", func(t *testing.T) {
 		// A gateway with no services at all still has a known answer, and
 		// re-reading it on every page would defeat the point.
-		cache.put("inst-empty", map[string]string{})
+		cache.put("inst-empty", serviceUpstreams{})
 		if _, ok := cache.get("inst-empty"); !ok {
 			t.Error("expected a hit for a gateway with no services")
 		}
@@ -80,7 +80,7 @@ func TestServiceUpstreamCacheIsSafeForConcurrentUse(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 50; i++ {
 		wg.Add(2)
-		go func() { defer wg.Done(); cache.put("inst", map[string]string{"s": "u"}) }()
+		go func() { defer wg.Done(); cache.put("inst", serviceUpstreams{"s": {ID: "u"}}) }()
 		go func() { defer wg.Done(); cache.get("inst") }()
 	}
 	wg.Wait()
@@ -93,8 +93,8 @@ func TestServiceUpstreamCacheIsSafeForConcurrentUse(t *testing.T) {
 // failed, so no warning said so either.
 func TestServiceUpstreamCacheForgetsOneInstance(t *testing.T) {
 	cache := newServiceUpstreamCache(time.Now)
-	cache.put("inst-a", map[string]string{"svc": "up-a"})
-	cache.put("inst-b", map[string]string{"svc": "up-b"})
+	cache.put("inst-a", serviceUpstreams{"svc": {ID: "up-a"}})
+	cache.put("inst-b", serviceUpstreams{"svc": {ID: "up-b"}})
 
 	cache.forget("inst-a")
 

@@ -64,10 +64,11 @@ type listFilters struct {
 	teamIDs     []string
 	upstreamIDs []string
 
-	// service id -> upstream id, read from the gateway by the caller and only
-	// when an upstream filter is actually present. Empty otherwise, which
-	// costs a lookup that misses rather than a branch at every call site.
-	serviceUpstreams map[string]string
+	// service id -> the upstream it points at, read from the gateway by the
+	// caller when an upstream filter is present or route rows are annotated.
+	// Empty otherwise, which costs a lookup that misses rather than a branch
+	// at every call site.
+	serviceUpstreams serviceUpstreams
 }
 
 // parseListFilters reads the dashboard filters out of a query string. A blank
@@ -203,20 +204,8 @@ func matchesLabel(value map[string]any, needle string) bool {
 // an incident the question is which routes reach the failing gateway, and a
 // route bound to a service is as affected as one bound directly. The third
 // cannot match anything — there is no id to compare.
-func matchesUpstream(value map[string]any, want []string, services map[string]string) bool {
-	id := idField(value, "upstream_id")
-	if id == "" {
-		// An upstream of its own, even alongside a service_id: APISIX takes the
-		// route's over the service's, so resolving through the service here
-		// would name a backend the route never reaches. During an incident that
-		// is a route reported as depending on the gateway being drained.
-		if _, inline := value["upstream"]; inline {
-			return false
-		}
-		if serviceID := idField(value, "service_id"); serviceID != "" {
-			id = services[serviceID]
-		}
-	}
+func matchesUpstream(value map[string]any, want []string, services serviceUpstreams) bool {
+	id, _ := effectiveUpstream(value, services)
 	if id == "" {
 		return false
 	}
