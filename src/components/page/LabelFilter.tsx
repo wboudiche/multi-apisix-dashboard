@@ -83,7 +83,7 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
 
   // A key is enough. With no value chosen the tag is the bare key, which the
   // backend matches on any value the label holds (#238).
-  const canAdd = selectedKey !== null;
+  const canAdd = Boolean(selectedKey);
 
   const handleAdd = useCallback(() => {
     if (!selectedKey) return;
