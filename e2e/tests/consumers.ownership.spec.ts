@@ -17,9 +17,13 @@
 import { consumersPom } from '@e2e/pom/consumers';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
+import { uiHasToastMsg } from '@e2e/utils/ui';
+
+import { API_CONSUMERS } from '@/config/constant';
 
 ownershipMatrixSuite({
   resourceLabel: 'consumer',
+  apiPath: API_CONSUMERS,
   pom: {
     goto: { toIndex: consumersPom.toIndex },
     locator: {
@@ -32,6 +36,8 @@ ownershipMatrixSuite({
     await consumersPom.getAddConsumerBtn(page).click();
     await page.getByRole('textbox', { name: 'Username' }).fill(name);
     await consumersPom.getAddBtn(page).click();
+    // Leaving before the create has answered abandons it with the page (#183).
+    await uiHasToastMsg(page, { hasText: 'Add Consumer Successfully' });
     await consumersPom.toIndex(page);
   },
   cleanup: async (_page, name) => {

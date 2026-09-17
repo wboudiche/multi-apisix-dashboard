@@ -17,9 +17,13 @@
 import { consumerGroupsPom } from '@e2e/pom/consumer_groups';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
+import { uiHasToastMsg } from '@e2e/utils/ui';
+
+import { API_CONSUMER_GROUPS } from '@/config/constant';
 
 ownershipMatrixSuite({
   resourceLabel: 'consumer_group',
+  apiPath: API_CONSUMER_GROUPS,
   pom: {
     goto: { toIndex: consumerGroupsPom.toIndex },
     locator: {
@@ -55,6 +59,8 @@ ownershipMatrixSuite({
     await pluginDialog.waitFor({ state: 'hidden' });
 
     await consumerGroupsPom.getAddBtn(page).click();
+    // Leaving before the create has answered abandons it with the page (#183).
+    await uiHasToastMsg(page, { hasText: 'Add Consumer Group Successfully' });
     await consumerGroupsPom.toIndex(page);
   },
   cleanup: async (_page, name) => {

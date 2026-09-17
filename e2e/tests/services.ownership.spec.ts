@@ -17,10 +17,14 @@
 import { servicesPom } from '@e2e/pom/services';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
+import { uiHasToastMsg } from '@e2e/utils/ui';
 import { uiFillServiceRequiredFields } from '@e2e/utils/ui/services';
+
+import { API_SERVICES } from '@/config/constant';
 
 ownershipMatrixSuite({
   resourceLabel: 'service',
+  apiPath: API_SERVICES,
   pom: {
     goto: { toIndex: servicesPom.toIndex },
     locator: {
@@ -33,6 +37,8 @@ ownershipMatrixSuite({
     await servicesPom.getAddServiceBtn(page).click();
     await uiFillServiceRequiredFields(page, { name });
     await servicesPom.getSubmitBtn(page).click();
+    // Leaving before the create has answered abandons it with the page (#183).
+    await uiHasToastMsg(page, { hasText: 'Add Service Successfully' });
     await servicesPom.toIndex(page);
   },
   cleanup: async (_page, name) => {

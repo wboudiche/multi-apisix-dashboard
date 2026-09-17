@@ -17,10 +17,14 @@
 import { upstreamsPom } from '@e2e/pom/upstreams';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
+import { uiHasToastMsg } from '@e2e/utils/ui';
 import { uiFillUpstreamRequiredFields } from '@e2e/utils/ui/upstreams';
+
+import { API_UPSTREAMS } from '@/config/constant';
 
 ownershipMatrixSuite({
   resourceLabel: 'upstream',
+  apiPath: API_UPSTREAMS,
   pom: {
     goto: { toIndex: upstreamsPom.toIndex },
     locator: {
@@ -39,6 +43,8 @@ ownershipMatrixSuite({
       ],
     });
     await upstreamsPom.getAddBtn(page).click();
+    // Leaving before the create has answered abandons it with the page (#183).
+    await uiHasToastMsg(page, { hasText: 'Add Upstream Successfully' });
     await upstreamsPom.toIndex(page);
   },
   cleanup: async (_page, name) => {
