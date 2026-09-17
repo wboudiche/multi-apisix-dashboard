@@ -282,26 +282,98 @@ export type CreateUserInput = {
   role?: string;
 };
 
+/**
+ * What an account the seed found can do with the password the fixture has.
+ *
+ * A password reset by hand, or by an older revision of these fixtures, leaves
+ * an account the seed reports as ready and no spec can log in as. So does one
+ * created outside the seed, which must change its password on first login: the
+ * spec lands on that screen instead of where it was going (#149).
+ */
+type SignInState = 'ready' | 'wrong-password' | 'must-change-password';
+
+async function signInState(username: string, password: string): Promise<SignInState> {
+  const res = await fetch(`${API_URL}/api/v1/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  // Only a refusal of the credentials says anything about the account. Every
+  // other answer is the backend having a bad time, and an account deleted over
+  // one would be a reset nobody asked for.
+  if (res.status === 401) return 'wrong-password';
+  if (!res.ok) {
+    const text = await res.text().catch(() => '(no body)');
+    throw new Error(`[seed] could not check "${username}" (${res.status}): ${text}`);
+  }
+  const data = (await res.json()) as { must_change_password?: boolean };
+  return data.must_change_password === true ? 'must-change-password' : 'ready';
+}
+
+/**
+ * Creates the account, saying what was already given up for it when it cannot.
+ * The password policy is one reason a create is refused where the delete before
+ * it went through: password-policy.spec.ts raises the minimum length and only
+ * puts it back in afterAll, so an interrupted run leaves it raised.
+ */
+async function createUser(token: string, input: CreateUserInput, after?: string): Promise<User> {
+  try {
+    return (await apiFetch('/api/v1/users', token, {
+      method: 'POST',
+      json: {
+        username: input.username,
+        password: input.password,
+        email: input.email ?? '',
+        role: input.role ?? '',
+        // Seeded accounts log straight in from specs; opt out of the forced
+        // first-login password change that admin-created users default to.
+        must_change_password: false,
+      },
+    })) as User;
+  } catch (err) {
+    const why = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `[seed] could not create "${input.username}": ${why}${after ? `. ${after}` : ''}`
+    );
+  }
+}
+
 export async function ensureUser(token: string, input: CreateUserInput): Promise<User> {
   const list = (await apiFetch('/api/v1/users', token)) as User[];
   const existing = list.find((u) => u.username === input.username);
   if (existing) {
-    return existing;
+    const state = await signInState(input.username, input.password);
+    if (state === 'ready') {
+      return existing;
+    }
+    const because =
+      state === 'wrong-password'
+        ? 'the fixture cannot sign in as it'
+        : 'it must change its password on first login, so a spec logging in as it goes nowhere else';
+
+    // A super_admin is never deleted here: the backend keeps the last one, and
+    // the account the seed itself logs in with is one. What to do instead is
+    // not the same in both cases - a password reset sets the must-change flag,
+    // and only that account can clear it - so the message says which.
+    if (existing.role === 'super_admin') {
+      throw new Error(
+        `[seed] "${input.username}" exists and ${because}. It is a super_admin, which the ` +
+          'seed will not delete: ' +
+          (state === 'wrong-password'
+            ? 'reset its password, or point the fixture at the password it has.'
+            : 'sign in as it and change its password through POST /api/v1/user/password.')
+      );
+    }
+
+    // Recreated rather than reset: a reset leaves must_change_password set, and
+    // no API clears it. Deleting takes the account's instance assignments with
+    // it, which every caller of this helper writes again afterwards.
+    console.log(`[e2e] "${input.username}" recreated: ${because}`);
+    await apiFetch(`/api/v1/users/${existing.id}`, token, { method: 'DELETE' });
+    return createUser(token, input, `"${input.username}" was deleted first, because ${because}`);
   }
 
-  const created = await apiFetch('/api/v1/users', token, {
-    method: 'POST',
-    json: {
-      username: input.username,
-      password: input.password,
-      email: input.email ?? '',
-      role: input.role ?? '',
-      // Seeded accounts log straight in from specs; opt out of the forced
-      // first-login password change that admin-created users default to.
-      must_change_password: false,
-    },
-  });
-  return created as User;
+  return createUser(token, input);
 }
 
 // ---------------------------------------------------------------------------
