@@ -74,10 +74,15 @@ const nextFrame = (page: Page) =>
 
 /**
  * The service a test makes, removed in afterEach rather than in the test's own
- * finally. A test that times out is abandoned: its finally runs only once the
- * page has closed under it, alongside the worker's shutdown, and a delete that
- * takes longer than that shutdown is cut off with the service still on the
- * gateway (#243). A hook is awaited.
+ * finally (#243). Playwright does not stop a test that times out: it runs the
+ * hooks, then closes the page and shuts the worker down, while the body carries
+ * on until one of its waits fails. A wait with no timeout of its own fails only
+ * as the page closes, so the finally behind it raced the shutdown, and a slow
+ * delete lost. The hook is awaited before any of that.
+ *
+ * It cannot see a creation still on its way when it lists: a POST that lands
+ * after that stays on the gateway. Closing the page first would narrow this,
+ * but a timed-out test's error context is a snapshot of that page.
  */
 let created: string | undefined;
 
