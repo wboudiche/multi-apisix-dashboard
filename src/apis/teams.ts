@@ -25,13 +25,6 @@ export type Team = {
   description: string;
 };
 
-export type TeamMember = {
-  user_id: string;
-  username: string;
-  role: string;
-  instance_id: string;
-};
-
 export const teamApi = {
   // List all teams
   list: async (): Promise<Team[]> => {
@@ -61,17 +54,6 @@ export const teamApi = {
     await apiClient.delete(`/api/v1/teams/${id}`);
   },
 
-  // Get a single team by ID
-  getTeam: async (id: string): Promise<Team> => {
-    const response = await apiClient.get<{ value: Team }>(`/api/v1/teams/${id}`);
-    return response.data.value;
-  },
-
-  // Get members of a team
-  getMembers: async (id: string): Promise<TeamMember[]> => {
-    const response = await apiClient.get<{ list: TeamMember[] }>(`/api/v1/teams/${id}/members`);
-    return response.data.list || [];
-  },
 
   // Reassign resource ownership to a different team.
   // An empty teamId detaches the resource, leaving it owned by no team — which
