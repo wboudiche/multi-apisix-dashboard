@@ -57,12 +57,7 @@ const created: string[] = [];
 test.afterEach(async () => {
   const token = await loginAdmin();
   for (const key of created.splice(0)) {
-    // The ownership record first: deleting the resource does not remove it.
-    await apiFetch(`/api/v1/apisix/ownership/${key}`, token, {
-      method: 'PUT',
-      headers: onInstance(),
-      json: { team_id: '' },
-    }).catch(() => undefined);
+    // Its ownership record goes with it (#248).
     await apiFetch(`${PROXY}/${key}`, token, {
       method: 'DELETE',
       headers: onInstance(),

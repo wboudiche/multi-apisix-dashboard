@@ -54,3 +54,23 @@ func TestOwnershipWriteContextIsBounded(t *testing.T) {
 		t.Fatalf("deadline %v away, want within %v", remaining, ownershipWriteTimeout)
 	}
 }
+
+// A delete removes the ownership record only for a path naming the resource
+// itself. A consumer's credential is deleted under the consumer's path, which
+// puts the consumer's name where an id would be (#248).
+func TestNamesResourceItself(t *testing.T) {
+	cases := map[string]bool{
+		"/admin/routes/r1":                      true,
+		"/routes/r1":                            true,
+		"/admin/consumers/alice":                true,
+		"/admin/routes":                         false,
+		"/admin/consumers/alice/credentials/c1": false,
+		"/consumers/alice/credentials/c1":       false,
+		"/admin/plugin_metadata/key-auth/extra": false,
+	}
+	for path, want := range cases {
+		if got := namesResourceItself(path); got != want {
+			t.Errorf("namesResourceItself(%q) = %v, want %v", path, got, want)
+		}
+	}
+}
