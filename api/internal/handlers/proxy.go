@@ -305,10 +305,34 @@ func namesResourceItself(path string) bool {
 }
 
 // beneathResource reports whether path addresses something beneath a
-// resource, such as a consumer's credential, rather than a collection or a
-// resource itself.
+// resource, rather than a collection or a resource itself. Once
+// deepWriteRefused has run, the only such write a team can make is to a
+// consumer's credentials.
 func beneathResource(path string) bool {
 	return len(strings.Split(strings.Trim(path, "/"), "/")) > 2
+}
+
+// deepWriteRefused reports whether a write addresses a path deeper than
+// <type>/<id> that is none of the Admin API's own: a consumer's credentials,
+// or a secret under its manager. For anything else APISIX writes to
+// /<type>/<id> whatever follows, so the checks here would read one path while
+// another resource was written. A PUT to /routes/r1/x created routes/r1 with no
+// team, and a DELETE of it removed the route and left its record (#250).
+// Reads are not refused: plugin schemas, for one, sit deeper.
+func deepWriteRefused(method, path string) bool {
+	if method == http.MethodGet || method == http.MethodHead {
+		return false
+	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	switch {
+	case len(parts) <= 2:
+		return false
+	case parts[0] == "consumers" && parts[2] == "credentials" && len(parts) <= 4:
+		return false
+	case parts[0] == "secrets" && len(parts) == 3:
+		return false
+	}
+	return true
 }
 
 // Messages for the proxy's authorization refusals.
@@ -471,7 +495,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// "/routes/../ssls/<id>" — passing the routes permission check while the
 	// request actually lands on the forbidden ssls resource.
 	// An empty segment is refused for the same reason (see invalidProxyPath).
-	if invalidProxyPath(path) {
+	if invalidProxyPath(path) || deepWriteRefused(c.Request.Method, path) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
 		c.Abort()
 		return
