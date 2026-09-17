@@ -60,6 +60,7 @@ func main() {
 	teamService := services.NewTeamService(etcdClient)
 	ownershipService := services.NewOwnershipService(etcdClient)
 	labelService := services.NewLabelService(etcdClient)
+	maintenanceService := services.NewMaintenanceService(etcdClient)
 	overviewService := services.NewOverviewService(instanceService, ownershipService)
 	policyService := services.NewPolicyService(etcdClient)
 
@@ -74,6 +75,7 @@ func main() {
 	labelHandler := handlers.NewLabelHandler(labelService, authService)
 	wsdlHandler := handlers.NewWsdlHandler()
 	settingsHandler := handlers.NewSettingsHandler(policyService)
+	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceService)
 
 	// Check for default admin creation
 	if etcdClient != nil {
@@ -83,7 +85,7 @@ func main() {
 	}
 
 	// Setup router
-	router := setupRouter(authService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler)
+	router := setupRouter(authService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, maintenanceHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -97,7 +99,7 @@ func main() {
 	}
 }
 
-func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler) *gin.Engine {
+func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, maintenanceHandler *handlers.MaintenanceHandler) *gin.Engine {
 	router := gin.Default()
 
 	// CORS
@@ -204,6 +206,11 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 
 				// Password policy (super_admin only write)
 				admin.PUT("/settings/password-policy", settingsHandler.UpdatePasswordPolicy)
+
+				// Data nothing refers to any more: a dry run, and a purge of
+				// exactly the keys it is sent
+				admin.GET("/maintenance/orphans", maintenanceHandler.ListOrphans)
+				admin.POST("/maintenance/orphans/purge", maintenanceHandler.PurgeOrphans)
 			}
 
 			// APISIX Proxy routes - forward requests to the selected instance
