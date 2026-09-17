@@ -72,3 +72,45 @@ func TestNamesResourceItself(t *testing.T) {
 		}
 	}
 }
+
+// A write beneath a resource is checked against the resource and never records
+// ownership for it: a consumer's credential reads as the consumer (#250).
+func TestBeneathResource(t *testing.T) {
+	cases := map[string]bool{
+		"/consumers":                      false,
+		"/consumers/alice":                false,
+		"/consumers/alice/credentials":    true,
+		"/consumers/alice/credentials/c1": true,
+	}
+	for path, want := range cases {
+		if got := beneathResource(path); got != want {
+			t.Errorf("beneathResource(%q) = %v, want %v", path, got, want)
+		}
+	}
+}
+
+// A write deeper than <type>/<id> is refused unless the Admin API has a
+// resource there; reads are not (#250).
+func TestDeepWriteRefused(t *testing.T) {
+	cases := []struct {
+		method, path string
+		refused      bool
+	}{
+		{"PUT", "/routes/r1", false},
+		{"PUT", "/routes/r1/x", true},
+		{"DELETE", "/routes/r1/x", true},
+		{"POST", "/upstreams/u1/nodes", true},
+		{"PUT", "/consumers/alice/credentials/c1", false},
+		{"DELETE", "/consumers/alice/credentials/c1", false},
+		{"PUT", "/consumers/alice/credentials/c1/x", true},
+		{"PUT", "/consumers/alice/plugins", true},
+		{"PUT", "/secrets/vault/s1", false},
+		{"PUT", "/secrets/vault/s1/x", true},
+		{"GET", "/schema/plugins/key-auth", false},
+	}
+	for _, c := range cases {
+		if got := deepWriteRefused(c.method, c.path); got != c.refused {
+			t.Errorf("deepWriteRefused(%s %q) = %v, want %v", c.method, c.path, got, c.refused)
+		}
+	}
+}
