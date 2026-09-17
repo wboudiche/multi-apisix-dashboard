@@ -127,10 +127,6 @@ test('carries a query parameter to the gateway', async ({ page }) => {
   const drawer = await openDrawer(page, QUERY_ROUTE_ID);
   const queryTab = drawer.getByRole('tab', { name: /^Query/ });
 
-  // Without the parameter, the gateway matches no route.
-  await drawer.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(drawer.getByTestId('route-test-status')).toHaveText(/^404\b/, { timeout: 20000 });
-
   await queryTab.click();
   await drawer.getByRole('button', { name: 'Add Parameter' }).click();
   const fields = requestPanel(drawer).getByRole('textbox');
@@ -138,11 +134,21 @@ test('carries a query parameter to the gateway', async ({ page }) => {
   await fields.nth(1).fill('42');
   await expect(queryTab).toHaveText(/1$/);
 
+  // No check of what a wrong value answers: a gateway this spec shares may hold
+  // a catch-all route, and what it answers is not this spec's to predict. The
+  // route below is reached only with the parameter, so its own answer is proof
+  // enough.
   await drawer.getByRole('button', { name: 'Send', exact: true }).click();
 
-  // The route that only matches with it: the parameter went through.
+  // The value the route asks for: the parameter went through as it was typed.
   await expect(drawer.getByTestId('route-test-status')).toHaveText(/^200\b/, { timeout: 20000 });
   await expect(drawer).toContainText('etcdserver');
+
+  // A path that already carries the parameter: the one below it wins, rather
+  // than landing behind a second "?", where the gateway reads neither.
+  await drawer.getByRole('textbox', { name: 'URI' }).fill(`/${QUERY_ROUTE_ID}?answer=41`);
+  await drawer.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(drawer.getByTestId('route-test-status')).toHaveText(/^200\b/, { timeout: 20000 });
 });
 
 test('offers a body once the method can carry one', async ({ page }) => {

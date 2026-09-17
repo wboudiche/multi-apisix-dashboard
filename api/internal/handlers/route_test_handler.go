@@ -101,15 +101,22 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "instance gateway_url is invalid"})
 		return
 	}
-	targetURL := strings.TrimRight(instance.GatewayURL, "/") + req.Path
-	if parsed, perr := url.Parse(targetURL); perr != nil ||
-		parsed.Scheme != base.Scheme || parsed.Host != base.Host || parsed.User != nil {
+	parsed, perr := url.Parse(strings.TrimRight(instance.GatewayURL, "/") + req.Path)
+	if perr != nil || parsed.Scheme != base.Scheme || parsed.Host != base.Host || parsed.User != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid path"})
 		return
 	}
-	if query := encodeQuery(req.Query); query != "" {
-		targetURL += "?" + query
+	// A fragment is never sent, and a path carrying one would quietly drop the
+	// parameters with it.
+	if parsed.Fragment != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path must not carry a fragment"})
+		return
 	}
+	// Merged into whatever the path already asks for, rather than appended
+	// behind a second "?", which left the last parameter of the path holding
+	// the rest of the query and the gateway matching nothing (#256).
+	parsed.RawQuery = queryFor(parsed.Query(), req.Query)
+	targetURL := parsed.String()
 
 	// Build the outgoing request
 	var bodyReader io.Reader
@@ -166,18 +173,15 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 	})
 }
 
-// encodeQuery turns the parameters a test carries into a query string, escaped
-// so a value cannot reshape the URL it is added to. Empty for no parameters.
-func encodeQuery(query map[string]string) string {
-	if len(query) == 0 {
-		return ""
-	}
-	values := url.Values{}
+// queryFor is the query string of a test: what its path already carries, plus
+// the parameters it was given, each escaped so a value cannot reshape the URL
+// it lands in. A parameter replaces one of the same name in the path.
+func queryFor(existing url.Values, query map[string]string) string {
 	for key, value := range query {
 		if key == "" {
 			continue
 		}
-		values.Set(key, value)
+		existing.Set(key, value)
 	}
-	return values.Encode()
+	return existing.Encode()
 }
