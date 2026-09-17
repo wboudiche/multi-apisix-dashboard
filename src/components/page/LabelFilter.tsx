@@ -81,11 +81,13 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
     return (option?.values || []).map((v) => ({ value: v, label: v }));
   }, [selectedKey, options]);
 
-  const canAdd = selectedKey && selectedValue;
+  // A key is enough. With no value chosen the tag is the bare key, which the
+  // backend matches on any value the label holds (#238).
+  const canAdd = Boolean(selectedKey);
 
   const handleAdd = useCallback(() => {
-    if (!selectedKey || !selectedValue) return;
-    const tag = `${selectedKey}:${selectedValue}`;
+    if (!selectedKey) return;
+    const tag = selectedValue ? `${selectedKey}:${selectedValue}` : selectedKey;
     if (!value.includes(tag)) {
       onChange([...value, tag]);
     }
@@ -126,7 +128,8 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
       />
       <Select
         data={valueOptions}
-        placeholder={t('labelFilter.selectValue')}
+        // Once a key is chosen, leaving the value empty is a choice of its own.
+        placeholder={selectedKey ? t('labelFilter.anyValue') : t('labelFilter.selectValue')}
         nothingFoundMessage={t('labelFilter.noValues')}
         size="sm"
         value={selectedValue}

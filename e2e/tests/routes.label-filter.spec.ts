@@ -182,7 +182,7 @@ test('offers, and filters by, a label the routes carry that the catalogue does n
     await page.getByRole('button', { name: 'Expand' }).click();
     await page.getByPlaceholder('Select key').click();
     await page.getByRole('option', { name: key, exact: true }).click({ timeout: 20000 });
-    await page.getByPlaceholder('Select value').click();
+    await page.getByPlaceholder('Any value').click();
     await page.getByRole('option', { name: 'one', exact: true }).click();
     await page.getByRole('button', { name: 'Add to filter' }).click();
     await page.getByRole('button', { name: 'Search' }).click();
