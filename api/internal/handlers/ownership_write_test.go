@@ -72,3 +72,20 @@ func TestNamesResourceItself(t *testing.T) {
 		}
 	}
 }
+
+// A write beneath a resource is checked against the resource and never records
+// ownership for it: a consumer's credential reads as the consumer (#250).
+func TestBeneathResource(t *testing.T) {
+	cases := map[string]bool{
+		"/consumers":                      false,
+		"/consumers/alice":                false,
+		"/consumers/alice/credentials":    true,
+		"/consumers/alice/credentials/c1": true,
+		"/secrets/vault/s1":               true,
+	}
+	for path, want := range cases {
+		if got := beneathResource(path); got != want {
+			t.Errorf("beneathResource(%q) = %v, want %v", path, got, want)
+		}
+	}
+}

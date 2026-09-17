@@ -304,6 +304,13 @@ func namesResourceItself(path string) bool {
 	return len(strings.Split(strings.Trim(path, "/"), "/")) == 2
 }
 
+// beneathResource reports whether path addresses something beneath a
+// resource, such as a consumer's credential, rather than a collection or a
+// resource itself.
+func beneathResource(path string) bool {
+	return len(strings.Split(strings.Trim(path, "/"), "/")) > 2
+}
+
 // Messages for the proxy's authorization refusals.
 const (
 	unassignedResourceMsg = "This resource is not assigned to a team. Ask an admin to assign it before editing."
@@ -552,7 +559,17 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// to an id that does not exist yet, which is how consumers and
 				// consumer_groups are made - or it targets a resource that
 				// exists without a team, which only an admin may change.
-				exists, err := h.resourceExists(c.Request.Context(), instance, checkPath)
+				//
+				// Beneath a resource, the one that decides is the resource
+				// the id names, not the path. A consumer's credential does not
+				// exist before it is added, so a write under a consumer with no
+				// team passed as a create, and the ownership recorded after it
+				// handed the consumer to the writer's team (#250).
+				existsPath := checkPath
+				if beneathResource(path) {
+					existsPath = "/" + resourceType + "/" + resourceID
+				}
+				exists, err := h.resourceExists(c.Request.Context(), instance, existsPath)
 				if err != nil {
 					// Fail closed: an unverifiable target is not a licence to
 					// overwrite it.
@@ -691,7 +708,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		// it. A secret's was worse: /secrets/<manager>/<id> reads as the
 		// manager's id, so one record stood for every secret under that manager
 		// and could not follow any one of them out (#248).
-		if resourceID != "" && effectiveTeamID != "" && teamScopedResources[resourceType] {
+		//
+		// Nor for a write beneath a resource. A consumer's credential reads as
+		// the consumer, and recording it gave the consumer the writer's team:
+		// an admin with another team selected moved it there (#250).
+		if resourceID != "" && effectiveTeamID != "" && teamScopedResources[resourceType] &&
+			!beneathResource(path) {
 			ownerCtx, cancel := ownershipWriteContext(c.Request.Context())
 			err := h.ownershipService.SetOwner(ownerCtx, &models.Ownership{
 				InstanceID:   instanceID,
