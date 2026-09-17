@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 import { randomId } from '@e2e/utils/common';
+import { etcdDelete, etcdExists, etcdPut } from '@e2e/utils/etcd';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { expect, test } from '@playwright/test';
@@ -25,20 +26,7 @@ import { expect, test } from '@playwright/test';
  * them (#209). The API cannot make one any more, so these tests write one
  * straight to etcd, as an old deletion left it.
  */
-const ETCD = process.env['E2E_ETCD_URL'] ?? 'http://127.0.0.1:2379';
-const ROOT = '/apisix-dashboard';
 const fx = () => getFixtures();
-
-const b64 = (s: string) => Buffer.from(s).toString('base64');
-
-const etcd = async (op: 'put' | 'range' | 'deleterange', body: Record<string, string>) => {
-  const res = await fetch(`${ETCD}/v3/kv/${op}`, { method: 'POST', body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`etcd ${op} → ${res.status}: ${await res.text()}`);
-  return (await res.json()) as { kvs?: unknown[] };
-};
-
-const exists = async (key: string) =>
-  ((await etcd('range', { key: b64(`${ROOT}${key}`) })).kvs ?? []).length > 0;
 
 // Keys a test wrote to etcd, and users it created, removed even when it fails.
 const seeded: string[] = [];
@@ -49,23 +37,18 @@ const seedOrphan = async () => {
   const userId = randomId('e2e-gone-user');
   const key = `/user_instances/${userId}/${fx().localInstanceId}`;
   seeded.push(key);
-  await etcd('put', {
-    key: b64(`${ROOT}${key}`),
-    value: b64(
-      JSON.stringify({
-        user_id: userId,
-        instance_id: fx().localInstanceId,
-        team_id: fx().backendTeamId,
-        role: 'developer',
-      })
-    ),
+  await etcdPut(key, {
+    user_id: userId,
+    instance_id: fx().localInstanceId,
+    team_id: fx().backendTeamId,
+    role: 'developer',
   });
   return key;
 };
 
 test.afterEach(async () => {
   for (const key of seeded.splice(0)) {
-    await etcd('deleterange', { key: b64(`${ROOT}${key}`) }).catch(() => undefined);
+    await etcdDelete(key).catch(() => undefined);
   }
   const token = await loginAdmin();
   for (const id of users.splice(0)) {
@@ -131,9 +114,9 @@ test('lists the assignments whose user is gone, and purges only the keys it is s
   expect(again.user_instances.deleted).toEqual([]);
   expect(again.user_instances.skipped).toEqual({ [purged]: 'no such instance assignment' });
 
-  expect(await exists(purged)).toBe(false);
-  expect(await exists(kept)).toBe(true);
-  expect(await exists(living)).toBe(true);
+  expect(await etcdExists(purged)).toBe(false);
+  expect(await etcdExists(kept)).toBe(true);
+  expect(await etcdExists(living)).toBe(true);
 });
 
 test('a purge has to name its keys', async () => {
@@ -142,7 +125,7 @@ test('a purge has to name its keys', async () => {
 
   const res = apiFetch('/api/v1/maintenance/orphans/purge', token, { method: 'POST', json: {} });
   await expect(res).rejects.toHaveProperty('status', 400);
-  expect(await exists(orphan)).toBe(true);
+  expect(await etcdExists(orphan)).toBe(true);
 });
 
 test('only a super_admin can list or purge', async () => {
@@ -156,5 +139,5 @@ test('only a super_admin can list or purge', async () => {
       json: { user_instances: [orphan] },
     })
   ).rejects.toHaveProperty('status', 403);
-  expect(await exists(orphan)).toBe(true);
+  expect(await etcdExists(orphan)).toBe(true);
 });

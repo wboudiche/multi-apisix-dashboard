@@ -71,6 +71,19 @@ type UserInstance struct {
 	Scope      *Scope `json:"scope,omitempty"`
 }
 
+// TeamScopedResources are the APISIX resource types whose objects are owned by
+// a team (tracked in the ownership store). Reads of these must be filtered to
+// the caller's team for non-admins. Catalog endpoints like plugins/labels are
+// not team-owned and are intentionally excluded so they are never filtered.
+var TeamScopedResources = map[string]bool{
+	"routes":          true,
+	"services":        true,
+	"upstreams":       true,
+	"consumers":       true,
+	"consumer_groups": true,
+	"stream_routes":   true,
+}
+
 // Ownership tracks which team owns a specific resource on an instance
 type Ownership struct {
 	InstanceID   string `json:"instance_id"`
