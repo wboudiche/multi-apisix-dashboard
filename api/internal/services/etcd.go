@@ -159,6 +159,23 @@ func (e *EtcdClient) PutJSON(ctx context.Context, key string, value interface{})
 	return e.Put(ctx, key, data)
 }
 
+// PutJSONIfAbsent writes a JSON object only if the key has none, in one
+// transaction, and reports whether it wrote.
+func (e *EtcdClient) PutJSONIfAbsent(ctx context.Context, key string, value interface{}) (bool, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return false, err
+	}
+	resp, err := e.client.Txn(ctx).
+		If(clientv3.Compare(clientv3.CreateRevision(e.key(key)), "=", 0)).
+		Then(clientv3.OpPut(e.key(key), string(data))).
+		Commit()
+	if err != nil {
+		return false, err
+	}
+	return resp.Succeeded, nil
+}
+
 // CheckConnection tests the connection to etcd
 func (e *EtcdClient) CheckConnection(ctx context.Context) error {
 	_, err := e.client.Get(ctx, "health")

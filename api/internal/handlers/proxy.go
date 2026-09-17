@@ -727,16 +727,30 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		// Nor for a write beneath a resource. A consumer's credential reads as
 		// the consumer, and recording it gave the consumer the writer's team:
 		// an admin with another team selected moved it there (#250).
+		//
+		// A resource that already belongs to a team keeps it. Recorded on every
+		// write, an admin editing another team's resource handed it to whichever
+		// team their header had selected, and the team that owned it lost sight
+		// of it without a word. Reassigning is its own action (#260).
 		if resourceID != "" && effectiveTeamID != "" && teamScopedResources[resourceType] &&
 			!beneathResource(path) {
 			ownerCtx, cancel := ownershipWriteContext(c.Request.Context())
-			err := h.ownershipService.SetOwner(ownerCtx, &models.Ownership{
+			recorded, err := h.ownershipService.SetOwnerIfUnowned(ownerCtx, &models.Ownership{
 				InstanceID:   instanceID,
 				ResourceType: resourceType,
 				ResourceID:   resourceID,
 				TeamID:       effectiveTeamID,
 			})
 			cancel()
+			// A create that did not record its team found one already there:
+			// the record of something that held this id before and went away
+			// without it - deleted outside the dashboard, or before #249. The
+			// new resource belongs to that team, which is nobody's intent, so
+			// say so rather than leave it to be discovered.
+			if err == nil && !recorded && resp.StatusCode == http.StatusCreated {
+				log.Printf("[instance %s] %s %s was created with team %s selected, but a record of that id was already there; it keeps the team it names",
+					instanceID, resourceType, resourceID, effectiveTeamID)
+			}
 			if err != nil {
 				// Failing the request would repair nothing: APISIX already holds
 				// the write. A retried POST would create the resource twice, and a

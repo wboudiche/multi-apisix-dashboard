@@ -38,6 +38,14 @@ func (s *OwnershipService) SetOwner(ctx context.Context, o *models.Ownership) er
 	return s.etcd.PutJSON(ctx, key, o.TeamID)
 }
 
+// SetOwnerIfUnowned records a team as the owner of a resource that has none,
+// and reports whether it did. A resource that already belongs to a team keeps
+// it: an update is not a reassignment, which has ReassignOwnership of its own.
+func (s *OwnershipService) SetOwnerIfUnowned(ctx context.Context, o *models.Ownership) (bool, error) {
+	key := models.KeyPrefixOwnership + o.InstanceID + "/" + o.ResourceType + "/" + o.ResourceID
+	return s.etcd.PutJSONIfAbsent(ctx, key, o.TeamID)
+}
+
 // GetOwner retrieves the team ID that owns a resource
 func (s *OwnershipService) GetOwner(ctx context.Context, instanceID, resourceType, resourceID string) (string, error) {
 	var teamID string
