@@ -458,6 +458,7 @@
       "statusPublished": "已发布",
       "statusUnpublished": "未发布",
       "actionOffline": "下线",
+      "actionPublish": "上线",
       "actionConfigure": "配置",
       "actionMore": "更多",
       "filterReset": "重置",

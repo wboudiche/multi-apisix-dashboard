@@ -458,6 +458,7 @@
       "statusPublished": "Publicado",
       "statusUnpublished": "No publicado",
       "actionOffline": "Desconectar",
+      "actionPublish": "Publicar",
       "actionConfigure": "Configurar",
       "actionMore": "Más",
       "filterReset": "Restablecer",

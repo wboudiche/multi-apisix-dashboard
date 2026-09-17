@@ -238,25 +238,46 @@ export const RouteList = (props: RouteListProps) => {
     }
   }, [navigate]);
 
-  const handleDelete = useCallback(async (id: string) => {
-    try {
-      await req.delete(`${API_ROUTES}/${id}`);
-      notifications.show({
-        message: t('info.delete.success', { name: t('routes.singular') }),
-        color: 'green',
-      });
-      refetch();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
-      notifications.show({
-        message: e?.response?.data?.error_msg || e?.message || 'Failed to delete',
-        color: 'red',
-      });
-    }
-  }, [t, refetch]);
+  /**
+   * Publishes a route, or takes it offline.
+   *
+   * The button that says Offline used to delete the route, beside a Delete in
+   * the More menu that did the same - two ways to the same irreversible thing,
+   * one of them named after something else entirely (#164). A route carries a
+   * status the list already shows, so Offline now sets it.
+   */
+  const handleSetStatus = useCallback(
+    async (id: string, status: 0 | 1) => {
+      try {
+        // Read again rather than write the row back: a PUT replaces the route,
+        // and the row is as old as the last list read. Someone else's edit in
+        // between would go with it.
+        const fresh = await req.get<{ value: Record<string, unknown> }>(`${API_ROUTES}/${id}`);
+        const body = withoutDashboardFields(fresh.data.value);
+        delete body['id'];
+        delete body['create_time'];
+        delete body['update_time'];
+        await req.put(`${API_ROUTES}/${id}`, { ...body, status });
+        notifications.show({
+          message: t(status === 1 ? 'info.publish.success' : 'info.unpublish.success', {
+            name: t('routes.singular'),
+          }),
+          color: 'green',
+        });
+        refetch();
+      } catch (err: unknown) {
+        // A refusal is already on screen: the client shows what the gateway
+        // said. Only what it cannot show is worth a second line.
+        const e = err as { response?: unknown; message?: string };
+        if (!e?.response) {
+          notifications.show({ message: e?.message || 'Failed to update', color: 'red' });
+        }
+      }
+    },
+    [t, refetch]
+  );
 
   const isVisible = (col: string) => visibleColumns.includes(col);
-
   if (isLoading && !data?.list) {
     return (
       <Center py="xl">
@@ -485,20 +506,27 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('operation') && (
                 <Table.Td>
                   <Group gap={8} wrap="nowrap">
-                    <DeleteResourceBtn
-                      name={t('routes.singular')}
-                      target={record.value.id}
-                      api={`${API_ROUTES}/${record.value.id}`}
-                      onSuccess={refetch}
-                      mode="list"
-                      size="xs"
-                      color="red"
-                      variant="filled"
-                      radius="sm"
-                      styles={{ root: { padding: '0 12px' } }}
-                    >
-                      {t('routes.list.actionOffline')}
-                    </DeleteResourceBtn>
+                    {canEdit && (
+                      <Button
+                        size="xs"
+                        color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
+                        variant="filled"
+                        radius="sm"
+                        styles={{ root: { padding: '0 12px' } }}
+                        onClick={() =>
+                          handleSetStatus(
+                            record.value.id,
+                            isResourceEnabled(record.value.status) ? 0 : 1
+                          )
+                        }
+                      >
+                        {t(
+                          isResourceEnabled(record.value.status)
+                            ? 'routes.list.actionOffline'
+                            : 'routes.list.actionPublish'
+                        )}
+                      </Button>
+                    )}
                     <RouteLinkBtn
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}
@@ -543,13 +571,24 @@ export const RouteList = (props: RouteListProps) => {
                         )}
                         {canDelete && (<>
                           <Menu.Divider />
-                          <Menu.Item
-                            leftSection={<IconDelete width="14" height="14" />}
-                            color="red"
-                            onClick={() => handleDelete(record.value.id)}
-                          >
-                            {t('form.btn.delete')}
-                          </Menu.Item>
+                          {/* The same confirmation every other delete opens,
+                              worn as a menu item: it names the route, and it
+                              invalidates the caches other pages read. */}
+                          <DeleteResourceBtn
+                            name={t('routes.singular')}
+                            target={record.value.id}
+                            api={`${API_ROUTES}/${record.value.id}`}
+                            onSuccess={refetch}
+                            DeleteBtn={((props: { onClick?: () => void }) => (
+                              <Menu.Item
+                                leftSection={<IconDelete width="14" height="14" />}
+                                color="red"
+                                onClick={props.onClick}
+                              >
+                                {t('form.btn.delete')}
+                              </Menu.Item>
+                            )) as unknown as typeof Button}
+                          />
                         </>)}
                       </Menu.Dropdown>
                     </Menu>
