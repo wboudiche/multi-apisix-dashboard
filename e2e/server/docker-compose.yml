@@ -43,8 +43,10 @@ services:
       - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
     ports:
       # The gateway, not only the Admin API: a route test sends a request
-      # through it, and the backend reaches it from the host (#152).
-      - '9080:9080'
+      # through it, and the backend reaches it from the host. Set
+      # E2E_GATEWAY_PORT where another stack already holds 9080, and point
+      # E2E_LOCAL_GATEWAY_URL at the same port (#152).
+      - '${E2E_GATEWAY_PORT:-9080}:9080'
       - '9180:9180'
     depends_on:
       - etcd

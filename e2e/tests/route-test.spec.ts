@@ -90,18 +90,21 @@ test('sends the request through the gateway and shows what came back', async ({ 
 
 test('adds and removes a header', async ({ page }) => {
   const drawer = await openDrawer(page);
+  // The drawer opens with a Content-Type of its own, which the tab counts.
   const headersTab = drawer.getByRole('tab', { name: /^Headers/ });
-
-  await drawer.getByRole('button', { name: 'Add Header' }).click();
-  const fields = requestPanel(drawer).getByRole('textbox');
-  await fields.first().fill('X-E2E');
-  await fields.nth(1).fill('sent');
-  // The tab counts the headers that have a name.
   await expect(headersTab).toHaveText(/1$/);
 
-  // The row's own delete button, which comes before Add Header.
-  await requestPanel(drawer).getByRole('button').first().click();
-  await expect(headersTab).toHaveText('Headers');
+  await drawer.getByRole('button', { name: 'Add Header' }).click();
+  // The added row, after the two fields of the one already there.
+  const fields = requestPanel(drawer).getByRole('textbox');
+  await fields.nth(2).fill('X-E2E');
+  await fields.nth(3).fill('sent');
+  await expect(headersTab).toHaveText(/2$/);
+
+  // That row's own delete button, after the first row's and before Add Header.
+  await requestPanel(drawer).getByRole('button').nth(1).click();
+  await expect(headersTab).toHaveText(/1$/);
+  await expect(fields).toHaveCount(2);
 });
 
 test('adds a query parameter', async ({ page }) => {
