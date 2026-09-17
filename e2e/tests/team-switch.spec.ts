@@ -69,12 +69,7 @@ test.describe.configure({ mode: 'serial' });
 test.afterAll(async () => {
   const token = await loginAdmin();
   for (const id of [GROUP_TWO_TABS, GROUP_INSTANCE_ADMIN, GROUP_IDLE_TAB]) {
-    // The ownership record first: deleting the group does not remove it.
-    await apiFetch(`/api/v1/apisix/ownership/consumer_groups/${id}`, token, {
-      method: 'PUT',
-      headers: onLocal(),
-      json: { team_id: '' },
-    }).catch(() => null);
+    // Its ownership record goes with it (#248).
     await apiFetch(`${PROXY}/consumer_groups/${id}`, token, {
       method: 'DELETE',
       headers: onLocal(),

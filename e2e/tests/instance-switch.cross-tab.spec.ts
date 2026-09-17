@@ -62,14 +62,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   const token = await loginAdmin();
-  // The ownership record first: deleting the route does not remove it, so a
-  // run that fails before the detach would leave the route's id counted
-  // against the backend team on local.
-  await apiFetch(`/api/v1/apisix/ownership/routes/${ROUTE_ID}`, token, {
-    method: 'PUT',
-    headers: onLocal(),
-    json: { team_id: '' },
-  }).catch(() => null);
+  // Its ownership record goes with it (#248).
   await apiFetch(`${PROXY}/routes/${ROUTE_ID}`, token, {
     method: 'DELETE',
     headers: onLocal(),

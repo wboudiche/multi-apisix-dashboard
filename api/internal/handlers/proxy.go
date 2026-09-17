@@ -73,16 +73,17 @@ const dashboardFieldPrefix = "__"
 // it cannot drift away from the prefix the strip looks for.
 const dashboardTeamIDField = dashboardFieldPrefix + "team_id"
 
-// ownershipWriteTimeout bounds the ownership write that follows a write.
+// ownershipWriteTimeout bounds the ownership write that follows a write or a
+// delete.
 const ownershipWriteTimeout = 5 * time.Second
 
-// ownershipWriteContext is the context a new resource's owner is recorded
-// under: the request's values, without its cancellation. By then APISIX has
-// created the resource, whatever became of the client that asked for it. Under
-// the request's own context, a create whose client had gone before the answer
-// - a page navigating away, a closed tab - failed to record its owner, and the
-// error was dropped. The resource was left with no team: hidden from the
-// developer who made it, and writable by admins alone (#214).
+// ownershipWriteContext is the context a resource's ownership record is written
+// or removed under: the request's values, without its cancellation. By then
+// APISIX has made the change, whatever became of the client that asked for it.
+// Under the request's own context, a create whose client had gone before the
+// answer - a page navigating away, a closed tab - failed to record its owner,
+// and the error was dropped. The resource was left with no team: hidden from
+// the developer who made it, and writable by admins alone (#214).
 func ownershipWriteContext(parent context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(parent), ownershipWriteTimeout)
 }
@@ -294,6 +295,13 @@ func invalidProxyPath(path string) bool {
 		}
 	}
 	return false
+}
+
+// namesResourceItself reports whether path is <type>/<id>, the only shape in
+// which the id getResourceMetadata reads is the resource's own. A consumer's
+// credential, /consumers/<username>/credentials/<id>, reads as the consumer.
+func namesResourceItself(path string) bool {
+	return len(strings.Split(strings.Trim(path, "/"), "/")) == 2
 }
 
 // Messages for the proxy's authorization refusals.
@@ -677,7 +685,13 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			}
 		}
 
-		if resourceID != "" && effectiveTeamID != "" {
+		// Only for the types teams share. Nothing reads a record for any other
+		// type - no filter, no write check, no reassign screen - yet an admin
+		// with a team selected left one on every write, and DeleteTeam counted
+		// it. A secret's was worse: /secrets/<manager>/<id> reads as the
+		// manager's id, so one record stood for every secret under that manager
+		// and could not follow any one of them out (#248).
+		if resourceID != "" && effectiveTeamID != "" && teamScopedResources[resourceType] {
 			ownerCtx, cancel := ownershipWriteContext(c.Request.Context())
 			err := h.ownershipService.SetOwner(ownerCtx, &models.Ownership{
 				InstanceID:   instanceID,
@@ -695,6 +709,22 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				log.Printf("[instance %s] %s %s was written, but its owner (team %s) could not be recorded: %v",
 					instanceID, resourceType, resourceID, effectiveTeamID, err)
 			}
+		}
+	}
+
+	// A deleted resource takes its ownership record with it. Left behind, the
+	// record went on counting against its team, which could then never be
+	// deleted, and refused any other team a new resource under the same id
+	// (#248). Only for a path naming the resource itself: a consumer's
+	// credential is deleted under the consumer's path, and the consumer stays.
+	if c.Request.Method == http.MethodDelete && resp.StatusCode == http.StatusOK &&
+		resourceID != "" && namesResourceItself(path) {
+		ownerCtx, cancel := ownershipWriteContext(c.Request.Context())
+		err := h.ownershipService.DeleteOwner(ownerCtx, instanceID, resourceType, resourceID)
+		cancel()
+		if err != nil {
+			log.Printf("[instance %s] %s %s was deleted, but its ownership record could not be removed: %v",
+				instanceID, resourceType, resourceID, err)
 		}
 	}
 
