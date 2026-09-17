@@ -14,8 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
-import { apiFetch, ensureUser, loginAdmin } from '@e2e/utils/seed-client';
+import { API_URL, apiFetch, ensureUser, loginAdmin } from '@e2e/utils/seed-client';
 import { expect, test } from '@playwright/test';
 
 /**
@@ -30,6 +31,7 @@ import { expect, test } from '@playwright/test';
 const PASSWORD = 'Seeded-User123!';
 const OTHER_PASSWORD = 'Another-User123!';
 
+const PREFIX = 'e2e_seed_user';
 const usernames: string[] = [];
 
 test.afterEach(async () => {
@@ -37,15 +39,23 @@ test.afterEach(async () => {
   const users = (await apiFetch('/api/v1/users', token)) as { id: string; username: string }[];
   for (const username of usernames.splice(0)) {
     const user = users.find((u) => u.username === username);
-    if (user) {
-      await apiFetch(`/api/v1/users/${user.id}`, token, { method: 'DELETE' }).catch(() => undefined);
-    }
+    if (!user) continue;
+    // Demoted first: a super_admin the backend will not delete would otherwise
+    // stay here, with a password written in this file.
+    await apiFetch(`/api/v1/users/${user.id}`, token, {
+      method: 'PUT',
+      json: { email: '', role: '' },
+    });
+    await apiFetch(`/api/v1/users/${user.id}`, token, { method: 'DELETE' });
   }
 });
 
+// Whatever a run that died mid-test left behind, so the next one starts clean.
+test.afterAll(() => deleteUsersByPrefix(PREFIX));
+
 /** A username this test owns, torn down even when it fails. */
 const owned = () => {
-  const username = randomId('e2e_seed_user').replace(/-/g, '_');
+  const username = randomId(PREFIX).replace(/-/g, '_');
   usernames.push(username);
   return username;
 };
@@ -82,7 +92,7 @@ test('an account that must change its password is made ready to use', async () =
 
   await ensureUser(token, { username, password: PASSWORD });
 
-  const res = await fetch(`${process.env['E2E_API_URL'] ?? 'http://127.0.0.1:8086'}/api/v1/login`, {
+  const res = await fetch(`${API_URL}/api/v1/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password: PASSWORD }),
