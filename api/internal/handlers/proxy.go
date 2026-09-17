@@ -73,7 +73,7 @@ const dashboardFieldPrefix = "__"
 // it cannot drift away from the prefix the strip looks for.
 const dashboardTeamIDField = dashboardFieldPrefix + "team_id"
 
-// ownershipWriteTimeout bounds the ownership write that follows a create.
+// ownershipWriteTimeout bounds the ownership write that follows a write.
 const ownershipWriteTimeout = 5 * time.Second
 
 // ownershipWriteContext is the context a new resource's owner is recorded
@@ -687,10 +687,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			})
 			cancel()
 			if err != nil {
-				// APISIX already holds the resource, so failing the request
-				// would only invite a retry that creates it twice. Said here
-				// instead: it stays without a team until an admin assigns one.
-				log.Printf("[instance %s] %s %s was created, but its owner (team %s) could not be recorded: %v",
+				// Failing the request would repair nothing: APISIX already holds
+				// the write. A retried POST would create the resource twice, and a
+				// retried PUT to an id is refused or rewrites the same thing. Said
+				// here instead. A resource this created stays without a team until
+				// an admin assigns one; one it updated keeps the owner it had.
+				log.Printf("[instance %s] %s %s was written, but its owner (team %s) could not be recorded: %v",
 					instanceID, resourceType, resourceID, effectiveTeamID, err)
 			}
 		}
