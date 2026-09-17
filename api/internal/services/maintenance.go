@@ -54,11 +54,12 @@ type PurgeResult struct {
 // given, each checked again at the time, so what goes is what an operator was
 // shown and chose.
 type MaintenanceService struct {
-	etcd *EtcdClient
+	etcd   *EtcdClient
+	lister resourceLister
 }
 
 func NewMaintenanceService(etcd *EtcdClient) *MaintenanceService {
-	return &MaintenanceService{etcd: etcd}
+	return &MaintenanceService{etcd: etcd, lister: newAPISIXResourceLister()}
 }
 
 // FindOrphanedUserInstances lists the instance assignments whose user no longer
@@ -102,7 +103,19 @@ func (s *MaintenanceService) PurgeOrphanedUserInstances(ctx context.Context, key
 	for _, o := range orphans {
 		orphaned[o.Key] = true
 	}
+	return s.purgeKeys(ctx, keys, orphaned, func(key string) string {
+		if _, ok := assignments[key]; !ok {
+			// Already gone - an earlier purge, or another admin's - or never
+			// an assignment key. Not to be read as a living user's.
+			return "no such instance assignment"
+		}
+		return "its user exists"
+	}), nil
+}
 
+// purgeKeys deletes each key that is orphaned, once however often it is named,
+// and says of every other key why it was skipped.
+func (s *MaintenanceService) purgeKeys(ctx context.Context, keys []string, orphaned map[string]bool, skipReason func(key string) string) *PurgeResult {
 	result := &PurgeResult{
 		Deleted: []string{},
 		Skipped: map[string]string{},
@@ -115,12 +128,7 @@ func (s *MaintenanceService) PurgeOrphanedUserInstances(ctx context.Context, key
 		}
 		seen[key] = true
 		if !orphaned[key] {
-			result.Skipped[key] = "its user exists"
-			if _, ok := assignments[key]; !ok {
-				// Already gone - an earlier purge, or another admin's - or
-				// never an assignment key. Not to be read as a living user's.
-				result.Skipped[key] = "no such instance assignment"
-			}
+			result.Skipped[key] = skipReason(key)
 			continue
 		}
 		if err := s.etcd.Delete(ctx, key); err != nil {
@@ -129,7 +137,7 @@ func (s *MaintenanceService) PurgeOrphanedUserInstances(ctx context.Context, key
 		}
 		result.Deleted = append(result.Deleted, key)
 	}
-	return result, nil
+	return result
 }
 
 // orphanedAssignments decides which assignments have no user, given the raw

@@ -43,18 +43,9 @@ var proxyClient = &http.Client{
 	},
 }
 
-// teamScopedResources are the APISIX resource types whose objects are owned by
-// a team (tracked in the ownership store). Reads of these must be filtered to
-// the caller's team for non-admins. Catalog endpoints like plugins/labels are
-// not team-owned and are intentionally excluded so they are never filtered.
-var teamScopedResources = map[string]bool{
-	"routes":          true,
-	"services":        true,
-	"upstreams":       true,
-	"consumers":       true,
-	"consumer_groups": true,
-	"stream_routes":   true,
-}
+// teamScopedResources: see models.TeamScopedResources, which the maintenance
+// sweep of orphaned ownership records reads too.
+var teamScopedResources = models.TeamScopedResources
 
 // dashboardFieldPrefix marks fields the dashboard adds to APISIX resources for
 // its own use. APISIX rejects unknown properties, so these must never reach it.
