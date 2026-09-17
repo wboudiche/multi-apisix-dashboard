@@ -881,6 +881,7 @@
     "add": "Add to filter",
     "selectKey": "Select key",
     "selectValue": "Select value",
+    "anyValue": "Any value",
     "loading": "Loading labels…",
     "loadFailed": "Could not load the label catalogue, so filtering by label is unavailable.",
     "noKeys": "No label keys are defined yet",

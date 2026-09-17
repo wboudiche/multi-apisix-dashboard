@@ -65,9 +65,20 @@ const seedRoute = (token: string, name: string, labels?: Record<string, string>)
 const addLabel = async (page: Page, display: string, value: string) => {
   await page.getByPlaceholder('Select key').click();
   await page.getByRole('option', { name: display }).click();
-  await page.getByPlaceholder('Select value').click();
+  await page.getByPlaceholder('Any value').click();
   await page.getByRole('option', { name: value, exact: true }).click();
   await page.getByRole('button', { name: 'Add to filter' }).click();
+};
+
+/** Pick a key and no value, and add it to the filter. */
+const addKey = async (page: Page, display: string) => {
+  await page.getByPlaceholder('Select key').click();
+  await page.getByRole('option', { name: display }).click();
+  // Left empty, the value says what it will match.
+  await expect(page.getByPlaceholder('Any value')).toBeVisible();
+  const add = page.getByRole('button', { name: 'Add to filter' });
+  await expect(add).toBeEnabled();
+  await add.click();
 };
 
 const rowFor = (page: Page, name: string) =>
@@ -128,5 +139,22 @@ test('two labels narrow the list rather than widen it', async ({ page }) => {
   // Carries the first label only, so it no longer matches.
   await expect(rowFor(page, prod)).toHaveCount(0);
   await expect(rowFor(page, staging)).toHaveCount(0);
+  await expect(rowFor(page, unlabelled)).toHaveCount(0);
+});
+
+test('a key alone matches the routes carrying it, whatever its value', async ({ page }) => {
+  // The backend has always read a bare key as "carries this label"; the filter
+  // bar could only ask for a key with one of its values (#238).
+  await page.goto('/ui/routes');
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await addKey(page, envLabel);
+  await page.getByRole('button', { name: 'Search' }).click();
+
+  // Both values of the key, which no filter naming one of them would return,
+  // and still not the route without labels.
+  await expect(page.getByRole('row')).toHaveCount(4, { timeout: 20000 });
+  await expect(rowFor(page, prod)).toHaveCount(1);
+  await expect(rowFor(page, staging)).toHaveCount(1);
+  await expect(rowFor(page, prodGold)).toHaveCount(1);
   await expect(rowFor(page, unlabelled)).toHaveCount(0);
 });
