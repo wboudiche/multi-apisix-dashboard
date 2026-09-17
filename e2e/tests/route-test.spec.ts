@@ -40,25 +40,41 @@ import { API_ROUTES } from '@/config/constant';
  */
 const ROUTE_ID = randomId('e2e-route-test');
 const ROUTE_PATH = `/${ROUTE_ID}`;
+// A second route, matched only when the request carries ?answer=42 (#256).
+const QUERY_ROUTE_ID = randomId('e2e-route-test-query');
+
+const toEtcdVersion = {
+  // etcd answers /version with a small JSON body, and the gateway container
+  // reaches it under that name - it reads its own configuration from it.
+  plugins: { 'proxy-rewrite': { uri: '/version' } },
+  upstream: { type: 'roundrobin', nodes: { 'etcd:2379': 1 } },
+};
 
 test.beforeAll(async () => {
   await e2eReq.put(`${API_ROUTES}/${ROUTE_ID}`, {
     name: ROUTE_ID,
     uri: ROUTE_PATH,
     methods: ['GET', 'POST'],
-    // etcd answers /version with a small JSON body, and the gateway container
-    // reaches it under that name - it reads its own configuration from it.
-    plugins: { 'proxy-rewrite': { uri: '/version' } },
-    upstream: { type: 'roundrobin', nodes: { 'etcd:2379': 1 } },
+    ...toEtcdVersion,
+  });
+  await e2eReq.put(`${API_ROUTES}/${QUERY_ROUTE_ID}`, {
+    name: QUERY_ROUTE_ID,
+    uri: `/${QUERY_ROUTE_ID}`,
+    methods: ['GET'],
+    // The gateway matches this one on the parameter, so a 200 says the
+    // parameter reached it and a 404 says it did not.
+    vars: [['arg_answer', '==', '42']],
+    ...toEtcdVersion,
   });
 });
 
 test.afterAll(async () => {
   await e2eReq.delete(`${API_ROUTES}/${ROUTE_ID}`).catch(() => null);
+  await e2eReq.delete(`${API_ROUTES}/${QUERY_ROUTE_ID}`).catch(() => null);
 });
 
-const openDrawer = async (page: Page) => {
-  await uiGoto(page, '/routes/detail/$id', { id: ROUTE_ID });
+const openDrawer = async (page: Page, routeId = ROUTE_ID) => {
+  await uiGoto(page, '/routes/detail/$id', { id: routeId });
   await page.getByRole('button', { name: 'Test Route' }).click();
   const drawer = page.getByRole('dialog');
   await expect(drawer.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
@@ -107,17 +123,26 @@ test('adds and removes a header', async ({ page }) => {
   await expect(fields).toHaveCount(2);
 });
 
-test('adds a query parameter', async ({ page }) => {
-  const drawer = await openDrawer(page);
+test('carries a query parameter to the gateway', async ({ page }) => {
+  const drawer = await openDrawer(page, QUERY_ROUTE_ID);
   const queryTab = drawer.getByRole('tab', { name: /^Query/ });
+
+  // Without the parameter, the gateway matches no route.
+  await drawer.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(drawer.getByTestId('route-test-status')).toHaveText(/^404\b/, { timeout: 20000 });
 
   await queryTab.click();
   await drawer.getByRole('button', { name: 'Add Parameter' }).click();
   const fields = requestPanel(drawer).getByRole('textbox');
   await fields.first().fill('answer');
   await fields.nth(1).fill('42');
-
   await expect(queryTab).toHaveText(/1$/);
+
+  await drawer.getByRole('button', { name: 'Send', exact: true }).click();
+
+  // The route that only matches with it: the parameter went through.
+  await expect(drawer.getByTestId('route-test-status')).toHaveText(/^200\b/, { timeout: 20000 });
+  await expect(drawer).toContainText('etcdserver');
 });
 
 test('offers a body once the method can carry one', async ({ page }) => {

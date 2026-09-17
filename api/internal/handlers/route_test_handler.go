@@ -46,7 +46,10 @@ type TestRouteRequest struct {
 	Path    string            `json:"path" binding:"required"`
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
-	Query   string            `json:"query"`
+	// Query is a map, as the drawer sends it. It was a string, which no client
+	// ever sent: a test carrying a parameter was refused where it was bound,
+	// before it could reach the gateway (#256).
+	Query map[string]string `json:"query"`
 }
 
 type TestRouteResponse struct {
@@ -104,8 +107,8 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid path"})
 		return
 	}
-	if req.Query != "" {
-		targetURL += "?" + req.Query
+	if query := encodeQuery(req.Query); query != "" {
+		targetURL += "?" + query
 	}
 
 	// Build the outgoing request
@@ -161,4 +164,20 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 		Body:       string(respBody),
 		DurationMs: durationMs,
 	})
+}
+
+// encodeQuery turns the parameters a test carries into a query string, escaped
+// so a value cannot reshape the URL it is added to. Empty for no parameters.
+func encodeQuery(query map[string]string) string {
+	if len(query) == 0 {
+		return ""
+	}
+	values := url.Values{}
+	for key, value := range query {
+		if key == "" {
+			continue
+		}
+		values.Set(key, value)
+	}
+	return values.Encode()
 }
