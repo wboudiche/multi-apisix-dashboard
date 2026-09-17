@@ -14,226 +14,124 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-skipped-test, playwright/no-conditional-expect */
-import { env } from '@e2e/utils/env';
-import { expect, test } from '@playwright/test';
+import { randomId } from '@e2e/utils/common';
+import { e2eReq } from '@e2e/utils/req';
+import { test } from '@e2e/utils/test';
+import { uiGoto } from '@e2e/utils/ui';
+import { expect, type Page } from '@playwright/test';
 
-const BASE_URL = env.E2E_TARGET_URL.replace(/\/$/, '');
+import { API_ROUTES } from '@/config/constant';
 
-async function login(page: import('@playwright/test').Page) {
-  await page.goto(BASE_URL);
-  await page.waitForTimeout(2000);
-  if (page.url().includes('login')) {
-    await page.locator('input').first().fill('admin');
-    await page.locator('input[type="password"]').fill('admin');
-    await page.locator('button[type="submit"]').click();
-    await page.waitForTimeout(3000);
-  }
-}
+/**
+ * The Test Route drawer, against the gateway rather than against whatever the
+ * header happened to select.
+ *
+ * The spec logged in by hand instead of using the worker fixture, so it never
+ * pinned an instance and ran against whichever one /api/v1/instances listed
+ * first - one with no gateway_url, whose route tests the backend refuses. Its
+ * check for an answer matched the first badge in the drawer, which is a count
+ * on the Headers tab, so a refused request took the "we got a response" branch
+ * and asserted a duration that could not be there. On CI it found no route to
+ * open at all and skipped, all five tests, for as long as it has existed (#152).
+ *
+ * It now seeds the route it tests, and the route answers: through the gateway
+ * to etcd's /version, which is reachable from the gateway container and gives a
+ * 200 with a body of its own.
+ */
+const ROUTE_ID = randomId('e2e-route-test');
+const ROUTE_PATH = `/${ROUTE_ID}`;
 
-async function navigateToFirstRouteDetail(page: import('@playwright/test').Page) {
-  await page.goto(`${BASE_URL}/routes`);
-  await page.waitForTimeout(3000);
-
-  // Click the first "Configure" button in the table to go to route detail
-  const configureBtn = page.getByRole('button', { name: /configure/i }).first();
-  if (!(await configureBtn.isVisible().catch(() => false))) {
-    return false;
-  }
-  await configureBtn.click();
-  await page.waitForTimeout(2000);
-  return true;
-}
-
-test.describe('Route Test Drawer', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
+test.beforeAll(async () => {
+  await e2eReq.put(`${API_ROUTES}/${ROUTE_ID}`, {
+    name: ROUTE_ID,
+    uri: ROUTE_PATH,
+    methods: ['GET', 'POST'],
+    // etcd answers /version with a small JSON body, and the gateway container
+    // reaches it under that name - it reads its own configuration from it.
+    plugins: { 'proxy-rewrite': { uri: '/version' } },
+    upstream: { type: 'roundrobin', nodes: { 'etcd:2379': 1 } },
   });
+});
 
-  test('can open route test drawer from route detail page', async ({ page }) => {
-    const hasRoute = await navigateToFirstRouteDetail(page);
-    if (!hasRoute) {
-      test.skip(true, 'No routes available');
-      return;
-    }
+test.afterAll(async () => {
+  await e2eReq.delete(`${API_ROUTES}/${ROUTE_ID}`).catch(() => null);
+});
 
-    // Click the Test Route button
-    const testButton = page.getByRole('button', { name: /test route/i });
-    await expect(testButton).toBeVisible();
-    await testButton.click();
-    await page.waitForTimeout(500);
+const openDrawer = async (page: Page) => {
+  await uiGoto(page, '/routes/detail/$id', { id: ROUTE_ID });
+  await page.getByRole('button', { name: 'Test Route' }).click();
+  const drawer = page.getByRole('dialog');
+  await expect(drawer.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
+  return drawer;
+};
 
-    // Verify the drawer opened
-    const drawer = page.locator('.mantine-Drawer-content');
-    await expect(drawer).toBeVisible();
+/** The tab panel of the request, which the answer's own tabs follow. */
+const requestPanel = (drawer: ReturnType<Page['getByRole']>) =>
+  drawer.getByRole('tabpanel').first();
 
-    // Verify drawer title
-    await expect(drawer.getByText('Test Route')).toBeVisible();
+test('opens on the route it was opened from', async ({ page }) => {
+  const drawer = await openDrawer(page);
 
-    // Verify Send button exists
-    await expect(drawer.getByRole('button', { name: /send/i })).toBeVisible();
+  await expect(drawer.getByText('Test Route')).toBeVisible();
+  await expect(drawer.getByRole('textbox', { name: 'URI' })).toHaveValue(ROUTE_PATH);
+});
 
-    // Verify path input is pre-filled with a path starting with /
-    const pathInputs = drawer.locator('input');
-    let foundPath = false;
-    const count = await pathInputs.count();
-    for (let i = 0; i < count; i++) {
-      const val = await pathInputs.nth(i).inputValue();
-      if (val.startsWith('/')) {
-        foundPath = true;
-        console.log('Pre-filled path:', val);
-        break;
-      }
-    }
-    expect(foundPath).toBeTruthy();
+test('sends the request through the gateway and shows what came back', async ({ page }) => {
+  const drawer = await openDrawer(page);
 
-    await page.screenshot({ path: '/tmp/route-test-drawer.png', fullPage: true });
-  });
+  await drawer.getByRole('button', { name: 'Send', exact: true }).click();
 
-  test('can send a test request and see response', async ({ page }) => {
-    const hasRoute = await navigateToFirstRouteDetail(page);
-    if (!hasRoute) {
-      test.skip(true, 'No routes available');
-      return;
-    }
+  // The status of the answer, not a count badge on a request tab.
+  await expect(drawer.getByTestId('route-test-status')).toHaveText(/^200\b/, { timeout: 20000 });
+  await expect(drawer.getByTestId('route-test-duration')).toHaveText(/^\d+ms$/);
+  // etcd's own answer, so the request really reached it through the gateway.
+  await expect(drawer).toContainText('etcdserver');
+});
 
-    // Open test drawer
-    await page.getByRole('button', { name: /test route/i }).click();
-    await page.waitForTimeout(500);
+test('adds and removes a header', async ({ page }) => {
+  const drawer = await openDrawer(page);
+  // The drawer opens with a Content-Type of its own, which the tab counts.
+  const headersTab = drawer.getByRole('tab', { name: /^Headers/ });
+  await expect(headersTab).toHaveText(/1$/);
 
-    const drawer = page.locator('.mantine-Drawer-content');
+  await drawer.getByRole('button', { name: 'Add Header' }).click();
+  // The added row, after the two fields of the one already there.
+  const fields = requestPanel(drawer).getByRole('textbox');
+  await fields.nth(2).fill('X-E2E');
+  await fields.nth(3).fill('sent');
+  await expect(headersTab).toHaveText(/2$/);
 
-    // Click Send
-    await drawer.getByRole('button', { name: /send/i }).click();
+  // That row's own delete button, after the first row's and before Add Header.
+  await requestPanel(drawer).getByRole('button').nth(1).click();
+  await expect(headersTab).toHaveText(/1$/);
+  await expect(fields).toHaveCount(2);
+});
 
-    // Wait for response
-    await page.waitForTimeout(5000);
+test('adds a query parameter', async ({ page }) => {
+  const drawer = await openDrawer(page);
+  const queryTab = drawer.getByRole('tab', { name: /^Query/ });
 
-    // Check if we got a response — look for a status badge (e.g., "200", "404", etc.)
-    const statusBadge = drawer.locator('.mantine-Badge-root').first();
-    const errorBox = drawer.locator('[style*="red"]').first();
+  await queryTab.click();
+  await drawer.getByRole('button', { name: 'Add Parameter' }).click();
+  const fields = requestPanel(drawer).getByRole('textbox');
+  await fields.first().fill('answer');
+  await fields.nth(1).fill('42');
 
-    const hasResponse = await statusBadge.isVisible().catch(() => false);
-    const hasError = await errorBox.isVisible().catch(() => false);
+  await expect(queryTab).toHaveText(/1$/);
+});
 
-    expect(hasResponse || hasError).toBeTruthy();
+test('offers a body once the method can carry one', async ({ page }) => {
+  const drawer = await openDrawer(page);
+  const bodyTab = drawer.getByRole('tab', { name: 'Body' });
 
-    if (hasResponse) {
-      const statusText = await statusBadge.textContent();
-      console.log('Response status:', statusText);
+  await expect(bodyTab).toBeHidden();
 
-      // Verify Body and Headers tabs exist in response
-      const responseTabs = drawer.getByRole('tab');
-      const tabCount = await responseTabs.count();
-      expect(tabCount).toBeGreaterThanOrEqual(2);
+  await drawer.getByRole('textbox', { name: 'HTTP Methods' }).click();
+  await page.getByRole('option', { name: 'POST' }).click();
 
-      // Verify duration is shown (Xms pattern)
-      const pageText = await drawer.textContent();
-      expect(pageText).toMatch(/\d+ms/);
-    }
-
-    await page.screenshot({ path: '/tmp/route-test-response.png', fullPage: true });
-  });
-
-  test('can add and remove headers', async ({ page }) => {
-    const hasRoute = await navigateToFirstRouteDetail(page);
-    if (!hasRoute) {
-      test.skip(true, 'No routes available');
-      return;
-    }
-
-    await page.getByRole('button', { name: /test route/i }).click();
-    await page.waitForTimeout(500);
-
-    const drawer = page.locator('.mantine-Drawer-content');
-
-    // Count initial remove buttons (X icons for headers)
-    const initialRemoveBtns = await drawer.locator('.mantine-ActionIcon-root').count();
-
-    // Click "Add Header"
-    await drawer.getByRole('button', { name: /add header/i }).click();
-
-    // Verify a new row appeared
-    const afterRemoveBtns = await drawer.locator('.mantine-ActionIcon-root').count();
-    expect(afterRemoveBtns).toBeGreaterThan(initialRemoveBtns);
-
-    // Remove the last header
-    await drawer.locator('.mantine-ActionIcon-root').last().click();
-
-    await expect(drawer.locator('.mantine-ActionIcon-root')).toHaveCount(afterRemoveBtns - 1);
-
-    await page.screenshot({ path: '/tmp/route-test-headers.png', fullPage: true });
-  });
-
-  test('can switch to query tab and add parameters', async ({ page }) => {
-    const hasRoute = await navigateToFirstRouteDetail(page);
-    if (!hasRoute) {
-      test.skip(true, 'No routes available');
-      return;
-    }
-
-    await page.getByRole('button', { name: /test route/i }).click();
-    await page.waitForTimeout(500);
-
-    const drawer = page.locator('.mantine-Drawer-content');
-
-    // Click Query tab
-    await drawer.getByRole('tab', { name: /query/i }).click();
-    await page.waitForTimeout(200);
-
-    // Add a query parameter
-    await drawer.getByRole('button', { name: /add parameter/i }).click();
-
-    // Should now have input fields for the new parameter
-    // Use the visible tabpanel (query) — locate visible inputs only
-    const visibleInputs = drawer.locator('[role="tabpanel"]:not([hidden]) input:visible');
-    const inputCount = await visibleInputs.count();
-    expect(inputCount).toBeGreaterThanOrEqual(2);
-
-    // Fill in key and value
-    await visibleInputs.first().fill('testKey');
-    await visibleInputs.nth(1).fill('testValue');
-
-    // Verify values are set
-    await expect(visibleInputs.first()).toHaveValue('testKey');
-    await expect(visibleInputs.nth(1)).toHaveValue('testValue');
-
-    await page.screenshot({ path: '/tmp/route-test-query.png', fullPage: true });
-  });
-
-  test('shows body tab for POST method', async ({ page }) => {
-    const hasRoute = await navigateToFirstRouteDetail(page);
-    if (!hasRoute) {
-      test.skip(true, 'No routes available');
-      return;
-    }
-
-    await page.getByRole('button', { name: /test route/i }).click();
-    await page.waitForTimeout(500);
-
-    const drawer = page.locator('.mantine-Drawer-content');
-
-    // Initially with GET, Body tab should not be visible
-    const bodyTabBefore = drawer.getByRole('tab', { name: /^body$/i });
-    await expect(bodyTabBefore).toBeHidden();
-
-    // Change method to POST
-    const methodSelect = drawer.locator('.mantine-Select-input').first();
-    await methodSelect.click();
-    await page.waitForTimeout(200);
-    await page.getByRole('option', { name: 'POST' }).click();
-    await page.waitForTimeout(200);
-
-    // Body tab should now be visible
-    const bodyTabAfter = drawer.getByRole('tab', { name: /body/i }).first();
-    await expect(bodyTabAfter).toBeVisible();
-
-    // Click Body tab and type some JSON
-    await bodyTabAfter.click();
-    const textarea = drawer.locator('textarea');
-    await textarea.fill('{"test": true}');
-    await expect(textarea).toHaveValue('{"test": true}');
-
-    await page.screenshot({ path: '/tmp/route-test-body.png', fullPage: true });
-  });
+  await expect(bodyTab).toBeVisible();
+  await bodyTab.click();
+  const body = requestPanel(drawer).getByRole('textbox');
+  await body.fill('{"test": true}');
+  await expect(body).toHaveValue('{"test": true}');
 });

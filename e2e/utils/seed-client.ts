@@ -206,6 +206,24 @@ export async function ensureInstance(token: string, input: CreateInstanceInput):
       );
     }
     assertDisposableGateway(existing.name, existing.admin_api_url);
+
+    // An instance with no gateway is given the one the fixture asks for: a
+    // route test is answered "Instance has no gateway_url configured" without
+    // it (#152). One that already has a gateway keeps it, whatever the fixture
+    // would have used - a devcontainer run reaches its gateway by another
+    // address, and this seed is not the place to decide that it is wrong.
+    if (input.gateway_url && !existing.gateway_url) {
+      console.log(`[e2e] "${existing.name}" had no gateway_url; set to ${input.gateway_url}`);
+      return (await apiFetch(`/api/v1/instances/${existing.id}`, token, {
+        method: 'PUT',
+        json: { gateway_url: input.gateway_url },
+      })) as Instance;
+    }
+    if (input.gateway_url && existing.gateway_url !== input.gateway_url) {
+      console.log(
+        `[e2e] "${existing.name}" keeps its gateway_url ${existing.gateway_url}, not ${input.gateway_url}`
+      );
+    }
     return existing;
   }
 

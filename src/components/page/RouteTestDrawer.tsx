@@ -327,10 +327,13 @@ export const RouteTestDrawer = ({
                   size="lg"
                   variant="light"
                   color={statusColor(response.status)}
+                  // Named so a test can tell the answer's status from the count
+                  // badges on the request tabs, which it used to match (#152).
+                  data-testid="route-test-status"
                 >
                   {response.status} {response.status_text}
                 </Badge>
-                <Text size="xs" c="dimmed">
+                <Text size="xs" c="dimmed" data-testid="route-test-duration">
                   {`${response.duration_ms}ms`}
                 </Text>
               </Group>
