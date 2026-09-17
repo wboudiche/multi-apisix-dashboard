@@ -22,9 +22,10 @@ import { MalformedResponseError } from '@/utils/response-shape';
  *
  * Declared as a type predicate so `every` below actually narrows — without it
  * the return needs an unchecked cast, which would keep compiling if this check
- * were ever weakened.
+ * were ever weakened. Exported because the per-endpoint checks ask the same
+ * question, and a second copy is a second thing to weaken.
  */
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /**
@@ -53,15 +54,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * The array is returned as it came, not copied: these feed jotai atoms and
  * react-query caches, where a fresh array on every call is a re-render on
  * every call.
+ *
+ * `url` is optional and names the request in the message. A page that loads
+ * several lists reports "expected a list, got object" for each of them
+ * otherwise, which says nothing about which one to go and look at.
  */
-export const parseRecordList = <T>(value: unknown): T[] => {
+export const parseRecordList = <T>(value: unknown, url?: string): T[] => {
   if (!Array.isArray(value)) {
     throw new MalformedResponseError(
-      `expected a list, got ${value === null ? 'null' : typeof value}`
+      `expected a list, got ${value === null ? 'null' : typeof value}`,
+      url
     );
   }
   if (!value.every(isRecord)) {
-    throw new MalformedResponseError('expected a list of records');
+    throw new MalformedResponseError('expected a list of records', url);
   }
   return value as T[];
 };

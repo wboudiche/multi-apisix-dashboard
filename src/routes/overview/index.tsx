@@ -39,6 +39,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { overviewApi,type OverviewData } from '@/apis/overview';
+import { describeError } from '@/utils/api-error';
 import IconActivity from '~icons/material-symbols/activity-zone-outline';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconServer from '~icons/material-symbols/dns-outline';
@@ -48,28 +50,6 @@ import IconRefresh from '~icons/material-symbols/refresh';
 import IconRoute from '~icons/material-symbols/route-outline';
 import IconService from '~icons/material-symbols/settings-suggest-outline';
 
-type ResourceStats = {
-  routes: number;
-  services: number;
-  upstreams: number;
-};
-
-type InstanceHealth = {
-  instance_id: string;
-  name: string;
-  status: string;
-  last_check: string;
-  error?: string;
-};
-
-type OverviewData = {
-  total_instances: number;
-  active_instances: number;
-  global_stats: ResourceStats;
-  instance_stats: ResourceStats;
-  all_instances: InstanceHealth[];
-};
-
 const Overview = () => {
   const { t } = useTranslation();
   const [data, setData] = useState<OverviewData | null>(null);
@@ -78,17 +58,18 @@ const Overview = () => {
   const fetchOverview = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth:access_token');
-      const response = await fetch(`/api/v1/overview${forceRefresh ? '?refresh=true' : ''}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        setData(await response.json());
-      }
-    } catch {
+      // Read before it is shown: a body that is not an overview throws here
+      // rather than reaching state, where reading its counters replaced the
+      // page with the root's error component (#165). A non-2xx now reports
+      // too - it used to leave the last numbers on screen with nothing said.
+      setData(await overviewApi.get(forceRefresh));
+    } catch (err) {
       notifications.show({
+        // A fixed id: this runs again every 30s, and an outage otherwise
+        // stacks one notification per tick until it fills the screen.
+        id: 'overview-load-failed',
         title: t('overview.loadFailedTitle'),
-        message: t('overview.loadFailed'),
+        message: describeError(err, t('overview.loadFailed')),
         color: 'red',
       });
     } finally {

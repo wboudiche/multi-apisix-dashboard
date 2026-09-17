@@ -82,4 +82,15 @@ describe('the failure it reports', () => {
     );
     expect(() => parseRecordList([[]])).toThrow(MalformedResponseError);
   });
+
+  it('names the request when the caller passes it', () => {
+    // A page that loads several lists reports the same sentence for each of
+    // them otherwise, which says nothing about which one to go and look at.
+    expect(() => parseRecordList({ total: 0 }, '/api/v1/users')).toThrow(
+      '/api/v1/users: expected a list, got object'
+    );
+    expect(() => parseRecordList([null], '/api/v1/users')).toThrow(
+      '/api/v1/users: expected a list of records'
+    );
+  });
 });

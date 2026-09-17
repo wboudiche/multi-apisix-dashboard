@@ -46,7 +46,6 @@ import { useTranslation } from 'react-i18next';
 
 import {
   type CreateInstanceRequest,
-  describeError,
   getInstanceConflict,
   type Instance,
   INSTANCE_CONFLICT,
@@ -56,6 +55,7 @@ import {
 } from '@/apis/instances';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom,instancesAtom, instancesLoadingAtom } from '@/stores/instance';
+import { describeError } from '@/utils/api-error';
 import IconPlus from '~icons/material-symbols/add';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconDelete from '~icons/material-symbols/delete-forever-outline';

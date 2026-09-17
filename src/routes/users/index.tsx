@@ -42,10 +42,12 @@ import { useTranslation } from 'react-i18next';
 import { type User } from '@/apis/auth';
 import { instanceApi, type UserInstanceRole } from '@/apis/instances';
 import { type Team,teamApi } from '@/apis/teams';
+import { userApi } from '@/apis/users';
 import PageHeader from '@/components/page/PageHeader';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 import { currentUserAtom } from '@/stores/auth';
 import { instancesAtom } from '@/stores/instance';
+import { describeError } from '@/utils/api-error';
 import IconPlus from '~icons/material-symbols/add';
 import IconInstance from '~icons/material-symbols/dns-outline';
 import IconGroup from '~icons/material-symbols/group-outline';
@@ -53,7 +55,8 @@ import IconKey from '~icons/material-symbols/key-outline';
 import IconUser from '~icons/material-symbols/person-outline';
 import IconShield from '~icons/material-symbols/shield-outline';
 
-type CreateUserRequest = {
+/** The create form's own state: every field is filled, edit reuses a subset. */
+type UserFormData = {
   username: string;
   password: string;
   email: string;
@@ -75,7 +78,7 @@ const UsersPage = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('basic');
   
-  const [formData, setFormData] = useState<CreateUserRequest>({
+  const [formData, setFormData] = useState<UserFormData>({
     username: '',
     password: '',
     email: '',
@@ -93,17 +96,11 @@ const UsersPage = () => {
     if (!isSuperAdmin) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth:access_token');
-      
-      // Load users
-      const userRes = await fetch('/api/v1/users', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      let loadedUsers: User[] = [];
-      if (userRes.ok) {
-        loadedUsers = await userRes.json();
-        setUsers(loadedUsers);
-      }
+      // Read before it is shown: a body that is not a list of users throws
+      // here rather than reaching state, where the next render's map over it
+      // replaced the page with the root's error component (#165).
+      const loadedUsers = await userApi.list();
+      setUsers(loadedUsers);
 
       // Load teams
       const teamData = await teamApi.list();
@@ -121,10 +118,10 @@ const UsersPage = () => {
         })
       );
       setUserAssignments(assignments);
-    } catch {
+    } catch (err) {
       notifications.show({
         title: 'Error',
-        message: 'Failed to load user management data',
+        message: describeError(err, 'Failed to load user management data'),
         color: 'red',
       });
     } finally {
@@ -153,52 +150,38 @@ const UsersPage = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth:access_token');
-      let userId = editingUser?.id;
+      let userId: string;
 
       // Only create user if not editing
       if (!editingUser) {
-        const response = await fetch('/api/v1/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ ...formData, role: formData.role === 'user' ? '' : formData.role }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
+        try {
+          const newUser = await userApi.create({
+            ...formData,
+            role: formData.role === 'user' ? '' : formData.role,
+          });
+          userId = newUser.id;
+        } catch (err) {
           notifications.show({
             title: 'Error',
-            message: error.error || 'Failed to create user',
+            message: describeError(err, 'Failed to create user'),
             color: 'red',
           });
           return;
         }
-        const newUser = await response.json();
-        userId = newUser.id;
       } else {
+        userId = editingUser.id;
         // Editing used to skip this entirely, so the global role picked in the
         // form was never sent anywhere — the form reported success having
         // changed nothing.
-        const response = await fetch(`/api/v1/users/${userId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
+        try {
+          await userApi.update(userId, {
             email: formData.email,
             role: formData.role === 'user' ? '' : formData.role,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
+          });
+        } catch (err) {
           notifications.show({
             title: 'Error',
-            message: error.error || 'Failed to update user',
+            message: describeError(err, 'Failed to update user'),
             color: 'red',
           });
           return;
@@ -209,26 +192,18 @@ const UsersPage = () => {
       for (const instanceID in instanceRoles) {
         const config = instanceRoles[instanceID];
         if (config.role) {
-          const response = await fetch(`/api/v1/user-access/${userId}/instances/${instanceID}/role`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              role: config.role,
-              team_id: config.team_id,
-              scope: config.scope
-            }),
-          });
-
           // Every one of these was previously unchecked, so a rejected
           // assignment still ended in a success toast.
-          if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
+          try {
+            await instanceApi.setUserRole(userId, instanceID, {
+              role: config.role,
+              team_id: config.team_id,
+              scope: config.scope,
+            });
+          } catch (err) {
             notifications.show({
               title: 'Error',
-              message: error.error || 'Failed to assign the role for one of the instances',
+              message: describeError(err, 'Failed to assign the role for one of the instances'),
               color: 'red',
             });
             return;
@@ -262,25 +237,7 @@ const UsersPage = () => {
     if (!resetUser) return;
     setResetLoading(true);
     try {
-      const token = localStorage.getItem('auth:access_token');
-      const response = await fetch(`/api/v1/users/${resetUser.id}/password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ password: resetPassword }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        notifications.show({
-          title: t('users.resetFailed'),
-          message: error.error || t('users.resetFailed'),
-          color: 'red',
-        });
-        return;
-      }
+      await userApi.resetPassword(resetUser.id, resetPassword);
 
       notifications.show({
         title: t('users.resetSuccess'),
@@ -289,10 +246,10 @@ const UsersPage = () => {
       });
       setResetUser(null);
       setResetPassword('');
-    } catch {
+    } catch (err) {
       notifications.show({
         title: t('users.resetFailed'),
-        message: t('users.resetFailed'),
+        message: describeError(err, t('users.resetFailed')),
         color: 'red',
       });
     } finally {
@@ -303,41 +260,23 @@ const UsersPage = () => {
   const handleDelete = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
-      const token = localStorage.getItem('auth:access_token');
-      const response = await fetch(`/api/v1/users/${userId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+      await userApi.delete(userId);
+      notifications.show({
+        title: 'Success',
+        message: 'User deleted successfully',
+        color: 'green',
       });
-
-      if (response.ok) {
-        notifications.show({
-          title: 'Success',
-          message: 'User deleted successfully',
-          color: 'green',
-        });
-        loadData();
-      } else {
-        // A refused delete — the last super admin, an id already gone — said
-        // nothing, the row still there as though the click had missed (#210).
-        // The list is reloaded too: a user already gone leaves it.
-        const body = (await response.json().catch(() => null)) as {
-          error?: unknown;
-        } | null;
-        notifications.show({
-          title: 'Error',
-          message:
-            typeof body?.error === 'string' ? body.error : 'Failed to delete user',
-          color: 'red',
-        });
-        loadData();
-      }
-    } catch {
+    } catch (err) {
+      // A refused delete — the last super admin, an id already gone — said
+      // nothing, the row still there as though the click had missed (#210).
       notifications.show({
         title: 'Error',
-        message: 'Failed to delete user',
+        message: describeError(err, 'Failed to delete user'),
         color: 'red',
       });
     }
+    // Reloaded either way: a user already gone leaves the list.
+    loadData();
   };
 
   const resetForm = () => {
