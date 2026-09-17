@@ -19,6 +19,8 @@ import { getFixtures } from '@e2e/utils/fixtures';
 import { uiShowAllRows } from '@e2e/utils/ui';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { API_PREFIX } from '@/config/constant';
+
 /**
  * The shape a resource POM needs to expose to be drivable by the
  * ownership matrix helper. All existing POMs in e2e/pom/ already
@@ -36,11 +38,16 @@ export type ResourcePOMShape = {
 export type OwnershipMatrixOpts = {
   /** Singular noun, used in test titles. e.g. 'route', 'service'. */
   resourceLabel: string;
+  /** The resource's Admin API collection, e.g. API_SERVICES. */
+  apiPath: string;
   pom: ResourcePOMShape;
   /**
    * Drives the UI to create a minimal resource of this type with
    * the given name, leaving the page on the list view. The seed
    * pre-logs in as dev_user (Backend Team) before this is called.
+   *
+   * The create is answered late (see slowWrites), so this has to wait for
+   * it to land before it navigates away.
    */
   createMinimal: (page: Page, name: string) => Promise<void>;
   /**
@@ -60,6 +67,28 @@ export type OwnershipMatrixOpts = {
 };
 
 const INSTANCE_NAME = 'Local APISIX';
+
+const WRITE_DELAY_MS = 1500;
+
+/**
+ * Answers the resource's writes late, as a busy gateway does. A create that
+ * navigates away before its answer abandons the request with the page, and the
+ * resource never exists: the matrix's "can create" failed about half the time
+ * locally and never on CI's quicker stack (#183). Slowed on every run, the
+ * race is lost every time rather than now and then.
+ */
+const slowWrites = (page: Page, apiPath: string) =>
+  page.route(
+    (url) => url.pathname.startsWith(`${API_PREFIX}${apiPath}`),
+    async (route) => {
+      if (route.request().method() !== 'GET') {
+        await new Promise((resolve) => setTimeout(resolve, WRITE_DELAY_MS));
+      }
+      // The page may have navigated away while the write waited, which is the
+      // failure the delay exists to expose; the missing row then says so.
+      await route.continue().catch(() => undefined);
+    }
+  );
 
 export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
   const fx = getFixtures();
@@ -98,6 +127,7 @@ export function ownershipMatrixSuite(opts: OwnershipMatrixOpts) {
         fx.users.dev.password
       );
       await permission.switchInstance(page, INSTANCE_NAME);
+      await slowWrites(page, opts.apiPath);
       await opts.createMinimal(page, resourceName);
       await uiShowAllRows(page);
 

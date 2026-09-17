@@ -19,12 +19,13 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
+import { uiHasToastMsg } from '@e2e/utils/ui';
 import {
   uiFillStreamRouteRequiredFields,
   uiSelectStreamRouteUpstream,
 } from '@e2e/utils/ui/stream_routes';
 
-import { API_UPSTREAMS } from '@/config/constant';
+import { API_STREAM_ROUTES, API_UPSTREAMS } from '@/config/constant';
 
 // Stream routes have no human name. We synthesise a server_port from the
 // ownership helper's `name` argument (deterministic hash into the 9000-9999
@@ -41,6 +42,7 @@ const portFromName = (name: string): number => {
 
 ownershipMatrixSuite({
   resourceLabel: 'stream_route',
+  apiPath: API_STREAM_ROUTES,
   pom: {
     goto: { toIndex: streamRoutesPom.toIndex },
     locator: {
@@ -64,7 +66,11 @@ ownershipMatrixSuite({
     // existing upstream instead of an inline node editor). It must be owned
     // by the Backend Team, otherwise dev_user's select won't list it —
     // admins may set the owning team via the X-Team-ID header.
-    const upstreamName = `sr-own-upstream-${port}`;
+    //
+    // Named after the resource rather than its port. The port is drawn from a
+    // thousand, and an upstream a crashed or concurrent run left on the same
+    // one doubled the option this picks by name.
+    const upstreamName = `${name}-upstream`;
     await e2eReq
       .post(
         API_UPSTREAMS,
@@ -86,6 +92,8 @@ ownershipMatrixSuite({
     await uiSelectStreamRouteUpstream(page, upstreamName);
 
     await page.getByRole('button', { name: 'Add', exact: true }).click();
+    // Leaving before the create has answered abandons it with the page (#183).
+    await uiHasToastMsg(page, { hasText: 'Add Stream Route Successfully' });
     await streamRoutesPom.toIndex(page);
   },
   cleanup: async (_page, name) => {
@@ -110,6 +118,6 @@ ownershipMatrixSuite({
     }
     // The upstream createMinimal seeded, after the route that references it.
     // It was never removed, so every run left one.
-    await deleteByPrefix(API_UPSTREAMS, 'name', `sr-own-upstream-${port}`);
+    await deleteByPrefix(API_UPSTREAMS, 'name', `${name}-upstream`);
   },
 });
