@@ -172,7 +172,7 @@ All other resource pages (routes, services, upstreams, consumers, ssls, …) com
 
 ### Data fetching
 
-TanStack Query is still the data layer. Route `loader`s call `queryClient.ensureQueryData(...QueryOptions(deps))`. The `src/apis/` directory has one file per resource (upstream pattern preserved) plus new files: `auth.ts`, `client.ts`, `instances.ts`, `teams.ts`, `labels.ts`, `apisix.ts`, `route-test.ts`. `src/apis/hooks.ts` is still the registry combining `genDetailQueryOptions` + `genListQueryOptions` + `genUseList`.
+TanStack Query is still the data layer. Route `loader`s call `queryClient.ensureQueryData(...QueryOptions(deps))`. The `src/apis/` directory has one file per resource (upstream pattern preserved) plus new files: `auth.ts`, `client.ts`, `instances.ts`, `teams.ts`, `labels.ts`, `route-test.ts`. `src/apis/hooks.ts` is still the registry combining `genDetailQueryOptions` + `genListQueryOptions` + `genUseList`.
 
 ### Schemas & types
 

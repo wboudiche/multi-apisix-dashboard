@@ -54,7 +54,6 @@ export const teamApi = {
     await apiClient.delete(`/api/v1/teams/${id}`);
   },
 
-
   // Reassign resource ownership to a different team.
   // An empty teamId detaches the resource, leaving it owned by no team — which
   // hides it from every non-admin until an admin assigns it again.
