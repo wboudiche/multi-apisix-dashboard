@@ -101,6 +101,9 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
   };
 
   const handleStepClick = async (targetStep: number) => {
+    // Not while a submit is in flight: a step away from the last hides the
+    // Submit that is still loading, and walks on towards Cancel (#229).
+    if (loading) return;
     if (readOnly || allowFreeSelect) {
       setActive(targetStep);
       return;
@@ -183,6 +186,9 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
       }
 
       if (e.key === 'Escape') {
+        // Escape walks back a step at a time and cancels from the first, so it
+        // is ignored while a submit is in flight, as Back and Cancel are.
+        if (loading) return;
         if (active === 0 && onCancel) {
           handleCancel();
         } else if (active > 0) {
@@ -369,8 +375,9 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
             <Button
               variant="outline"
               color="gray"
-              // Leaving now would abandon a request that is still creating the
-              // resource the operator has just cancelled (#229).
+              // Not while a submit is in flight: Cancel resets the form and then
+              // leaves the page or goes read-only, while the request it cannot
+              // call back goes on (#229).
               disabled={loading}
               onClick={handleCancel}
               className="Button-secondary"
@@ -384,6 +391,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
             <Button
               variant="subtle"
               color="gray"
+              disabled={loading}
               onClick={prevStep}
               leftSection={<IconChevronLeft width="18" height="18" />}
               style={{ fontWeight: 600 }}

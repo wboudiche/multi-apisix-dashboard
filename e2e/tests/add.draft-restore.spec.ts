@@ -16,6 +16,7 @@
  */
 import { deleteRoutesByNamePrefix, deleteServicesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
+import { holdRequests } from '@e2e/utils/hold-requests';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { uiAddRouteNode, uiRouteWizardNext, uiRouteWizardSubmit } from '@e2e/utils/ui/routes';
@@ -81,22 +82,6 @@ for (const kind of KINDS) {
     }
   });
 }
-
-/** Holds `method` requests to a path ending in `path` until released. */
-const holdRequests = async (page: Page, path: string, method: string) => {
-  let release = () => {};
-  const released = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route(
-    (url) => url.pathname.endsWith(path),
-    async (route) => {
-      if (route.request().method() === method) await released;
-      await route.continue();
-    }
-  );
-  return () => release();
-};
 
 // Discard Draft remounts the form, which would drop a submit still in flight:
 // the wizard's Submit back on for a second POST, and the answer landing on a
