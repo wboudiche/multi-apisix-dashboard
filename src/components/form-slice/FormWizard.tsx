@@ -101,6 +101,9 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
   };
 
   const handleStepClick = async (targetStep: number) => {
+    // Not while a submit is in flight: a step away from the last hides the
+    // Submit that is still loading, and walks on towards Cancel (#229).
+    if (loading) return;
     if (readOnly || allowFreeSelect) {
       setActive(targetStep);
       return;
@@ -173,13 +176,19 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
         if (target.tagName === 'BUTTON' || target.tagName === 'INPUT') return;
         e.preventDefault();
         if (isLastStep) {
-          if (!readOnly) handleComplete();
+          // Not while the submit this would repeat is still in flight. The
+          // button carries `loading` and refuses a second click; Enter went
+          // around it, and the resource was created twice (#229).
+          if (!readOnly && !loading) handleComplete();
         } else {
           nextStep();
         }
       }
 
       if (e.key === 'Escape') {
+        // Escape walks back a step at a time and cancels from the first, so it
+        // is ignored while a submit is in flight, as Back and Cancel are.
+        if (loading) return;
         if (active === 0 && onCancel) {
           handleCancel();
         } else if (active > 0) {
@@ -190,7 +199,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, isLastStep, readOnly, handleComplete, handleCancel]);
+  }, [active, isLastStep, readOnly, loading, handleComplete, handleCancel]);
 
   return (
     <Stack gap="xs" mt="xs" className="animate-fade-in">
@@ -366,6 +375,10 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
             <Button
               variant="outline"
               color="gray"
+              // Not while a submit is in flight: Cancel resets the form and then
+              // leaves the page or goes read-only, while the request it cannot
+              // call back goes on (#229).
+              disabled={loading}
               onClick={handleCancel}
               className="Button-secondary"
             >
@@ -378,6 +391,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
             <Button
               variant="subtle"
               color="gray"
+              disabled={loading}
               onClick={prevStep}
               leftSection={<IconChevronLeft width="18" height="18" />}
               style={{ fontWeight: 600 }}
