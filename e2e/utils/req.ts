@@ -30,7 +30,7 @@ export const getPlaywrightRequestAdapter = (
   ctx: APIRequestContext
 ): AxiosAdapter => {
   return async (config) => {
-    const { url, data, baseURL } = config;
+    const { url, data } = config;
     if (typeof url === 'undefined') {
       throw new Error('Need to provide a url');
     }
@@ -42,8 +42,11 @@ export const getPlaywrightRequestAdapter = (
       failOnStatusCode: true,
       data,
     };
-    const urlWithBase = `${baseURL}${url}`;
-    const res = await ctx.fetch(urlWithBase, payload);
+    // The URL axios itself would send: base, path, and the params run through
+    // the instance's paramsSerializer. Built from the base and the path alone,
+    // every page, page_size and filter a spec passed was dropped, and the full
+    // list came back as though it had been asked for (#185).
+    const res = await ctx.fetch(axios.getUri(config), payload);
 
     try {
       return {
