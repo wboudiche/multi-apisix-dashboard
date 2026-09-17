@@ -61,7 +61,7 @@ type MaintenanceService struct {
 
 // keyDeleter deletes a key only if it is unchanged since a read.
 type keyDeleter interface {
-	DeleteIfUnchanged(ctx context.Context, key string, modRevision int64) (bool, error)
+	DeleteIfUnchanged(ctx context.Context, key string, modRevision int64) (deleted, exists bool, err error)
 }
 
 func NewMaintenanceService(etcd *EtcdClient) *MaintenanceService {
@@ -144,13 +144,17 @@ func (s *MaintenanceService) purgeKeys(ctx context.Context, keys []string, orpha
 			result.Skipped[key] = skipReason(key)
 			continue
 		}
-		deleted, err := s.deleter.DeleteIfUnchanged(ctx, key, revisions[key])
-		if err != nil {
+		deleted, exists, err := s.deleter.DeleteIfUnchanged(ctx, key, revisions[key])
+		switch {
+		case err != nil:
 			result.Failed[key] = err.Error()
 			continue
-		}
-		if !deleted {
+		case !deleted && exists:
 			result.Skipped[key] = "written since it was checked"
+			continue
+		case !deleted:
+			// Another purge got there first.
+			result.Skipped[key] = "already deleted"
 			continue
 		}
 		result.Deleted = append(result.Deleted, key)

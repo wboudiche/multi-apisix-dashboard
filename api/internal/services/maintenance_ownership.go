@@ -66,18 +66,27 @@ type OwnershipReport struct {
 	Unchecked []UncheckedInstance `json:"unchecked_instances"`
 }
 
-// unchecked reports whether the records of a type on an instance went
-// unjudged, for the instance as a whole or for that type.
-func (r *OwnershipReport) unchecked(instanceID, resourceType string) bool {
+// uncheckedReason says why the records of a type on an instance went unjudged,
+// or "" if they were judged.
+func (r *OwnershipReport) uncheckedReason(instanceID, resourceType string) string {
 	for _, u := range r.Unchecked {
-		if u.InstanceID == instanceID && (u.ResourceType == "" || u.ResourceType == resourceType) {
-			return true
+		switch {
+		case u.InstanceID != instanceID:
+		case u.ResourceType == "":
+			return "its instance could not be checked"
+		case u.ResourceType == resourceType:
+			return "its type could not be listed"
 		}
 	}
-	return false
+	return ""
 }
 
+// errGatewayUnreachable marks a list that failed before any answer came back.
+// It belongs to the gateway, not to the type asked about.
+var errGatewayUnreachable = errors.New("gateway unreachable")
+
 // resourceLister reads the id of every resource of a type on an instance.
+// A failure to reach the gateway at all wraps errGatewayUnreachable.
 type resourceLister interface {
 	ListResourceIDs(ctx context.Context, instance *models.Instance, resourceType string) (map[string]bool, error)
 }
@@ -102,7 +111,7 @@ func (l apisixResourceLister) ListResourceIDs(ctx context.Context, instance *mod
 	}
 	resp, err := l.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", errGatewayUnreachable, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -232,8 +241,10 @@ func (s *MaintenanceService) PurgeOrphanedOwnership(ctx context.Context, keys []
 		if _, ok := records[key]; !ok {
 			return "no such ownership record"
 		}
-		if instanceID, resourceType, _, ok := parseOwnershipKey(key); ok && report.unchecked(instanceID, resourceType) {
-			return "its instance could not be checked"
+		if instanceID, resourceType, _, ok := parseOwnershipKey(key); ok {
+			if reason := report.uncheckedReason(instanceID, resourceType); reason != "" {
+				return reason
+			}
 		}
 		return "its resource exists"
 	}), nil
@@ -245,9 +256,11 @@ func (s *MaintenanceService) PurgeOrphanedOwnership(ctx context.Context, keys []
 //
 // An instance exists if its key does. One whose record does not parse, or that
 // is inactive, is still an instance; only its gateway is not asked, and its
-// records for shared types go unjudged. A type its gateway fails to list goes
-// unjudged on its own - stream routes on a gateway with stream mode off answer
-// an error - while the instance's other types are still judged.
+// records for shared types go unjudged. So does every type of a gateway that
+// cannot be reached, which is not asked again for the next type: each attempt
+// would wait out its own timeout for the same answer. A type the gateway
+// answers with an error goes unjudged on its own - stream routes on a gateway
+// with stream mode off answer 400 - while its other types are still judged.
 func judgeOwnership(ctx context.Context, records, rawInstances map[string][]byte, lister resourceLister, scope ownershipScope) *OwnershipReport {
 	instances := make(map[string]*models.Instance, len(rawInstances))
 	for key, value := range rawInstances {
@@ -296,6 +309,15 @@ func judgeOwnership(ctx context.Context, records, rawInstances map[string][]byte
 		present[instanceID] = map[string]map[string]bool{}
 		for _, resourceType := range sortedKeys(wanted[instanceID]) {
 			ids, err := lister.ListResourceIDs(ctx, instance, resourceType)
+			if errors.Is(err, errGatewayUnreachable) {
+				report.Unchecked = append(report.Unchecked, UncheckedInstance{
+					InstanceID: instanceID,
+					Reason:     err.Error(),
+				})
+				uncheckedInstances[instanceID] = true
+				delete(present, instanceID)
+				break
+			}
 			if err != nil {
 				report.Unchecked = append(report.Unchecked, UncheckedInstance{
 					InstanceID:   instanceID,

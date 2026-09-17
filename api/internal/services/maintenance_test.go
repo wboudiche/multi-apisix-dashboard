@@ -86,41 +86,62 @@ func TestOrphanedAssignmentsRefusesWithNoUsers(t *testing.T) {
 }
 
 type fakeDeleter struct {
-	changed map[string]bool
-	broken  map[string]bool
-	deleted []string
+	changed   map[string]bool
+	gone      map[string]bool
+	broken    map[string]bool
+	deleted   []string
+	revisions map[string]int64
 }
 
-func (f *fakeDeleter) DeleteIfUnchanged(_ context.Context, key string, _ int64) (bool, error) {
-	if f.broken[key] {
-		return false, errors.New("etcd unavailable")
-	}
-	if f.changed[key] {
-		return false, nil
+func (f *fakeDeleter) DeleteIfUnchanged(_ context.Context, key string, modRevision int64) (bool, bool, error) {
+	f.revisions[key] = modRevision
+	switch {
+	case f.broken[key]:
+		return false, false, errors.New("etcd unavailable")
+	case f.gone[key]:
+		return false, false, nil
+	case f.changed[key]:
+		return false, true, nil
 	}
 	f.deleted = append(f.deleted, key)
-	return true, nil
+	return true, true, nil
 }
 
-// A purge deletes an orphaned key once however often it is named, leaves one
-// written since it was judged, and says why of every key it did not delete.
+// A purge deletes an orphaned key once however often it is named, only at the
+// revision it was judged at, leaves one written since, and says why of every
+// key it did not delete.
 func TestPurgeKeys(t *testing.T) {
-	deleter := &fakeDeleter{changed: map[string]bool{"rewritten": true}, broken: map[string]bool{"broken": true}}
+	deleter := &fakeDeleter{
+		changed:   map[string]bool{"rewritten": true},
+		gone:      map[string]bool{"raced": true},
+		broken:    map[string]bool{"broken": true},
+		revisions: map[string]int64{},
+	}
 	s := &MaintenanceService{deleter: deleter}
-	orphaned := map[string]bool{"gone": true, "rewritten": true, "broken": true}
+	orphaned := map[string]bool{"orphan": true, "rewritten": true, "raced": true, "broken": true}
+	revisions := map[string]int64{"orphan": 7, "rewritten": 8, "raced": 9, "broken": 10, "living": 11}
 
-	got := s.purgeKeys(context.Background(), []string{"gone", "living", "gone", "rewritten", "broken"}, orphaned, map[string]int64{},
+	got := s.purgeKeys(context.Background(), []string{"orphan", "living", "orphan", "rewritten", "raced", "broken"}, orphaned, revisions,
 		func(key string) string { return "not orphaned: " + key })
 
 	want := &PurgeResult{
-		Deleted: []string{"gone"},
-		Skipped: map[string]string{"living": "not orphaned: living", "rewritten": "written since it was checked"},
-		Failed:  map[string]string{"broken": "etcd unavailable"},
+		Deleted: []string{"orphan"},
+		Skipped: map[string]string{
+			"living":    "not orphaned: living",
+			"rewritten": "written since it was checked",
+			"raced":     "already deleted",
+		},
+		Failed: map[string]string{"broken": "etcd unavailable"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
-	if !reflect.DeepEqual(deleter.deleted, []string{"gone"}) {
-		t.Errorf("deleted %v, want only gone, once", deleter.deleted)
+	if !reflect.DeepEqual(deleter.deleted, []string{"orphan"}) {
+		t.Errorf("deleted %v, want only orphan, once", deleter.deleted)
+	}
+	// Each delete is conditioned on the revision judged; nothing is attempted
+	// for a key that was not orphaned.
+	if wantRevisions := map[string]int64{"orphan": 7, "rewritten": 8, "raced": 9, "broken": 10}; !reflect.DeepEqual(deleter.revisions, wantRevisions) {
+		t.Errorf("revisions %v, want %v", deleter.revisions, wantRevisions)
 	}
 }

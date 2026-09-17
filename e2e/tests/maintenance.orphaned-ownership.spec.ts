@@ -66,7 +66,7 @@ const seedRecord = async (instanceId: string, type: string, id: string) => {
 
 type Orphans = {
   ownership: { key: string; reason: string; team_id?: string }[];
-  unchecked_instances: { instance_id: string; reason: string }[];
+  unchecked_instances: { instance_id: string; resource_type?: string; reason: string }[];
 };
 type Purge = {
   ownership: { deleted: string[]; skipped: Record<string, string>; failed: Record<string, string> };

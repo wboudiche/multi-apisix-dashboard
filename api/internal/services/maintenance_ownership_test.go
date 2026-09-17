@@ -19,8 +19,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
@@ -98,15 +100,15 @@ func TestParseResourceIDs(t *testing.T) {
 
 type fakeLister struct {
 	ids   map[string]map[string]map[string]bool
-	fails map[string]bool // "<instance>/<type>"
+	fails map[string]error // "<instance>/<type>"
 	calls []string
 }
 
 func (f *fakeLister) ListResourceIDs(_ context.Context, instance *models.Instance, resourceType string) (map[string]bool, error) {
 	call := instance.ID + "/" + resourceType
 	f.calls = append(f.calls, call)
-	if f.fails[call] {
-		return nil, errors.New("answered 400")
+	if err := f.fails[call]; err != nil {
+		return nil, err
 	}
 	return f.ids[instance.ID][resourceType], nil
 }
@@ -118,7 +120,8 @@ func instanceRecord(id string, active bool) []byte {
 
 // Gateways are asked only for the types their records name and the scope
 // allows. An instance that is inactive or unreadable is not asked, and keeps
-// its records for shared types; a type its gateway fails to list keeps its
+// its records for shared types. A gateway that cannot be reached is not asked
+// again for its next type. A type its gateway answers with an error keeps its
 // records while the instance's other types are still judged (#248).
 func TestJudgeOwnership(t *testing.T) {
 	team := []byte(`"t1"`)
@@ -130,15 +133,22 @@ func TestJudgeOwnership(t *testing.T) {
 		"/ownership/off/routes/x":           team,
 		"/ownership/garbled/routes/y":       team,
 		"/ownership/garbled/ssls/z":         team,
+		"/ownership/down/consumers/c":       team,
+		"/ownership/down/routes/r":          team,
+		"/ownership/down/upstreams/u":       team,
 	}
 	instances := map[string][]byte{
 		"/instances/live":    instanceRecord("live", true),
 		"/instances/off":     instanceRecord("off", false),
 		"/instances/garbled": []byte(`not json`),
+		"/instances/down":    instanceRecord("down", true),
 	}
 	lister := &fakeLister{
-		ids:   map[string]map[string]map[string]bool{"live": {"routes": {"present": true}}},
-		fails: map[string]bool{"live/stream_routes": true},
+		ids: map[string]map[string]map[string]bool{"live": {"routes": {"present": true}}},
+		fails: map[string]error{
+			"live/stream_routes": errors.New("answered 400"),
+			"down/consumers":     fmt.Errorf("%w: dial tcp: i/o timeout", errGatewayUnreachable),
+		},
 	}
 	notServices := func(_, resourceType string) bool { return resourceType != "services" }
 
@@ -161,16 +171,25 @@ func TestJudgeOwnership(t *testing.T) {
 		unchecked = append(unchecked, u.InstanceID+"/"+u.ResourceType)
 	}
 	sort.Strings(unchecked)
-	if want := []string{"garbled/", "live/stream_routes", "off/"}; !reflect.DeepEqual(unchecked, want) {
+	if want := []string{"down/", "garbled/", "live/stream_routes", "off/"}; !reflect.DeepEqual(unchecked, want) {
 		t.Errorf("unchecked %v, want %v", unchecked, want)
 	}
-	if !report.unchecked("live", "stream_routes") || report.unchecked("live", "routes") || !report.unchecked("off", "routes") {
-		t.Errorf("unchecked() disagrees with the report %+v", report.Unchecked)
+	reasons := map[string]string{
+		"live/stream_routes": "its type could not be listed",
+		"live/routes":        "",
+		"off/routes":         "its instance could not be checked",
+		"down/routes":        "its instance could not be checked",
+	}
+	for pair, want := range reasons {
+		instanceID, resourceType, _ := strings.Cut(pair, "/")
+		if got := report.uncheckedReason(instanceID, resourceType); got != want {
+			t.Errorf("uncheckedReason(%s) = %q, want %q", pair, got, want)
+		}
 	}
 
 	// Not asked about services, which the scope leaves out, nor about the
-	// instances it could not ask.
-	if want := []string{"live/routes", "live/stream_routes"}; !reflect.DeepEqual(lister.calls, want) {
+	// instances it could not ask, nor again about a gateway it could not reach.
+	if want := []string{"down/consumers", "live/routes", "live/stream_routes"}; !reflect.DeepEqual(lister.calls, want) {
 		t.Errorf("gateway calls %v, want %v", lister.calls, want)
 	}
 }

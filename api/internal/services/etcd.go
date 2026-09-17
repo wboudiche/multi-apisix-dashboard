@@ -121,16 +121,21 @@ func (e *EtcdClient) ListWithRevisions(ctx context.Context, prefix string) (map[
 }
 
 // DeleteIfUnchanged deletes a key only if it has not been written since
-// modRevision, in one transaction, and reports whether it did.
-func (e *EtcdClient) DeleteIfUnchanged(ctx context.Context, key string, modRevision int64) (bool, error) {
+// modRevision, in one transaction. It reports whether it deleted the key, and,
+// when it did not, whether the key is still there at all.
+func (e *EtcdClient) DeleteIfUnchanged(ctx context.Context, key string, modRevision int64) (deleted, exists bool, err error) {
 	resp, err := e.client.Txn(ctx).
 		If(clientv3.Compare(clientv3.ModRevision(e.key(key)), "=", modRevision)).
 		Then(clientv3.OpDelete(e.key(key))).
+		Else(clientv3.OpGet(e.key(key), clientv3.WithKeysOnly())).
 		Commit()
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
-	return resp.Succeeded, nil
+	if resp.Succeeded {
+		return true, true, nil
+	}
+	return false, len(resp.Responses[0].GetResponseRange().Kvs) > 0, nil
 }
 
 // GetJSON retrieves and unmarshals a JSON object
