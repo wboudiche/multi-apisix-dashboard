@@ -33,7 +33,6 @@ import {
   Table,
   Text,
 } from '@mantine/core';
-import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -45,6 +44,7 @@ import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import { teamApi } from '@/apis/teams';
 import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
+import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
 import { ImportWsdlModal } from '@/components/page/ImportWsdlModal';
 import { ListWarningBanner } from '@/components/page/ListWarningBanner';
@@ -247,10 +247,13 @@ export const RouteList = (props: RouteListProps) => {
    * status the list already shows, so Offline now sets it.
    */
   const handleSetStatus = useCallback(
-    async (record: Record<string, unknown>, status: 0 | 1) => {
-      const id = record['id'] as string;
+    async (id: string, status: 0 | 1) => {
       try {
-        const body = withoutDashboardFields(record);
+        // Read again rather than write the row back: a PUT replaces the route,
+        // and the row is as old as the last list read. Someone else's edit in
+        // between would go with it.
+        const fresh = await req.get<{ value: Record<string, unknown> }>(`${API_ROUTES}/${id}`);
+        const body = withoutDashboardFields(fresh.data.value);
         delete body['id'];
         delete body['create_time'];
         delete body['update_time'];
@@ -263,59 +266,15 @@ export const RouteList = (props: RouteListProps) => {
         });
         refetch();
       } catch (err: unknown) {
-        const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
-        notifications.show({
-          message: e?.response?.data?.error_msg || e?.message || 'Failed to update',
-          color: 'red',
-        });
+        // A refusal is already on screen: the client shows what the gateway
+        // said. Only what it cannot show is worth a second line.
+        const e = err as { response?: unknown; message?: string };
+        if (!e?.response) {
+          notifications.show({ message: e?.message || 'Failed to update', color: 'red' });
+        }
       }
     },
     [t, refetch]
-  );
-
-  const deleteRoute = useCallback(async (id: string) => {
-    try {
-      await req.delete(`${API_ROUTES}/${id}`);
-      notifications.show({
-        message: t('info.delete.success', { name: t('routes.singular') }),
-        color: 'green',
-      });
-      refetch();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
-      notifications.show({
-        message: e?.response?.data?.error_msg || e?.message || 'Failed to delete',
-        color: 'red',
-      });
-    }
-  }, [t, refetch]);
-
-  /**
-   * Deletes a route, once it has been confirmed.
-   *
-   * The confirmation used to sit on the button beside it, which said Offline
-   * and deleted; this menu item deleted on the spot. Now that Offline takes a
-   * route offline, the one action that removes it is the one that asks (#164).
-   */
-  const handleDelete = useCallback(
-    (id: string) =>
-      modals.openConfirmModal({
-        centered: true,
-        confirmProps: { color: 'red' },
-        title: t('info.delete.title', { name: t('routes.singular') }),
-        children: (
-          <Text>
-            {t('info.delete.content', { name: t('routes.singular') })}
-            <Text component="span" fw={700} mx="0.25em" style={{ wordBreak: 'break-all' }}>
-              {id}
-            </Text>
-            {t('mark.question')}
-          </Text>
-        ),
-        labels: { confirm: t('form.btn.delete'), cancel: t('form.btn.cancel') },
-        onConfirm: () => deleteRoute(id),
-      }),
-    [t, deleteRoute]
   );
 
   const isVisible = (col: string) => visibleColumns.includes(col);
@@ -556,7 +515,7 @@ export const RouteList = (props: RouteListProps) => {
                         styles={{ root: { padding: '0 12px' } }}
                         onClick={() =>
                           handleSetStatus(
-                            record.value as unknown as Record<string, unknown>,
+                            record.value.id,
                             isResourceEnabled(record.value.status) ? 0 : 1
                           )
                         }
@@ -612,13 +571,24 @@ export const RouteList = (props: RouteListProps) => {
                         )}
                         {canDelete && (<>
                           <Menu.Divider />
-                          <Menu.Item
-                            leftSection={<IconDelete width="14" height="14" />}
-                            color="red"
-                            onClick={() => handleDelete(record.value.id)}
-                          >
-                            {t('form.btn.delete')}
-                          </Menu.Item>
+                          {/* The same confirmation every other delete opens,
+                              worn as a menu item: it names the route, and it
+                              invalidates the caches other pages read. */}
+                          <DeleteResourceBtn
+                            name={t('routes.singular')}
+                            target={record.value.id}
+                            api={`${API_ROUTES}/${record.value.id}`}
+                            onSuccess={refetch}
+                            DeleteBtn={((props: { onClick?: () => void }) => (
+                              <Menu.Item
+                                leftSection={<IconDelete width="14" height="14" />}
+                                color="red"
+                                onClick={props.onClick}
+                              >
+                                {t('form.btn.delete')}
+                              </Menu.Item>
+                            )) as unknown as typeof Button}
+                          />
                         </>)}
                       </Menu.Dropdown>
                     </Menu>

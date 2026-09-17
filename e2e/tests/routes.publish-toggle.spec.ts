@@ -21,6 +21,7 @@ import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
+import { putRouteReq } from '@/apis/routes';
 import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
@@ -34,11 +35,12 @@ import type { APISIXType } from '@/types/schema/apisix';
 const ROUTE_ID = randomId('e2e-publish-toggle');
 
 test.beforeEach(async () => {
-  await e2eReq.put(`${API_ROUTES}/${ROUTE_ID}`, {
+  await putRouteReq(e2eReq, {
+    id: ROUTE_ID,
     name: ROUTE_ID,
     uri: `/${ROUTE_ID}`,
     status: 1,
-    upstream: { type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } },
+    upstream: { type: 'roundrobin', nodes: [{ host: '127.0.0.1', port: 1980, weight: 1 }] },
   });
 });
 
@@ -83,7 +85,11 @@ test('Delete is the one that removes it, and says so', async ({ page }) => {
 
   await row(page).getByRole('button', { name: 'More' }).click();
   await page.getByRole('menuitem', { name: 'Delete' }).click();
-  await page.getByRole('button', { name: 'Delete', exact: true }).last().click();
+
+  // It asks, and names the route it is about to remove.
+  const confirm = page.getByRole('dialog');
+  await expect(confirm).toContainText(ROUTE_ID);
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
 
   await expect(row(page)).toHaveCount(0);
   // Gone from the gateway too, not merely from the page.

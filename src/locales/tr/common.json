@@ -458,6 +458,7 @@
       "statusPublished": "Yayınlandı",
       "statusUnpublished": "Yayınlanmadı",
       "actionOffline": "Çevrimdışı",
+      "actionPublish": "Yayınla",
       "actionConfigure": "Yapılandır",
       "actionMore": "Daha Fazla",
       "filterReset": "Sıfırla",
