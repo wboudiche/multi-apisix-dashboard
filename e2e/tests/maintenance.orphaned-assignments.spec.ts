@@ -115,13 +115,21 @@ test('lists the assignments whose user is gone, and purges only the keys it is s
     team_id: fx().backendTeamId,
   });
 
-  // A living user's assignment is named too, and is refused rather than taken.
-  const res = (await apiFetch('/api/v1/maintenance/orphans/purge', token, {
-    method: 'POST',
-    json: { user_instances: [purged, living] },
-  })) as Purge;
+  // A living user's assignment is named too, and is refused rather than taken;
+  // the orphan named twice goes once.
+  const purge = (keys: string[]) =>
+    apiFetch('/api/v1/maintenance/orphans/purge', token, {
+      method: 'POST',
+      json: { user_instances: keys },
+    }) as Promise<Purge>;
+  const res = await purge([purged, living, purged]);
   expect(res.user_instances.deleted).toEqual([purged]);
-  expect(Object.keys(res.user_instances.skipped)).toEqual([living]);
+  expect(res.user_instances.skipped).toEqual({ [living]: 'its user exists' });
+
+  // Named again once it is gone, it is not mistaken for a living user's.
+  const again = await purge([purged]);
+  expect(again.user_instances.deleted).toEqual([]);
+  expect(again.user_instances.skipped).toEqual({ [purged]: 'no such instance assignment' });
 
   expect(await exists(purged)).toBe(false);
   expect(await exists(kept)).toBe(true);

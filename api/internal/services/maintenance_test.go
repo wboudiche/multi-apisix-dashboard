@@ -16,6 +16,7 @@
 package services
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -44,7 +45,10 @@ func TestOrphanedAssignments(t *testing.T) {
 		"/user_instances/malformed":      assignment("developer", "t1"),
 	}
 
-	got := orphanedAssignments(assignments, users)
+	got, err := orphanedAssignments(assignments, users)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	want := []OrphanedAssignment{
 		{Key: "/user_instances/gone/i1", UserID: "gone", InstanceID: "i1", Role: "developer", TeamID: "t9"},
@@ -61,8 +65,20 @@ func TestOrphanedAssignments(t *testing.T) {
 }
 
 func TestOrphanedAssignmentsWithNoAssignments(t *testing.T) {
-	got := orphanedAssignments(map[string][]byte{}, map[string][]byte{"/users/alice": []byte(`{}`)})
-	if got == nil || len(got) != 0 {
-		t.Fatalf("got %#v, want an empty, non-nil list", got)
+	got, err := orphanedAssignments(map[string][]byte{}, map[string][]byte{"/users/alice": []byte(`{}`)})
+	if err != nil || got == nil || len(got) != 0 {
+		t.Fatalf("got %#v, %v, want an empty, non-nil list", got, err)
+	}
+}
+
+// With no users read at all, nothing is judged: that read failed, and against
+// it every assignment would look orphaned (#209).
+func TestOrphanedAssignmentsRefusesWithNoUsers(t *testing.T) {
+	assignments := map[string][]byte{"/user_instances/alice/i1": assignment("developer", "t1")}
+
+	got, err := orphanedAssignments(assignments, map[string][]byte{})
+
+	if !errors.Is(err, ErrNoUsersRead) || got != nil {
+		t.Fatalf("got %#v, %v, want no orphans and ErrNoUsersRead", got, err)
 	}
 }
