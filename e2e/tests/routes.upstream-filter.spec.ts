@@ -18,7 +18,7 @@ import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 /**
  * The route list is filtered in the dashboard's proxy rather than by APISIX
@@ -301,6 +301,44 @@ test('says when the list is narrower than the truth', async ({ page }) => {
 
   // Degraded, not blocked: what could be read is still shown.
   await expect(rowFor(page, `${PREFIX}-direct`)).toBeVisible();
+});
+
+/** Answers every routes list as the proxy would when it attaches `code`. */
+const routesWarn = (page: Page, code: string) =>
+  page.route('**/apisix/admin/routes*', async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({ response, json: { ...body, __warning: code } });
+  });
+
+test('says when routes cannot show the upstream they reach through a service', async ({
+  page,
+}) => {
+  // Without an upstream filter nothing is missing when the service table cannot
+  // be read, but a route bound through a service cannot say which upstream it
+  // reaches (#161). Its caveat has a title of its own, one that does not claim
+  // rows are missing. Injected for the same reason as the one above.
+  await routesWarn(page, 'service_upstream_unresolved');
+
+  await page.goto(`/ui/routes?name=${PREFIX}&page_size=50`);
+
+  await expect(page.getByText('Upstreams not resolved')).toBeVisible({ timeout: 20000 });
+  await expect(
+    page.getByText('routes that reach their upstream through a service show none below')
+  ).toBeVisible();
+  await expect(rowFor(page, `${PREFIX}-direct`)).toBeVisible();
+});
+
+test('keeps that caveat to lists that show the Upstream column', async ({ page }) => {
+  // A service's own routes list has no Upstream column, so a caveat about that
+  // column has nothing on screen to be about.
+  await routesWarn(page, 'service_upstream_unresolved');
+
+  await page.goto(`/ui/services/detail/${PREFIX}-svc/routes`);
+
+  // The rows are drawn in the same render as the banner would be.
+  await expect(rowFor(page, `${PREFIX}-viasvc`)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText('Upstreams not resolved')).toHaveCount(0);
 });
 
 test('numeric ids in the URL do not blow the page up', async ({ page }) => {

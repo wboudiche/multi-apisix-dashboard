@@ -48,6 +48,17 @@ const WARNING_MESSAGES = {
   service_upstream_unresolved: 'listWarning.service_upstream_unresolved',
 } as const;
 
+/**
+ * A title of its own for a code the shared one would not be true of: an
+ * unresolved upstream leaves every row on screen, so "incomplete results"
+ * claims too much.
+ */
+const WARNING_TITLES: Partial<
+  Record<keyof typeof WARNING_MESSAGES, 'listWarning.unresolvedTitle'>
+> = {
+  service_upstream_unresolved: 'listWarning.unresolvedTitle',
+};
+
 export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
   const { t } = useTranslation();
 
@@ -56,7 +67,7 @@ export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
   return (
     <Alert
       icon={<IconWarning width="18" height="18" />}
-      title={t('listWarning.title')}
+      title={t(WARNING_TITLES[warning as keyof typeof WARNING_MESSAGES] ?? 'listWarning.title')}
       color="yellow"
       variant="light"
       mb="md"

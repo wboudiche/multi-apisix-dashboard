@@ -412,7 +412,7 @@ func TestServiceUpstreamsToleratesNumericIDs(t *testing.T) {
 	body := []byte(`{"list":[
 		{"value":{"id":"svc-str","upstream_id":"up-a"}},
 		{"value":{"id":9002,"upstream_id":777}},
-		{"value":{"id":"svc-inline"}}
+		{"value":{"id":"svc-bare"}}
 	]}`)
 
 	got, err := parseServiceUpstreams(body)

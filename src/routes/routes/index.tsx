@@ -61,6 +61,7 @@ import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { withoutDashboardFields } from '@/utils/dashboard-fields';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
@@ -136,6 +137,13 @@ export const RouteList = (props: RouteListProps) => {
     return map;
   }, [upstreams]);
 
+  // The unresolved-upstream caveat is about the Upstream column. With the column
+  // off — a service's own routes list never shows it — there is nothing on
+  // screen for it to be about, and nothing is missing either.
+  const listWarning = (data as { __warning?: string } | undefined)?.__warning;
+  const shownWarning =
+    listWarning === 'service_upstream_unresolved' && !wantsUpstreams ? undefined : listWarning;
+
   const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
   const allSelected = allIds.length > 0 && allIds.every((id: string) => selectedIds.has(id));
   const someSelected = allIds.some((id: string) => selectedIds.has(id));
@@ -183,7 +191,8 @@ export const RouteList = (props: RouteListProps) => {
   };
 
   const handleViewJson = (record: Record<string, unknown>) => {
-    setJsonDrawerData({ id: record.id as string, json: record });
+    // The route as APISIX holds it, as the detail page's drawer shows it.
+    setJsonDrawerData({ id: record.id as string, json: withoutDashboardFields(record) });
     setJsonDrawerOpen(true);
   };
 
@@ -280,7 +289,7 @@ export const RouteList = (props: RouteListProps) => {
           </Group>
         </Group>
       )}
-      <ListWarningBanner warning={(data as { __warning?: string } | undefined)?.__warning} />
+      <ListWarningBanner warning={shownWarning} />
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
@@ -373,6 +382,12 @@ export const RouteList = (props: RouteListProps) => {
                     // stored as, or that it carries one inline.
                     const upstreamId: string | undefined = record.value.__upstream_id;
                     if (upstreamId) {
+                      // An upstream this operator cannot list is one they cannot
+                      // open either: a link would lead to a refusal. Its id still
+                      // says which backend the route reaches.
+                      if (!isAdmin && !upstreamNames.has(upstreamId)) {
+                        return <Text size="sm">{upstreamId}</Text>;
+                      }
                       return (
                         <RouteAnchor
                           to="/upstreams/detail/$id"

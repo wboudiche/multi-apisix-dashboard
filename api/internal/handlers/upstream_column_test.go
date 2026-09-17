@@ -41,6 +41,7 @@ func TestEffectiveUpstream(t *testing.T) {
 		{"through its service", map[string]any{"service_id": "svc-a"}, "up-a", false},
 		{"an inline upstream of its own", map[string]any{"upstream": map[string]any{"type": "roundrobin"}}, "", true},
 		{"its inline upstream before its service", map[string]any{"service_id": "svc-a", "upstream": map[string]any{}}, "", true},
+		{"a null upstream is none of its own", map[string]any{"service_id": "svc-a", "upstream": nil}, "up-a", false},
 		{"a service carrying its upstream inline", map[string]any{"service_id": "svc-inline"}, "", true},
 		{"numeric ids", map[string]any{"service_id": float64(9002)}, "777", false},
 		{"a service the table does not know", map[string]any{"service_id": "svc-gone"}, "", false},
@@ -105,6 +106,40 @@ func TestAnnotateUpstream(t *testing.T) {
 			}
 			if got := c.row[dashboardUpstreamInlineField]; got != c.wantInline {
 				t.Errorf("%s = %v, want %v", dashboardUpstreamInlineField, got, c.wantInline)
+			}
+		})
+	}
+}
+
+// Every routes page reads the service table now, the service's own routes list
+// included, so a failure to read it has to be named for what it costs the page
+// actually returned. The codes are spelled out: the browser translates them by
+// name, and one misspelt on either side falls back to a vaguer message.
+func TestServiceTableWarning(t *testing.T) {
+	row := func(value map[string]any) map[string]interface{} {
+		return map[string]interface{}{"value": value}
+	}
+	throughService := row(map[string]any{"service_id": "svc-a"})
+	ownUpstream := row(map[string]any{"service_id": "svc-a", "upstream_id": "up-x"})
+	ownInline := row(map[string]any{"service_id": "svc-a", "upstream": map[string]any{}})
+	unbound := row(map[string]any{"upstream_id": "up-x"})
+
+	cases := []struct {
+		name   string
+		filter bool
+		page   []map[string]interface{}
+		want   string
+	}{
+		{"an upstream filter misses the routes bound to a service", true, []map[string]interface{}{unbound}, "service_lookup_failed"},
+		{"a page with a route that reaches its upstream through its service", false, []map[string]interface{}{unbound, throughService}, "service_upstream_unresolved"},
+		{"a page whose routes carry their own upstream", false, []map[string]interface{}{ownUpstream, ownInline, unbound}, ""},
+		{"an empty page", false, nil, ""},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := serviceTableWarning(c.filter, c.page); got != c.want {
+				t.Errorf("serviceTableWarning(%v, …) = %q, want %q", c.filter, got, c.want)
 			}
 		})
 	}

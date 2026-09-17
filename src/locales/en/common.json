@@ -941,7 +941,8 @@
   "listWarning": {
     "title": "Incomplete results",
     "service_lookup_failed": "The service list could not be read, so routes that reach an upstream through a service are missing from these results.",
-    "service_upstream_unresolved": "The service list could not be read, so routes bound to a service show no upstream below.",
+    "service_upstream_unresolved": "The service list could not be read, so routes that reach their upstream through a service show none below.",
+    "unresolvedTitle": "Upstreams not resolved",
     "unknown": "Some results may be missing."
   },
   "pageError": {

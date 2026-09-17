@@ -15,6 +15,8 @@
 
 package handlers
 
+import "time"
+
 // The fields the proxy writes onto each route row, beside __team_id, so that
 // the Upstream column reads the answer rather than working it out in the
 // browser. There, a non-admin's service list is narrowed to their team and cut
@@ -25,6 +27,13 @@ const (
 	dashboardUpstreamIDField     = dashboardFieldPrefix + "upstream_id"
 	dashboardUpstreamInlineField = dashboardFieldPrefix + "upstream_inline"
 )
+
+// columnServiceLookupTimeout bounds the service table read when only the
+// Upstream column needs it. Every routes page reads the table now, and a
+// gateway slow to list its services would otherwise hold each page for the
+// proxy client's whole timeout. The column can go without, and says so; the
+// upstream filter, whose answer depends on the table, still waits.
+const columnServiceLookupTimeout = 5 * time.Second
 
 // serviceUpstream is what a service points its routes at: an upstream by id,
 // or one carried inline, which has no id.
@@ -50,7 +59,7 @@ func effectiveUpstream(value map[string]any, services serviceUpstreams) (id stri
 	if own := idField(value, "upstream_id"); own != "" {
 		return own, false
 	}
-	if _, carried := value["upstream"]; carried {
+	if value["upstream"] != nil {
 		return "", true
 	}
 	if serviceID := idField(value, "service_id"); serviceID != "" {
@@ -58,6 +67,13 @@ func effectiveUpstream(value map[string]any, services serviceUpstreams) (id stri
 		return service.ID, service.Inline
 	}
 	return "", false
+}
+
+// dependsOnService reports whether a route reaches its upstream only through
+// its service, so that without the service table its row cannot say which.
+func dependsOnService(value map[string]any) bool {
+	return idField(value, "upstream_id") == "" && value["upstream"] == nil &&
+		idField(value, "service_id") != ""
 }
 
 // annotateUpstream writes onto a route row the upstream it reaches: its id, or
@@ -71,4 +87,23 @@ func annotateUpstream(value map[string]any, services serviceUpstreams) {
 	if inline {
 		value[dashboardUpstreamInlineField] = true
 	}
+}
+
+// serviceTableWarning names the caveat for a list whose service table could
+// not be read, or nothing.
+//
+// With an upstream filter, routes bound to a service are missing from the
+// results. Without one nothing is missing, but a route on the page that
+// reaches its upstream only through its service cannot say which — and a page
+// holding no such route has nothing to warn about.
+func serviceTableWarning(hasUpstreamFilter bool, page []map[string]interface{}) string {
+	if hasUpstreamFilter {
+		return serviceLookupWarning
+	}
+	for _, row := range page {
+		if value, ok := row["value"].(map[string]interface{}); ok && dependsOnService(value) {
+			return serviceColumnWarning
+		}
+	}
+	return ""
 }

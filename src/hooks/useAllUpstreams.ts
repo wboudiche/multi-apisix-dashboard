@@ -49,7 +49,7 @@ export const useAllUpstreams = (instanceId: string, enabled = true) =>
  * The whole route list for an instance.
  *
  * The label filter offers the labels the routes carry beside the catalogue,
- * and the table shows one page of them at a time (#190). Unlike its siblings
+ * and the table shows one page of them at a time (#190). Unlike its sibling
  * it is read afresh each time the filter mounts: labels change with every
  * route written, and an import labels a whole batch at once.
  */

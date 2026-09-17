@@ -31,6 +31,8 @@ import { expect, test } from '@playwright/test';
 const PROXY = '/api/v1/apisix/admin';
 const suffix = Math.random().toString(36).slice(2, 8);
 const upstreamId = `e2e-161-up-${suffix}`;
+// Distinct from the id, so the cell can be told to show one rather than the other.
+const upstreamName = `E2E 161 upstream ${suffix}`;
 const serviceId = `e2e-161-svc-${suffix}`;
 const routeName = `e2e-161-route-${suffix}`;
 
@@ -49,7 +51,7 @@ test.beforeAll(async () => {
   await apiFetch(`${PROXY}/upstreams/${upstreamId}`, token, {
     method: 'PUT',
     headers: onTeam(fx.viewersTeamId),
-    json: { name: upstreamId, type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } },
+    json: { name: upstreamName, type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } },
   });
   await apiFetch(`${PROXY}/services/${serviceId}`, token, {
     method: 'PUT',
@@ -90,9 +92,11 @@ test("a route bound to another team's service shows the upstream it reaches", as
 
     const row = page.getByRole('row').filter({ hasText: routeName });
     await expect(row).toHaveCount(1, { timeout: 30000 });
-    // The developer may not read that upstream, so its name is out of reach
-    // and the cell names it by id — but it names it.
-    await expect(row.getByRole('link', { name: upstreamId })).toBeVisible();
+    // The developer may not read that upstream: its name is out of their reach,
+    // and so is its page. The cell names it by id, as text rather than a link
+    // to a page that would refuse them — but it names it.
+    await expect(row.getByText(upstreamId, { exact: true })).toBeVisible();
+    await expect(row.getByRole('link', { name: upstreamId })).toHaveCount(0);
   } finally {
     await context.close();
   }
