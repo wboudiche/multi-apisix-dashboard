@@ -24,7 +24,7 @@ import { expect, test } from '@playwright/test';
  *
  * The proxy recorded the writing team on every successful write, and an admin
  * sends whichever team their header has selected. So an admin editing another
- * team's route handed it to that team, and its developers lost sight of it
+ * team's route took it from them: the team that owned it lost sight of it
  * without a word (#260). Reassigning has an action of its own.
  */
 const PROXY = '/api/v1/apisix/admin';
@@ -88,12 +88,26 @@ test("an admin editing another team's route leaves it with that team", async () 
   expect(await stored(token, id)).toEqual({ team: fx().backendTeamId, desc: 'edited' });
 });
 
-test('a resource created with a team selected still belongs to it', async () => {
+test('a route with no team takes the team of whoever writes it next', async () => {
   const token = await loginAdmin();
+  // An admin with no team selected creates it, so nothing owns it. Only an
+  // admin may write to it then, and that write is how it gets a team.
+  const id = randomId('e2e-own-update');
+  ids.push(id);
+  await apiFetch(`${PROXY}/routes/${id}`, token, {
+    method: 'PUT',
+    headers: onInstance(),
+    json: route(id, 'unowned'),
+  });
+  expect(await stored(token, id)).toMatchObject({ team: '' });
 
-  const id = await routeOwnedBy(token, fx().frontendTeamId);
+  await apiFetch(`${PROXY}/routes/${id}`, token, {
+    method: 'PUT',
+    headers: onInstance(fx().backendTeamId),
+    json: route(id, 'adopted'),
+  });
 
-  expect(await stored(token, id)).toMatchObject({ team: fx().frontendTeamId });
+  expect(await stored(token, id)).toEqual({ team: fx().backendTeamId, desc: 'adopted' });
 });
 
 test('reassigning still moves a route between teams', async () => {

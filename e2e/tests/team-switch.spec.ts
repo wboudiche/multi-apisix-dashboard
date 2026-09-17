@@ -29,8 +29,8 @@ import { uiFillMonacoEditor, uiGetMonacoEditor } from '@e2e/utils/ui';
 import { expect, type Page, test } from '@playwright/test';
 
 /**
- * The team an admin works with decides who owns what they write: for an
- * admin, the proxy records X-Team-ID as the owner on every create and edit.
+ * The team an admin works with decides who owns what they create: for an
+ * admin, the proxy records X-Team-ID as the owner of a new resource (#260).
  * The header's team switcher showed an atom derived from the instance alone,
  * so picking a team — which wrote localStorage and changed nothing the atom
  * depended on — left it showing the previous team. And both request clients
@@ -219,7 +219,7 @@ test('an instance admin, who has no team switcher, sends no team', async ({
   browser,
 }) => {
   // The proxy treats an instance admin as an admin and records its
-  // X-Team-ID as the owner of what it writes; but only a super admin gets the
+  // X-Team-ID as the owner of what it creates; but only a super admin gets the
   // teams list, and so a switcher. Here a super admin picks Frontend and signs
   // out, and an instance admin signs in, in the same tab, and creates a
   // consumer group: it went to Frontend, under a header showing no team at
