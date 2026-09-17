@@ -73,6 +73,20 @@ const dashboardFieldPrefix = "__"
 // it cannot drift away from the prefix the strip looks for.
 const dashboardTeamIDField = dashboardFieldPrefix + "team_id"
 
+// ownershipWriteTimeout bounds the ownership write that follows a create.
+const ownershipWriteTimeout = 5 * time.Second
+
+// ownershipWriteContext is the context a new resource's owner is recorded
+// under: the request's values, without its cancellation. By then APISIX has
+// created the resource, whatever became of the client that asked for it. Under
+// the request's own context, a create whose client had gone before the answer
+// - a page navigating away, a closed tab - failed to record its owner, and the
+// error was dropped. The resource was left with no team: hidden from the
+// developer who made it, and writable by admins alone (#214).
+func ownershipWriteContext(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(parent), ownershipWriteTimeout)
+}
+
 // stripDashboardFields removes the dashboard's own fields from a request body
 // bound for APISIX. A body that is not a JSON object is returned untouched.
 func stripDashboardFields(body []byte) []byte {
@@ -664,12 +678,21 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 
 		if resourceID != "" && effectiveTeamID != "" {
-			h.ownershipService.SetOwner(c.Request.Context(), &models.Ownership{
+			ownerCtx, cancel := ownershipWriteContext(c.Request.Context())
+			err := h.ownershipService.SetOwner(ownerCtx, &models.Ownership{
 				InstanceID:   instanceID,
 				ResourceType: resourceType,
 				ResourceID:   resourceID,
 				TeamID:       effectiveTeamID,
 			})
+			cancel()
+			if err != nil {
+				// APISIX already holds the resource, so failing the request
+				// would only invite a retry that creates it twice. Said here
+				// instead: it stays without a team until an admin assigns one.
+				log.Printf("[instance %s] %s %s was created, but its owner (team %s) could not be recorded: %v",
+					instanceID, resourceType, resourceID, effectiveTeamID, err)
+			}
 		}
 	}
 
