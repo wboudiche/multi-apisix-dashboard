@@ -102,6 +102,37 @@ func (e *EtcdClient) List(ctx context.Context, prefix string) (map[string][]byte
 	return result, nil
 }
 
+// ListWithRevisions lists all keys with a prefix, and the revision each was
+// last written at, for a delete that must not remove a newer write.
+func (e *EtcdClient) ListWithRevisions(ctx context.Context, prefix string) (map[string][]byte, map[string]int64, error) {
+	resp, err := e.client.Get(ctx, e.key(prefix), clientv3.WithPrefix())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	values := make(map[string][]byte, len(resp.Kvs))
+	revisions := make(map[string]int64, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		key := string(kv.Key)[len(e.prefix):]
+		values[key] = kv.Value
+		revisions[key] = kv.ModRevision
+	}
+	return values, revisions, nil
+}
+
+// DeleteIfUnchanged deletes a key only if it has not been written since
+// modRevision, in one transaction, and reports whether it did.
+func (e *EtcdClient) DeleteIfUnchanged(ctx context.Context, key string, modRevision int64) (bool, error) {
+	resp, err := e.client.Txn(ctx).
+		If(clientv3.Compare(clientv3.ModRevision(e.key(key)), "=", modRevision)).
+		Then(clientv3.OpDelete(e.key(key))).
+		Commit()
+	if err != nil {
+		return false, err
+	}
+	return resp.Succeeded, nil
+}
+
 // GetJSON retrieves and unmarshals a JSON object
 func (e *EtcdClient) GetJSON(ctx context.Context, key string, dest interface{}) error {
 	value, err := e.Get(ctx, key)

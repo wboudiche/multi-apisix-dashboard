@@ -29,12 +29,6 @@ import (
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
-// ErrNoInstancesRead is returned when ownership records exist but no instance
-// could be read. Deleting an instance removes its records, so the two never
-// part ways that completely; judged against it every record would look
-// orphaned.
-var ErrNoInstancesRead = errors.New("ownership records exist but no instances could be read; refusing to judge them")
-
 // Why an ownership record is orphaned.
 const (
 	// OwnershipInstanceGone: no instance answers to the record's instance id.
@@ -57,17 +51,30 @@ type OrphanedOwnership struct {
 	Reason       string `json:"reason"`
 }
 
-// UncheckedInstance is an instance whose records were not judged, because its
-// gateway could not say which resources it holds.
+// UncheckedInstance is an instance, or one resource type on it, whose records
+// were not judged because its gateway could not say what it holds. With no
+// resource type, none of the instance's records for shared types were judged.
 type UncheckedInstance struct {
-	InstanceID string `json:"instance_id"`
-	Reason     string `json:"reason"`
+	InstanceID   string `json:"instance_id"`
+	ResourceType string `json:"resource_type,omitempty"`
+	Reason       string `json:"reason"`
 }
 
 // OwnershipReport is what a sweep of the ownership records found.
 type OwnershipReport struct {
 	Orphans   []OrphanedOwnership `json:"orphans"`
 	Unchecked []UncheckedInstance `json:"unchecked_instances"`
+}
+
+// unchecked reports whether the records of a type on an instance went
+// unjudged, for the instance as a whole or for that type.
+func (r *OwnershipReport) unchecked(instanceID, resourceType string) bool {
+	for _, u := range r.Unchecked {
+		if u.InstanceID == instanceID && (u.ResourceType == "" || u.ResourceType == resourceType) {
+			return true
+		}
+	}
+	return false
 }
 
 // resourceLister reads the id of every resource of a type on an instance.
@@ -114,6 +121,10 @@ func (l apisixResourceLister) ListResourceIDs(ctx context.Context, instance *mod
 // parseResourceIDs reads the ids out of an Admin API list. An empty list comes
 // back as {} rather than [] from some APISIX versions; anything else that is
 // not a list is an error, never an empty gateway.
+//
+// A row's id is the last segment of its key, which is what the proxy records
+// ownership under when a write names none. The value's id may be a number -
+// APISIX keeps one sent as {"id": 123} - and consumers carry a username.
 func parseResourceIDs(list json.RawMessage) (map[string]bool, error) {
 	ids := map[string]bool{}
 	trimmed := bytes.TrimSpace(list)
@@ -126,17 +137,23 @@ func parseResourceIDs(list json.RawMessage) (map[string]bool, error) {
 		return nil, errors.New("list is null")
 	}
 	var rows []struct {
+		Key   string `json:"key"`
 		Value struct {
-			ID       string `json:"id"`
-			Username string `json:"username"`
+			ID       json.RawMessage `json:"id"`
+			Username string          `json:"username"`
 		} `json:"value"`
 	}
 	if err := json.Unmarshal(trimmed, &rows); err != nil {
 		return nil, fmt.Errorf("unreadable list: %w", err)
 	}
 	for _, row := range rows {
-		// Consumers are keyed by username; everything else by id.
-		id := row.Value.ID
+		id := ""
+		if i := strings.LastIndex(row.Key, "/"); i >= 0 {
+			id = row.Key[i+1:]
+		}
+		if id == "" {
+			id = scalarID(row.Value.ID)
+		}
 		if id == "" {
 			id = row.Value.Username
 		}
@@ -147,49 +164,112 @@ func parseResourceIDs(list json.RawMessage) (map[string]bool, error) {
 	return ids, nil
 }
 
+// scalarID reads an id that may be a JSON string or a number.
+func scalarID(raw json.RawMessage) string {
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		return text
+	}
+	var number json.Number
+	if json.Unmarshal(raw, &number) == nil {
+		return number.String()
+	}
+	return ""
+}
+
+// ownershipScope says which types on which instances a sweep asks gateways
+// about. nil asks about everything.
+type ownershipScope func(instanceID, resourceType string) bool
+
 // FindOrphanedOwnership lists the ownership records nothing is left to own.
 // Deleting a resource removes its record since #249; the ones left before that
 // still count against their team and reserve their id (#248).
 func (s *MaintenanceService) FindOrphanedOwnership(ctx context.Context) (*OwnershipReport, error) {
-	report, _, err := s.readOrphanedOwnership(ctx)
+	report, _, _, err := s.readOrphanedOwnership(ctx, nil)
 	return report, err
 }
 
-// readOrphanedOwnership also returns every record it read, so a purge can tell
-// a record that is not orphaned from one that is not there at all.
-func (s *MaintenanceService) readOrphanedOwnership(ctx context.Context) (*OwnershipReport, map[string][]byte, error) {
+// readOrphanedOwnership also returns every record it read, with its revision,
+// so a purge can tell a record that is not orphaned from one that is not there,
+// and leave one written since.
+func (s *MaintenanceService) readOrphanedOwnership(ctx context.Context, scope ownershipScope) (*OwnershipReport, map[string][]byte, map[string]int64, error) {
 	// Records first, gateways after. A resource created in between has no
 	// record in the first read to be misjudged; read the other way round, its
 	// record would name a resource the gateway had not listed yet.
-	records, err := s.etcd.List(ctx, models.KeyPrefixOwnership)
+	records, revisions, err := s.etcd.ListWithRevisions(ctx, models.KeyPrefixOwnership)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not read ownership records: %w", err)
+		return nil, nil, nil, fmt.Errorf("could not read ownership records: %w", err)
 	}
-	rawInstances, err := s.etcd.List(ctx, models.KeyPrefixInstances)
+	instances, err := s.etcd.List(ctx, models.KeyPrefixInstances)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not read instances: %w", err)
+		return nil, nil, nil, fmt.Errorf("could not read instances: %w", err)
 	}
-	if len(rawInstances) == 0 && len(records) > 0 {
-		return nil, nil, ErrNoInstancesRead
+	return judgeOwnership(ctx, records, instances, s.lister, scope), records, revisions, nil
+}
+
+// PurgeOrphanedOwnership deletes the given record keys, each only if it is
+// still orphaned when the purge runs and unchanged since. Only the gateways and
+// types the keys name are asked.
+func (s *MaintenanceService) PurgeOrphanedOwnership(ctx context.Context, keys []string) (*PurgeResult, error) {
+	named := map[string]bool{}
+	for _, key := range keys {
+		if instanceID, resourceType, _, ok := parseOwnershipKey(key); ok {
+			named[instanceID+"/"+resourceType] = true
+		}
+	}
+	report, records, revisions, err := s.readOrphanedOwnership(ctx, func(instanceID, resourceType string) bool {
+		return named[instanceID+"/"+resourceType]
+	})
+	if err != nil {
+		return nil, err
+	}
+	orphaned := make(map[string]bool, len(report.Orphans))
+	for _, o := range report.Orphans {
+		orphaned[o.Key] = true
 	}
 
-	// An instance exists if its key does. One whose record does not parse is
-	// still an instance; only its gateway cannot be asked.
+	return s.purgeKeys(ctx, keys, orphaned, revisions, func(key string) string {
+		if _, ok := records[key]; !ok {
+			return "no such ownership record"
+		}
+		if instanceID, resourceType, _, ok := parseOwnershipKey(key); ok && report.unchecked(instanceID, resourceType) {
+			return "its instance could not be checked"
+		}
+		return "its resource exists"
+	}), nil
+}
+
+// judgeOwnership works out which records have nothing left to own, from the raw
+// records under /ownership/ and instances under /instances/, asking each
+// gateway only for the types its records name and the scope allows.
+//
+// An instance exists if its key does. One whose record does not parse, or that
+// is inactive, is still an instance; only its gateway is not asked, and its
+// records for shared types go unjudged. A type its gateway fails to list goes
+// unjudged on its own - stream routes on a gateway with stream mode off answer
+// an error - while the instance's other types are still judged.
+func judgeOwnership(ctx context.Context, records, rawInstances map[string][]byte, lister resourceLister, scope ownershipScope) *OwnershipReport {
 	instances := make(map[string]*models.Instance, len(rawInstances))
 	for key, value := range rawInstances {
+		id := strings.TrimPrefix(key, models.KeyPrefixInstances)
 		var instance models.Instance
 		if json.Unmarshal(value, &instance) == nil && instance.AdminAPIURL != "" {
-			instances[strings.TrimPrefix(key, models.KeyPrefixInstances)] = &instance
+			instances[id] = &instance
 		} else {
-			instances[strings.TrimPrefix(key, models.KeyPrefixInstances)] = nil
+			instances[id] = nil
 		}
 	}
 
-	// Ask each gateway only for the types its records name.
 	wanted := map[string]map[string]bool{}
 	for key := range records {
 		instanceID, resourceType, _, ok := parseOwnershipKey(key)
-		if _, exists := instances[instanceID]; !ok || !exists || !models.TeamScopedResources[resourceType] {
+		if !ok || !models.TeamScopedResources[resourceType] {
+			continue
+		}
+		if _, exists := instances[instanceID]; !exists {
+			continue
+		}
+		if scope != nil && !scope(instanceID, resourceType) {
 			continue
 		}
 		if wanted[instanceID] == nil {
@@ -198,25 +278,31 @@ func (s *MaintenanceService) readOrphanedOwnership(ctx context.Context) (*Owners
 		wanted[instanceID][resourceType] = true
 	}
 
+	report := &OwnershipReport{Unchecked: []UncheckedInstance{}}
 	present := map[string]map[string]map[string]bool{}
-	unchecked := map[string]string{}
-	for instanceID, types := range wanted {
+	uncheckedInstances := map[string]bool{}
+	for _, instanceID := range sortedKeys(wanted) {
 		instance := instances[instanceID]
 		switch {
 		case instance == nil:
-			unchecked[instanceID] = "its record could not be read"
+			report.Unchecked = append(report.Unchecked, UncheckedInstance{InstanceID: instanceID, Reason: "its record could not be read"})
+			uncheckedInstances[instanceID] = true
 			continue
 		case !instance.IsActive:
-			unchecked[instanceID] = "inactive"
+			report.Unchecked = append(report.Unchecked, UncheckedInstance{InstanceID: instanceID, Reason: "inactive"})
+			uncheckedInstances[instanceID] = true
 			continue
 		}
 		present[instanceID] = map[string]map[string]bool{}
-		for _, resourceType := range sortedKeys(types) {
-			ids, err := s.lister.ListResourceIDs(ctx, instance, resourceType)
+		for _, resourceType := range sortedKeys(wanted[instanceID]) {
+			ids, err := lister.ListResourceIDs(ctx, instance, resourceType)
 			if err != nil {
-				unchecked[instanceID] = fmt.Sprintf("%s could not be listed: %v", resourceType, err)
-				delete(present, instanceID)
-				break
+				report.Unchecked = append(report.Unchecked, UncheckedInstance{
+					InstanceID:   instanceID,
+					ResourceType: resourceType,
+					Reason:       fmt.Sprintf("could not be listed: %v", err),
+				})
+				continue
 			}
 			present[instanceID][resourceType] = ids
 		}
@@ -226,48 +312,15 @@ func (s *MaintenanceService) readOrphanedOwnership(ctx context.Context) (*Owners
 	for id := range instances {
 		known[id] = true
 	}
-	report := &OwnershipReport{
-		Orphans:   orphanedOwnership(records, known, present, unchecked),
-		Unchecked: []UncheckedInstance{},
-	}
-	for _, id := range sortedKeys(unchecked) {
-		report.Unchecked = append(report.Unchecked, UncheckedInstance{InstanceID: id, Reason: unchecked[id]})
-	}
-	return report, records, nil
-}
-
-// PurgeOrphanedOwnership deletes the given record keys, each only if it is
-// still orphaned when the purge runs.
-func (s *MaintenanceService) PurgeOrphanedOwnership(ctx context.Context, keys []string) (*PurgeResult, error) {
-	report, records, err := s.readOrphanedOwnership(ctx)
-	if err != nil {
-		return nil, err
-	}
-	orphaned := make(map[string]bool, len(report.Orphans))
-	for _, o := range report.Orphans {
-		orphaned[o.Key] = true
-	}
-	unchecked := make(map[string]bool, len(report.Unchecked))
-	for _, u := range report.Unchecked {
-		unchecked[u.InstanceID] = true
-	}
-
-	return s.purgeKeys(ctx, keys, orphaned, func(key string) string {
-		if _, ok := records[key]; !ok {
-			return "no such ownership record"
-		}
-		if instanceID, _, _, ok := parseOwnershipKey(key); ok && unchecked[instanceID] {
-			return "its instance could not be checked"
-		}
-		return "its resource exists"
-	}), nil
+	report.Orphans = orphanedOwnership(records, known, present, uncheckedInstances)
+	return report
 }
 
 // orphanedOwnership decides which records have nothing left to own, given the
-// raw records under /ownership/, the instances that exist, the resource ids
-// each checked gateway listed per type, and the instances that could not be
-// checked, whose records for shared types are not judged at all.
-func orphanedOwnership(records map[string][]byte, instances map[string]bool, present map[string]map[string]map[string]bool, unchecked map[string]string) []OrphanedOwnership {
+// raw records, the instances that exist, the resource ids each gateway listed
+// per type, and the instances not asked at all. A record for a shared type is
+// judged only against a list its gateway gave for that type.
+func orphanedOwnership(records map[string][]byte, instances map[string]bool, present map[string]map[string]map[string]bool, uncheckedInstances map[string]bool) []OrphanedOwnership {
 	orphans := []OrphanedOwnership{}
 	for key, value := range records {
 		instanceID, resourceType, resourceID, ok := parseOwnershipKey(key)
@@ -285,7 +338,7 @@ func orphanedOwnership(records map[string][]byte, instances map[string]bool, pre
 			orphan.Reason = OwnershipInstanceGone
 		case !models.TeamScopedResources[resourceType]:
 			orphan.Reason = OwnershipTypeNotShared
-		case unchecked[instanceID] != "":
+		case uncheckedInstances[instanceID]:
 			continue
 		default:
 			ids, listed := present[instanceID][resourceType]

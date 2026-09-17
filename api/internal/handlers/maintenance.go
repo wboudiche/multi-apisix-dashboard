@@ -58,8 +58,8 @@ func (h *MaintenanceHandler) ListOrphans(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"user_instances": assignments,
 		"ownership":      ownership.Orphans,
-		// Instances whose records for shared types were not judged, because
-		// their gateway could not say what it holds.
+		// Instances, or types on them, whose records for shared types were not
+		// judged, because their gateway could not say what it holds.
 		"unchecked_instances": ownership.Unchecked,
 	})
 }
@@ -126,7 +126,7 @@ func emptyPurgeResult() *services.PurgeResult {
 
 // orphanReadStatus is the status for a failure to work out what is orphaned.
 func orphanReadStatus(err error) int {
-	if errors.Is(err, services.ErrNoUsersRead) || errors.Is(err, services.ErrNoInstancesRead) {
+	if errors.Is(err, services.ErrNoUsersRead) {
 		return http.StatusServiceUnavailable
 	}
 	return http.StatusInternalServerError

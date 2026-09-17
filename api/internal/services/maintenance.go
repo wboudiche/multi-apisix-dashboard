@@ -51,51 +51,58 @@ type PurgeResult struct {
 // MaintenanceService finds and removes data that nothing refers to any more.
 //
 // Nothing is removed on its own initiative: a purge deletes only the keys it is
-// given, each checked again at the time, so what goes is what an operator was
-// shown and chose.
+// given, each judged again when the purge runs and deleted only if it has not
+// been written since, so what goes is what an operator was shown and chose.
 type MaintenanceService struct {
-	etcd   *EtcdClient
-	lister resourceLister
+	etcd    *EtcdClient
+	lister  resourceLister
+	deleter keyDeleter
+}
+
+// keyDeleter deletes a key only if it is unchanged since a read.
+type keyDeleter interface {
+	DeleteIfUnchanged(ctx context.Context, key string, modRevision int64) (bool, error)
 }
 
 func NewMaintenanceService(etcd *EtcdClient) *MaintenanceService {
-	return &MaintenanceService{etcd: etcd, lister: newAPISIXResourceLister()}
+	return &MaintenanceService{etcd: etcd, lister: newAPISIXResourceLister(), deleter: etcd}
 }
 
 // FindOrphanedUserInstances lists the instance assignments whose user no longer
 // exists. Deleting a user removes its assignments since #206; the ones left by
 // deletions before that still put their users on teams (#209).
 func (s *MaintenanceService) FindOrphanedUserInstances(ctx context.Context) ([]OrphanedAssignment, error) {
-	orphans, _, err := s.readOrphanedUserInstances(ctx)
+	orphans, _, _, err := s.readOrphanedUserInstances(ctx)
 	return orphans, err
 }
 
-// readOrphanedUserInstances also returns every assignment key it read, so a
-// purge can tell a key that is not orphaned from one that is not there at all.
-func (s *MaintenanceService) readOrphanedUserInstances(ctx context.Context) ([]OrphanedAssignment, map[string][]byte, error) {
+// readOrphanedUserInstances also returns every assignment it read, with its
+// revision, so a purge can tell a key that is not orphaned from one that is not
+// there at all, and leave one written since.
+func (s *MaintenanceService) readOrphanedUserInstances(ctx context.Context) ([]OrphanedAssignment, map[string][]byte, map[string]int64, error) {
 	// Assignments first, users second. A user created in between cannot have
 	// an assignment in the first read, since a user is made before it is
 	// assigned; read the other way round, its assignment would look orphaned.
-	assignments, err := s.etcd.List(ctx, models.KeyPrefixUserInstances)
+	assignments, revisions, err := s.etcd.ListWithRevisions(ctx, models.KeyPrefixUserInstances)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not read instance assignments: %w", err)
+		return nil, nil, nil, fmt.Errorf("could not read instance assignments: %w", err)
 	}
 	users, err := s.etcd.List(ctx, models.KeyPrefixUsers)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not read users: %w", err)
+		return nil, nil, nil, fmt.Errorf("could not read users: %w", err)
 	}
 	orphans, err := orphanedAssignments(assignments, users)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return orphans, assignments, nil
+	return orphans, assignments, revisions, nil
 }
 
 // PurgeOrphanedUserInstances deletes the given assignment keys, each only if it
 // is still orphaned when the purge runs. Keys that are not, that are already
 // gone, or that are named twice are skipped, and each skip says why.
 func (s *MaintenanceService) PurgeOrphanedUserInstances(ctx context.Context, keys []string) (*PurgeResult, error) {
-	orphans, assignments, err := s.readOrphanedUserInstances(ctx)
+	orphans, assignments, revisions, err := s.readOrphanedUserInstances(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +110,7 @@ func (s *MaintenanceService) PurgeOrphanedUserInstances(ctx context.Context, key
 	for _, o := range orphans {
 		orphaned[o.Key] = true
 	}
-	return s.purgeKeys(ctx, keys, orphaned, func(key string) string {
+	return s.purgeKeys(ctx, keys, orphaned, revisions, func(key string) string {
 		if _, ok := assignments[key]; !ok {
 			// Already gone - an earlier purge, or another admin's - or never
 			// an assignment key. Not to be read as a living user's.
@@ -115,7 +122,13 @@ func (s *MaintenanceService) PurgeOrphanedUserInstances(ctx context.Context, key
 
 // purgeKeys deletes each key that is orphaned, once however often it is named,
 // and says of every other key why it was skipped.
-func (s *MaintenanceService) purgeKeys(ctx context.Context, keys []string, orphaned map[string]bool, skipReason func(key string) string) *PurgeResult {
+//
+// A key is deleted only if it is unchanged since it was judged. Between the
+// judgement and the delete, the purge may be asking other gateways for their
+// resources, and a team can recreate a resource under a freed id in that time:
+// its fresh record is written under the same key, and deleted unconditionally
+// it would leave the new resource with no team.
+func (s *MaintenanceService) purgeKeys(ctx context.Context, keys []string, orphaned map[string]bool, revisions map[string]int64, skipReason func(key string) string) *PurgeResult {
 	result := &PurgeResult{
 		Deleted: []string{},
 		Skipped: map[string]string{},
@@ -131,8 +144,13 @@ func (s *MaintenanceService) purgeKeys(ctx context.Context, keys []string, orpha
 			result.Skipped[key] = skipReason(key)
 			continue
 		}
-		if err := s.etcd.Delete(ctx, key); err != nil {
+		deleted, err := s.deleter.DeleteIfUnchanged(ctx, key, revisions[key])
+		if err != nil {
 			result.Failed[key] = err.Error()
+			continue
+		}
+		if !deleted {
+			result.Skipped[key] = "written since it was checked"
 			continue
 		}
 		result.Deleted = append(result.Deleted, key)

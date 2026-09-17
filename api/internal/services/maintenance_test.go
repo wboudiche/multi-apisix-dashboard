@@ -16,7 +16,9 @@
 package services
 
 import (
+	"context"
 	"errors"
+	"reflect"
 	"testing"
 )
 
@@ -80,5 +82,45 @@ func TestOrphanedAssignmentsRefusesWithNoUsers(t *testing.T) {
 
 	if !errors.Is(err, ErrNoUsersRead) || got != nil {
 		t.Fatalf("got %#v, %v, want no orphans and ErrNoUsersRead", got, err)
+	}
+}
+
+type fakeDeleter struct {
+	changed map[string]bool
+	broken  map[string]bool
+	deleted []string
+}
+
+func (f *fakeDeleter) DeleteIfUnchanged(_ context.Context, key string, _ int64) (bool, error) {
+	if f.broken[key] {
+		return false, errors.New("etcd unavailable")
+	}
+	if f.changed[key] {
+		return false, nil
+	}
+	f.deleted = append(f.deleted, key)
+	return true, nil
+}
+
+// A purge deletes an orphaned key once however often it is named, leaves one
+// written since it was judged, and says why of every key it did not delete.
+func TestPurgeKeys(t *testing.T) {
+	deleter := &fakeDeleter{changed: map[string]bool{"rewritten": true}, broken: map[string]bool{"broken": true}}
+	s := &MaintenanceService{deleter: deleter}
+	orphaned := map[string]bool{"gone": true, "rewritten": true, "broken": true}
+
+	got := s.purgeKeys(context.Background(), []string{"gone", "living", "gone", "rewritten", "broken"}, orphaned, map[string]int64{},
+		func(key string) string { return "not orphaned: " + key })
+
+	want := &PurgeResult{
+		Deleted: []string{"gone"},
+		Skipped: map[string]string{"living": "not orphaned: living", "rewritten": "written since it was checked"},
+		Failed:  map[string]string{"broken": "etcd unavailable"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+	if !reflect.DeepEqual(deleter.deleted, []string{"gone"}) {
+		t.Errorf("deleted %v, want only gone, once", deleter.deleted)
 	}
 }
