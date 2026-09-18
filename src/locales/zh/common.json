@@ -505,7 +505,10 @@
   },
   "services": {
     "noUpstream": "无 upstream",
+    "routes": "路由",
+    "routesWithCount": "路由：{{count}}",
     "singular": "服务",
+    "streamRoutesWithCount": "流路由：{{count}}",
     "upstreamInline": "内联 upstream",
     "viewCards": "卡片",
     "viewSwitch": "列表视图",
@@ -598,8 +601,10 @@
     "clearRole": "清除角色"
   },
   "listWarning": {
-    "title": "结果不完整",
+    "detailsUnresolved": "部分详情无法获取",
+    "route_count_unresolved": "未能完整统计依赖各服务的对象。服务已全部列出，但部分依赖项可能未显示。",
     "service_lookup_failed": "无法读取服务列表，因此通过服务访问上游的路由未包含在这些结果中。",
+    "title": "结果不完整",
     "unknown": "部分结果可能缺失。"
   }
 }

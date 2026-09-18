@@ -505,7 +505,10 @@
   },
   "services": {
     "noUpstream": "Upstream yok",
+    "routes": "Rotalar",
+    "routesWithCount": "Rotalar: {{count}}",
     "singular": "Service",
+    "streamRoutesWithCount": "Akış rotaları: {{count}}",
     "upstreamInline": "Satır içi upstream",
     "viewCards": "Kartlar",
     "viewSwitch": "Liste görünümü",
@@ -598,8 +601,10 @@
     "clearRole": "Rolü kaldır"
   },
   "listWarning": {
-    "title": "Eksik sonuçlar",
+    "detailsUnresolved": "Bazı ayrıntılar çözümlenemedi",
+    "route_count_unresolved": "Her servise bağlı olanlar tam olarak sayılamadı. Tüm servisler listeleniyor; onlara bağlı olanların bir kısmı gösterilmiyor olabilir.",
     "service_lookup_failed": "Servis listesi okunamadı; bu nedenle bir upstream’e servis üzerinden ulaşan rotalar bu sonuçlarda yer almıyor.",
+    "title": "Eksik sonuçlar",
     "unknown": "Bazı sonuçlar eksik olabilir."
   }
 }

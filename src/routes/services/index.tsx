@@ -16,7 +16,7 @@
  */
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { Group, Pagination, SegmentedControl, Stack } from '@mantine/core';
+import { Group, Pagination, SegmentedControl, Stack, Text } from '@mantine/core';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,14 +26,15 @@ import { getServiceListQueryOptions, useServiceList } from '@/apis/hooks';
 import { RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { ListWarningBanner } from '@/components/page/ListWarningBanner';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import type { ServiceRow } from '@/components/page-slice/services/service-row';
 import { ServiceCards } from '@/components/page-slice/services/ServiceCards';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SERVICES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
-import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 /**
@@ -62,7 +63,12 @@ const ServiceList = () => {
   const { canWriteResource } = usePermission();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const columns = useMemo<ProColumns<APISIXType['RespServiceItem']>[]>(() => {
+  // The proxy says so when it could not count: without this the table and the
+  // cards would show a service with no dependants and one whose dependants
+  // could not be read exactly alike (#277).
+  const listWarning = (data as { __warning?: string } | undefined)?.__warning;
+
+  const columns = useMemo<ProColumns<ServiceRow>[]>(() => {
     return [
       {
         dataIndex: ['value', 'id'],
@@ -81,6 +87,40 @@ const ServiceList = () => {
         title: t('form.basic.desc'),
         key: 'desc',
         valueType: 'text',
+      },
+      {
+        dataIndex: ['value', '__route_count'],
+        title: t('services.routes'),
+        key: 'route_count',
+        render: (_, record) => {
+          // Counted by the proxy over the whole gateway, which is the only
+          // place the number is true (#277). Absent means it could not be
+          // counted, and the banner above says so - a zero here would read as
+          // "safe to delete".
+          const routes = record.value.__route_count;
+          if (typeof routes !== 'number') return '-';
+
+          // The header already says Routes, so the cell is the number. The
+          // stream count is named, because nothing else on the row would say
+          // which kind it is - and most services have none.
+          const stream = record.value.__stream_route_count;
+          return (
+            <>
+              {/* A node of its own rather than a bare text child: beside the
+                  stream line the cell would otherwise be one run of text,
+                  which neither a reader nor a test can take the number out
+                  of. */}
+              <Text span data-testid="service-route-count">
+                {routes}
+              </Text>
+              {!!stream && (
+                <Text size="xs" c="dimmed">
+                  {t('services.streamRoutesWithCount', { count: stream })}
+                </Text>
+              )}
+            </>
+          );
+        },
       },
       {
         dataIndex: ['value', 'update_time'],
@@ -153,7 +193,8 @@ const ServiceList = () => {
           />
           {viewSwitch}
         </Group>
-        <ServiceCards services={data.list} onDeleted={refetch} />
+        <ListWarningBanner warning={listWarning} />
+        <ServiceCards services={data.list as ServiceRow[]} onDeleted={refetch} />
         {/* The cards show a page, like the table does; without this there was
             no way to reach the second one but to edit the URL. */}
         {(pagination.total ?? 0) > (pagination.pageSize ?? 10) && (
@@ -173,9 +214,10 @@ const ServiceList = () => {
 
   return (
     <AntdConfigProvider>
+      <ListWarningBanner warning={listWarning} />
       <ProTable
         columns={columns}
-        dataSource={data.list}
+        dataSource={data.list as ServiceRow[]}
         rowKey={(record) => record.value.id}
         loading={isLoading}
         search={false}

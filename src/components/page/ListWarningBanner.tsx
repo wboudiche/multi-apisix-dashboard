@@ -46,6 +46,7 @@ type ListWarningBannerProps = {
 const WARNING_MESSAGES = {
   service_lookup_failed: 'listWarning.service_lookup_failed',
   service_upstream_unresolved: 'listWarning.service_upstream_unresolved',
+  route_count_unresolved: 'listWarning.route_count_unresolved',
 } as const;
 
 /**
@@ -54,9 +55,15 @@ const WARNING_MESSAGES = {
  * claims too much.
  */
 const WARNING_TITLES: Partial<
-  Record<keyof typeof WARNING_MESSAGES, 'listWarning.unresolvedTitle'>
+  Record<
+    keyof typeof WARNING_MESSAGES,
+    'listWarning.unresolvedTitle' | 'listWarning.detailsUnresolved'
+  >
 > = {
   service_upstream_unresolved: 'listWarning.unresolvedTitle',
+  // Not that one: it names upstreams, which this is not about. Every service
+  // is on screen either way, so "incomplete results" would claim too much.
+  route_count_unresolved: 'listWarning.detailsUnresolved',
 };
 
 export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {

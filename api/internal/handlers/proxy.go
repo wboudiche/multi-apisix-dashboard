@@ -405,13 +405,17 @@ type ProxyHandler struct {
 	// upstream-filtered list is several requests, and re-reading the whole
 	// service table on each was the cost this exists to remove.
 	serviceUpstreams *serviceUpstreamCache
+	// The same, for the route counts every service page shows: two whole
+	// listings, which a second page of ten services should not pay for again.
+	serviceRouteCounts *serviceRouteCountCache
 }
 
 func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService) *ProxyHandler {
 	return &ProxyHandler{
-		instanceService:  instanceService,
-		ownershipService: ownershipService,
-		serviceUpstreams: newServiceUpstreamCache(time.Now),
+		instanceService:    instanceService,
+		ownershipService:   ownershipService,
+		serviceUpstreams:   newServiceUpstreamCache(time.Now),
+		serviceRouteCounts: newServiceRouteCountCache(time.Now),
 	}
 }
 
@@ -727,10 +731,15 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// filter is holding untrue, and this handler is the one place that sees it
 	// happen. Dropped here rather than waited out: nothing fails in that window,
 	// so no warning would have told the operator the answer was stale.
-	if resourceType == "services" && resp.StatusCode < http.StatusBadRequest &&
-		(c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut ||
-			c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) {
-		h.serviceUpstreams.forget(instanceID)
+	if resp.StatusCode < http.StatusBadRequest && !readMethod(c.Request.Method) {
+		if resourceType == "services" {
+			h.serviceUpstreams.forget(instanceID)
+		}
+		// A route bound to a service, or unbound from one, changes what the
+		// service list says depends on it - as does deleting the service.
+		if resourceType == "routes" || resourceType == "stream_routes" || resourceType == "services" {
+			h.serviceRouteCounts.forget(instanceID)
+		}
 	}
 
 	// 3. Post-mutation: Record ownership for new objects
@@ -863,6 +872,34 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// upstream they reach for the Upstream column to show (#161).
 				// Every other listing pays nothing.
 				annotateRoutes := resourceType == "routes"
+
+				// What depends on a service is counted here for the same
+				// reason the Upstream column is: the browser only ever has the
+				// list this proxy already narrowed, and a count taken from it
+				// reads "nothing depends on this" for a service another team's
+				// routes rely on (#277).
+				var routeCountErr error
+				var routeCounts serviceRouteCountResult
+				if resourceType == "services" {
+					reading, cached := h.serviceRouteCounts.get(instanceID)
+					if !cached {
+						// A failure is never cached: the next page retries
+						// rather than repeating a wrong answer for the window.
+						reading, routeCountErr = fetchServiceRouteCounts(c.Request.Context(), instance)
+						if routeCountErr == nil {
+							h.serviceRouteCounts.put(instanceID, reading)
+						} else {
+							// Said out loud rather than swallowed: without it
+							// every service on the page would read as having
+							// nothing depending on it, which is the answer that
+							// gets one deleted.
+							log.Printf("[instance %s] could not count the routes per service: %v",
+								instanceID, routeCountErr)
+						}
+					}
+					routeCounts = reading
+				}
+
 				var serviceTableErr error
 				if len(filters.upstreamIDs) > 0 || annotateRoutes {
 					// A failure is never cached: the next page retries rather
@@ -909,6 +946,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						if annotateRoutes {
 							annotateUpstream(val, filters.serviceUpstreams)
 						}
+						// Only when they were read: a zero written from a
+						// failed count is indistinguishable from a service
+						// nothing depends on.
+						if routeCountErr == nil && resourceType == "services" {
+							annotateRouteCount(val, routeCounts)
+						}
 
 						// Filter for non-admin users. Unowned resources are
 						// admin-only, so they are hidden here too — the same
@@ -935,6 +978,17 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// is short of what the service table would have told it.
 				if serviceTableErr != nil {
 					resources.Warning = serviceTableWarning(len(filters.upstreamIDs) > 0, resources.List)
+				}
+				// Not only when nothing could be counted: a reading without
+				// its stream routes is a partial one, and the page shows no
+				// stream line either way.
+				if resourceType == "services" && (routeCountErr != nil || !routeCounts.StreamCounted) {
+					// Kept behind a warning already set: that one says the list
+					// itself is shorter than the truth, which is the graver of
+					// the two.
+					if resources.Warning == "" {
+						resources.Warning = routeCountWarning
+					}
 				}
 				respBody, _ = json.Marshal(resources)
 			}
