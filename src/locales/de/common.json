@@ -264,16 +264,24 @@
     "streamRoutes": {
       "protocol": {
         "conf": "Konfiguration",
+        "custom": "Eigenes Protokoll",
+        "customName": "Name des eigenen Protokolls",
+        "hint": "Für xRPC, das APISIX-Framework für Protokolle der Anwendungsschicht wie Redis und Dubbo. Unabhängig vom Transport TCP/UDP/TLS.",
         "logger": "Logger",
         "name": "Protokollname",
+        "nameDescription": "Das Protokoll muss zusätzlich unter xrpc.protocols in der config.yaml von APISIX aktiviert sein: Das Gateway weigert sich, eine Route mit einem unbekannten Protokoll zu speichern.",
+        "none": "Keins (einfaches TCP/UDP-Durchreichen)",
         "superiorId": "Übergeordnete ID",
+        "superiorIdDescription": "Wird nur mit einem Protokoll verwendet.",
         "title": "Protokollinformation"
       },
       "remoteAddr": "Remote Adresse",
       "server": "Server",
       "serverAddr": "Server Adresse",
+      "serverHint": "Verbindungsfilter: Eine Stream-Route greift anhand dieser Werte. Das Transportprotokoll (TCP, UDP, TLS) wird hier nicht gesetzt — es gehört zum Listener, in der config.yaml von APISIX unter stream_proxy.",
       "serverPort": "Server Port",
-      "sni": "SNI"
+      "sni": "SNI",
+      "transportTip": "Sie suchen TCP, UDP oder TLS? Das sind Listener-Einstellungen, deklariert unter stream_proxy in der config.yaml von APISIX, und sie gelten für jede Stream-Route dieses Listeners."
     },
     "tagsInput": {
       "placeholder": "Text eingeben, dann mit Enter oder Fokus verlassen"

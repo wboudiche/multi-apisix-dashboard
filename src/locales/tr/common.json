@@ -264,16 +264,24 @@
     "streamRoutes": {
       "protocol": {
         "conf": "Config",
+        "custom": "Özel protokol",
+        "customName": "Özel protokol adı",
+        "hint": "Redis ve Dubbo gibi uygulama katmanı protokolleri için APISIX’in xRPC çerçevesi. TCP/UDP/TLS taşımasıyla ilgisi yoktur.",
         "logger": "Logger",
         "name": "Protocol Adı",
+        "nameDescription": "Protokol ayrıca APISIX’in config.yaml dosyasında xrpc.protocols altında etkinleştirilmelidir: ağ geçidi, tanımadığı bir protokolü adlandıran route’u kaydetmeyi reddeder.",
+        "none": "Yok (düz TCP/UDP geçişi)",
         "superiorId": "Superior ID",
+        "superiorIdDescription": "Yalnızca bir protokolle kullanılır.",
         "title": "Protocol Bilgisi"
       },
       "remoteAddr": "Remote Adres",
       "server": "Server",
       "serverAddr": "Server Adresi",
+      "serverHint": "Bağlantı filtreleri: bir stream route bunlara göre eşleşir. Taşıma protokolü (TCP, UDP, TLS) burada ayarlanmaz — listener’a aittir, APISIX’in config.yaml dosyasında stream_proxy altında.",
       "serverPort": "Server Port",
-      "sni": "SNI"
+      "sni": "SNI",
+      "transportTip": "TCP, UDP veya TLS mi arıyorsunuz? Bunlar listener ayarlarıdır; APISIX’in config.yaml dosyasında stream_proxy altında tanımlanır ve o listener’daki tüm stream route’lara uygulanır."
     },
     "tagsInput": {
       "placeholder": "Metin girin ve enter'a basın"

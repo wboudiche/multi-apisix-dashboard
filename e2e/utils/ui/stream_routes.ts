@@ -122,9 +122,17 @@ export const uiFillStreamRouteAllFields = async (
     labels: data.labels,
   });
 
-  // Fill protocol fields
+  // Protocol Name is a select: the protocols APISIX ships are offered by name,
+  // anything else is typed under "Custom protocol" (#141).
   if (data.protocol?.name) {
-    await page.getByLabel('Protocol Name').fill(data.protocol.name);
+    const known = ['redis', 'dubbo'].includes(data.protocol.name);
+    await page.getByRole('textbox', { name: 'Protocol Name', exact: true }).click();
+    await page
+      .getByRole('option', { name: known ? data.protocol.name : 'Custom protocol', exact: true })
+      .click();
+    if (!known) {
+      await page.getByLabel('Custom protocol name').fill(data.protocol.name);
+    }
   }
 
   if (data.protocol?.superior_id) {
@@ -148,9 +156,17 @@ export const uiCheckStreamRouteAllFields = async (
 
   // Check protocol fields
   if (data.protocol?.name) {
-    await expect(page.getByLabel('Protocol Name')).toHaveValue(
-      data.protocol.name
+    const known = ['redis', 'dubbo'].includes(data.protocol.name);
+    await expect(
+      page.getByRole('textbox', { name: 'Protocol Name', exact: true })
+    ).toHaveValue(
+      known ? data.protocol.name : 'Custom protocol'
     );
+    if (!known) {
+      await expect(page.getByLabel('Custom protocol name')).toHaveValue(
+        data.protocol.name
+      );
+    }
   }
 
   if (data.protocol?.superior_id) {
