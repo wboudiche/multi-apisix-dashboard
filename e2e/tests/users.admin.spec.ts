@@ -97,7 +97,7 @@ test('assigns a per-instance viewer role through the Permissions modal', async (
 
   await page.getByRole('tab', { name: 'Instance Access' }).click();
   const card = localInstanceCard(page);
-  await card.getByLabel('Role').click();
+  await card.getByLabel('Role', { exact: true }).click();
   await page.getByRole('option', { name: 'Viewer', exact: true }).click();
   await card.getByLabel('Team').click();
   await page.getByRole('option', { name: teamName }).click();
@@ -107,6 +107,51 @@ test('assigns a per-instance viewer role through the Permissions modal', async (
   const row = adminPom.rowByText(page, username);
   await expect(row.getByText('Local APISIX')).toBeVisible();
   await expect(row.getByText('(viewer)')).toBeVisible();
+});
+
+test('clearing a role removes the assignment, rather than reporting success and keeping it', async ({
+  page,
+}) => {
+  // The Role select has always been clearable, and clearing it did nothing:
+  // the save loop skips an entry with no role, so the dialog closed on
+  // "Permissions updated successfully" with the access still in place. An
+  // admin taking someone's access away was told it had worked.
+  const username = `${PREFIX}-clear`;
+  const token = await adminToken();
+  const user = await ensureUser(token, { username, password: PASSWORD });
+  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+    role: 'viewer',
+    team_id: teamId,
+  });
+
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+  const row = adminPom.rowByText(page, username);
+  await expect(row.getByText('(viewer)')).toBeVisible();
+
+  await row.getByRole('button', { name: 'Permissions' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toBeVisible();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  const card = localInstanceCard(page);
+  // By name: the clear button is the only way to take an access away here, so
+  // it carries an aria-label rather than Mantine's aria-hidden default.
+  await card.getByRole('button', { name: 'Clear role' }).click();
+  await expect(card.getByLabel('Role', { exact: true })).toHaveValue('');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+
+  // The row says so — asserted on a row that is there, since an absent row
+  // would satisfy the count on its own.
+  const savedRow = adminPom.rowByText(page, username);
+  await expect(savedRow).toBeVisible();
+  await expect(savedRow.getByText('(viewer)')).toHaveCount(0);
+
+  // …and so does the backend, which is the part that decides what this
+  // account may do.
+  const assignments = (await apiFetch(
+    `/api/v1/user-access/${user.id}/instances`,
+    token
+  )) as unknown[];
+  expect(assignments).toHaveLength(0);
 });
 
 test('a viewer assignment takes effect: one instance, no create button', async ({
@@ -158,7 +203,7 @@ test('upgrading the role to instance admin restores write access', async ({
     .click();
   await page.getByRole('tab', { name: 'Instance Access' }).click();
   const card = localInstanceCard(page);
-  await card.getByLabel('Role').click();
+  await card.getByLabel('Role', { exact: true }).click();
   await page.getByRole('option', { name: 'Instance Admin', exact: true }).click();
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(

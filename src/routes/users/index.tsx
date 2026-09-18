@@ -217,6 +217,42 @@ const UsersPage = () => {
         }
       }
 
+      // Removals first, writes second. Neither order is atomic - the API takes
+      // one assignment at a time - so the question is which way a partial
+      // failure should fail. This way it fails closed: a write refused after a
+      // removal leaves the account with less access than intended, rather than
+      // leaving the access someone was taking away in place while the grant
+      // they paired it with went through.
+      //
+      // Clearing a role is what takes an access away. The Select has always
+      // been clearable, and clearing it did nothing at all: the write loop
+      // skips an entry with no role, and the dialog still closed on
+      // "Permissions updated successfully" with the assignment untouched.
+      //
+      // Driven by the assignments this dialog read, not by the form: an
+      // assignment that could not be read leaves nothing to iterate, so an
+      // empty form never reads as "remove everything" for a user whose access
+      // the dashboard could not see in the first place (#165).
+      if (editingUser) {
+        for (const assignment of getAssignments(editingUser.id)) {
+          if (instanceRoles[assignment.instance_id]?.role) continue;
+          try {
+            await instanceApi.removeUserRole(userId, assignment.instance_id);
+          } catch (err) {
+            notifications.show({
+              title: 'Error',
+              message: describeError(err, 'Failed to remove the role for one of the instances'),
+              color: 'red',
+            });
+            // The rows behind this dialog were read before any of this ran, so
+            // leaving without a reload shows an account's access as it was
+            // before a save that partly went through.
+            loadData();
+            return;
+          }
+        }
+      }
+
       // Save instance specific roles, teams and scopes
       for (const instanceID in instanceRoles) {
         const config = instanceRoles[instanceID];
@@ -235,6 +271,7 @@ const UsersPage = () => {
               message: describeError(err, 'Failed to assign the role for one of the instances'),
               color: 'red',
             });
+            loadData();
             return;
           }
         }
@@ -519,9 +556,10 @@ const UsersPage = () => {
           // someone who had already gone looking.
           //
           // The form is seeded from the same read, so what it shows as "no
-          // role" may simply be what could not be read. Saving only writes the
-          // roles picked - it never clears one - but the person doing the
-          // picking should know what they are looking at (#165).
+          // role" may simply be what could not be read. Nothing is removed for
+          // this user - the removal loop walks the assignments that were read,
+          // and for them there are none - but the person picking roles should
+          // know what they are looking at (#165).
           <Paper p="sm" mb="md" withBorder bg="var(--surface-1)">
             <Text size="sm" c="red">
               {t('users.assignmentsUnreadableForm')}
@@ -619,6 +657,18 @@ const UsersPage = () => {
                               label="Role"
                               placeholder="No access"
                               clearable
+                              // Mantine hides its clear button from the
+                              // accessibility tree and takes it out of the tab
+                              // order. This Select has no "no access" option,
+                              // so that button is the only way to take an
+                              // access away - and this is the dashboard's
+                              // authorization screen. It gets a name, a tab
+                              // stop, and a place in the tree.
+                              clearButtonProps={{
+                                'aria-label': t('users.clearRole'),
+                                'aria-hidden': false,
+                                tabIndex: 0,
+                              }}
                               value={config?.role || null}
                               onChange={(role) => setInstanceRoles({
                                 ...instanceRoles,

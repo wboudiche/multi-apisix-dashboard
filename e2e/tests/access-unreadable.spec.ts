@@ -77,6 +77,40 @@ test('the header says the account’s access list could not be read', async ({ p
   ).toBeVisible({ timeout: 20000 });
 });
 
+test('saving the dialog removes nothing for a user whose assignments could not be read', async ({
+  page,
+}) => {
+  // The dialog's warning promises it, and the code keeps that promise by
+  // construction: the removal loop walks the assignments that were read, and
+  // an unreadable one leaves none to walk. Written down here because the
+  // promise is shown to the operator in five languages, and the loop would
+  // read just as naturally driven by the form - where an empty form means
+  // "take everything away".
+  const roleWrites: string[] = [];
+  await page.route('**/api/v1/user-access/*/instances/*/role', (route) => {
+    roleWrites.push(route.request().method());
+    return route.fallback();
+  });
+  await misrouted(page);
+  await page.goto('/ui/users');
+
+  await expect(page.getByText('Could not be read').first()).toBeVisible({
+    timeout: 20000,
+  });
+  await page
+    .getByRole('row')
+    .filter({ hasText: 'Could not be read' })
+    .first()
+    .getByRole('button', { name: 'Permissions' })
+    .click();
+  await expect(page.getByText('Edit User & Permissions')).toBeVisible();
+  await expect(page.getByText('could not be read, so the roles below')).toBeVisible();
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  expect(roleWrites).toEqual([]);
+});
+
 test('and says nothing when the list reads fine', async ({ page }) => {
   // The other side of the distinction: no toast, and no "could not be read" in
   // the table, on a session where the endpoint answers normally.

@@ -575,7 +575,8 @@
     "assignmentsUnreadable": "Okunamadı",
     "assignmentsUnreadableTitle": "Atamalar kullanılamıyor",
     "assignmentsUnreadableForm": "Bu kullanıcının mevcut atamaları okunamadı, bu yüzden aşağıdaki roller eksik olabilir. Kaydetmek yalnızca burada seçtiğiniz rolleri yazar; hiçbirini kaldırmaz.",
-    "assignmentsUnreadableBody": "Listelenen hesaplardan {{count}} tanesi için örnek atamaları okunamadı, bu nedenle bu tablo ne yapabileceklerini söyleyemiyor. Neden: {{reason}}"
+    "assignmentsUnreadableBody": "Listelenen hesaplardan {{count}} tanesi için örnek atamaları okunamadı, bu nedenle bu tablo ne yapabileceklerini söyleyemiyor. Neden: {{reason}}",
+    "clearRole": "Rolü kaldır"
   },
   "listWarning": {
     "title": "Eksik sonuçlar",

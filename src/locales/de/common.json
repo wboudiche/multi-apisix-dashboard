@@ -575,7 +575,8 @@
     "assignmentsUnreadable": "Konnte nicht gelesen werden",
     "assignmentsUnreadableTitle": "Zuweisungen nicht verfügbar",
     "assignmentsUnreadableForm": "Die aktuellen Zuweisungen dieses Benutzers konnten nicht gelesen werden, die Rollen unten sind daher möglicherweise unvollständig. Beim Speichern werden nur die hier gewählten Rollen geschrieben; es wird keine entfernt.",
-    "assignmentsUnreadableBody": "Für {{count}} der aufgeführten Konten konnten die Instanzzuweisungen nicht gelesen werden; diese Tabelle kann daher nicht sagen, was sie dürfen. Grund: {{reason}}"
+    "assignmentsUnreadableBody": "Für {{count}} der aufgeführten Konten konnten die Instanzzuweisungen nicht gelesen werden; diese Tabelle kann daher nicht sagen, was sie dürfen. Grund: {{reason}}",
+    "clearRole": "Rolle entfernen"
   },
   "listWarning": {
     "title": "Unvollständige Ergebnisse",

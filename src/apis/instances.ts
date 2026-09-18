@@ -189,6 +189,17 @@ export const instanceApi = {
     return response.data;
   },
 
+  /**
+   * Take a user's access to an instance away entirely.
+   *
+   * Distinct from assigning a role of none, which the backend has no notion
+   * of: a UserInstance record either exists or it does not, and while it does
+   * the RBAC middleware reads a role out of it.
+   */
+  removeUserRole: async (userId: string, instanceId: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/user-access/${userId}/instances/${instanceId}/role`);
+  },
+
   // Get user's instances
   getUserInstances: async (userId: string): Promise<UserInstanceRole[]> => {
     const response = await apiClient.get<UserInstanceRole[]>(`/api/v1/user-access/${userId}/instances`);
