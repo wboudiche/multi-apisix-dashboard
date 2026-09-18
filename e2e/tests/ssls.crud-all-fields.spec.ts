@@ -104,7 +104,7 @@ test('should CRUD SSL with all fields', async ({ page }) => {
     const firstSni = snis[0];
     await page
       .getByRole('row', { name: firstSni })
-      .getByRole('link', { name: 'View' })
+      .getByRole('link', { name: 'Configure' })
       .click();
     await sslsPom.isDetailPage(page);
 
@@ -164,7 +164,7 @@ test('should CRUD SSL with all fields', async ({ page }) => {
     const firstSni = snis[0];
     await page
       .getByRole('row', { name: firstSni })
-      .getByRole('link', { name: 'View' })
+      .getByRole('link', { name: 'Configure' })
       .click();
     await sslsPom.isDetailPage(page);
 

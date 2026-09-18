@@ -76,6 +76,7 @@ function ConsumerGroupsList() {
         width: 120,
         render: (_, record) => [
           <ToDetailPageBtn
+            resource="consumer_groups"
             key="detail"
             to="/consumer_groups/detail/$id"
             params={{ id: record.value.id }}

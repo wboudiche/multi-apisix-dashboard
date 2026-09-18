@@ -110,7 +110,10 @@ function GlobalRuleDetailPage() {
   const { id } = useParams({ from: '/global_rules/detail/$id' });
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
+  // Per resource, like the list that leads here: the two halves of the
+  // flow have to ask the same question, or one offers an edit the other
+  // said was not available (#270).
+  const canEdit = usePermission().canWriteResource('global_rules');
   const navigate = useNavigate();
 
   return (

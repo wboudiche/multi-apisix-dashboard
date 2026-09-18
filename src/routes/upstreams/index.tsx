@@ -29,11 +29,13 @@ import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_UPSTREAMS } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 function RouteComponent() {
   const { t } = useTranslation();
+  const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination } = useUpstreamList();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -81,11 +83,13 @@ function RouteComponent() {
             params={{ id: record.value.id }}
             size="xs"
             color="blue"
-            variant="filled"
+            variant={canWriteResource('upstreams') ? 'filled' : 'light'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >
-            {t('form.btn.view')}
+            {t(
+              canWriteResource('upstreams') ? 'form.btn.configure' : 'form.btn.view'
+            )}
           </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
@@ -102,7 +106,7 @@ function RouteComponent() {
         ],
       },
     ];
-  }, [t, refetch]);
+  }, [t, refetch, canWriteResource]);
 
   return (
     <>

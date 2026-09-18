@@ -59,7 +59,7 @@ test('should CRUD stream route under service', async ({ page }) => {
   // Click on the service to go to detail page
   await page
     .getByRole('row', { name: serviceName })
-    .getByRole('button', { name: 'View' })
+    .getByRole('button', { name: 'Configure' })
     .click();
   await servicesPom.isDetailPage(page);
 
@@ -193,7 +193,7 @@ test('should CRUD stream route under service', async ({ page }) => {
     // Click on the stream route to go to the detail page
     await page
       .getByRole('row', { name: updatedStreamRouteServerAddr })
-      .getByRole('link', { name: 'View' })
+      .getByRole('link', { name: 'Configure' })
       .click();
     await servicesPom.isServiceStreamRouteDetailPage(page);
   });

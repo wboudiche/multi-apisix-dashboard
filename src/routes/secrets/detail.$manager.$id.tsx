@@ -123,7 +123,10 @@ const SecretDetailForm = (props: Props) => {
 function SecretDetailPage() {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
+  // Per resource, like the list that leads here: the two halves of the
+  // flow have to ask the same question, or one offers an edit the other
+  // said was not available (#270).
+  const canEdit = usePermission().canWriteResource('secrets');
   const { manager, id } = useParams({ from: '/secrets/detail/$manager/$id' });
   const navigate = useNavigate();
 

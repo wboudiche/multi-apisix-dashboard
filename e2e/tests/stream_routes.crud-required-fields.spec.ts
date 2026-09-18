@@ -135,7 +135,7 @@ test('CRUD stream route with required fields', async ({ page }) => {
   await expect(row.first()).toBeVisible({ timeout: 10000 }); // Longer timeout for parallel tests
 
   // View detail page from the list
-  await row.first().getByRole('link', { name: 'View' }).click();
+  await row.first().getByRole('link', { name: 'Configure' }).click();
   await streamRoutesPom.isDetailPage(page);
   await uiCheckStreamRouteRequiredFields(page, updatedData);
 

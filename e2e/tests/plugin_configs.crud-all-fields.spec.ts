@@ -230,7 +230,7 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
     // Navigate to detail page
     await page
       .getByRole('row', { name: pluginConfigNameWithAllFields })
-      .getByRole('link', { name: 'View' })
+      .getByRole('link', { name: 'Configure' })
       .click();
     await pluginConfigsPom.isDetailPage(page);
 

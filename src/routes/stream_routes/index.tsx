@@ -161,6 +161,7 @@ function StreamRouteComponent() {
         routeKey="/stream_routes/"
         ToDetailBtn={({ record }) => (
           <ToDetailPageBtn
+            resource="stream_routes"
             key="detail"
             to="/stream_routes/detail/$id"
             params={{ id: record.value.id }}

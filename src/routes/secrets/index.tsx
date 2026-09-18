@@ -61,6 +61,7 @@ function SecretList() {
         width: 120,
         render: (_, record) => [
           <ToDetailPageBtn
+            resource="secrets"
             key="detail"
             to="/secrets/detail/$manager/$id"
             params={{

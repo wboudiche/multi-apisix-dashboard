@@ -72,6 +72,7 @@ function CredentialsList() {
         width: 120,
         render: (_, record) => [
           <ToDetailPageBtn
+            resource="consumers"
             key="detail"
             to="/consumers/detail/$username/credentials/detail/$id"
             params={{

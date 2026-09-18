@@ -46,6 +46,7 @@ function RouteComponent() {
         defaultParams={{ filter: { service_id: id } }}
         ToDetailBtn={({ record }: { record: { value: { id: string } } }) => (
           <ToDetailPageBtn
+            resource="routes"
             key="detail"
             to="/services/detail/$id/routes/detail/$routeId"
             params={{ id, routeId: record.value.id }}

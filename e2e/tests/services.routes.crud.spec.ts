@@ -67,7 +67,7 @@ test('should CRUD route under service with required fields', async ({
 
   await page
     .getByRole('row', { name: serviceName })
-    .getByRole('button', { name: 'View' })
+    .getByRole('button', { name: 'Configure' })
     .click();
   await servicesPom.isDetailPage(page);
 

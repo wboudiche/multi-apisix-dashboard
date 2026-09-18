@@ -96,7 +96,7 @@ export const RouteList = (props: RouteListProps) => {
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
-  const { canEdit, canDelete, isAdmin } = usePermission();
+  const { canEdit, canDelete, isAdmin, canWriteResource } = usePermission();
   const [currentInstanceId] = useAtom(currentInstanceIdAtom);
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
   const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
@@ -539,15 +539,15 @@ export const RouteList = (props: RouteListProps) => {
                       params={{ id: record.value.id }}
                       size="xs"
                       color="blue"
-                      variant={canEdit ? 'filled' : 'light'}
+                      variant={canWriteResource('routes') ? 'filled' : 'light'}
                       radius="sm"
                       styles={{ root: { padding: '0 12px' } }}
                     >
-                      {/* form.btn.view, not a key of this page's own: it is
-                          the word the services, upstreams and consumers lists
-                          already use for the same control, and a second
-                          translation of it drifted on the first edit. */}
-                      {t(canEdit ? 'routes.list.actionConfigure' : 'form.btn.view')}
+                      {t(
+                        canWriteResource('routes')
+                          ? 'form.btn.configure'
+                          : 'form.btn.view'
+                      )}
                     </RouteLinkBtn>
                     <Menu shadow="md" width={160}>
                       <Menu.Target>

@@ -64,7 +64,7 @@ test('should CRUD service with required fields', async ({ page }) => {
     await servicesPom.isIndexPage(page);
     await page
       .getByRole('row', { name: serviceName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await servicesPom.isDetailPage(page);
     await uiCheckServiceRequiredFields(page, {
@@ -80,7 +80,7 @@ test('should CRUD service with required fields', async ({ page }) => {
   await test.step('navigate to service detail page', async () => {
     await page
       .getByRole('row', { name: serviceName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await servicesPom.isDetailPage(page);
     await uiCheckServiceRequiredFields(page, { name: serviceName });
@@ -132,7 +132,7 @@ test('should CRUD service with required fields', async ({ page }) => {
   await test.step('delete service in detail page', async () => {
     await page
       .getByRole('row', { name: serviceName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await servicesPom.isDetailPage(page);
 

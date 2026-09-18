@@ -29,12 +29,14 @@ import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SERVICES } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 const ServiceList = () => {
   const { data, isLoading, refetch, pagination } = useServiceList();
   const { t } = useTranslation();
+  const { canWriteResource } = usePermission();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const columns = useMemo<ProColumns<APISIXType['RespServiceItem']>[]>(() => {
@@ -80,11 +82,13 @@ const ServiceList = () => {
             params={{ id: record.value.id }}
             size="xs"
             color="blue"
-            variant="filled"
+            variant={canWriteResource('services') ? 'filled' : 'light'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >
-            {t('form.btn.view')}
+            {t(
+              canWriteResource('services') ? 'form.btn.configure' : 'form.btn.view'
+            )}
           </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
@@ -101,7 +105,7 @@ const ServiceList = () => {
         ],
       },
     ];
-  }, [t, refetch]);
+  }, [t, refetch, canWriteResource]);
 
   return (
     <AntdConfigProvider>
