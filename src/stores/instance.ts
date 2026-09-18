@@ -70,9 +70,6 @@ export const setInstancesAtom = atom(null, (_get, set, instances: Instance[]) =>
   set(instancesAtom, instances);
 });
 
-// Loading state
-export const instancesLoadingAtom = atom<boolean>(false);
-
 // Derived atom to get current instance
 export const currentInstanceAtom = atom((get) => {
   const instances = get(instancesAtom);
