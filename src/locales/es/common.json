@@ -541,6 +541,9 @@
     "upstreams": "Upstreams"
   },
   "ssls": {
+    "expired": "Caducado",
+    "expires": "Caduca",
+    "expiringSoon": "Certificados caducados o que caducan en {{days}} días: {{count}}",
     "singular": "SSL"
   },
   "streamRoutes": {

@@ -817,6 +817,16 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 	}
 
+	// An SSL's expiry is not a field APISIX stores - it is what the certificate
+	// says - and ssls are not team-scoped, so this sits outside the block
+	// below rather than inside it (#145).
+	// resourceID == "" rather than isListGET: that flag also means "a list this
+	// proxy filters by team", which ssls are not.
+	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK &&
+		resourceType == "ssls" && resourceID == "" {
+		respBody = annotateCertificateList(respBody)
+	}
+
 	// 4. GET: Enrich list responses with __team_id and filter for non-admins.
 	// Applies to every team-owned resource type — not just routes/services/
 	// upstreams — so a non-admin cannot read another team's consumers,

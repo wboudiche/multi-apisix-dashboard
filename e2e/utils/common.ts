@@ -43,7 +43,19 @@ export const fileExists = async (filePath: string) => {
 
 export const randomId = (info: string) => `${info}_${nanoid()}`;
 
-export const genTLS = async () => {
-  const { cert, private: key } = await selfsigned.generate();
+/**
+ * A self-signed certificate and its key.
+ *
+ * `days` is how long it lasts: a spec about expiry needs one that runs out
+ * soon, and a committed fixture would quietly become an expired certificate
+ * testing the wrong branch.
+ */
+export const genTLS = async (days?: number) => {
+  const { cert, private: key } = await selfsigned.generate(
+    undefined,
+    days === undefined
+      ? undefined
+      : { notAfterDate: new Date(Date.now() + days * 86_400_000) }
+  );
   return { cert, key };
 };

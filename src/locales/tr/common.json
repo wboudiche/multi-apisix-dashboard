@@ -541,6 +541,9 @@
     "upstreams": "Upstream'ler"
   },
   "ssls": {
+    "expired": "Süresi doldu",
+    "expires": "Sona eriyor",
+    "expiringSoon": "Süresi dolmuş veya {{days}} gün içinde dolacak sertifikalar: {{count}}",
     "singular": "SSL"
   },
   "streamRoutes": {
