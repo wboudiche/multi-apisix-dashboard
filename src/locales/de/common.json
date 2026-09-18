@@ -504,7 +504,12 @@
     "singular": "Secret"
   },
   "services": {
-    "singular": "Service"
+    "noUpstream": "Kein Upstream",
+    "singular": "Service",
+    "upstreamInline": "Inline-Upstream",
+    "viewCards": "Karten",
+    "viewSwitch": "Listenansicht",
+    "viewTable": "Tabelle"
   },
   "settings": {
     "title": "Einstellungen",

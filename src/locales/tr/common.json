@@ -504,7 +504,12 @@
     "singular": "Secret"
   },
   "services": {
-    "singular": "Service"
+    "noUpstream": "Upstream yok",
+    "singular": "Service",
+    "upstreamInline": "Satır içi upstream",
+    "viewCards": "Kartlar",
+    "viewSwitch": "Liste görünümü",
+    "viewTable": "Tablo"
   },
   "settings": {
     "title": "Ayarlar",

@@ -758,7 +758,12 @@
     "singular": "Secret"
   },
   "services": {
-    "singular": "Service"
+    "noUpstream": "No upstream",
+    "singular": "Service",
+    "upstreamInline": "Inline upstream",
+    "viewCards": "Cards",
+    "viewSwitch": "List view",
+    "viewTable": "Table"
   },
   "settings": {
     "title": "Settings",

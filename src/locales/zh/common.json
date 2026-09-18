@@ -504,7 +504,12 @@
     "singular": "Secret"
   },
   "services": {
-    "singular": "服务"
+    "noUpstream": "无 upstream",
+    "singular": "服务",
+    "upstreamInline": "内联 upstream",
+    "viewCards": "卡片",
+    "viewSwitch": "列表视图",
+    "viewTable": "表格"
   },
   "settings": {
     "title": "设置",
