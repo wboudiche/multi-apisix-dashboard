@@ -92,6 +92,14 @@ const UsersPage = () => {
   // a super admin sees who may do what: "none" and "could not be read" have
   // to look different here (#165).
   const [unreadableAssignments, setUnreadableAssignments] = useState<Record<string, string>>({});
+  // The assignments the open dialog was seeded from. Removals are decided
+  // against these, not against whatever has landed by the time Save is
+  // pressed: the table renders - and the Permissions button works - while the
+  // per-user reads are still in flight, so a dialog opened in that window is
+  // seeded from nothing while the list fills in behind it. Compared against
+  // the later list, every role the form does not show reads as "cleared", and
+  // saving an e-mail change took the account's access away.
+  const [seededAssignments, setSeededAssignments] = useState<UserInstanceRole[]>([]);
   const [instanceRoles, setInstanceRoles] = useState<Record<string, { role: string, team_id: string, scope?: { tags: string[], pathPrefixes: string[] } }>>({});
 
 
@@ -229,12 +237,13 @@ const UsersPage = () => {
       // skips an entry with no role, and the dialog still closed on
       // "Permissions updated successfully" with the assignment untouched.
       //
-      // Driven by the assignments this dialog read, not by the form: an
-      // assignment that could not be read leaves nothing to iterate, so an
-      // empty form never reads as "remove everything" for a user whose access
-      // the dashboard could not see in the first place (#165).
+      // Driven by the assignments this dialog was seeded from, not by the
+      // form: one that could not be read - or had not arrived yet - leaves
+      // nothing to iterate, so an empty form never reads as "remove
+      // everything" for a user whose access the dashboard could not see in
+      // the first place (#165).
       if (editingUser) {
-        for (const assignment of getAssignments(editingUser.id)) {
+        for (const assignment of seededAssignments) {
           if (instanceRoles[assignment.instance_id]?.role) continue;
           try {
             await instanceApi.removeUserRole(userId, assignment.instance_id);
@@ -354,6 +363,12 @@ const UsersPage = () => {
       role: 'user',
       must_change_password: true,
     });
+    // The per-instance roles too. Add User calls this and then opens the same
+    // dialog, which is seeded from this state: without it, the roles of the
+    // account edited before were written to the account being created - on the
+    // Instance Access tab, which the dialog does not open on.
+    setInstanceRoles({});
+    setSeededAssignments([]);
     setActiveTab('basic');
   };
 
@@ -391,6 +406,7 @@ const UsersPage = () => {
     });
     // Load existing instance assignments
     const assignments = userAssignments[user.id] || [];
+    setSeededAssignments(assignments);
     const roles: Record<string, { role: string, team_id: string, scope?: { tags: string[], pathPrefixes: string[] } }> = {};
     for (const a of assignments) {
       roles[a.instance_id] = {

@@ -154,6 +154,113 @@ test('clearing a role removes the assignment, rather than reporting success and 
   expect(assignments).toHaveLength(0);
 });
 
+test('creating a user after editing one grants the new account nothing', async ({
+  page,
+}) => {
+  // The dialog is seeded from state that Add User did not clear, so opening it
+  // on someone with a viewer role and then creating an account wrote that role
+  // to the new account - on the Instance Access tab, which the dialog opens
+  // behind. A silent grant, on the screen that exists to decide who may do
+  // what.
+  const existing = `${PREFIX}-seeded`;
+  const created = `${PREFIX}-fresh`;
+  const token = await adminToken();
+  const user = await ensureUser(token, { username: existing, password: PASSWORD });
+  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+    role: 'viewer',
+    team_id: teamId,
+  });
+
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+  // The role has to be on the row before the dialog is opened: the table
+  // renders before the per-user assignment reads land, and a dialog opened in
+  // that window is seeded from nothing - which is the state this test is
+  // supposed to find carried over.
+  const seededRow = adminPom.rowByText(page, existing);
+  await expect(seededRow.getByText('(viewer)')).toBeVisible();
+  await seededRow.getByRole('button', { name: 'Permissions' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.getByRole('button', { name: 'Add User' }).click();
+  await expect(page.getByText('Add New User')).toBeVisible();
+  await page.getByLabel('Username').fill(created);
+  await page.getByPlaceholder('Enter secure password').fill(PASSWORD);
+
+  // Nothing carried over on the tab the operator does not see…
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  await expect(localInstanceCard(page).getByLabel('Role', { exact: true })).toHaveValue('');
+
+  await page.getByRole('tab', { name: 'Basic Info' }).click();
+  await page.getByRole('button', { name: 'Create User' }).click();
+  await expect(adminPom.rowByText(page, created)).toBeVisible();
+
+  // …and nothing was written for the new account either, which is the part
+  // that decides what it may do.
+  const users = (await apiFetch('/api/v1/users', token)) as { id: string; username: string }[];
+  const fresh = users.find((u) => u.username === created);
+  expect(fresh).toBeDefined();
+  const assignments = (await apiFetch(
+    `/api/v1/user-access/${fresh!.id}/instances`,
+    token
+  )) as unknown[];
+  expect(assignments).toEqual([]);
+});
+
+test('saving a dialog opened before the assignments arrived removes nothing', async ({
+  page,
+}) => {
+  // The table renders as soon as the users are read; the per-user assignment
+  // reads follow. The Permissions button works in that window, and the dialog
+  // it opens is seeded from what has arrived - nothing. Deciding removals
+  // against the list as it stands at Save time instead, every role the form
+  // does not show reads as one the admin cleared, and an e-mail change takes
+  // the account's access away with a success toast on top.
+  const username = `${PREFIX}-inflight`;
+  const token = await adminToken();
+  const user = await ensureUser(token, { username, password: PASSWORD });
+  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+    role: 'viewer',
+    team_id: teamId,
+  });
+
+  const roleWrites: string[] = [];
+  await page.route('**/api/v1/user-access/*/instances/*/role', (route) => {
+    roleWrites.push(route.request().method());
+    return route.fallback();
+  });
+  // Held long enough for the dialog to be opened before they land - and they
+  // do land, before the save: that is the shape of the race. A dialog seeded
+  // from nothing, saved against a list that has since filled in.
+  await page.route('**/api/v1/user-access/*/instances', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    return route.fallback();
+  });
+
+  await adminPom.toUsers(page);
+  await adminPom
+    .rowByText(page, username)
+    .getByRole('button', { name: 'Permissions' })
+    .click();
+  await expect(page.getByText('Edit User & Permissions')).toBeVisible();
+
+  // The assignments arrive while the dialog sits open on an empty form.
+  await expect(adminPom.rowByText(page, username).getByText('(viewer)')).toBeVisible({
+    timeout: 20000,
+  });
+
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+
+  expect(roleWrites).toEqual([]);
+  const assignments = (await apiFetch(
+    `/api/v1/user-access/${user.id}/instances`,
+    token
+  )) as unknown[];
+  expect(assignments).toHaveLength(1);
+});
+
 test('a viewer assignment takes effect: one instance, no create button', async ({
   page,
 }) => {
