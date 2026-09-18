@@ -849,7 +849,9 @@
     "loadFailedTitle": "Instances unavailable",
     "loadFailed": "Could not load the instance list.",
     "accessLoadFailedTitle": "Access list unavailable",
-    "accessLoadFailed": "Could not read which instances this account may use, so its role is unknown here."
+    "accessLoadFailed": "Could not read which instances this account may use, so its role is unknown here.",
+    "build": "Build {{sha}} ({{branch}}), {{date}}",
+    "buildUnknown": "Build of unknown commit, {{date}}"
   },
   "teams": {
     "title": "Teams",

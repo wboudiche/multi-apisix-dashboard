@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 import { adminToken } from '@e2e/utils/admin-api';
+import { env } from '@e2e/utils/env';
 import { expect, test } from '@playwright/test';
 
 const API = process.env.E2E_API_URL ?? 'http://127.0.0.1:8086';
@@ -124,7 +125,7 @@ test('the UI walks a must-change user through the dedicated screen', async ({
   const TEST_USER = 'e2e-forcechange-ui';
   await createUser(TEST_USER);
 
-  const base = process.env.E2E_TARGET_URL ?? 'http://localhost:9180/ui/';
+  const base = env.E2E_TARGET_URL;
   await page.goto(`${base.replace(/\/$/, '')}/login`);
   await page.getByRole('textbox', { name: 'Username' }).fill(TEST_USER);
   await page.getByPlaceholder('Enter your password').fill(TEMP_PASSWORD);

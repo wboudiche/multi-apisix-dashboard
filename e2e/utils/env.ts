@@ -24,12 +24,24 @@ config({
   path: ['./.env', './.env.local', './.env.development.local'],
 });
 
+/**
+ * The dashboard under test.
+ *
+ * The dev server, not the bundle baked into the APISIX image at :9180. That
+ * bundle is only as fresh as the last `docker compose build`, and defaulting
+ * here meant a local `pnpm e2e <spec>` ran against months-old code while
+ * looking like it ran against the working tree - which is how #221 was
+ * reported, and confirmed, against behaviour fixed long before (#237).
+ *
+ * CI passes this explicitly, and always did. Testing the image is still one
+ * env var away, and now a deliberate one.
+ */
 export const env = parseEnv(process.env, {
   E2E_TARGET_URL: z
     .string()
     .url()
-    .default(`http://localhost:9180${BASE_PATH}/`)
+    .default(`http://localhost:5173${BASE_PATH}/`)
     .describe(
-      `If you want to access the test server from dev container playwright to host e2e server, try http://host.docker.internal:9180${BASE_PATH}/`
+      `The dashboard under test. The image bundle is at http://localhost:9180${BASE_PATH}/ and is only as fresh as the last build; from a dev container, try http://host.docker.internal:5173${BASE_PATH}/`
     ),
 });
