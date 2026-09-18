@@ -303,6 +303,20 @@ func beneathResource(path string) bool {
 	return len(strings.Split(strings.Trim(path, "/"), "/")) > 2
 }
 
+// readMethod reports whether a method only reads.
+//
+// One definition for the whole proxy: everything else changes something, and
+// every check that cares about the difference - what may be written deeper
+// than <type>/<id>, which permission the role needs, whose resource is being
+// changed - asks the same question of it. Listing the writing methods instead
+// left each check with its own list, and a method missing from one of them was
+// how POST came to skip the ownership check (#252).
+//
+// OPTIONS never gets here: the CORS middleware answers it in cmd/main.go.
+func readMethod(method string) bool {
+	return method == http.MethodGet || method == http.MethodHead
+}
+
 // deepWriteRefused reports whether a write addresses a path deeper than
 // <type>/<id> that is none of the Admin API's own: a consumer's credentials,
 // or a secret under its manager. For anything else APISIX writes to
@@ -311,7 +325,7 @@ func beneathResource(path string) bool {
 // team, and a DELETE of it removed the route and left its record (#250).
 // Reads are not refused: plugin schemas, for one, sit deeper.
 func deepWriteRefused(method, path string) bool {
-	if method == http.MethodGet || method == http.MethodHead {
+	if readMethod(method) {
 		return false
 	}
 	parts := strings.Split(strings.Trim(path, "/"), "/")
@@ -349,13 +363,37 @@ func nonAdminMayAccess(ownerTeamID, callerTeamID string) bool {
 	return ownerTeamID != "" && ownerTeamID == callerTeamID
 }
 
+// ownershipChecked reports whether a request has to be checked against the
+// owner of the resource its path names: anything that changes it.
+//
+// Stated as "not a read" rather than as a list of writing methods, because the
+// list was the bug. POST was missing from it, and nothing reached the gap only
+// because APISIX refuses a POST carrying an id at the top level and the proxy
+// refuses a write deeper than <type>/<id> apart from a consumer's credentials
+// and a secret under its manager, neither of which takes POST. APISIX's master
+// branch adds services/<id>/graphql_cost_decorations, which does - and on the
+// day that path is allowed through, a POST naming another team's service would
+// have reached the gateway with nobody having asked whose service it is (#252).
+//
+// Reads are excluded because they are filtered elsewhere: the list path applies
+// the team filter and the detail path answers 403, which is a different
+// mechanism with a different answer for an unowned resource.
+//
+// The id it is given comes from the path. A PUT may also carry one in its body,
+// which collectionPutID reads before this runs; a POST may not, and APISIX
+// refuses one that does.
+func ownershipChecked(method, resourceID string) bool {
+	return resourceID != "" && !readMethod(method)
+}
+
 // unownedWriteDenied decides a write against a resource carrying no ownership
 // record, given whether that resource already exists on the gateway.
 //
-// The absence of an ownership record is ambiguous. A PUT to an id that does not
-// exist yet is a create - which is how consumers and consumer_groups are made,
-// keyed by username - and ordinary work for a developer. A write to an id that
-// does exist is a write to somebody's unassigned resource, which is admin-only.
+// The absence of an ownership record is ambiguous. A write to an id that does
+// not exist yet is a create - a PUT, which is how consumers and consumer_groups
+// are made, keyed by username, or a POST under a parent that does exist - and
+// ordinary work for a developer. A write to an id that does exist is a write to
+// somebody's unassigned resource, which is admin-only.
 func unownedWriteDenied(resourceExists bool) bool {
 	return resourceExists
 }
@@ -495,7 +533,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	resourceType, resourceID := h.getResourceMetadata(path)
 
 	action := "write"
-	if c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead {
+	if readMethod(c.Request.Method) {
 		action = "read"
 	}
 	if resourceType != "" && !models.HasResourcePermission(effRole, resourceType, action) {
@@ -566,13 +604,13 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	}
 
 	if !isAdmin {
-		if (c.Request.Method == http.MethodPut || c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodDelete) && resourceID != "" {
+		if ownershipChecked(c.Request.Method, resourceID) {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 
 			if ownerTeamID == "" {
-				// No ownership record. Either this creates something new - a PUT
-				// to an id that does not exist yet, which is how consumers and
-				// consumer_groups are made - or it targets a resource that
+				// No ownership record. Either this creates something new - a
+				// PUT to an id that does not exist yet, which is how consumers
+				// and consumer_groups are made - or it targets a resource that
 				// exists without a team, which only an admin may change.
 				//
 				// Beneath a resource, the one that decides is the resource

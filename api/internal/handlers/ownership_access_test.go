@@ -15,7 +15,10 @@
 
 package handlers
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
 // A resource with no team is administrative territory: only an admin may see or
 // change it until someone assigns it. A resource owned by another team is
@@ -51,9 +54,10 @@ func TestNonAdminMayAccess(t *testing.T) {
 }
 
 // A write to a resource that carries no ownership record is ambiguous: it is
-// either a PUT that creates something new (consumers and consumer_groups are
-// created exactly this way, with a caller-supplied id) or an attempt on a
-// resource that exists without a team. Only the second is forbidden.
+// either a create - a PUT to an id that does not exist yet, which is how
+// consumers and consumer_groups are made, or a POST under a parent that does -
+// or an attempt on a resource that exists without a team. Only the second is
+// forbidden.
 func TestUnownedWriteIsDeniedOnlyWhenTheResourceExists(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -69,6 +73,54 @@ func TestUnownedWriteIsDeniedOnlyWhenTheResourceExists(t *testing.T) {
 			if got := unownedWriteDenied(tt.exists); got != tt.wantDenied {
 				t.Errorf("unownedWriteDenied(exists=%v) = %v, want %v",
 					tt.exists, got, tt.wantDenied)
+			}
+		})
+	}
+}
+
+// Which requests are checked against the owner of the resource they name.
+//
+// The reasoning is with the predicate; what is pinned here is the answer for
+// every method the router can present, so that narrowing it again - which is
+// how POST came to be missing - has to be done deliberately.
+func TestOwnershipIsCheckedForEveryWritingMethodThatNamesAResource(t *testing.T) {
+	tests := []struct {
+		name       string
+		method     string
+		resourceID string
+		want       bool
+	}{
+		{"POST naming a resource", http.MethodPost, "svc-1", true},
+		{"PUT naming a resource", http.MethodPut, "svc-1", true},
+		// PATCH is not routed today (cmd/main.go registers GET, POST, PUT and
+		// DELETE), and the proxy still handles it in three other places. If it
+		// is ever routed, it arrives already answered here.
+		{"PATCH naming a resource", http.MethodPatch, "svc-1", true},
+		{"DELETE naming a resource", http.MethodDelete, "svc-1", true},
+
+		// A collection write names nothing to check against. A POST to
+		// /routes creates, and what it creates is owned by its writer.
+		{"POST to a collection", http.MethodPost, "", false},
+		{"PUT to a collection", http.MethodPut, "", false},
+
+		// Reads are filtered elsewhere: the list path applies the team filter,
+		// and the detail path answers 403 for a resource the caller may not
+		// see - a different mechanism with a different answer.
+		{"GET naming a resource", http.MethodGet, "svc-1", false},
+		{"HEAD naming a resource", http.MethodHead, "svc-1", false},
+
+		// Anything else counts as changing the resource, which is the whole
+		// point of asking "not a read" rather than listing methods.
+		// OPTIONS never arrives - the CORS middleware answers it before the
+		// router - and deepWriteRefused reads it the same way.
+		{"OPTIONS naming a resource", http.MethodOptions, "svc-1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ownershipChecked(tt.method, tt.resourceID); got != tt.want {
+				t.Errorf("ownershipChecked(%q, %q) = %v, want %v",
+					tt.method, tt.resourceID, got, tt.want)
 			}
 		})
 	}
