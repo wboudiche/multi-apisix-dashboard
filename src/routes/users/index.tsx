@@ -87,6 +87,11 @@ const UsersPage = () => {
   });
 
   const [userAssignments, setUserAssignments] = useState<Record<string, UserInstanceRole[]>>({});
+  // The users whose assignments could not be read, and why. An unreadable
+  // list used to be stored as an empty one, and this table is the only place
+  // a super admin sees who may do what: "none" and "could not be read" have
+  // to look different here (#165).
+  const [unreadableAssignments, setUnreadableAssignments] = useState<Record<string, string>>({});
   const [instanceRoles, setInstanceRoles] = useState<Record<string, { role: string, team_id: string, scope?: { tags: string[], pathPrefixes: string[] } }>>({});
 
 
@@ -102,22 +107,46 @@ const UsersPage = () => {
       const loadedUsers = await userApi.list();
       setUsers(loadedUsers);
 
-      // Load teams
-      const teamData = await teamApi.list();
-      setTeams(teamData);
-
+      // Before the teams read, which may throw: these two maps are what the
+      // rows just committed are rendered against, and leaving last load's
+      // behind would show a user added since as having no assignments.
       // Load instance assignments for each user
       const assignments: Record<string, UserInstanceRole[]> = {};
+      const unreadable: Record<string, string> = {};
       await Promise.all(
         loadedUsers.map(async (user) => {
           try {
             assignments[user.id] = await instanceApi.getUserInstances(user.id);
-          } catch {
-            assignments[user.id] = [];
+          } catch (err) {
+            unreadable[user.id] = describeError(err, t('users.assignmentsUnreadable'));
           }
         })
       );
       setUserAssignments(assignments);
+      setUnreadableAssignments(unreadable);
+
+      const teamData = await teamApi.list();
+      setTeams(teamData);
+
+      const failed = Object.keys(unreadable).length;
+      if (failed > 0) {
+        notifications.show({
+          // One report for the whole load: this fans out one request per user,
+          // and a backend that is down fails all of them.
+          id: 'users-assignments-unreadable',
+          title: t('users.assignmentsUnreadableTitle'),
+          message: t('users.assignmentsUnreadableBody', {
+            count: failed,
+            reason: Object.values(unreadable)[0],
+            // The reason is a backend message, and these carry the request
+            // path. i18next escapes interpolations by default, for markup
+            // this notification never renders - "/api/v1/..." would reach the
+            // operator as "&#x2F;api&#x2F;v1&#x2F;...".
+            interpolation: { escapeValue: false },
+          }),
+          color: 'red',
+        });
+      }
     } catch (err) {
       notifications.show({
         title: 'Error',
@@ -127,7 +156,7 @@ const UsersPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, t]);
 
   useEffect(() => {
     // A fetch on mount. The setState this rule flags is that request's own
@@ -399,6 +428,8 @@ const UsersPage = () => {
                 <Table.Td>
                   {user.role === 'super_admin' ? (
                     <Text size="xs" c="dimmed" fs="italic">{t('users.allInstances')}</Text>
+                  ) : unreadableAssignments[user.id] ? (
+                    <Text size="xs" c="red">{t('users.assignmentsUnreadable')}</Text>
                   ) : assignments.length === 0 ? (
                     <Text size="xs" c="dimmed">—</Text>
                   ) : (
@@ -419,6 +450,10 @@ const UsersPage = () => {
                 <Table.Td>
                   {user.role === 'super_admin' ? (
                     <Text size="xs" c="dimmed" fs="italic">{t('users.allTeams')}</Text>
+                  ) : unreadableAssignments[user.id] ? (
+                    // Derived from the assignments, so it is unknown for the
+                    // same reason rather than empty.
+                    <Text size="xs" c="red">{t('users.assignmentsUnreadable')}</Text>
                   ) : uniqueTeams.length === 0 ? (
                     <Text size="xs" c="dimmed">—</Text>
                   ) : (
@@ -478,6 +513,22 @@ const UsersPage = () => {
         title={editingUser ? 'Edit User & Permissions' : 'Add New User'}
         size="lg"
       >
+        {editingUser && unreadableAssignments[editingUser.id] && (
+          // Above the tabs, because the dialog opens on Basic Info and this
+          // is about the Access tab: inside it, the warning was only seen by
+          // someone who had already gone looking.
+          //
+          // The form is seeded from the same read, so what it shows as "no
+          // role" may simply be what could not be read. Saving only writes the
+          // roles picked - it never clears one - but the person doing the
+          // picking should know what they are looking at (#165).
+          <Paper p="sm" mb="md" withBorder bg="var(--surface-1)">
+            <Text size="sm" c="red">
+              {t('users.assignmentsUnreadableForm')}
+            </Text>
+          </Paper>
+        )}
+
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List mb="lg" grow>
             <Tabs.Tab value="basic" leftSection={<IconUser width="16" height="16" />}>{t('users.tabBasic')}</Tabs.Tab>

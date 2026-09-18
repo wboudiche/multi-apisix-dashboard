@@ -34,7 +34,9 @@
     "logout": "Oturumu kapat",
     "role": "Rol: {{role}}",
     "loadFailedTitle": "Örnekler kullanılamıyor",
-    "loadFailed": "Örnek listesi yüklenemedi."
+    "loadFailed": "Örnek listesi yüklenemedi.",
+    "accessLoadFailedTitle": "Erişim listesi kullanılamıyor",
+    "accessLoadFailed": "Bu hesabın hangi örnekleri kullanabileceği okunamadı, bu nedenle rolü burada bilinmiyor."
   },
   "instanceGuard": {
     "noInstances": {
@@ -569,7 +571,11 @@
     "thInstances": "Örnekler",
     "thRole": "Rol",
     "thTeams": "Takımlar",
-    "thUser": "Kullanıcı"
+    "thUser": "Kullanıcı",
+    "assignmentsUnreadable": "Okunamadı",
+    "assignmentsUnreadableTitle": "Atamalar kullanılamıyor",
+    "assignmentsUnreadableForm": "Bu kullanıcının mevcut atamaları okunamadı, bu yüzden aşağıdaki roller eksik olabilir. Kaydetmek yalnızca burada seçtiğiniz rolleri yazar; hiçbirini kaldırmaz.",
+    "assignmentsUnreadableBody": "Listelenen hesaplardan {{count}} tanesi için örnek atamaları okunamadı, bu nedenle bu tablo ne yapabileceklerini söyleyemiyor. Neden: {{reason}}"
   },
   "listWarning": {
     "title": "Eksik sonuçlar",

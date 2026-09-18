@@ -34,7 +34,9 @@
     "logout": "Cerrar sesión",
     "role": "Rol: {{role}}",
     "loadFailedTitle": "Instancias no disponibles",
-    "loadFailed": "No se pudo cargar la lista de instancias."
+    "loadFailed": "No se pudo cargar la lista de instancias.",
+    "accessLoadFailedTitle": "Lista de accesos no disponible",
+    "accessLoadFailed": "No se pudo leer qué instancias puede usar esta cuenta, así que aquí su rol es desconocido."
   },
   "instanceGuard": {
     "noInstances": {
@@ -569,7 +571,11 @@
     "thInstances": "Instancias",
     "thRole": "Rol",
     "thTeams": "Equipos",
-    "thUser": "Usuario"
+    "thUser": "Usuario",
+    "assignmentsUnreadable": "No se pudo leer",
+    "assignmentsUnreadableTitle": "Asignaciones no disponibles",
+    "assignmentsUnreadableForm": "No se pudieron leer las asignaciones actuales de este usuario, por lo que los roles de abajo pueden estar incompletos. Al guardar solo se escriben los roles que elijas aquí; no se elimina ninguno.",
+    "assignmentsUnreadableBody": "No se pudieron leer las asignaciones de instancia de {{count}} de las cuentas listadas, así que esta tabla no puede decir qué pueden hacer. Motivo: {{reason}}"
   },
   "listWarning": {
     "title": "Resultados incompletos",

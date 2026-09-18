@@ -34,7 +34,9 @@
     "logout": "退出登录",
     "role": "角色：{{role}}",
     "loadFailedTitle": "实例不可用",
-    "loadFailed": "无法加载实例列表。"
+    "loadFailed": "无法加载实例列表。",
+    "accessLoadFailedTitle": "访问列表不可用",
+    "accessLoadFailed": "无法读取该账号可使用哪些实例，因此此处无法确定其角色。"
   },
   "instanceGuard": {
     "noInstances": {
@@ -569,7 +571,11 @@
     "thInstances": "实例",
     "thRole": "角色",
     "thTeams": "团队",
-    "thUser": "用户"
+    "thUser": "用户",
+    "assignmentsUnreadable": "无法读取",
+    "assignmentsUnreadableTitle": "分配信息不可用",
+    "assignmentsUnreadableForm": "无法读取该用户当前的分配，因此下面的角色可能不完整。保存只会写入你在此处选择的角色，不会移除任何角色。",
+    "assignmentsUnreadableBody": "列出的账号中有 {{count}} 个无法读取实例分配，因此此表无法说明它们的权限。原因：{{reason}}"
   },
   "listWarning": {
     "title": "结果不完整",
