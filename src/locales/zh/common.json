@@ -544,6 +544,7 @@
     "expired": "已过期",
     "expires": "到期",
     "expiringSoon": "已过期或将在 {{days}} 天内到期的证书：{{count}}",
+    "issuer": "颁发者",
     "singular": "SSL"
   },
   "streamRoutes": {

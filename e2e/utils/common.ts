@@ -48,11 +48,17 @@ export const randomId = (info: string) => `${info}_${nanoid()}`;
  *
  * `days` is how long it lasts: a spec about expiry needs one that runs out
  * soon, and a committed fixture would quietly become an expired certificate
- * testing the wrong branch.
+ * testing the wrong branch. `commonName` names the subject - and so, for a
+ * self-signed certificate, the issuer the list shows. It lands in a
+ * distinguished name unescaped, so keep it to the alphabet `randomId`
+ * produces - a comma or an `=` in it would silently build a different subject.
  */
-export const genTLS = async (days?: number) => {
+export const genTLS = async (opts: { days?: number; commonName?: string } = {}) => {
+  const { days, commonName } = opts;
   const { cert, private: key } = await selfsigned.generate(
-    undefined,
+    commonName === undefined
+      ? undefined
+      : [{ name: 'commonName', value: commonName }],
     days === undefined
       ? undefined
       : { notAfterDate: new Date(Date.now() + days * 86_400_000) }

@@ -544,6 +544,7 @@
     "expired": "Abgelaufen",
     "expires": "Läuft ab",
     "expiringSoon": "Abgelaufene oder in {{days}} Tagen ablaufende Zertifikate: {{count}}",
+    "issuer": "Aussteller",
     "singular": "SSL"
   },
   "streamRoutes": {

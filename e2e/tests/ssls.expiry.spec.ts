@@ -43,7 +43,7 @@ test.beforeAll(async () => {
     // by counting only what was still inside its window.
     [goneId, -2],
   ] as const) {
-    const { cert, key } = await genTLS(days);
+    const { cert, key } = await genTLS({ days, commonName: `${id}-ca` });
     await e2eReq.put(`${API_SSLS}/${id}`, { cert, key, snis: [`${id}.test`] });
   }
 });
@@ -54,7 +54,7 @@ test.afterAll(async () => {
   }
 });
 
-test('shows how long each certificate has left, and warns about the short ones', async ({
+test('shows who signed each certificate and how long it has left, and warns about the short ones', async ({
   page,
 }) => {
   // The default page size, deliberately: the banner is counted over the whole
@@ -84,6 +84,10 @@ test('shows how long each certificate has left, and warns about the short ones',
   const goneRow = page.getByRole('row').filter({ hasText: `${goneId}.test` });
   await expect(goneRow.getByText('Expired')).toBeVisible();
 
+  // Who signed it, read out of the same certificate. Self-signed here, so the
+  // issuer is the subject - which is itself worth seeing, rather than a blank
+  // where a CA would be.
+  await expect(soonRow.getByText(`${soonId}-ca`, { exact: true })).toBeVisible();
 });
 
 test('counts an expired certificate too, not only the ones still running', async ({
