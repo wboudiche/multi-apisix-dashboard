@@ -434,23 +434,31 @@
       "certificate": "Certificate Configuration"
     },
     "streamRoutes": {
+      "duplicateAny": "matches all stream traffic",
+      "duplicateConfirmAction": "Create anyway",
+      "duplicateConfirmBody": "These stream routes already match the same traffic. Only one of them can win, and which one is not something you control.",
+      "duplicateConfirmTitle": "A matching stream route already exists",
+      "duplicateEntry": "{{conditions}}",
       "protocol": {
         "conf": "Conf",
+        "custom": "Custom protocol",
+        "customName": "Custom protocol name",
+        "hint": "For xRPC, APISIX’s framework for application-layer protocols such as Redis and Dubbo. Unrelated to the TCP/UDP/TLS transport.",
         "logger": "Logger",
         "name": "Protocol Name",
+        "nameDescription": "The protocol must also be enabled under xrpc.protocols in APISIX’s config.yaml: the gateway refuses to save a route naming one it does not have.",
+        "none": "None (plain TCP/UDP passthrough)",
         "superiorId": "Superior ID",
+        "superiorIdDescription": "Only used with a protocol.",
         "title": "Protocol Information"
       },
       "remoteAddr": "Remote Address",
       "server": "Server",
       "serverAddr": "Server Address",
+      "serverHint": "Connection filters: a stream route matches on these. The transport protocol (TCP, UDP, TLS) is not set here — it belongs to the listener, in APISIX’s config.yaml under stream_proxy.",
       "serverPort": "Server Port",
       "sni": "SNI",
-      "duplicateConfirmTitle": "A matching stream route already exists",
-      "duplicateConfirmBody": "These stream routes already match the same traffic. Only one of them can win, and which one is not something you control.",
-      "duplicateEntry": "{{conditions}}",
-      "duplicateAny": "matches all stream traffic",
-      "duplicateConfirmAction": "Create anyway"
+      "transportTip": "Looking for TCP, UDP or TLS? Those are listener settings, declared under stream_proxy in APISIX’s config.yaml, and apply to every stream route on that listener."
     },
     "tagsInput": {
       "placeholder": "Input text, then enter or blur"

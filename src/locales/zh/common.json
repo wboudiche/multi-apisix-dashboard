@@ -264,16 +264,24 @@
     "streamRoutes": {
       "protocol": {
         "conf": "配置",
+        "custom": "自定义协议",
+        "customName": "自定义协议名称",
+        "hint": "用于 xRPC，即 APISIX 面向 Redis、Dubbo 等应用层协议的框架。与 TCP/UDP/TLS 传输无关。",
         "logger": "日志",
         "name": "协议名称",
+        "nameDescription": "该协议还必须在 APISIX 的 config.yaml 的 xrpc.protocols 中启用：网关会拒绝保存指定了它不认识的协议的路由。",
+        "none": "无（普通 TCP/UDP 透传）",
         "superiorId": "Superior ID",
+        "superiorIdDescription": "仅在选择协议时使用。",
         "title": "协议信息"
       },
       "remoteAddr": "远程地址",
       "server": "服务器",
       "serverAddr": "服务器地址",
+      "serverHint": "连接匹配条件：stream route 依据这些字段匹配。传输协议（TCP、UDP、TLS）不在此处设置——它属于监听器，配置在 APISIX 的 config.yaml 的 stream_proxy 下。",
       "serverPort": "服务器端口",
-      "sni": "SNI"
+      "sni": "SNI",
+      "transportTip": "在找 TCP、UDP 或 TLS？这些是监听器设置，声明在 APISIX 的 config.yaml 的 stream_proxy 下，对该监听器上的所有 stream route 生效。"
     },
     "tagsInput": {
       "placeholder": "输入文本，然后回车或失去焦点"
