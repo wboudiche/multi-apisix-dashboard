@@ -98,11 +98,11 @@ test('and offers a retry that fills the table once the list can be read', async 
   page,
 }) => {
   // The unreadable state is not a dead end: the list is read again on demand,
-  // and this page writes the shared atom, so the header's selector fills too.
+  // and every reader shares that one query, so the header's selector fills
+  // from the same answer.
   // Broken until the test says otherwise, rather than for the first request
-  // only: the header reads this same endpoint on every page load, so "the
-  // first one" is a race between it and the page (that duplication is #165's
-  // own item 2, tracked separately).
+  // only: one request now serves the page, the header and the guard, and
+  // "the first one" was a race between them before they shared it.
   let broken = true;
   await page.route('**/api/v1/instances', (route) =>
     broken

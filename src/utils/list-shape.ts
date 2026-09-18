@@ -51,6 +51,11 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
  * someone may do, on a page that gives no reason for it. A caller that
  * genuinely wants to degrade can still catch.
  *
+ * What it does not do is check T. `every(isRecord)` narrows to records, and
+ * the return is still a cast - nothing here knows what fields a User or an
+ * Instance is supposed to have. Per-endpoint checks live with their endpoint,
+ * where the expected shape is known: see `parseOverview` in src/apis/overview.
+ *
  * The array is returned as it came, not copied: these feed jotai atoms and
  * react-query caches, where a fresh array on every call is a re-render on
  * every call.

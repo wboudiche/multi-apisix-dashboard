@@ -23,12 +23,14 @@ import {
   useNavigate,
   useParams,
 } from '@tanstack/react-router';
+import { useAtomValue } from 'jotai';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { getRouteQueryOptions } from '@/apis/hooks';
+import { teamsQueryOptions } from '@/apis/queries';
 import { putRouteReq } from '@/apis/routes';
 import {teamApi } from '@/apis/teams';
 import {
@@ -60,6 +62,7 @@ import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
 import { API_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
+import { currentUserAtom } from '@/stores/auth';
 import { type APISIXType } from '@/types/schema/apisix';
 import { extractSoapAction } from '@/utils/soap-route';
 import IconCode from '~icons/material-symbols/code';
@@ -202,10 +205,9 @@ const ReassignTeamModal = (props: ReassignTeamModalProps) => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>(currentTeamId || NO_TEAM);
   const [saving, setSaving] = useState(false);
 
+  const currentUser = useAtomValue(currentUserAtom);
   const { data: teams = [] } = useQuery({
-    queryKey: ['teams'],
-    queryFn: () => teamApi.list(),
-    staleTime: 60_000,
+    ...teamsQueryOptions(currentUser?.id),
     enabled: opened,
   });
 

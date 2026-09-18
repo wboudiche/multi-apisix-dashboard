@@ -36,12 +36,12 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useAtom } from 'jotai';
+import { useAtom,useAtomValue } from 'jotai';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
-import { teamApi } from '@/apis/teams';
+import { teamsQueryOptions } from '@/apis/queries';
 import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
@@ -59,6 +59,7 @@ import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
 import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
+import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { withoutDashboardFields } from '@/utils/dashboard-fields';
@@ -104,11 +105,8 @@ export const RouteList = (props: RouteListProps) => {
   const [testDrawerRoute, setTestDrawerRoute] = useState<{ path: string; method: string; host?: string; soapAction?: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const { data: teams } = useQuery({
-    queryKey: ['teams'],
-    queryFn: () => teamApi.list(),
-    staleTime: 60_000,
-  });
+  const currentUser = useAtomValue(currentUserAtom);
+  const { data: teams } = useQuery(teamsQueryOptions(currentUser?.id));
   const teamMap = useMemo(() => {
     const map = new Map<string, string>();
     teams?.forEach((tm) => map.set(tm.id, tm.name));
@@ -658,10 +656,9 @@ function RouteComponent() {
   const { data, isLoading, refetch, setParams: setRouteParams } = useRouteList('/routes/');
   // Options for the bar. Teams are admin-only; upstreams are what the new
   // filter narrows by, and the same list the table resolves names from.
+  const currentUser = useAtomValue(currentUserAtom);
   const { data: filterTeams } = useQuery({
-    queryKey: ['teams'],
-    queryFn: () => teamApi.list(),
-    staleTime: 60_000,
+    ...teamsQueryOptions(currentUser?.id),
     enabled: isAdmin,
   });
   const teamOptions = useMemo(

@@ -240,11 +240,15 @@ test('reports a malformed instance list instead of throwing past its own catch',
   // this arrives as success carrying a string where a list belongs — the one
   // shape that gets past a try wrapped around the request alone, throwing on
   // `data.some` afterwards as an unhandled rejection with nothing shown.
+  // text/html with a raw body, which is what a misrouted proxy actually sends:
+  // a JSON-encoded string only exercises axios's own parsing and would keep
+  // passing if the client ever stopped doing that (instances.guard-shape.spec
+  // makes the same argument).
   await page.route('**/api/v1/instances', (route) =>
     route.fulfill({
       status: 200,
-      contentType: 'application/json',
-      body: '"<!doctype html><html></html>"',
+      contentType: 'text/html',
+      body: '<!doctype html><html></html>',
     })
   );
 

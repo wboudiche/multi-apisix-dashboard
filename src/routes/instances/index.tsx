@@ -39,8 +39,9 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -53,8 +54,10 @@ import {
   type InstanceDependencies,
   type InstanceHealth,
 } from '@/apis/instances';
+import { instancesQueryOptions } from '@/apis/queries';
 import { usePermission } from '@/hooks/usePermission';
-import { currentInstanceIdAtom,instancesAtom, instancesLoadingAtom } from '@/stores/instance';
+import { currentUserAtom } from '@/stores/auth';
+import { currentInstanceIdAtom } from '@/stores/instance';
 import { describeError } from '@/utils/api-error';
 import IconPlus from '~icons/material-symbols/add';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
@@ -223,8 +226,17 @@ type PendingDelete = {
 const InstancesPage = () => {
   const { t } = useTranslation();
   const { isSuperAdmin } = usePermission();
-  const [instances, setInstances] = useAtom(instancesAtom);
-  const [loading, setLoading] = useAtom(instancesLoadingAtom);
+  const currentUser = useAtomValue(currentUserAtom);
+  // The same query the header and InstanceGuard read: one request, one answer,
+  // one place a fix lands (#165). The list still reaches `instancesAtom` -
+  // the header writes it from this very cache entry - so the pages that read
+  // the atom are unaffected.
+  const {
+    data: instances = [],
+    isFetching: loading,
+    error: loadError,
+    refetch: reloadInstances,
+  } = useQuery(instancesQueryOptions(currentUser?.id));
   const [currentInstanceId, setCurrentInstanceId] = useAtom(currentInstanceIdAtom);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInstance, setEditingInstance] = useState<Instance | null>(null);
@@ -233,16 +245,6 @@ const InstancesPage = () => {
   const [healthLoaded, setHealthLoaded] = useState(false);
   const [healthError, setHealthError] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Set when this page's own read of the list failed, with the reason the
-  // backend gave when there was one. An empty list and an unreadable one look
-  // the same in `instances`, and the advice this page gives for them is not
-  // the same (#165).
-  const [loadFailure, setLoadFailure] = useState<{ reason: string } | null>(null);
-  // Generation counter for list reads, like deleteRequestRef below: a retry
-  // clicked while a load is still in flight would otherwise have whichever
-  // request answers last decide both the rows and the failure, which are
-  // written by different requests.
-  const listRequestRef = useRef(0);
   const [nameError, setNameError] = useState<string | null>(null);
   // Name of the instance already using the submitted Admin API URL, awaiting confirmation.
   const [urlConflict, setUrlConflict] = useState<string | null>(null);
@@ -258,30 +260,6 @@ const InstancesPage = () => {
     gateway_url: '',
     is_active: true,
   });
-
-  const loadInstances = useCallback(async () => {
-    const generation = ++listRequestRef.current;
-    setLoading(true);
-    try {
-      const data = await instanceApi.list();
-      if (generation !== listRequestRef.current) return;
-      setInstances(data);
-      setLoadFailure(null);
-    } catch (error) {
-      if (generation !== listRequestRef.current) return;
-      // An empty fallback, not the title: the reason is shown as its own line
-      // under it, and repeating the title there would say nothing twice.
-      const reason = describeError(error, '');
-      setLoadFailure({ reason });
-      notifications.show({
-        title: 'Error',
-        message: reason || t('instances.unreadableTitle'),
-        color: 'red',
-      });
-    } finally {
-      if (generation === listRequestRef.current) setLoading(false);
-    }
-  }, [setInstances, setLoading, t]);
 
   /**
    * Connectivity is a live property of the gateway, not of the stored record, so
@@ -303,12 +281,12 @@ const InstancesPage = () => {
   }, []);
 
   useEffect(() => {
-    // Two fetches on mount. The setState this rule flags is each request's own
-    // loading flag, raised as it starts — not state derived from other state.
+    // A fetch on mount. loadHealth sets state only once its request has
+    // answered, which this rule cannot tell from state derived from other
+    // state. The list is a query now, so it needs nothing here.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadInstances();
     loadHealth();
-  }, [loadInstances, loadHealth]);
+  }, [loadHealth]);
 
   if (!isSuperAdmin) {
     return (
@@ -356,7 +334,7 @@ const InstancesPage = () => {
         });
       }
 
-      loadInstances();
+      reloadInstances();
       loadHealth();
     } catch (error) {
       const conflict = getInstanceConflict(error);
@@ -430,7 +408,7 @@ const InstancesPage = () => {
         setCurrentInstanceId('');
       }
       setPendingDelete(null);
-      loadInstances();
+      reloadInstances();
       loadHealth();
     } catch (error) {
       notifications.show({
@@ -637,10 +615,10 @@ const InstancesPage = () => {
             {/* The failure stays on screen while it is being retried - the
                 button's spinner is the only sign the click did anything, and
                 blanking the row would take it away. */}
-            {instances.length === 0 && (loadFailure || !loading) && (
+            {instances.length === 0 && (loadError || !loading) && (
               <Table.Tr>
                 <Table.Td colSpan={6}>
-                  {loadFailure ? (
+                  {loadError ? (
                     // Not the same as having none. "Get started by connecting
                     // to your first APISIX instance", said to someone who has
                     // five and a backend that is down, costs them the time it
@@ -654,16 +632,16 @@ const InstancesPage = () => {
                       <Text c="dimmed" size="sm" mt="xs">
                         {t('instances.unreadableBody')}
                       </Text>
-                      {loadFailure.reason && (
+                      {describeError(loadError, '') && (
                         <Text c="dimmed" size="xs" mt="xs">
-                          {loadFailure.reason}
+                          {describeError(loadError, '')}
                         </Text>
                       )}
                       <Box mt="lg" />
                       <Button
                         variant="light"
                         leftSection={<IconRefresh width="16" height="16" />}
-                        onClick={() => { loadInstances(); loadHealth(); }}
+                        onClick={() => { reloadInstances(); loadHealth(); }}
                         loading={loading}
                       >
                         {t('instances.unreadableCta')}

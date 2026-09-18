@@ -22,10 +22,9 @@ import { useAtomValue } from 'jotai';
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { instanceApi } from '@/apis/instances';
+import { instancesQueryOptions } from '@/apis/queries';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
-import { MalformedResponseError } from '@/utils/response-shape';
 import IconAdd from '~icons/material-symbols/add';
 import IconInstance from '~icons/material-symbols/lan';
 import IconRefresh from '~icons/material-symbols/refresh';
@@ -84,26 +83,8 @@ export const InstanceGuard = ({ children }: InstanceGuardProps) => {
     isLoading,
     isError,
     isFetching,
-  } = useQuery({
-    // Scoped to the user, like the header's health query: logging out navigates
-    // client-side, so without it the next account is waved through on the list
-    // the previous one saw until the refetch lands.
-    queryKey: ['instances', currentUser?.id],
-    queryFn: () => instanceApi.list(),
-    staleTime: 30_000,
-    // A malformed body throws deterministically — the response interceptor
-    // rejects one that was never JSON, parseRecordList one that is JSON of the
-    // wrong shape — so retrying it only holds the whole dashboard on a spinner
-    // for seven seconds before saying the same thing. Everything else — a 502
-    // from a restarting backend, a dropped connection — still gets the default
-    // attempts, because those do heal on their own and used to.
-    //
-    // Keyed on the shared type rather than the native TypeError this used to
-    // check: that read any accidental TypeError from an interceptor as
-    // "malformed body, do not retry".
-    retry: (attempt, error) =>
-      !(error instanceof MalformedResponseError) && attempt < 3,
-  });
+    refetch,
+  } = useQuery(instancesQueryOptions(currentUser?.id));
 
   if (isLoading) {
     return (
@@ -129,15 +110,14 @@ export const InstanceGuard = ({ children }: InstanceGuardProps) => {
         title={t('instanceGuard.unreadable.title')}
         message={t('instanceGuard.unreadable.message')}
         cta={
-          // A reload rather than a refetch: the header reads this same endpoint
-          // through an effect of its own, and refetching only this query leaves
-          // its instance selector empty — so a successful retry could land the
-          // operator on "pick an instance from the selector above" with no
-          // selector there. Nothing is in progress on an error screen, so the
-          // heavier hammer costs nothing. Collapsing the two reads is #161's
-          // neighbour and tracked separately.
+          // A refetch, not a page reload. It used to be the reload: the header
+          // read this same endpoint through an effect of its own, so refetching
+          // here left its instance selector empty and a successful retry landed
+          // the operator on "pick an instance from the selector above" with no
+          // selector there. They share this query now, so one refetch fills
+          // both (#165).
           <Button
-            onClick={() => window.location.reload()}
+            onClick={() => refetch()}
             loading={isFetching}
             leftSection={<IconRefresh width="16" height="16" />}
           >

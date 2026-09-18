@@ -33,11 +33,16 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useAtom, useSetAtom } from 'jotai';
 import type { FC } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { instanceApi, type InstanceHealth } from '@/apis/instances';
-import { type Team, teamApi } from '@/apis/teams';
+import {
+  instancesQueryOptions,
+  teamsQueryOptions,
+  userInstancesQueryOptions,
+} from '@/apis/queries';
+import { type Team } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
@@ -146,82 +151,87 @@ export const Header: FC<HeaderProps> = (props) => {
   const [instances] = useAtom(instancesAtom);
   const [userInstances, setUserInstances] = useAtom(userInstancesAtom);
   const [currentInstanceId, setCurrentInstanceId] = useAtom(currentInstanceIdAtom);
-  const [teams, setTeams] = useState<Team[]>([]);
   const setInstances = useSetAtom(setInstancesAtom);
   const logout = useSetAtom(logoutActionAtom);
 
-  // Load header data on mount and when user/instance changes
+  // One read of the instance list for the whole app: this and InstanceGuard
+  // share the query, so it is fetched once and a retry in either place fills
+  // both (#165).
+  const {
+    data: instanceList,
+    error: instancesError,
+  } = useQuery(instancesQueryOptions(currentUser?.id));
+
   useEffect(() => {
-    const loadHeaderData = async () => {
-      // The whole read is covered, not just the request: a 200 carrying the
-      // wrong shape — the SPA's own HTML from a misrouted proxy, say — resolves
-      // the promise, and with the try around the request alone the failure that
-      // followed was an unhandled rejection, reported nowhere.
-      try {
-        // instanceApi.list refuses anything that is not a list of records, so
-        // a malformed body arrives here as a rejection and never reaches the
-        // atom (see src/utils/list-shape.ts).
-        const data = await instanceApi.list();
-        setInstances(data);
+    if (!instanceList) return;
+    setInstances(instanceList);
 
-        // Auto-select when nothing is selected, or when the stored id no
-        // longer matches a known instance (stale localStorage would leave
-        // InstanceGuard stuck on the "no instance" empty state forever)
-        const isStale =
-          currentInstanceId && !data.some((inst) => inst.id === currentInstanceId);
-        if ((!currentInstanceId || isStale) && data.length > 0) {
-          setCurrentInstanceId(data[0].id);
-        }
-      } catch (error) {
-        // A header with no instance selector and no reason given for it reads
-        // as "this account has no gateways", which is a different situation
-        // entirely. describeError surfaces the backend's own reason, the way
-        // the instances page already does for this same call; a stable id keeps
-        // the re-runs of this effect collapsed into one notification.
-        notifications.show({
-          id: 'header-load-failed',
-          title: t('header.loadFailedTitle'),
-          message: describeError(error, t('header.loadFailed')),
-          color: 'red',
-        });
-        return;
-      }
+    // Auto-select when nothing is selected, or when the stored id no longer
+    // matches a known instance (stale localStorage would leave InstanceGuard
+    // stuck on the "no instance" empty state forever)
+    const isStale =
+      currentInstanceId && !instanceList.some((inst) => inst.id === currentInstanceId);
+    if ((!currentInstanceId || isStale) && instanceList.length > 0) {
+      setCurrentInstanceId(instanceList[0].id);
+    }
 
-      if (!currentUser) return;
+  }, [instanceList, currentInstanceId, setCurrentInstanceId, setInstances]);
 
-      // The account's own access list. Everyone may read their own, so a
-      // failure here is a fault rather than the ordinary answer - and it is
-      // the list usePermission reads a role out of, so absorbing it into an
-      // empty one takes away what someone may do and gives no reason for it
-      // (#165). The fallback stays as it was: usePermission drops back to
-      // user.role, which is empty for every non-super_admin, so nothing widens
-      // - it narrows, quietly. Now it says so.
-      try {
-        const userInstData = await instanceApi.getUserInstances(currentUser.id);
-        setUserInstances(userInstData);
-      } catch (error) {
-        notifications.show({
-          id: 'header-access-load-failed',
-          title: t('header.accessLoadFailedTitle'),
-          message: describeError(error, t('header.accessLoadFailed')),
-          color: 'red',
-        });
-      }
+  useEffect(() => {
+    if (!instancesError) return;
+    // A header with no instance selector and no reason given for it reads as
+    // "this account has no gateways", which is a different situation entirely.
+    // describeError surfaces the backend's own reason, the way the instances
+    // page already does for this same call; a stable id keeps repeats
+    // collapsed into one notification.
+    //
+    // On the query's error rather than on one read of its own, so a background
+    // refetch that fails says so too: the dashboard keeps running on the last
+    // good list, deliberately, and this is what tells the operator that list
+    // is no longer verified (#165).
+    notifications.show({
+      id: 'header-load-failed',
+      title: t('header.loadFailedTitle'),
+      message: describeError(instancesError, t('header.loadFailed')),
+      color: 'red',
+    });
+  }, [instancesError, t]);
 
-      // Deliberately quiet, and deliberately not folded into either report.
-      // /api/v1/teams is admin-only and answers 403 to a developer, which is
-      // the ordinary case rather than a fault: they get no team switcher and
-      // that is all. Announcing it would put a red toast on every page of
-      // every non-admin session, blaming reads that worked.
-      try {
-        const teamData = await teamApi.list();
-        setTeams(teamData);
-      } catch {
-        // Leaves the team switcher unrendered, as before.
-      }
-    };
-    loadHeaderData();
-  }, [currentUser, currentInstanceId, setCurrentInstanceId, setInstances, setUserInstances, t]);
+  // The account's own access list. Everyone may read their own, so a failure
+  // here is a fault rather than the ordinary answer - and it is the list
+  // usePermission reads a role out of, so absorbing it into an empty one takes
+  // away what someone may do and gives no reason for it (#165). The fallback
+  // stays as it was: usePermission drops back to user.role, which is empty for
+  // every non-super_admin, so nothing widens - it narrows, quietly.
+  const { data: accessList, error: accessError } = useQuery(
+    userInstancesQueryOptions(currentUser?.id)
+  );
+
+  useEffect(() => {
+    if (!accessList) return;
+    setUserInstances(accessList);
+
+  }, [accessList, setUserInstances]);
+
+  useEffect(() => {
+    if (!accessError) return;
+    notifications.show({
+      id: 'header-access-load-failed',
+      title: t('header.accessLoadFailedTitle'),
+      message: describeError(accessError, t('header.accessLoadFailed')),
+      color: 'red',
+    });
+  }, [accessError, t]);
+
+  // Deliberately quiet, and deliberately not reported like the two above.
+  // /api/v1/teams is admin-only and answers 403 to a developer, which is the
+  // ordinary case rather than a fault: they get no team switcher and that is
+  // all. Announcing it would put a red toast on every page of every non-admin
+  // session, blaming reads that worked.
+  const { data: teams = [] } = useQuery({
+    ...teamsQueryOptions(currentUser?.id),
+    enabled: !!currentUser,
+  });
 
   // Identity of the list rather than the array, which is a new reference on
   // every load even when nothing changed.
