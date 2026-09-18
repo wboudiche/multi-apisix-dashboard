@@ -47,6 +47,7 @@ const WARNING_MESSAGES = {
   service_lookup_failed: 'listWarning.service_lookup_failed',
   service_upstream_unresolved: 'listWarning.service_upstream_unresolved',
   route_count_unresolved: 'listWarning.route_count_unresolved',
+  upstream_dependants_unresolved: 'listWarning.upstream_dependants_unresolved',
 } as const;
 
 /**
@@ -64,6 +65,9 @@ const WARNING_TITLES: Partial<
   // Not that one: it names upstreams, which this is not about. Every service
   // is on screen either way, so "incomplete results" would claim too much.
   route_count_unresolved: 'listWarning.detailsUnresolved',
+  // The same, from the other end: every upstream is on screen, only what
+  // depends on them is missing.
+  upstream_dependants_unresolved: 'listWarning.detailsUnresolved',
 };
 
 export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {

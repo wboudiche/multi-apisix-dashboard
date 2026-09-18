@@ -123,14 +123,13 @@ func fetchServiceRouteCounts(ctx context.Context, instance *models.Instance) (se
 	}
 
 	stream, streamErr := fetchAdminList(ctx, instance, "stream_routes")
-	streamCounted := streamErr == nil
-	if errors.Is(streamErr, errNoSuchCollection) {
+	if isNoSuchCollection(streamErr) {
 		// A gateway with stream_proxy off refuses the collection outright.
 		// There are no stream routes on it, which is a count, not a failure -
 		// and the alternative was a warning on every service page, forever.
-		streamCounted = true
-		streamErr = nil
+		stream, streamErr = emptyCollection, nil
 	}
+	streamCounted := streamErr == nil
 	if streamErr != nil {
 		log.Printf("[instance %s] could not list stream routes, the service list will say so: %v",
 			instance.ID, streamErr)
@@ -148,6 +147,17 @@ func fetchServiceRouteCounts(ctx context.Context, instance *models.Instance) (se
 // errNoSuchCollection marks a gateway that does not serve a collection at all,
 // as opposed to one that failed to answer for it.
 var errNoSuchCollection = errors.New("collection not served")
+
+// isNoSuchCollection reports the refusal a gateway gives for a collection it
+// does not serve - stream routes on one without stream_proxy, say.
+func isNoSuchCollection(err error) bool {
+	return errors.Is(err, errNoSuchCollection)
+}
+
+// emptyCollection stands in for a collection the gateway does not serve. It is
+// the shape APISIX answers an empty one with, so it counts as none rather than
+// reading as a listing that could not be had.
+var emptyCollection = []byte(`{"list":[]}`)
 
 // fetchAdminList reads one admin collection whole, within its own deadline.
 func fetchAdminList(ctx context.Context, instance *models.Instance, resource string) ([]byte, error) {
@@ -205,11 +215,21 @@ func parseServiceRouteCounts(routes, streamRoutes []byte) (serviceRouteCounts, b
 
 // countServiceIDs adds one row's worth to the count of every service named in a
 // listing.
+func countServiceIDs(body []byte, counts serviceRouteCounts, add func(*routeCount)) error {
+	return countReferences(body, "service_id", func(id string) {
+		count := counts[id]
+		add(&count)
+		counts[id] = count
+	})
+}
+
+// countReferences calls add with the id each row of a listing names in field,
+// once per row naming one.
 //
 // `list` is decoded loosely for the same reason parseServiceUpstreams does it:
 // APISIX answers an empty collection with an object rather than an array, and
 // insisting on an array would turn "this gateway has no routes" into an error.
-func countServiceIDs(body []byte, counts serviceRouteCounts, add func(*routeCount)) error {
+func countReferences(body []byte, field string, add func(id string)) error {
 	if len(body) == 0 {
 		return nil
 	}
@@ -241,14 +261,12 @@ func countServiceIDs(body []byte, counts serviceRouteCounts, add func(*routeCoun
 			continue
 		}
 		// idField normalises the numeric ids APISIX keeps as numbers, so a
-		// service created with one is not counted as a second service.
-		serviceID := idField(value, "service_id")
-		if serviceID == "" {
+		// resource created with one is not counted as a second resource.
+		id := idField(value, field)
+		if id == "" {
 			continue
 		}
-		count := counts[serviceID]
-		add(&count)
-		counts[serviceID] = count
+		add(id)
 	}
 	return nil
 }

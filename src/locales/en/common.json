@@ -822,7 +822,13 @@
     "enabled": "Enabled"
   },
   "upstreams": {
-    "singular": "Upstream"
+    "nodes": "Nodes",
+    "routesWithCount": "Routes: {{count}}",
+    "servicesWithCount": "Services: {{count}}",
+    "singular": "Upstream",
+    "streamRoutesWithCount": "Stream routes: {{count}}",
+    "usedBy": "Used by",
+    "viaDiscovery": "via {{discovery}}"
   },
   "users": {
     "accessDeniedTitle": "Access Denied",
@@ -985,7 +991,8 @@
     "service_upstream_unresolved": "The service list could not be read, so routes that reach their upstream through a service show none below.",
     "title": "Incomplete results",
     "unknown": "Some results may be missing.",
-    "unresolvedTitle": "Upstreams not resolved"
+    "unresolvedTitle": "Upstreams not resolved",
+    "upstream_dependants_unresolved": "What depends on each upstream could not be counted in full. Every upstream is listed; some of what depends on them may not be shown."
   },
   "pageError": {
     "retry": "Retry",

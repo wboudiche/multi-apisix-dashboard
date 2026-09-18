@@ -564,7 +564,13 @@
     "enabled": "Habilitado"
   },
   "upstreams": {
-    "singular": "Upstream"
+    "nodes": "Nodos",
+    "routesWithCount": "Rutas: {{count}}",
+    "servicesWithCount": "Servicios: {{count}}",
+    "singular": "Upstream",
+    "streamRoutesWithCount": "Rutas de flujo: {{count}}",
+    "usedBy": "Usado por",
+    "viaDiscovery": "vía {{discovery}}"
   },
   "users": {
     "accessDenied": "Acceso denegado",
@@ -605,6 +611,7 @@
     "route_count_unresolved": "No se ha podido contar por completo lo que depende de cada servicio. Todos los servicios aparecen en la lista; puede que no se muestre parte de lo que depende de ellos.",
     "service_lookup_failed": "No se pudo leer la lista de servicios, por lo que faltan en estos resultados las rutas que alcanzan un upstream a través de un servicio.",
     "title": "Resultados incompletos",
-    "unknown": "Es posible que falten algunos resultados."
+    "unknown": "Es posible que falten algunos resultados.",
+    "upstream_dependants_unresolved": "No se ha podido contar por completo lo que depende de cada upstream. Todos los upstreams aparecen en la lista; puede que no se muestre parte de lo que depende de ellos."
   }
 }
