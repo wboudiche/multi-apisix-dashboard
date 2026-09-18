@@ -575,7 +575,8 @@
     "assignmentsUnreadable": "无法读取",
     "assignmentsUnreadableTitle": "分配信息不可用",
     "assignmentsUnreadableForm": "无法读取该用户当前的分配，因此下面的角色可能不完整。保存只会写入你在此处选择的角色，不会移除任何角色。",
-    "assignmentsUnreadableBody": "列出的账号中有 {{count}} 个无法读取实例分配，因此此表无法说明它们的权限。原因：{{reason}}"
+    "assignmentsUnreadableBody": "列出的账号中有 {{count}} 个无法读取实例分配，因此此表无法说明它们的权限。原因：{{reason}}",
+    "clearRole": "清除角色"
   },
   "listWarning": {
     "title": "结果不完整",

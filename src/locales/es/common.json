@@ -575,7 +575,8 @@
     "assignmentsUnreadable": "No se pudo leer",
     "assignmentsUnreadableTitle": "Asignaciones no disponibles",
     "assignmentsUnreadableForm": "No se pudieron leer las asignaciones actuales de este usuario, por lo que los roles de abajo pueden estar incompletos. Al guardar solo se escriben los roles que elijas aquí; no se elimina ninguno.",
-    "assignmentsUnreadableBody": "No se pudieron leer las asignaciones de instancia de {{count}} de las cuentas listadas, así que esta tabla no puede decir qué pueden hacer. Motivo: {{reason}}"
+    "assignmentsUnreadableBody": "No se pudieron leer las asignaciones de instancia de {{count}} de las cuentas listadas, así que esta tabla no puede decir qué pueden hacer. Motivo: {{reason}}",
+    "clearRole": "Quitar el rol"
   },
   "listWarning": {
     "title": "Resultados incompletos",

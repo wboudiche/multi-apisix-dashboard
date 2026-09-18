@@ -838,7 +838,8 @@
     "assignmentsUnreadable": "Could not be read",
     "assignmentsUnreadableTitle": "Assignments unavailable",
     "assignmentsUnreadableForm": "This user’s current assignments could not be read, so the roles below may be incomplete. Saving writes only the roles you pick here; it does not remove any.",
-    "assignmentsUnreadableBody": "Instance assignments could not be read for {{count}} of the accounts listed, so this table cannot say what they may do. Reason: {{reason}}"
+    "assignmentsUnreadableBody": "Instance assignments could not be read for {{count}} of the accounts listed, so this table cannot say what they may do. Reason: {{reason}}",
+    "clearRole": "Clear role"
   },
   "header": {
     "accountRole": "Role: {{role}}",
