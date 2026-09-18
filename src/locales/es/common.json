@@ -36,7 +36,9 @@
     "loadFailedTitle": "Instancias no disponibles",
     "loadFailed": "No se pudo cargar la lista de instancias.",
     "accessLoadFailedTitle": "Lista de accesos no disponible",
-    "accessLoadFailed": "No se pudo leer qué instancias puede usar esta cuenta, así que aquí su rol es desconocido."
+    "accessLoadFailed": "No se pudo leer qué instancias puede usar esta cuenta, así que aquí su rol es desconocido.",
+    "build": "Compilación {{sha}} ({{branch}}), {{date}}",
+    "buildUnknown": "Compilación de un commit desconocido, {{date}}"
   },
   "instanceGuard": {
     "noInstances": {

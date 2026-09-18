@@ -44,6 +44,7 @@ import {
 } from '@/apis/queries';
 import { type Team } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
+import { BuildIdentity } from '@/components/BuildIdentity';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
@@ -379,6 +380,16 @@ export const Header: FC<HeaderProps> = (props) => {
                   })}
                 </Menu.Item>
               )}
+              <Menu.Divider />
+              {/* Which build this page is, where someone reporting a bug can
+                  read it without an account that may enter Settings (#237).
+                  A Label, not an Item: an Item takes a place in the menu's
+                  keyboard order as something Enter does nothing to, closes the
+                  menu when clicked, and cancels mousedown - so the sha could
+                  not be selected to be pasted anywhere. */}
+              <Menu.Label>
+                <BuildIdentity />
+              </Menu.Label>
               <Menu.Divider />
               <Menu.Item color="red" onClick={handleLogout}>
                 {t('header.logout')}

@@ -36,7 +36,9 @@
     "loadFailedTitle": "实例不可用",
     "loadFailed": "无法加载实例列表。",
     "accessLoadFailedTitle": "访问列表不可用",
-    "accessLoadFailed": "无法读取该账号可使用哪些实例，因此此处无法确定其角色。"
+    "accessLoadFailed": "无法读取该账号可使用哪些实例，因此此处无法确定其角色。",
+    "build": "构建 {{sha}}（{{branch}}），{{date}}",
+    "buildUnknown": "未知提交的构建，{{date}}"
   },
   "instanceGuard": {
     "noInstances": {

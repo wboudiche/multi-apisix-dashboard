@@ -36,7 +36,9 @@
     "loadFailedTitle": "Örnekler kullanılamıyor",
     "loadFailed": "Örnek listesi yüklenemedi.",
     "accessLoadFailedTitle": "Erişim listesi kullanılamıyor",
-    "accessLoadFailed": "Bu hesabın hangi örnekleri kullanabileceği okunamadı, bu nedenle rolü burada bilinmiyor."
+    "accessLoadFailed": "Bu hesabın hangi örnekleri kullanabileceği okunamadı, bu nedenle rolü burada bilinmiyor.",
+    "build": "Yapı {{sha}} ({{branch}}), {{date}}",
+    "buildUnknown": "Bilinmeyen bir commit’in yapısı, {{date}}"
   },
   "instanceGuard": {
     "noInstances": {

@@ -103,7 +103,9 @@ pnpm dev          # vite dev server :5173
 pnpm build        # tsc -b && vite build
 pnpm lint         # eslint --max-warnings=0 (zero-warning policy)
 pnpm lint:fix     # eslint --fix
-pnpm e2e          # playwright test (requires the docker stack up)
+pnpm e2e          # playwright test (requires the docker stack, the Go backend
+                  # on :8086 and the dev server on :5173 — the suite targets
+                  # the dev server, not the bundle inside the APISIX image)
 ```
 
 Run a single E2E spec: `pnpm e2e e2e/tests/multi-instance.spec.ts` (add `--headed`, `--debug`, or `--ui` as needed).

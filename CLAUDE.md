@@ -54,6 +54,15 @@ pnpm install --frozen-lockfile && pnpm dev              # frontend :5173
 
 Open <http://localhost:5173/ui>, log in with `admin / admin`.
 
+**The dashboard on `:9180` is not the working tree.** It is the bundle baked
+into the APISIX image, only as fresh as the last `docker compose -f
+e2e/server/docker-compose.yml build`. A months-old page there looks exactly
+like a current one, so check the build line in the account menu before
+believing a bug seen on it (#237). E2E runs default to the dev server on
+`:5173`. Open `:9180` in a browser to check what the image serves; the suite
+itself seeds through the dashboard's own API and cannot be pointed at APISIX
+directly.
+
 The dev stack uses the host's etcd via `apisix-docker-etcd-1` (or whichever container publishes `:2379`). APISIX's own etcd (`server-etcd-1`) is **not** exposed on the host and is only reachable from inside the `server_apisix` docker network.
 
 ## Architecture
@@ -198,7 +207,7 @@ Specs in `e2e/tests/*.spec.ts`. POM pattern: each resource has `e2e/pom/<resourc
 
 Multi-tenant tests of note: `multi-instance.spec.ts`, `route-test.spec.ts`, `routes.reassign-team.spec.ts`, `routes.request-override.spec.ts`, `routes.proxy-e2e.spec.ts`. Some need a second APISIX (see `e2e/server/apisix_conf_2.yml`) or the Go backend running on `:8086`.
 
-Default target is `http://localhost:9180/ui/` (upstream behavior, still respected for the auth bootstrap fixture); override via `E2E_TARGET_URL`.
+Default target is the dev server, `http://localhost:5173/ui/`; override via `E2E_TARGET_URL` (the image bundle lives at `http://localhost:9180/ui/`).
 
 ## Conventions enforced by tooling
 

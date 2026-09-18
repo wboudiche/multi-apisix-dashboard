@@ -36,7 +36,9 @@
     "loadFailedTitle": "Instanzen nicht verfügbar",
     "loadFailed": "Die Instanzliste konnte nicht geladen werden.",
     "accessLoadFailedTitle": "Zugriffsliste nicht verfügbar",
-    "accessLoadFailed": "Es konnte nicht gelesen werden, welche Instanzen dieses Konto nutzen darf; seine Rolle ist hier daher unbekannt."
+    "accessLoadFailed": "Es konnte nicht gelesen werden, welche Instanzen dieses Konto nutzen darf; seine Rolle ist hier daher unbekannt.",
+    "build": "Build {{sha}} ({{branch}}), {{date}}",
+    "buildUnknown": "Build eines unbekannten Commits, {{date}}"
   },
   "instanceGuard": {
     "noInstances": {
