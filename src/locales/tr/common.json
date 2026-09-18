@@ -161,6 +161,12 @@
       "configId": "Plugin Config ID",
       "editPlugin": "Plugin Düzenle",
       "label": "Plugin'ler",
+      "orderedByPriority": "Bu ağ geçidinin çalıştırdığı sırayla listelenmiştir.",
+      "priority": "Çalışma önceliği",
+      "priorityCustom": "öncelik {{priority}}, burada ayarlandı",
+      "priorityDefault": "öncelik {{priority}}",
+      "priorityHelp": "Yüksek olan önce çalışır. Bu ağ geçidinin değerini kullanmak için boş bırakın: {{priority}}.",
+      "priorityHelpUnknown": "Yüksek olan önce çalışır. Bu ağ geçidi bu eklentinin varsayılan değerini bildirmiyor.",
       "searchForSelectedPlugins": "Seçili Plugin'lerde Ara",
       "selectPlugins": {
         "title": "Plugin Seç"

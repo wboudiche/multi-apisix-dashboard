@@ -62,12 +62,31 @@ export const PluginCardListSearch = (props: PluginCardListSearchProps) => {
 
 type OptionProps = Pick<
   PluginCardProps,
-  'onAdd' | 'onEdit' | 'onDelete' | 'onView' | 'mode' | 'description' | 'config'
+  | 'onAdd'
+  | 'onEdit'
+  | 'onDelete'
+  | 'onView'
+  | 'mode'
+  | 'description'
+  | 'config'
+  | 'priority'
+  | 'priorityOverridden'
 > & {
   name: string;
 };
 const Option = (props: OptionProps) => {
-  const { mode, name, description, config, onAdd, onEdit, onDelete, onView } = props;
+  const {
+    mode,
+    name,
+    description,
+    config,
+    priority,
+    priorityOverridden,
+    onAdd,
+    onEdit,
+    onDelete,
+    onView,
+  } = props;
   return (
     <Combobox.Option key={name} value={name} p={0}>
       <PluginCard
@@ -75,6 +94,8 @@ const Option = (props: OptionProps) => {
         name={name}
         description={description}
         config={config}
+        priority={priority}
+        priorityOverridden={priorityOverridden}
         onAdd={() => onAdd?.(name)}
         onEdit={() => onEdit?.(name)}
         onDelete={() => onDelete?.(name)}
@@ -104,56 +125,77 @@ export type PluginCardListProps = Omit<OptionProps, 'name' | 'description' | 'co
     plugins: string[];
     descriptions?: Record<string, string>;
     configs?: Record<string, object>;
+    /**
+     * The priority each plugin will run at, and the names the route set one
+     * for. The list is shown in the order it is given: the caller decides it,
+     * because it is the caller that holds both halves of the answer (#48).
+     */
+    priorities?: Record<string, number | undefined>;
+    overridden?: Set<string>;
   };
 
 export const PluginCardList = (props: PluginCardListProps) => {
-  const { search = '', cols = 3, h, mah, plugins, descriptions, configs } = props;
+  const {
+    search = '',
+    cols = 3,
+    h,
+    mah,
+    plugins,
+    descriptions,
+    configs,
+    priorities,
+    overridden,
+  } = props;
   const { mode, onAdd, onEdit, onDelete, onView } = props;
   const { t } = useTranslation();
   const combobox = useVirtualizedCombobox();
   const optionsOb = useLocalObservable(() => ({
     search: '',
     plugins: [] as string[],
-    mode: 'add' as OptionProps['mode'],
     setSearch(search: string) {
       this.search = search.toLowerCase().trim();
     },
     setPlugins(plugins: string[]) {
       this.plugins = plugins;
     },
-    setMode(mode: PluginCardProps['mode']) {
-      this.mode = mode;
-    },
+    // Names only. What is known *about* each plugin is read at render time
+    // from the props: this store is created once, so its closure holds the
+    // props of the first render - and on that render the gateway's catalogue
+    // has not been handed down yet. The descriptions had the same staleness
+    // and it went unseen, because the card falls back to a built-in table
+    // when one is missing (#48).
     get list() {
-      const arr = !this.search
+      return !this.search
         ? this.plugins
         : this.plugins.filter((d) => d.toLowerCase().includes(this.search));
-      return arr.map((name) => ({
-        name,
-        mode: this.mode,
-        description: descriptions?.[name],
-        config: configs?.[name],
-        onAdd,
-        onEdit,
-        onDelete,
-        onView,
-      }));
     },
+  }));
+
+  const options: OptionProps[] = optionsOb.list.map((name) => ({
+    name,
+    mode,
+    description: descriptions?.[name],
+    config: configs?.[name],
+    priority: priorities?.[name],
+    priorityOverridden: overridden?.has(name),
+    onAdd,
+    onEdit,
+    onDelete,
+    onView,
   }));
 
   useEffect(() => optionsOb.setPlugins(plugins), [optionsOb, plugins]);
   useEffect(() => optionsOb.setSearch(search), [optionsOb, search]);
-  useEffect(() => optionsOb.setMode(mode), [optionsOb, mode]);
 
   return (
     <Combobox store={combobox}>
       <Combobox.Options mt="1em">
         <ScrollArea.Autosize h={h} mah={mah} type="scroll">
-          {!optionsOb.list.length ? (
+          {!options.length ? (
             <Combobox.Empty>{t('noData')}</Combobox.Empty>
           ) : (
             <SimpleGrid cols={cols}>
-              <Options list={optionsOb.list} />
+              <Options list={options} />
             </SimpleGrid>
           )}
         </ScrollArea.Autosize>

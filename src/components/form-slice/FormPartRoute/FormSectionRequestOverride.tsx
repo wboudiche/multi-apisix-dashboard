@@ -35,6 +35,15 @@ import { FormSection } from '../FormSection';
 
 type HeaderRow = { key: string; value: string };
 
+/**
+ * The keys this section owns. Anything else in a proxy-rewrite config - a
+ * `_meta.priority` set from the Plugins step, or a field a newer APISIX
+ * accepts that this form has never heard of - is carried across rather than
+ * rebuilt, because this section rebuilds its own keys from scratch and would
+ * otherwise drop the rest without a word (#48).
+ */
+const MANAGED_KEYS = ['scheme', 'uri', 'regex_uri', 'host', 'method', 'headers'];
+
 type ProxyRewriteConfig = {
   scheme?: string;
   uri?: string;
@@ -176,7 +185,17 @@ export const FormSectionRequestOverride = () => {
       const currentPlugins = (getValues('plugins') || {}) as Record<string, unknown>;
       const config = buildConfig(newState);
       if (config) {
-        setValue('plugins', { ...currentPlugins, 'proxy-rewrite': config }, { shouldDirty: true });
+        // Cleared fields must disappear, so the managed keys come from the
+        // rebuild alone; the others are kept from what was there.
+        const current = (currentPlugins['proxy-rewrite'] || {}) as Record<string, unknown>;
+        const kept = Object.fromEntries(
+          Object.entries(current).filter(([key]) => !MANAGED_KEYS.includes(key))
+        );
+        setValue(
+          'plugins',
+          { ...currentPlugins, 'proxy-rewrite': { ...kept, ...config } },
+          { shouldDirty: true }
+        );
       } else {
         const rest = { ...currentPlugins };
         delete rest['proxy-rewrite'];

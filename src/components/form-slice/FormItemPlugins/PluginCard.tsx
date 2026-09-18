@@ -29,6 +29,13 @@ export type PluginCardProps = {
   mode: 'add' | 'edit' | 'view';
   description?: string;
   config?: object;
+  /**
+   * The priority this plugin will run at, and whether the route set it (#48).
+   * Undefined for a plugin the gateway does not list, whose place in the order
+   * nothing here knows.
+   */
+  priority?: number;
+  priorityOverridden?: boolean;
   onAdd?: (name: string) => void;
   onEdit?: (name: string) => void;
   onDelete?: (name: string) => void;
@@ -36,7 +43,18 @@ export type PluginCardProps = {
 };
 
 export const PluginCard = (props: PluginCardProps) => {
-  const { name, mode, description, config, onAdd, onEdit, onView, onDelete } = props;
+  const {
+    name,
+    mode,
+    description,
+    config,
+    priority,
+    priorityOverridden,
+    onAdd,
+    onEdit,
+    onView,
+    onDelete,
+  } = props;
   const { t } = useTranslation();
   const category = getPluginCategory(name);
   const categoryColor = CATEGORY_COLORS[category];
@@ -60,6 +78,26 @@ export const PluginCard = (props: PluginCardProps) => {
               >
                 {t(`form.plugins.category.${category}`)}
               </Badge>
+              {/* The number that decides what runs before what. Shown on the
+                  selected plugins only: in the add drawer it would be the
+                  gateway default for a plugin that is not on the route yet,
+                  which says nothing about this route (#48). */}
+              {priority !== undefined && mode !== 'add' && (
+                <Badge
+                  size="xs"
+                  variant={priorityOverridden ? 'filled' : 'outline'}
+                  color={priorityOverridden ? 'blue' : 'gray'}
+                  style={{ flexShrink: 0 }}
+                  data-testid={`plugin-priority-${name}`}
+                >
+                  {t(
+                    priorityOverridden
+                      ? 'form.plugins.priorityCustom'
+                      : 'form.plugins.priorityDefault',
+                    { priority }
+                  )}
+                </Badge>
+              )}
             </Group>
             {desc && (
               <Text size="xs" c="dimmed" lineClamp={1}>

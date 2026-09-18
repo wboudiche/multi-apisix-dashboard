@@ -19,6 +19,7 @@ import {
   Group,
   InputWrapper,
   type InputWrapperProps,
+  Text,
 } from '@mantine/core';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useAtomValue } from 'jotai';
@@ -41,6 +42,8 @@ import {
 import { genControllerProps } from '@/components/form/util';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
+import type { PluginConfigValue } from '@/utils/plugin-priority';
+import { effectivePriority, inExecutionOrder } from '@/utils/plugin-priority';
 
 import type { PluginCardProps } from './PluginCard';
 import { PluginCardList, PluginCardListSearch } from './PluginCardList';
@@ -94,8 +97,49 @@ export const FormItemPlugins = <T extends FieldValues>(
         : names;
       this.pluginSchemaObj = new Map(Object.entries(originObj));
     },
+    // In the order the gateway will run them, not the order they were added:
+    // a route's `plugins` is a JSON object and has no order, so a list by
+    // insertion said nothing about what happens to a request (#48).
     get selected() {
-      return Array.from(this.__map.keys());
+      return inExecutionOrder(
+        Array.from(this.__map.keys()),
+        this.configsMap as Record<string, PluginConfigValue>,
+        this.priorityDefaults
+      );
+    },
+    // What the gateway says each plugin runs at by default. It serves this
+    // beside the schemas, so the page does not have to carry a table of its
+    // own - one that would drift with every APISIX release.
+    get priorityDefaults(): Record<string, number | undefined> {
+      const result: Record<string, number | undefined> = {};
+      for (const [name, schemaData] of this.pluginSchemaObj.entries()) {
+        const priority = (schemaData as { priority?: unknown })?.priority;
+        if (typeof priority === 'number') result[name] = priority;
+      }
+      return result;
+    },
+    get priorities(): Record<string, number | undefined> {
+      const result: Record<string, number | undefined> = {};
+      for (const name of this.__map.keys()) {
+        result[name] = effectivePriority(
+          this.__map.get(name) as PluginConfigValue,
+          this.priorityDefaults[name]
+        );
+      }
+      return result;
+    },
+    // The ones this route sets a priority for, so the badge can say the number
+    // is a decision rather than the gateway's own.
+    get overridden(): Set<string> {
+      const names = new Set<string>();
+      for (const [name, config] of this.__map.entries()) {
+        const own = (config as PluginConfigValue)?._meta?.priority;
+        // Number.isFinite, like effectivePriority: a NaN left in a stored
+        // config would otherwise badge as "set here" while the number shown
+        // beside it came from the gateway.
+        if (typeof own === 'number' && Number.isFinite(own)) names.add(name);
+      }
+      return names;
     },
     get unSelected() {
       return difference(this.allPluginNames, this.selected);
@@ -198,6 +242,14 @@ export const FormItemPlugins = <T extends FieldValues>(
             />
           </Group>
         )}
+        {/* Said out loud: the cards moved from insertion order to execution
+            order, and a list that reorders itself without saying why looks
+            like a bug (#48). One plugin has no order to speak of. */}
+        {pluginsOb.selected.length > 1 && (
+          <Text size="xs" c="dimmed" mt="xs">
+            {t('form.plugins.orderedByPriority')}
+          </Text>
+        )}
         <PluginCardList
           mode={isView ? 'view' : 'edit'}
           placeholder={t('form.plugins.searchForSelectedPlugins')}
@@ -206,11 +258,15 @@ export const FormItemPlugins = <T extends FieldValues>(
           plugins={pluginsOb.selected}
           descriptions={pluginsOb.descriptionsMap}
           configs={pluginsOb.configsMap}
+          priorities={pluginsOb.priorities}
+          overridden={pluginsOb.overridden}
           onDelete={pluginsOb.delete}
           onView={(name) => pluginsOb.on('view', name)}
           onEdit={(name) => pluginsOb.on('edit', name)}
         />
         <PluginEditorDrawer
+          showPriority
+          defaultPriority={pluginsOb.priorityDefaults[pluginsOb.curPlugin.name]}
           mode={isView ? 'view' : pluginsOb.mode}
           schema={toJS(pluginsOb.curPluginSchema)}
           opened={pluginsOb.editorOpened}

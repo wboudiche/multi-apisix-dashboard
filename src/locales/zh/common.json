@@ -161,6 +161,12 @@
       "configId": "插件配置ID",
       "editPlugin": "编辑插件",
       "label": "插件",
+      "orderedByPriority": "按本网关执行的顺序排列。",
+      "priority": "执行优先级",
+      "priorityCustom": "优先级 {{priority}}，此处设置",
+      "priorityDefault": "优先级 {{priority}}",
+      "priorityHelp": "数值越大越先执行。留空则使用本网关的取值：{{priority}}。",
+      "priorityHelpUnknown": "数值越大越先执行。本网关未说明该插件的默认取值。",
       "searchForSelectedPlugins": "搜索所选插件",
       "selectPlugins": {
         "title": "选择插件"

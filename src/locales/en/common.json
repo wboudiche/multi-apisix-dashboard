@@ -268,7 +268,13 @@
         "form": "Form",
         "json": "JSON"
       },
-      "noConfigs": "No plugin configs on this gateway yet"
+      "noConfigs": "No plugin configs on this gateway yet",
+      "orderedByPriority": "Listed in the order this gateway runs them.",
+      "priority": "Execution priority",
+      "priorityCustom": "priority {{priority}}, set here",
+      "priorityDefault": "priority {{priority}}",
+      "priorityHelp": "Higher runs first. Leave empty to run at what this gateway uses: {{priority}}.",
+      "priorityHelpUnknown": "Higher runs first. This gateway does not say what this plugin runs at by default."
     },
     "protos": {
       "content": "Content",

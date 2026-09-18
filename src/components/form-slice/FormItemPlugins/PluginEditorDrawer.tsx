@@ -21,6 +21,7 @@ import {
   Collapse,
   Drawer,
   Group,
+  NumberInput,
   ScrollArea,
   SegmentedControl,
   Stack,
@@ -31,10 +32,12 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { isEmpty, isNil } from 'rambdax';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { FormItemEditor } from '@/components/form/Editor';
+import type { PluginConfigValue } from '@/utils/plugin-priority';
+import { withPriority } from '@/utils/plugin-priority';
 import IconChevronRight from '~icons/material-symbols/chevron-right';
 import IconExpandMore from '~icons/material-symbols/expand-more';
 
@@ -54,6 +57,22 @@ export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
   onSave: (props: PluginConfig) => void;
   plugin: PluginConfig;
   schema?: object;
+  /**
+   * Whether to offer the execution priority at all.
+   *
+   * This drawer also edits plugin metadata, which is a plugin's own settings
+   * on the gateway and has no `_meta` and no order to speak of: the field
+   * would have written `_meta.priority` into a body validated against the
+   * metadata schema. Opt-in, rather than inferred from defaultPriority, which
+   * is absent precisely when the page should still say it does not know (#48).
+   */
+  showPriority?: boolean;
+  /**
+   * What the gateway says this plugin runs at when the route says nothing
+   * (#48). Undefined for a plugin it does not list, and the field says so
+   * rather than offering a number nobody here knows.
+   */
+  defaultPriority?: number;
 };
 
 const isEmptyConfig = (p: object): boolean => isEmpty(p) || isNil(p);
@@ -170,7 +189,16 @@ const SchemaHints = ({ schema, name }: { schema: SchemaObj; name: string }) => {
 };
 
 export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
-  const { opened, onSave, onClose, plugin, mode, schema } = props;
+  const {
+    opened,
+    onSave,
+    onClose,
+    plugin,
+    mode,
+    schema,
+    showPriority,
+    defaultPriority,
+  } = props;
   const { name, config } = plugin;
   const { t } = useTranslation();
   const schemaObj = schema as SchemaObj | undefined;
@@ -230,6 +258,43 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     [editorMode, formValue, methods]
   );
 
+  // The priority is edited in whichever half is on screen, rather than kept
+  // beside it and merged on save: two places holding it would let a number
+  // typed in the JSON be overwritten by a field that never saw it (#48).
+  // useWatch rather than methods.watch: the repo's way of subscribing to a
+  // field, and the one the React Compiler can follow.
+  const configJson = useWatch({ control: methods.control, name: 'config' });
+  // Read while rendering rather than memoised: it is one parse of a small
+  // object, and useMemo over a react-hook-form watch is a subscription the
+  // compiler cannot follow.
+  const editedConfig = ((): PluginConfigValue | undefined => {
+    if (editorMode === 'form') return formValue as PluginConfigValue;
+    try {
+      const parsed: unknown = JSON.parse(configJson);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as PluginConfigValue)
+        : undefined;
+    } catch {
+      // Half-typed JSON. The field goes quiet rather than guessing.
+      return undefined;
+    }
+  })();
+
+  const priority = editedConfig?._meta?.priority;
+
+  const setPriority = useCallback(
+    (next: number | undefined) => {
+      if (!editedConfig) return;
+      const applied = withPriority(editedConfig, next);
+      if (editorMode === 'form') {
+        setFormValue(applied);
+      } else {
+        methods.setValue('config', JSON.stringify(applied, null, 2));
+      }
+    },
+    [editedConfig, editorMode, methods]
+  );
+
   const handleSave = useCallback(() => {
     if (editorMode === 'form') {
       onSave({ name, config: formValue });
@@ -273,6 +338,37 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
         <Text size="sm" c="dimmed" mb="sm">
           {desc}
         </Text>
+      )}
+
+      {showPriority && (
+      <NumberInput
+        label={t('form.plugins.priority')}
+        description={
+          defaultPriority === undefined
+            ? t('form.plugins.priorityHelpUnknown')
+            : t('form.plugins.priorityHelp', { priority: defaultPriority })
+        }
+        placeholder={
+          defaultPriority === undefined ? undefined : String(defaultPriority)
+        }
+        value={typeof priority === 'number' ? priority : ''}
+        onChange={(value) => {
+          if (value === '' || value === null) {
+            setPriority(undefined);
+            return;
+          }
+          // Mantine hands back a number once the input parses, and an empty
+          // string until then. The guard is for anything else it might give:
+          // a config is better left alone than handed a NaN, which serialises
+          // to null and is refused by the Admin API.
+          const parsed = typeof value === 'number' ? value : Number(value);
+          if (Number.isFinite(parsed)) setPriority(parsed);
+        }}
+        disabled={mode === 'view' || !editedConfig}
+        allowDecimal={false}
+        mb="sm"
+        data-testid="plugin-priority-input"
+      />
       )}
 
       {/* Form / JSON toggle */}
