@@ -264,6 +264,12 @@
     "streamRoutes": {
       "protocol": {
         "conf": "Configuración",
+        "confExample": "Insertar un ejemplo",
+        "confExampleHint": "Sustituye lo que haya en el campo. La pasarela sigue decidiendo qué acepta.",
+        "confHelp": {
+          "dubbo": "El xRPC de dubbo de APISIX declara un esquema vacío: no hay nada documentado que poner aquí.",
+          "redis": "El xRPC de redis de APISIX inyecta fallos: una lista con los comandos que retrasar, opcionalmente una clave y el retraso en segundos."
+        },
         "custom": "Protocolo personalizado",
         "customName": "Nombre del protocolo personalizado",
         "hint": "Para xRPC, el marco de APISIX para protocolos de capa de aplicación como Redis y Dubbo. Sin relación con el transporte TCP/UDP/TLS.",

@@ -264,6 +264,12 @@
     "streamRoutes": {
       "protocol": {
         "conf": "Config",
+        "confExample": "Bir örnek ekle",
+        "confExampleHint": "Alandaki içeriğin yerini alır. Neyin kabul edileceğine yine ağ geçidi karar verir.",
+        "confHelp": {
+          "dubbo": "APISIX’in dubbo xRPC’si boş bir şema tanımlar: buraya konacak belgelenmiş bir şey yok.",
+          "redis": "APISIX’in redis xRPC’si hata enjekte eder: geciktirilecek komutları, isteğe bağlı bir anahtarı ve saniye cinsinden gecikmeyi içeren bir liste."
+        },
         "custom": "Özel protokol",
         "customName": "Özel protokol adı",
         "hint": "Redis ve Dubbo gibi uygulama katmanı protokolleri için APISIX’in xRPC çerçevesi. TCP/UDP/TLS taşımasıyla ilgisi yoktur.",

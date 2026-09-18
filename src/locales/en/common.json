@@ -441,6 +441,12 @@
       "duplicateEntry": "{{conditions}}",
       "protocol": {
         "conf": "Conf",
+        "confExample": "Insert an example",
+        "confExampleHint": "Replaces what is in the field. The gateway still decides what it accepts.",
+        "confHelp": {
+          "dubbo": "APISIX's dubbo xRPC declares an empty schema: there is nothing documented to put here.",
+          "redis": "APISIX's redis xRPC injects faults: a list naming the commands to delay, optionally a key, and the delay in seconds."
+        },
         "custom": "Custom protocol",
         "customName": "Custom protocol name",
         "hint": "For xRPC, APISIX’s framework for application-layer protocols such as Redis and Dubbo. Unrelated to the TCP/UDP/TLS transport.",

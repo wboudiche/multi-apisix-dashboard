@@ -191,3 +191,69 @@ test('saves a route with no protocol, which is the ordinary case', async ({ page
   expect(saved).toBeDefined();
   expect(saved?.protocol?.name).toBeUndefined();
 });
+
+test('says what conf is for, and offers something to start from', async ({ page }) => {
+  await streamRoutesPom.toAdd(page);
+  await streamRoutesPom.isAddPage(page);
+
+  const protocol = page.getByRole('textbox', { name: 'Protocol Name', exact: true });
+  const example = page.getByTestId('protocol-conf-example');
+
+  // Nothing to say until a protocol is named: conf is protocol-specific, and
+  // without one there is no protocol to be specific about.
+  await expect(example).toBeHidden();
+
+  await protocol.click();
+  await page.getByRole('option', { name: 'redis', exact: true }).click();
+  await expect(page.getByText('injects faults')).toBeVisible();
+
+  await example.click();
+  // Read from the Conf field itself, not from the page: the section has a
+  // second JSON field, Logger, and an example landing in that one would look
+  // the same from here.
+  const conf = page.getByRole('textbox', { name: 'Conf', exact: true });
+  await expect(conf).toHaveValue(/"commands"/);
+  await expect(conf).toHaveValue(/"delay"/);
+
+  // dubbo's xRPC declares an empty schema, so there is nothing to insert - and
+  // saying so beats an empty object that looks like a start.
+  await protocol.click();
+  await page.getByRole('option', { name: 'dubbo', exact: true }).click();
+  await expect(page.getByText('declares an empty schema')).toBeVisible();
+  await expect(example).toBeHidden();
+
+  // And a protocol this dashboard has never heard of gets no example rather
+  // than another protocol's.
+  await protocol.click();
+  await page.getByRole('option', { name: 'Custom protocol', exact: true }).click();
+  await page.getByLabel('Custom protocol name').fill('mqtt');
+  await expect(example).toBeHidden();
+});
+
+test('sends the conf that was typed, rather than an empty object', async ({ page }) => {
+  // The form parses what it submits against its own schema, and a `conf`
+  // declared as an empty object strips every key on the way through: the
+  // example went into the field, the operator saved, and the gateway received
+  // `{}` without a word (#141).
+  const serverAddr = `${RUN_NET}31`;
+  await streamRoutesPom.toAdd(page);
+  await streamRoutesPom.isAddPage(page);
+
+  await uiSelectStreamRouteUpstream(page, upstreamName);
+  await uiFillStreamRouteAllFields(page, {
+    server_addr: serverAddr,
+    server_port: 9103,
+    protocol: { name: 'redis' },
+  });
+  await page.getByTestId('protocol-conf-example').click();
+
+  const sent = page.waitForRequest(
+    (r) => r.url().includes('/stream_routes') && r.method() === 'POST'
+  );
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  const body = JSON.parse((await sent).postData() ?? '{}') as {
+    protocol?: { conf?: { faults?: { commands?: string[]; delay?: number }[] } };
+  };
+  expect(body.protocol?.conf?.faults?.[0]?.commands).toEqual(['GET', 'MGET']);
+  expect(body.protocol?.conf?.faults?.[0]?.delay).toBe(5);
+});

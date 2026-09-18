@@ -20,15 +20,21 @@ import { APISIXCommon } from './common';
 import { APISIXPlugins } from './plugins';
 import { APISIXUpstreams } from './upstreams';
 
+// Both `conf` fields hold whatever their protocol takes: APISIX describes them
+// as an object and says no more, and the shapes live in each protocol's own
+// schema, which the gateway does not serve. A `z.object({})` looks equivalent
+// and is not - it strips every key on parse, and the parsed value is what the
+// form submits, so a configuration typed here reached the gateway as `{}`
+// (#141).
 const StreamRouteProtocolLoggerItem = z.object({
   name: z.string(),
   filter: z.array(z.any()),
-  conf: z.object({}),
+  conf: z.record(z.unknown()),
 });
 const StreamRouteProtocol = z.object({
   name: z.string(),
   superior_id: z.string(),
-  conf: z.object({}).optional(),
+  conf: z.record(z.unknown()).optional(),
   logger: z.array(StreamRouteProtocolLoggerItem).optional(),
 });
 

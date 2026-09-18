@@ -264,6 +264,12 @@
     "streamRoutes": {
       "protocol": {
         "conf": "Konfiguration",
+        "confExample": "Beispiel einfügen",
+        "confExampleHint": "Ersetzt den Inhalt des Feldes. Was akzeptiert wird, entscheidet weiterhin das Gateway.",
+        "confHelp": {
+          "dubbo": "Das dubbo-xRPC von APISIX deklariert ein leeres Schema: Es ist nichts dokumentiert, was hier stehen könnte.",
+          "redis": "Das redis-xRPC von APISIX schleust Fehler ein: eine Liste der zu verzögernden Befehle, optional ein Schlüssel und die Verzögerung in Sekunden."
+        },
         "custom": "Eigenes Protokoll",
         "customName": "Name des eigenen Protokolls",
         "hint": "Für xRPC, das APISIX-Framework für Protokolle der Anwendungsschicht wie Redis und Dubbo. Unabhängig vom Transport TCP/UDP/TLS.",

@@ -264,6 +264,12 @@
     "streamRoutes": {
       "protocol": {
         "conf": "配置",
+        "confExample": "插入示例",
+        "confExampleHint": "会替换字段中的内容。最终接受与否仍由网关决定。",
+        "confHelp": {
+          "dubbo": "APISIX 的 dubbo xRPC 声明了空的 schema：这里没有可填写的已知字段。",
+          "redis": "APISIX 的 redis xRPC 用于注入故障：列出要延迟的命令、可选的键，以及以秒为单位的延迟。"
+        },
         "custom": "自定义协议",
         "customName": "自定义协议名称",
         "hint": "用于 xRPC，即 APISIX 面向 Redis、Dubbo 等应用层协议的框架。与 TCP/UDP/TLS 传输无关。",
