@@ -34,6 +34,11 @@ import {
 } from '@/config/constant';
 import i18n from '@/config/i18n';
 import { isAuthenticatedAtom } from '@/stores/auth';
+import {
+  isChangePasswordPath,
+  isLoginPath,
+  requiresInstance,
+} from '@/utils/route-guards';
 
 /**
  * What the stored session is worth right now.
@@ -71,24 +76,13 @@ const Root = () => {
   const authenticated = useAtomValue(isAuthenticatedAtom);
   const location = useLocation();
 
-  // Check if on login page (both /login and /ui/login)
-  const isLoginPage = location.pathname === '/login' || location.pathname === '/ui/login';
-  const isChangePasswordPage =
-    location.pathname === '/change-password' || location.pathname === '/ui/change-password';
+  const isLoginPage = isLoginPath(location.pathname);
+  const isChangePasswordPage = isChangePasswordPath(location.pathname);
 
   // Show AppShell only when authenticated AND not on a bare full-screen page
   const showAppShell = authenticated && !isLoginPage && !isChangePasswordPage;
 
-  // Pages that operate against an APISIX instance and therefore need a
-  // selected instance to make sense. Multi-tenant management pages and the
-  // landing pages don't — overview aggregates across instances, instances/
-  // teams/users are admin CRUD that lives entirely in the dashboard's etcd.
-  const path = location.pathname.replace(/^\/ui/, '');
-  const requiresInstance = !['/', '', '/login', '/overview', '/instances', '/teams', '/users']
-    .includes(path)
-    && !path.startsWith('/instances/')
-    && !path.startsWith('/teams/')
-    && !path.startsWith('/users/');
+  const needsInstance = requiresInstance(location.pathname);
 
   return (
     <I18nextProvider i18n={i18n}>
@@ -116,7 +110,7 @@ const Root = () => {
 
           <AppShell.Main style={{ paddingLeft: 'calc(var(--app-shell-navbar-offset, 0px) + 40px)', paddingRight: '40px' }}>
             <ProxyErrorBanner />
-            {requiresInstance ? (
+            {needsInstance ? (
               <InstanceGuard>
                 <Outlet />
               </InstanceGuard>
@@ -137,8 +131,7 @@ export const Route = createRootRoute({
   component: Root,
   beforeLoad: async ({ location }) => {
     // Allow the login page without authentication
-    const isLoginPage = location.pathname === '/login' || location.pathname === '/ui/login';
-    if (isLoginPage) return;
+    if (isLoginPath(location.pathname)) return;
 
     const state = sessionState();
 
@@ -181,9 +174,7 @@ export const Route = createRootRoute({
 
     // A pending forced password change locks the app down to the dedicated
     // screen; the backend enforces the same rule with 403s.
-    const isChangePasswordPage =
-      location.pathname === '/change-password' || location.pathname === '/ui/change-password';
-    if (!isChangePasswordPage && mustChangePassword()) {
+    if (!isChangePasswordPath(location.pathname) && mustChangePassword()) {
       throw redirect({
         to: '/change-password',
       });

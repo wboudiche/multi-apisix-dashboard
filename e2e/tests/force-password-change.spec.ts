@@ -135,6 +135,12 @@ test('the UI walks a must-change user through the dedicated screen', async ({
     page.getByRole('heading', { name: 'Choose a new password' })
   ).toBeVisible();
 
+  // And it is the screen on its own: no header, no navigation. The root route
+  // decides that by name, and the name it compares against is the router's -
+  // base path already removed (#169).
+  await expect(page.getByRole('banner')).toHaveCount(0);
+  await expect(page.getByRole('navigation')).toHaveCount(0);
+
   // Trying to escape to another page bounces back.
   await page.goto(`${base.replace(/\/$/, '')}/overview`);
   await expect(
