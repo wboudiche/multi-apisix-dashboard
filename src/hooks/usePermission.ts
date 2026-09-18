@@ -16,6 +16,7 @@
  */
 import { atom, useAtomValue } from 'jotai';
 
+import { canRoleWrite, type ResourceType } from '@/config/resource-permissions';
 import { currentUserAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 
@@ -46,6 +47,17 @@ export type Permissions = {
   canEdit: boolean;
   canDelete: boolean;
   canAccessRoute: (path: string) => boolean;
+  /**
+   * Whether this account may write a given resource type, by the APISIX path
+   * segment the backend keys on.
+   *
+   * canEdit answers for the account; this answers for the account and the
+   * thing. They differ for any role that reads some resources and writes
+   * others - a developer holds routes and services but not ssls or
+   * global_rules - and a page that asks the first question about the second
+   * offers an edit the proxy refuses with a 403 (#270).
+   */
+  canWriteResource: (resourceType: ResourceType) => boolean;
 };
 
 const effectiveRoleAtom = atom<Role | undefined>((get) => {
@@ -97,6 +109,7 @@ const permissionsAtom = atom<Permissions>((get) => {
     canEdit: canWrite,
     canDelete: canWrite,
     canAccessRoute,
+    canWriteResource: (resourceType: ResourceType) => canRoleWrite(role, resourceType),
   };
 });
 

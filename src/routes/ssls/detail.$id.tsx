@@ -125,7 +125,10 @@ function SSLDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/ssls/detail/$id' });
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
+  // Per resource, like the list that leads here: the two halves of the
+  // flow have to ask the same question, or one offers an edit the other
+  // said was not available (#270).
+  const canEdit = usePermission().canWriteResource('ssls');
   const navigate = useNavigate();
 
   return (

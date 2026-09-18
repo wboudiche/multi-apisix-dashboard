@@ -54,6 +54,7 @@ function RouteComponent() {
         width: 120,
         render: (_, record) => [
           <ToDetailPageBtn
+            resource="protos"
             key="detail"
             to="/protos/detail/$id"
             params={{ id: record.value.id }}

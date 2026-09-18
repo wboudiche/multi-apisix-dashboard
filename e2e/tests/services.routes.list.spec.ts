@@ -131,7 +131,7 @@ test('should only show routes with current service_id', async ({ page }) => {
 
     await page
       .getByRole('row', { name: serviceName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await servicesPom.isDetailPage(page);
 
@@ -178,7 +178,7 @@ test('should display routes list under service', async ({ page }) => {
   // Click on the service to go to detail page
   await page
     .getByRole('row', { name: serviceName })
-    .getByRole('button', { name: 'View' })
+    .getByRole('button', { name: 'Configure' })
     .click();
   await servicesPom.isDetailPage(page);
 

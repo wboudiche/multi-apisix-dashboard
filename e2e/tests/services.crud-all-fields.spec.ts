@@ -68,7 +68,7 @@ test('should CRUD service with all fields', async ({ page }) => {
   await servicesPom.isIndexPage(page);
   await page
     .getByRole('row', { name: serviceNameWithAllFields })
-    .getByRole('button', { name: 'View' })
+    .getByRole('button', { name: 'Configure' })
     .click();
   await servicesPom.isDetailPage(page);
 
@@ -91,7 +91,7 @@ test('should CRUD service with all fields', async ({ page }) => {
     const row = page.locator('tr').filter({ hasText: serviceNameWithAllFields });
     await expect(row).toBeVisible();
 
-    await row.getByRole('button', { name: 'View' }).click();
+    await row.getByRole('button', { name: 'Configure' }).click();
     await servicesPom.isDetailPage(page);
 
     await page.getByRole('button', { name: 'Delete' }).click();

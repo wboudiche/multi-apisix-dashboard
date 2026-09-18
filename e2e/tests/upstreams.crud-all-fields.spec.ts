@@ -79,7 +79,7 @@ test('should CRUD upstream with all fields', async ({ page }) => {
     await page
       .locator('tr')
       .filter({ hasText: upstreamNameWithAllFields })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await upstreamsPom.isDetailPage(page);
     await uiCheckUpstreamAllFields(page, {

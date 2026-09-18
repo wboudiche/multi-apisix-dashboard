@@ -66,6 +66,7 @@ function GlobalRulesList() {
         width: 120,
         render: (_, record) => [
           <ToDetailPageBtn
+            resource="global_rules"
             key="detail"
             to="/global_rules/detail/$id"
             params={{ id: record.value.id }}

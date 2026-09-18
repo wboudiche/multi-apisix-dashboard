@@ -76,6 +76,7 @@ function PluginConfigsList() {
         width: 120,
         render: (_, record) => [
           <ToDetailPageBtn
+            resource="plugin_configs"
             key="detail"
             to="/plugin_configs/detail/$id"
             params={{ id: record.value.id }}

@@ -29,11 +29,13 @@ import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMERS } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 function ConsumersList() {
   const { t } = useTranslation();
+  const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination } = useConsumerList();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -74,11 +76,13 @@ function ConsumersList() {
             params={{ username: record.value.username }}
             size="xs"
             color="blue"
-            variant="filled"
+            variant={canWriteResource('consumers') ? 'filled' : 'light'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >
-            {t('form.btn.view')}
+            {t(
+              canWriteResource('consumers') ? 'form.btn.configure' : 'form.btn.view'
+            )}
           </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
@@ -95,7 +99,7 @@ function ConsumersList() {
         ],
       },
     ];
-  }, [refetch, t]);
+  }, [refetch, t, canWriteResource]);
 
   return (
     <AntdConfigProvider>

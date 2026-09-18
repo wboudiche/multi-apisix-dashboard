@@ -19,9 +19,11 @@ import type { LinkProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
 import { RouteLink, RouteLinkBtn } from '@/components/Btn';
+import type { ResourceType } from '@/config/resource-permissions';
 import { usePermission } from '@/hooks/usePermission';
 import type { FileRoutesByTo } from '@/routeTree.gen';
 import IconPlus from '~icons/material-symbols/add';
+import IconEdit from '~icons/material-symbols/edit-outline';
 import IconVisibility from '~icons/material-symbols/visibility-outline';
 
 export type ToAddPageBtnProps = {
@@ -53,29 +55,50 @@ export type ToDetailPageBtnProps = {
   | keyof FilterKeys<FileRoutesByTo, '$routeId'>
   | keyof FilterKeys<FileRoutesByTo, '$username'>;
   mode?: 'button' | 'icon';
+  /**
+   * The APISIX path segment for what this page lists - "routes", "ssls".
+   *
+   * Required, because the answer it buys is per resource: a developer writes
+   * routes and reads ssls, and the same button on those two pages leads to two
+   * different places (#270).
+   */
+  resource: ResourceType;
 } & Pick<LinkProps, 'params'>;
 
 export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
-  const { params, to, mode = 'icon' } = props;
+  const { params, to, mode = 'icon', resource } = props;
   const { t } = useTranslation();
+  const { canWriteResource } = usePermission();
+
+  // The same destination either way - a detail page is where a resource is
+  // read as well as edited - named for what the account may do once it is
+  // there. "Configure" offered to someone who may only read promises an edit
+  // that every field refuses to save and the proxy answers 403 to (#188).
+  const label = canWriteResource(resource) ? t('form.btn.configure') : t('form.btn.view');
 
   if (mode === 'button') {
     return (
       <RouteLinkBtn size="compact-xs" variant="light" to={to} params={params}>
-        {t('form.btn.view')}
+        {label}
       </RouteLinkBtn>
     );
   }
 
   return (
-    <Tooltip label={t('form.btn.view')}>
+    <Tooltip label={label}>
       <ActionIcon
         variant="light"
         color="blue"
-        aria-label={t('form.btn.view')}
+        aria-label={label}
         renderRoot={(rootProps) => <RouteLink {...rootProps} to={to} params={params} />}
       >
-        <IconVisibility width="18" height="18" />
+        {/* The pictogram follows the word: an eye for a page that can only
+            be read, the edit mark for one that can be changed. */}
+        {canWriteResource(resource) ? (
+          <IconEdit width="18" height="18" />
+        ) : (
+          <IconVisibility width="18" height="18" />
+        )}
       </ActionIcon>
     </Tooltip>
   );

@@ -128,7 +128,7 @@ test('should navigate to consumer credentials page', async ({ page }) => {
 
     await page
       .getByRole('row', { name: testConsumerUsername })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await consumersPom.isDetailPage(page);
   });
@@ -233,7 +233,7 @@ test('should be able to navigate to credential detail', async ({ page }) => {
     // Click on the first credential's View button
     await page
       .getByRole('row', { name: credentials[0].id })
-      .getByRole('link', { name: 'View' })
+      .getByRole('link', { name: 'Configure' })
       .click();
 
     await credentialsPom.isCredentialDetailPage(page);

@@ -77,7 +77,7 @@ test('should CRUD upstream with required fields', async ({ page }) => {
   await test.step('navigate to upstream detail page', async () => {
     await page
       .getByRole('row', { name: upstreamName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await upstreamsPom.isDetailPage(page);
     // Verify ID exists (step 1 of the read-only wizard).
@@ -153,7 +153,7 @@ test('should CRUD upstream with required fields', async ({ page }) => {
   await test.step('delete upstream in detail page', async () => {
     await page
       .getByRole('row', { name: upstreamName })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await upstreamsPom.isDetailPage(page);
 

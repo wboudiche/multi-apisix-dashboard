@@ -86,6 +86,7 @@ function RouteComponent() {
         width: 120,
         render: (_, record) => [
           <ToDetailPageBtn
+            resource="ssls"
             key="detail"
             to="/ssls/detail/$id"
             params={{ id: record.value.id }}

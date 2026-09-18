@@ -75,7 +75,7 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.isIndexPage(page);
 
       const row = page.locator('tr').filter({ hasText: createdSecretId });
-      await row.getByRole('link', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'Configure' }).click();
       await secretsPom.isDetailPage(page);
 
       // Auto-waiting assertion first: textContent() has no built-in wait, so
@@ -105,7 +105,7 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.isIndexPage(page);
 
       const row = page.locator('tr').filter({ hasText: createdSecretId });
-      await row.getByRole('link', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'Configure' }).click();
       await secretsPom.isDetailPage(page);
     });
 
@@ -146,7 +146,7 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.isIndexPage(page);
 
       const row = page.locator('tr').filter({ hasText: createdSecretId });
-      await row.getByRole('link', { name: 'View' }).click();
+      await row.getByRole('link', { name: 'Configure' }).click();
       await secretsPom.isDetailPage(page);
 
       await page.getByRole('button', { name: 'Delete' }).click();

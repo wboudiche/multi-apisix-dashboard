@@ -104,7 +104,7 @@ test('should CRUD consumer with required fields', async ({ page }) => {
     // Click on the view button to go to the detail page
     await page
       .getByRole('row', { name: consumerUsername })
-      .getByRole('button', { name: 'View' })
+      .getByRole('button', { name: 'Configure' })
       .click();
     await consumersPom.isDetailPage(page);
   });
