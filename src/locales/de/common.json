@@ -541,6 +541,9 @@
     "upstreams": "Upstreams"
   },
   "ssls": {
+    "expired": "Abgelaufen",
+    "expires": "Läuft ab",
+    "expiringSoon": "Abgelaufene oder in {{days}} Tagen ablaufende Zertifikate: {{count}}",
     "singular": "SSL"
   },
   "streamRoutes": {

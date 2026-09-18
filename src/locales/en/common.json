@@ -799,6 +799,9 @@
     "users": "Users"
   },
   "ssls": {
+    "expired": "Expired",
+    "expires": "Expires",
+    "expiringSoon": "Certificates expired or expiring within {{days}} days: {{count}}",
     "singular": "SSL"
   },
   "streamRoutes": {

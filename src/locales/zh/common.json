@@ -541,6 +541,9 @@
     "upstreams": "上游"
   },
   "ssls": {
+    "expired": "已过期",
+    "expires": "到期",
+    "expiringSoon": "已过期或将在 {{days}} 天内到期的证书：{{count}}",
     "singular": "SSL"
   },
   "streamRoutes": {
