@@ -564,7 +564,13 @@
     "enabled": "已启用"
   },
   "upstreams": {
-    "singular": "上游"
+    "nodes": "节点",
+    "routesWithCount": "路由：{{count}}",
+    "servicesWithCount": "服务：{{count}}",
+    "singular": "上游",
+    "streamRoutesWithCount": "流路由：{{count}}",
+    "usedBy": "被引用",
+    "viaDiscovery": "通过 {{discovery}}"
   },
   "users": {
     "accessDenied": "拒绝访问",
@@ -605,6 +611,7 @@
     "route_count_unresolved": "未能完整统计依赖各服务的对象。服务已全部列出，但部分依赖项可能未显示。",
     "service_lookup_failed": "无法读取服务列表，因此通过服务访问上游的路由未包含在这些结果中。",
     "title": "结果不完整",
-    "unknown": "部分结果可能缺失。"
+    "unknown": "部分结果可能缺失。",
+    "upstream_dependants_unresolved": "未能完整统计依赖各上游的对象。上游已全部列出，但部分依赖项可能未显示。"
   }
 }

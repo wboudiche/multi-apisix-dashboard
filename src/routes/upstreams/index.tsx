@@ -16,6 +16,7 @@
  */
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
+import { Text } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,13 +25,15 @@ import { getUpstreamListQueryOptions, useUpstreamList } from '@/apis/hooks';
 import { RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { ListWarningBanner } from '@/components/page/ListWarningBanner';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import type { UpstreamRow } from '@/components/page-slice/upstreams/upstream-row';
+import { nodeCount } from '@/components/page-slice/upstreams/upstream-row';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_UPSTREAMS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
-import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 function RouteComponent() {
@@ -39,9 +42,11 @@ function RouteComponent() {
   const { data, isLoading, refetch, pagination } = useUpstreamList();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const columns = useMemo<
-    ProColumns<APISIXType['RespUpstreamList']['data']['list'][number]>[]
-  >(() => {
+  // The proxy says so when it could not count: a page that showed nothing
+  // would be claiming the upstreams are free of dependants (#144).
+  const listWarning = (data as { __warning?: string } | undefined)?.__warning;
+
+  const columns = useMemo<ProColumns<UpstreamRow>[]>(() => {
     return [
       {
         dataIndex: ['value', 'id'],
@@ -60,6 +65,59 @@ function RouteComponent() {
         title: t('form.upstreams.scheme'),
         key: 'scheme',
         valueType: 'text',
+      },
+      {
+        dataIndex: ['value', 'nodes'],
+        title: t('upstreams.nodes'),
+        key: 'nodes',
+        render: (_, record) => {
+          // An upstream that resolves its nodes through discovery has none to
+          // count here. Naming the mechanism says why the cell is not a
+          // number, where a dash would read as "no backends".
+          const count = nodeCount(record.value.nodes);
+          if (count === undefined) {
+            const discovery = record.value.discovery_type;
+            if (discovery) return t('upstreams.viaDiscovery', { discovery });
+            return '-';
+          }
+          return <Text span data-testid="upstream-node-count">{count}</Text>;
+        },
+      },
+      {
+        dataIndex: ['value', '__route_count'],
+        title: t('upstreams.usedBy'),
+        key: 'used_by',
+        render: (_, record) => {
+          // Counted by the proxy over the whole gateway, the only place the
+          // number is true: this page's own lists are narrowed to the reader's
+          // team (#144, after #277). Absent means it could not be counted, and
+          // the banner above says so.
+          const routes = record.value.__route_count;
+          if (typeof routes !== 'number') return '-';
+
+          const services = record.value.__service_count;
+          const stream = record.value.__stream_route_count;
+          return (
+            <>
+              <Text span data-testid="upstream-route-count">
+                {t('upstreams.routesWithCount', { count: routes })}
+              </Text>
+              {/* Only when there are any: a service or a stream route is the
+                  uncommon way to reach an upstream, and a row of zeros would
+                  bury the number that matters. */}
+              {!!services && (
+                <Text size="xs" c="dimmed">
+                  {t('upstreams.servicesWithCount', { count: services })}
+                </Text>
+              )}
+              {!!stream && (
+                <Text size="xs" c="dimmed">
+                  {t('upstreams.streamRoutesWithCount', { count: stream })}
+                </Text>
+              )}
+            </>
+          );
+        },
       },
       {
         dataIndex: ['value', 'update_time'],
@@ -111,10 +169,11 @@ function RouteComponent() {
   return (
     <>
       <PageHeader title={t('sources.upstreams')} />
+      <ListWarningBanner warning={listWarning} />
       <AntdConfigProvider>
         <ProTable
           columns={columns}
-          dataSource={data?.list}
+          dataSource={data?.list as UpstreamRow[]}
           rowKey={(record) => record.value.id}
           loading={isLoading}
           search={false}

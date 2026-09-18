@@ -408,6 +408,8 @@ type ProxyHandler struct {
 	// The same, for the route counts every service page shows: two whole
 	// listings, which a second page of ten services should not pay for again.
 	serviceRouteCounts *serviceRouteCountCache
+	// And for what depends on each upstream, which the upstream page shows.
+	upstreamDependants *upstreamDependantsCache
 }
 
 func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService) *ProxyHandler {
@@ -416,6 +418,7 @@ func NewProxyHandler(instanceService *services.InstanceService, ownershipService
 		ownershipService:   ownershipService,
 		serviceUpstreams:   newServiceUpstreamCache(time.Now),
 		serviceRouteCounts: newServiceRouteCountCache(time.Now),
+		upstreamDependants: newUpstreamDependantsCache(time.Now),
 	}
 }
 
@@ -740,6 +743,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		if resourceType == "routes" || resourceType == "stream_routes" || resourceType == "services" {
 			h.serviceRouteCounts.forget(instanceID)
 		}
+		// The upstream list counts the same three kinds, from the other end.
+		if resourceType == "routes" || resourceType == "stream_routes" ||
+			resourceType == "services" || resourceType == "upstreams" {
+			h.upstreamDependants.forget(instanceID)
+		}
 	}
 
 	// 3. Post-mutation: Record ownership for new objects
@@ -872,6 +880,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// upstream they reach for the Upstream column to show (#161).
 				// Every other listing pays nothing.
 				annotateRoutes := resourceType == "routes"
+				// The upstream list counts the services pointing at each
+				// upstream, which is what that table already holds (#144).
+				annotateUpstreams := resourceType == "upstreams"
 
 				// What depends on a service is counted here for the same
 				// reason the Upstream column is: the browser only ever has the
@@ -901,7 +912,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				}
 
 				var serviceTableErr error
-				if len(filters.upstreamIDs) > 0 || annotateRoutes {
+				if len(filters.upstreamIDs) > 0 || annotateRoutes || annotateUpstreams {
 					// A failure is never cached: the next page retries rather
 					// than repeating a wrong answer for the whole window.
 					serviceTable, cached := h.serviceUpstreams.get(instanceID)
@@ -930,6 +941,38 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 					filters.serviceUpstreams = serviceTable
 				}
 
+				// What depends on an upstream, counted where the whole list is
+				// for the reason the service counts are (#144). The service
+				// table above is half the answer already; a table that could
+				// not be read is passed on as nil, so the row says nothing
+				// about services rather than saying none.
+				var upstreamErr error
+				var upstreamCounts upstreamDependantsResult
+				if annotateUpstreams {
+					reading, cached := h.upstreamDependants.get(instanceID)
+					if !cached {
+						// Named serviceTable, not services: the package of that
+						// name is in scope here.
+						serviceTable := filters.serviceUpstreams
+						if serviceTableErr != nil {
+							serviceTable = nil
+						}
+						reading, upstreamErr = fetchUpstreamDependants(
+							c.Request.Context(), instance, serviceTable)
+						// Only a complete reading is cached: a partial one
+						// would be repeated for the whole window, and the next
+						// page is a chance to get the rest.
+						if upstreamErr == nil && reading.StreamCounted && reading.ServicesCounted {
+							h.upstreamDependants.put(instanceID, reading)
+						}
+						if upstreamErr != nil {
+							log.Printf("[instance %s] could not count what depends on each upstream: %v",
+								instanceID, upstreamErr)
+						}
+					}
+					upstreamCounts = reading
+				}
+
 				filtered := make([]map[string]interface{}, 0, len(resources.List))
 				for _, r := range resources.List {
 					val, ok := r["value"].(map[string]interface{})
@@ -951,6 +994,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						// nothing depends on.
 						if routeCountErr == nil && resourceType == "services" {
 							annotateRouteCount(val, routeCounts)
+						}
+						if upstreamErr == nil && annotateUpstreams {
+							annotateUpstreamDependants(val, upstreamCounts)
 						}
 
 						// Filter for non-admin users. Unowned resources are
@@ -978,6 +1024,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// is short of what the service table would have told it.
 				if serviceTableErr != nil {
 					resources.Warning = serviceTableWarning(len(filters.upstreamIDs) > 0, resources.List)
+				}
+				if annotateUpstreams &&
+					(upstreamErr != nil || !upstreamCounts.StreamCounted || !upstreamCounts.ServicesCounted) {
+					if resources.Warning == "" {
+						resources.Warning = upstreamDependantsWarning
+					}
 				}
 				// Not only when nothing could be counted: a reading without
 				// its stream routes is a partial one, and the page shows no

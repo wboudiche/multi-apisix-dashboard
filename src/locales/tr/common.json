@@ -564,7 +564,13 @@
     "enabled": "Aktif"
   },
   "upstreams": {
-    "singular": "Upstream"
+    "nodes": "Düğümler",
+    "routesWithCount": "Rotalar: {{count}}",
+    "servicesWithCount": "Servisler: {{count}}",
+    "singular": "Upstream",
+    "streamRoutesWithCount": "Akış rotaları: {{count}}",
+    "usedBy": "Kullananlar",
+    "viaDiscovery": "{{discovery}} ile"
   },
   "users": {
     "accessDenied": "Erişim reddedildi",
@@ -605,6 +611,7 @@
     "route_count_unresolved": "Her servise bağlı olanlar tam olarak sayılamadı. Tüm servisler listeleniyor; onlara bağlı olanların bir kısmı gösterilmiyor olabilir.",
     "service_lookup_failed": "Servis listesi okunamadı; bu nedenle bir upstream’e servis üzerinden ulaşan rotalar bu sonuçlarda yer almıyor.",
     "title": "Eksik sonuçlar",
-    "unknown": "Bazı sonuçlar eksik olabilir."
+    "unknown": "Bazı sonuçlar eksik olabilir.",
+    "upstream_dependants_unresolved": "Her upstream’e bağlı olanlar tam olarak sayılamadı. Tüm upstream’ler listeleniyor; onlara bağlı olanların bir kısmı gösterilmiyor olabilir."
   }
 }

@@ -155,6 +155,25 @@ func TestCountServiceRoutes(t *testing.T) {
 		}
 	})
 
+	// A gateway with stream_proxy off refuses the collection with a 400, which
+	// fetchServiceRouteCounts turns into an empty one before parsing. Without
+	// that substitution the listing read as "not counted", so the services page
+	// carried the warning banner on such a gateway forever and no reading was
+	// ever cached.
+	t.Run("a collection the gateway does not serve counts as none", func(t *testing.T) {
+		counts, streamParsed, err := parseServiceRouteCounts(
+			[]byte(`{"list":[{"value":{"id":"r1","service_id":"s1"}}]}`), emptyCollection)
+		if err != nil {
+			t.Fatalf("parseServiceRouteCounts: %v", err)
+		}
+		if !streamParsed {
+			t.Errorf("a gateway without stream routes was reported as uncounted")
+		}
+		if got := counts["s1"]; got.StreamRoutes != 0 || got.Routes != 1 {
+			t.Errorf("s1 = %+v, want 1 route and no stream route", got)
+		}
+	})
+
 	// Every APISIX collection answers with a `list`. Anything else is a shape
 	// this cannot read, and zero is the reading that gets a service deleted.
 	t.Run("a body with no list is a failure, not an empty gateway", func(t *testing.T) {
