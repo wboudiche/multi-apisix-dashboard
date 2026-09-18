@@ -16,9 +16,11 @@
  */
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { createFileRoute } from '@tanstack/react-router';
+import { Group, Pagination, SegmentedControl, Stack } from '@mantine/core';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { z } from 'zod';
 
 import { getServiceListQueryOptions, useServiceList } from '@/apis/hooks';
 import { RouteLinkBtn } from '@/components/Btn';
@@ -26,6 +28,7 @@ import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import { ServiceCards } from '@/components/page-slice/services/ServiceCards';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SERVICES } from '@/config/constant';
 import { queryClient } from '@/config/global';
@@ -33,8 +36,28 @@ import { usePermission } from '@/hooks/usePermission';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
+/**
+ * Which view the list is in, carried in the URL.
+ *
+ * In the URL rather than in component state so the choice survives a reload
+ * and travels in a link - the table stays the default, as it is what every
+ * other resource list looks like (#143).
+ */
+const servicesSearchSchema = pageSearchSchema.extend({
+  view: z.enum(['table', 'cards']).optional().default('table'),
+});
+
 const ServiceList = () => {
   const { data, isLoading, refetch, pagination } = useServiceList();
+  const { view } = Route.useSearch();
+  const navigate = useNavigate({ from: '/services/' });
+  const setView = (next: 'table' | 'cards') => {
+    // The selection belongs to the table's checkboxes, which the cards do not
+    // have: carried across, it would still be counted by Batch Delete on the
+    // way back, including ids deleted from a card in the meantime.
+    setSelectedIds([]);
+    navigate({ search: (prev) => ({ ...prev, view: next }) });
+  };
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -107,6 +130,47 @@ const ServiceList = () => {
     ];
   }, [t, refetch, canWriteResource]);
 
+  const viewSwitch = (
+    <SegmentedControl
+      size="xs"
+      value={view}
+      aria-label={t('services.viewSwitch')}
+      onChange={(next) => setView(next as 'table' | 'cards')}
+      data={[
+        { value: 'table', label: t('services.viewTable') },
+        { value: 'cards', label: t('services.viewCards') },
+      ]}
+    />
+  );
+
+  if (view === 'cards') {
+    return (
+      <Stack gap="md">
+        <Group justify="space-between">
+          <ToAddPageBtn
+            label={t('info.add.title', { name: t('services.singular') })}
+            to="/services/add"
+          />
+          {viewSwitch}
+        </Group>
+        <ServiceCards services={data.list} onDeleted={refetch} />
+        {/* The cards show a page, like the table does; without this there was
+            no way to reach the second one but to edit the URL. */}
+        {(pagination.total ?? 0) > (pagination.pageSize ?? 10) && (
+          <Group justify="center">
+            <Pagination
+              value={pagination.current ?? 1}
+              total={Math.ceil((pagination.total ?? 0) / (pagination.pageSize ?? 10))}
+              onChange={(page) =>
+                pagination.onChange?.(page, pagination.pageSize ?? 10)
+              }
+            />
+          </Group>
+        )}
+      </Stack>
+    );
+  }
+
   return (
     <AntdConfigProvider>
       <ProTable
@@ -137,6 +201,10 @@ const ServiceList = () => {
                     to="/services/add"
                   />
                 ),
+              },
+              {
+                key: 'view',
+                label: viewSwitch,
               },
               {
                 key: 'batchDelete',
@@ -172,8 +240,16 @@ function RouteComponent() {
 
 export const Route = createFileRoute('/services/')({
   component: RouteComponent,
-  validateSearch: pageSearchSchema,
-  loaderDeps: ({ search }) => search,
+  validateSearch: servicesSearchSchema,
+  // Without `view`: it decides how the list is drawn, not which list. In the
+  // deps it made each switch a new query key, so flipping the control refetched
+  // the same services - and sent ?view=cards on to APISIX, which has no use
+  // for it.
+  loaderDeps: ({ search }) => {
+    const { view, ...listParams } = search;
+    void view;
+    return listParams;
+  },
   loader: ({ deps }) =>
     queryClient.ensureQueryData(getServiceListQueryOptions(deps)),
 });
