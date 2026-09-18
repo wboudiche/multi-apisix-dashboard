@@ -807,6 +807,7 @@
     "expired": "Expired",
     "expires": "Expires",
     "expiringSoon": "Certificates expired or expiring within {{days}} days: {{count}}",
+    "issuer": "Issuer",
     "singular": "SSL"
   },
   "streamRoutes": {

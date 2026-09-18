@@ -44,9 +44,9 @@ import IconWarning from '~icons/material-symbols/warning-outline';
 /**
  * A list row, with what the proxy read out of the certificate.
  *
- * `__cert_not_after` is not part of an APISIX SSL - the gateway stores the PEM
- * and nothing else - so it is declared here rather than in the schema, beside
- * the one page that reads it (#145).
+ * Neither `__cert_not_after` nor `__cert_issuer` is part of an APISIX SSL -
+ * the gateway stores the PEM and nothing else - so both are declared here
+ * rather than in the schema, beside the one page that reads them (#145).
  */
 type SSLRow = APISIXType['RespSSLItem'] & {
   value: { __cert_not_after?: string; __cert_issuer?: string };
@@ -119,6 +119,22 @@ function RouteComponent() {
               : t('table.disabled')}
           </Badge>
         ),
+      },
+      {
+        dataIndex: ['value', '__cert_issuer'],
+        title: t('ssls.issuer'),
+        key: 'issuer',
+        render: (_, record) => {
+          // Read out of the certificate by the proxy, like the expiry beside
+          // it. Who signed it is how an operator tells the certificate they
+          // bought from the one a script renews - and, when it is the subject
+          // itself, that nobody signed it at all (#145). Typed but read off
+          // the wire, so it gets the guard certExpiry makes for the date: a
+          // non-string as a React child takes the list down, not just the cell.
+          const issuer = record.value.__cert_issuer;
+          if (typeof issuer !== 'string' || !issuer) return '-';
+          return issuer;
+        },
       },
       {
         dataIndex: ['value', '__cert_not_after'],
