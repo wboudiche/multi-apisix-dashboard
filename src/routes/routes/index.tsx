@@ -525,16 +525,29 @@ export const RouteList = (props: RouteListProps) => {
                         )}
                       </Button>
                     )}
+                    {/* The same link either way - the detail page is where a
+                        route is read as well as edited - but named and weighted
+                        for what the account may actually do there. "Configure",
+                        in the primary blue, promised an edit that every field
+                        would refuse to save and the proxy would answer 403 to
+                        (#188). Light rather than the neutral default: this is
+                        still the row's primary action for a viewer, and the
+                        default variant is what the "More" button beside it
+                        wears. */}
                     <RouteLinkBtn
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}
                       size="xs"
                       color="blue"
-                      variant="filled"
+                      variant={canEdit ? 'filled' : 'light'}
                       radius="sm"
                       styles={{ root: { padding: '0 12px' } }}
                     >
-                      {t('routes.list.actionConfigure')}
+                      {/* form.btn.view, not a key of this page's own: it is
+                          the word the services, upstreams and consumers lists
+                          already use for the same control, and a second
+                          translation of it drifted on the first edit. */}
+                      {t(canEdit ? 'routes.list.actionConfigure' : 'form.btn.view')}
                     </RouteLinkBtn>
                     <Menu shadow="md" width={160}>
                       <Menu.Target>
