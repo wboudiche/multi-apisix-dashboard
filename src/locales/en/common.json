@@ -759,7 +759,10 @@
   },
   "services": {
     "noUpstream": "No upstream",
+    "routes": "Routes",
+    "routesWithCount": "Routes: {{count}}",
     "singular": "Service",
+    "streamRoutesWithCount": "Stream routes: {{count}}",
     "upstreamInline": "Inline upstream",
     "viewCards": "Cards",
     "viewSwitch": "List view",
@@ -976,11 +979,13 @@
     "sessionEnded": "Your session ended and you were signed out. Anything in progress may not have finished."
   },
   "listWarning": {
-    "title": "Incomplete results",
+    "detailsUnresolved": "Some details could not be resolved",
+    "route_count_unresolved": "What depends on each service could not be counted in full. Every service is listed; some of what depends on them may not be shown.",
     "service_lookup_failed": "The service list could not be read, so routes that reach an upstream through a service are missing from these results.",
     "service_upstream_unresolved": "The service list could not be read, so routes that reach their upstream through a service show none below.",
-    "unresolvedTitle": "Upstreams not resolved",
-    "unknown": "Some results may be missing."
+    "title": "Incomplete results",
+    "unknown": "Some results may be missing.",
+    "unresolvedTitle": "Upstreams not resolved"
   },
   "pageError": {
     "retry": "Retry",

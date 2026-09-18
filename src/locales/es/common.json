@@ -505,7 +505,10 @@
   },
   "services": {
     "noUpstream": "Sin upstream",
+    "routes": "Rutas",
+    "routesWithCount": "Rutas: {{count}}",
     "singular": "Servicio",
+    "streamRoutesWithCount": "Rutas de flujo: {{count}}",
     "upstreamInline": "Upstream en línea",
     "viewCards": "Tarjetas",
     "viewSwitch": "Vista de la lista",
@@ -598,8 +601,10 @@
     "clearRole": "Quitar el rol"
   },
   "listWarning": {
-    "title": "Resultados incompletos",
+    "detailsUnresolved": "No se han podido resolver algunos detalles",
+    "route_count_unresolved": "No se ha podido contar por completo lo que depende de cada servicio. Todos los servicios aparecen en la lista; puede que no se muestre parte de lo que depende de ellos.",
     "service_lookup_failed": "No se pudo leer la lista de servicios, por lo que faltan en estos resultados las rutas que alcanzan un upstream a través de un servicio.",
+    "title": "Resultados incompletos",
     "unknown": "Es posible que falten algunos resultados."
   }
 }

@@ -24,11 +24,13 @@ import { ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_SERVICES } from '@/config/constant';
 import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
-import type { APISIXType } from '@/types/schema/apisix';
+import IconRoute from '~icons/material-symbols/alt-route';
 import IconUpstream from '~icons/material-symbols/hub-outline';
 
+import type { ServiceRow } from './service-row';
+
 type ServiceCardsProps = {
-  services: APISIXType['RespServiceItem'][];
+  services: ServiceRow[];
   onDeleted: () => void;
 };
 
@@ -39,12 +41,11 @@ type ServiceCardsProps = {
  * upstream it sends to is not there at all (#143).
  *
  * How many routes lean on a service - the other question #143 asks for - is
- * not here. Counted from the route list this page could read, it would be
- * counted from a list the proxy narrows to the caller's team: a developer
- * would read "no routes" for a service five of another team's routes depend
- * on, which is the wrong direction for a number that decides whether deleting
- * one is safe. A count worth showing has to be made where the whole list is,
- * the way #161 moved the routes table's upstream resolution into the proxy.
+ * counted by the proxy and read off the row (#277). It could not be counted
+ * here: this page only ever has the route list the proxy narrowed to the
+ * caller's team, so a developer would read "no routes" for a service five of
+ * another team's routes depend on, which is the wrong direction for a number
+ * that decides whether deleting one is safe.
  */
 export const ServiceCards = ({ services, onDeleted }: ServiceCardsProps) => {
   const { t } = useTranslation();
@@ -90,6 +91,25 @@ export const ServiceCards = ({ services, onDeleted }: ServiceCardsProps) => {
                       ? t('services.upstreamInline')
                       : t('services.noUpstream')}
                 </Badge>
+                {/* Absent rather than zero when the proxy could not count:
+                    the banner above the list says so, and a badge reading
+                    "no routes" would be a licence to delete. */}
+                {service.__route_count !== undefined && (
+                  <Badge
+                    variant="light"
+                    color={service.__route_count > 0 ? 'blue' : 'gray'}
+                    leftSection={<IconRoute width="12" height="12" />}
+                  >
+                    {t('services.routesWithCount', { count: service.__route_count })}
+                  </Badge>
+                )}
+                {/* Counted apart because the detail page lists them apart: a
+                    single total would match neither of its tabs. */}
+                {!!service.__stream_route_count && (
+                  <Badge variant="light" color="blue">
+                    {t('services.streamRoutesWithCount', { count: service.__stream_route_count })}
+                  </Badge>
+                )}
               </Group>
 
               {/* Whole, not truncated: the description is why a service is
