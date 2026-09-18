@@ -79,8 +79,54 @@ test('and so does the page its only way out leads to', async ({ page }) => {
   await misroutedProxy(page);
   await page.goto('/ui/instances');
 
-  await expect(page.getByRole('button', { name: 'Add Instance' })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Instances' })).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
+
+  // And it tells the two apart the way the guard does. This is the page the
+  // guard sends someone to when their instance list cannot be read, and it
+  // used to greet them with "Get started by connecting to your first APISIX
+  // instance" — advice for a situation they are not in (#165).
+  await expect(page.getByText('Instance list unavailable')).toBeVisible();
+  await expect(
+    page.getByText('Get started by connecting to your first APISIX instance')
+  ).toHaveCount(0);
+});
+
+test('and offers a retry that fills the table once the list can be read', async ({
+  page,
+}) => {
+  // The unreadable state is not a dead end: the list is read again on demand,
+  // and this page writes the shared atom, so the header's selector fills too.
+  // Broken until the test says otherwise, rather than for the first request
+  // only: the header reads this same endpoint on every page load, so "the
+  // first one" is a race between it and the page (that duplication is #165's
+  // own item 2, tracked separately).
+  let broken = true;
+  await page.route('**/api/v1/instances', (route) =>
+    broken
+      ? route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<!doctype html><html><body>index</body></html>',
+        })
+      : route.fallback()
+  );
+  await page.goto('/ui/instances');
+
+  await expect(page.getByText('Instance list unavailable')).toBeVisible({
+    timeout: 20000,
+  });
+
+  broken = false;
+  await page.getByRole('button', { name: 'Try again' }).click();
+
+  // The table first: the block stays on screen while the retry is in flight,
+  // so asserting its absence on its own would pass during that window whether
+  // the retry worked or not.
+  await expect(page.getByRole('cell', { name: 'Local APISIX' })).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.getByText('Instance list unavailable')).toHaveCount(0);
 });

@@ -61,6 +61,7 @@ import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconDelete from '~icons/material-symbols/delete-forever-outline';
 import IconServer from '~icons/material-symbols/dns-outline';
 import IconEdit from '~icons/material-symbols/edit-outline';
+import IconRefresh from '~icons/material-symbols/refresh';
 import IconPlugConnected from '~icons/material-symbols/wifi-tethering';
 
 /**
@@ -232,6 +233,16 @@ const InstancesPage = () => {
   const [healthLoaded, setHealthLoaded] = useState(false);
   const [healthError, setHealthError] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Set when this page's own read of the list failed, with the reason the
+  // backend gave when there was one. An empty list and an unreadable one look
+  // the same in `instances`, and the advice this page gives for them is not
+  // the same (#165).
+  const [loadFailure, setLoadFailure] = useState<{ reason: string } | null>(null);
+  // Generation counter for list reads, like deleteRequestRef below: a retry
+  // clicked while a load is still in flight would otherwise have whichever
+  // request answers last decide both the rows and the failure, which are
+  // written by different requests.
+  const listRequestRef = useRef(0);
   const [nameError, setNameError] = useState<string | null>(null);
   // Name of the instance already using the submitted Admin API URL, awaiting confirmation.
   const [urlConflict, setUrlConflict] = useState<string | null>(null);
@@ -249,20 +260,28 @@ const InstancesPage = () => {
   });
 
   const loadInstances = useCallback(async () => {
+    const generation = ++listRequestRef.current;
     setLoading(true);
     try {
       const data = await instanceApi.list();
+      if (generation !== listRequestRef.current) return;
       setInstances(data);
+      setLoadFailure(null);
     } catch (error) {
+      if (generation !== listRequestRef.current) return;
+      // An empty fallback, not the title: the reason is shown as its own line
+      // under it, and repeating the title there would say nothing twice.
+      const reason = describeError(error, '');
+      setLoadFailure({ reason });
       notifications.show({
         title: 'Error',
-        message: describeError(error, 'Failed to load instances'),
+        message: reason || t('instances.unreadableTitle'),
         color: 'red',
       });
     } finally {
-      setLoading(false);
+      if (generation === listRequestRef.current) setLoading(false);
     }
-  }, [setInstances, setLoading]);
+  }, [setInstances, setLoading, t]);
 
   /**
    * Connectivity is a live property of the gateway, not of the stored record, so
@@ -284,10 +303,10 @@ const InstancesPage = () => {
   }, []);
 
   useEffect(() => {
-    loadInstances();
-    // A fetch on mount. loadHealth sets state only once its request has
-    // answered, which this rule cannot tell from state derived from other state.
+    // Two fetches on mount. The setState this rule flags is each request's own
+    // loading flag, raised as it starts — not state derived from other state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadInstances();
     loadHealth();
   }, [loadInstances, loadHealth]);
 
@@ -615,24 +634,58 @@ const InstancesPage = () => {
               );
             })}
             
-            {instances.length === 0 && !loading && (
+            {/* The failure stays on screen while it is being retried - the
+                button's spinner is the only sign the click did anything, and
+                blanking the row would take it away. */}
+            {instances.length === 0 && (loadFailure || !loading) && (
               <Table.Tr>
                 <Table.Td colSpan={6}>
-                  <Box className="EmptyState-root" ta="center">
-                    <IconServer width="48" height="48" color="var(--text-tertiary)" />
-                    <Text fw={600} size="lg" mt="md" c="var(--text-primary)">
-                      {t('instances.emptyTitle')}
-                    </Text>
-                    <Text c="dimmed" size="sm" mt="xs" mb="lg">
-                      {t('instances.emptyBody')}
-                    </Text>
-                    <Button
-                      leftSection={<IconPlus width="16" height="16" />}
-                      onClick={() => { resetForm(); setModalOpen(true); }}
-                    >
-                      {t('instances.addInstance')}
-                    </Button>
-                  </Box>
+                  {loadFailure ? (
+                    // Not the same as having none. "Get started by connecting
+                    // to your first APISIX instance", said to someone who has
+                    // five and a backend that is down, costs them the time it
+                    // takes to find out the advice was wrong - and this page is
+                    // where InstanceGuard sends them to act on it (#165).
+                    <Box className="EmptyState-root" ta="center">
+                      <IconServer width="48" height="48" color="var(--text-tertiary)" />
+                      <Text fw={600} size="lg" mt="md" c="var(--text-primary)">
+                        {t('instances.unreadableTitle')}
+                      </Text>
+                      <Text c="dimmed" size="sm" mt="xs">
+                        {t('instances.unreadableBody')}
+                      </Text>
+                      {loadFailure.reason && (
+                        <Text c="dimmed" size="xs" mt="xs">
+                          {loadFailure.reason}
+                        </Text>
+                      )}
+                      <Box mt="lg" />
+                      <Button
+                        variant="light"
+                        leftSection={<IconRefresh width="16" height="16" />}
+                        onClick={() => { loadInstances(); loadHealth(); }}
+                        loading={loading}
+                      >
+                        {t('instances.unreadableCta')}
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Box className="EmptyState-root" ta="center">
+                      <IconServer width="48" height="48" color="var(--text-tertiary)" />
+                      <Text fw={600} size="lg" mt="md" c="var(--text-primary)">
+                        {t('instances.emptyTitle')}
+                      </Text>
+                      <Text c="dimmed" size="sm" mt="xs" mb="lg">
+                        {t('instances.emptyBody')}
+                      </Text>
+                      <Button
+                        leftSection={<IconPlus width="16" height="16" />}
+                        onClick={() => { resetForm(); setModalOpen(true); }}
+                      >
+                        {t('instances.addInstance')}
+                      </Button>
+                    </Box>
+                  )}
                 </Table.Td>
               </Table.Tr>
             )}

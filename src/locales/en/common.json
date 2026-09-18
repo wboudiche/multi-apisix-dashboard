@@ -76,7 +76,10 @@
     "saveFailed": "Failed to save instance",
     "deleteFailed": "Failed to delete instance",
     "dependencyCheckFailed": "Failed to check what depends on this instance",
-    "deleteUnreachableReason": "Reason: {{reason}}"
+    "deleteUnreachableReason": "Reason: {{reason}}",
+    "unreadableTitle": "Instance list unavailable",
+    "unreadableBody": "The instances could not be read, so none can be listed here. This is not the same as having none registered — the records are still there, and this page cannot reach them right now.",
+    "unreadableCta": "Try again"
   },
   "proxyError": {
     "title": "Cannot reach {{name}}",
@@ -831,7 +834,11 @@
     "thActions": "Actions",
     "thCreated": "Created",
     "thInstances": "Instances",
-    "thTeams": "Teams"
+    "thTeams": "Teams",
+    "assignmentsUnreadable": "Could not be read",
+    "assignmentsUnreadableTitle": "Assignments unavailable",
+    "assignmentsUnreadableForm": "This user’s current assignments could not be read, so the roles below may be incomplete. Saving writes only the roles you pick here; it does not remove any.",
+    "assignmentsUnreadableBody": "Instance assignments could not be read for {{count}} of the accounts listed, so this table cannot say what they may do. Reason: {{reason}}"
   },
   "header": {
     "accountRole": "Role: {{role}}",
@@ -839,7 +846,9 @@
     "logout": "Logout",
     "changePassword": "Change password",
     "loadFailedTitle": "Instances unavailable",
-    "loadFailed": "Could not load the instance list."
+    "loadFailed": "Could not load the instance list.",
+    "accessLoadFailedTitle": "Access list unavailable",
+    "accessLoadFailed": "Could not read which instances this account may use, so its role is unknown here."
   },
   "teams": {
     "title": "Teams",

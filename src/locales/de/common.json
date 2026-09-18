@@ -34,7 +34,9 @@
     "logout": "Abmelden",
     "role": "Rolle: {{role}}",
     "loadFailedTitle": "Instanzen nicht verfügbar",
-    "loadFailed": "Die Instanzliste konnte nicht geladen werden."
+    "loadFailed": "Die Instanzliste konnte nicht geladen werden.",
+    "accessLoadFailedTitle": "Zugriffsliste nicht verfügbar",
+    "accessLoadFailed": "Es konnte nicht gelesen werden, welche Instanzen dieses Konto nutzen darf; seine Rolle ist hier daher unbekannt."
   },
   "instanceGuard": {
     "noInstances": {
@@ -569,7 +571,11 @@
     "thInstances": "Instanzen",
     "thRole": "Rolle",
     "thTeams": "Teams",
-    "thUser": "Benutzer"
+    "thUser": "Benutzer",
+    "assignmentsUnreadable": "Konnte nicht gelesen werden",
+    "assignmentsUnreadableTitle": "Zuweisungen nicht verfügbar",
+    "assignmentsUnreadableForm": "Die aktuellen Zuweisungen dieses Benutzers konnten nicht gelesen werden, die Rollen unten sind daher möglicherweise unvollständig. Beim Speichern werden nur die hier gewählten Rollen geschrieben; es wird keine entfernt.",
+    "assignmentsUnreadableBody": "Für {{count}} der aufgeführten Konten konnten die Instanzzuweisungen nicht gelesen werden; diese Tabelle kann daher nicht sagen, was sie dürfen. Grund: {{reason}}"
   },
   "listWarning": {
     "title": "Unvollständige Ergebnisse",

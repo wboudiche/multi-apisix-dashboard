@@ -189,19 +189,35 @@ export const Header: FC<HeaderProps> = (props) => {
 
       if (!currentUser) return;
 
-      // Deliberately quiet, and deliberately not folded into the report above.
-      // /api/v1/teams is admin-only and answers 403 to a developer, which is
-      // the ordinary case rather than a fault: they get no team switcher and
-      // that is all. Announcing it would put a red toast on every page of
-      // every non-admin session, blaming an instance list that loaded fine.
+      // The account's own access list. Everyone may read their own, so a
+      // failure here is a fault rather than the ordinary answer - and it is
+      // the list usePermission reads a role out of, so absorbing it into an
+      // empty one takes away what someone may do and gives no reason for it
+      // (#165). The fallback stays as it was: usePermission drops back to
+      // user.role, which is empty for every non-super_admin, so nothing widens
+      // - it narrows, quietly. Now it says so.
       try {
         const userInstData = await instanceApi.getUserInstances(currentUser.id);
         setUserInstances(userInstData);
+      } catch (error) {
+        notifications.show({
+          id: 'header-access-load-failed',
+          title: t('header.accessLoadFailedTitle'),
+          message: describeError(error, t('header.accessLoadFailed')),
+          color: 'red',
+        });
+      }
 
+      // Deliberately quiet, and deliberately not folded into either report.
+      // /api/v1/teams is admin-only and answers 403 to a developer, which is
+      // the ordinary case rather than a fault: they get no team switcher and
+      // that is all. Announcing it would put a red toast on every page of
+      // every non-admin session, blaming reads that worked.
+      try {
         const teamData = await teamApi.list();
         setTeams(teamData);
       } catch {
-        // Leaves the team switcher and role badge unrendered, as before.
+        // Leaves the team switcher unrendered, as before.
       }
     };
     loadHeaderData();
