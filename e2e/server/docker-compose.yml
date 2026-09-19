@@ -48,6 +48,15 @@ services:
       # E2E_LOCAL_GATEWAY_URL at the same port (#152).
       - '${E2E_GATEWAY_PORT:-9080}:9080'
       - '9180:9180'
+      # The Control API, which reports what the health checkers have seen
+      # (#281). Only this stack's first gateway publishes it: the second one
+      # exists to prove the dashboard keeps two apart, and a gateway without a
+      # control address is the ordinary case worth testing too.
+      #
+      # Bound to the host's loopback rather than every interface: this API is
+      # not read-only - it reloads plugins and triggers dumps - and everything
+      # that reads it here runs on the host.
+      - '127.0.0.1:9090:9090'
     depends_on:
       - etcd
     networks:

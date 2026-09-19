@@ -35,6 +35,8 @@ export type Instance = {
   description: string;
   admin_api_url: string;
   gateway_url: string;
+  /** Empty unless this gateway exposes APISIX's Control API (#281). */
+  control_api_url: string;
   is_active: boolean;
 };
 
@@ -136,6 +138,7 @@ export type CreateInstanceInput = {
   admin_api_url: string;
   admin_key: string;
   gateway_url?: string;
+  control_api_url?: string;
   is_active?: boolean;
 };
 
@@ -212,11 +215,25 @@ export async function ensureInstance(token: string, input: CreateInstanceInput):
     // it (#152). One that already has a gateway keeps it, whatever the fixture
     // would have used - a devcontainer run reaches its gateway by another
     // address, and this seed is not the place to decide that it is wrong.
+    //
+    // The control API address is filled in the same way and for the same
+    // reason: a machine that ran this suite before #281 has an instance
+    // without one, and would show "health unknown" for ever while CI, starting
+    // from an empty etcd, showed the truth (#281).
+    const backfill: Record<string, string> = {};
     if (input.gateway_url && !existing.gateway_url) {
-      console.log(`[e2e] "${existing.name}" had no gateway_url; set to ${input.gateway_url}`);
+      backfill.gateway_url = input.gateway_url;
+    }
+    if (input.control_api_url && !existing.control_api_url) {
+      backfill.control_api_url = input.control_api_url;
+    }
+    if (Object.keys(backfill).length > 0) {
+      console.log(
+        `[e2e] "${existing.name}" was missing ${Object.keys(backfill).join(', ')}; filling in`
+      );
       return (await apiFetch(`/api/v1/instances/${existing.id}`, token, {
         method: 'PUT',
-        json: { gateway_url: input.gateway_url },
+        json: backfill,
       })) as Instance;
     }
     if (input.gateway_url && existing.gateway_url !== input.gateway_url) {
@@ -238,6 +255,7 @@ export async function ensureInstance(token: string, input: CreateInstanceInput):
       admin_api_url: input.admin_api_url,
       admin_key: input.admin_key,
       gateway_url: input.gateway_url ?? '',
+      control_api_url: input.control_api_url ?? '',
       is_active: input.is_active ?? true,
     },
   });

@@ -28,6 +28,12 @@ export type Instance = {
   admin_api_url: string;
   admin_key: string;
   gateway_url: string;
+  /**
+   * Where this gateway serves APISIX's Control API, or empty. Optional and
+   * usually empty: APISIX binds it to loopback by default, so exposing it is
+   * deliberate. Upstream health is read from it (#281).
+   */
+  control_api_url: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -94,6 +100,7 @@ export type CreateInstanceRequest = {
   admin_api_url: string;
   admin_key: string;
   gateway_url?: string;
+  control_api_url?: string;
   is_active?: boolean;
 };
 

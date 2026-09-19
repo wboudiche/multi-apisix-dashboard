@@ -258,6 +258,7 @@ const InstancesPage = () => {
     admin_api_url: '',
     admin_key: '',
     gateway_url: '',
+    control_api_url: '',
     is_active: true,
   });
 
@@ -463,6 +464,7 @@ const InstancesPage = () => {
       admin_api_url: '',
       admin_key: '',
       gateway_url: '',
+    control_api_url: '',
       is_active: true,
     });
   };
@@ -475,6 +477,7 @@ const InstancesPage = () => {
       admin_api_url: instance.admin_api_url,
       admin_key: '', // Don't show existing key for security
       gateway_url: instance.gateway_url || '',
+      control_api_url: instance.control_api_url || '',
       is_active: instance.is_active,
     });
     setModalOpen(true);
@@ -726,6 +729,17 @@ const InstancesPage = () => {
             placeholder="http://localhost:9080"
             value={formData.gateway_url}
             onChange={(e) => setFormData({ ...formData, gateway_url: e.target.value })}
+          />
+          {/* Optional, and empty for most gateways: APISIX binds its Control
+              API to loopback unless the deployment says otherwise, and it
+              carries no authentication of its own. Left empty, upstream health
+              is simply not known here rather than reported as bad (#281). */}
+          <TextInput
+            label="Control API URL"
+            description="Where this gateway serves APISIX's Control API, if it exposes one. Used to read upstream health. APISIX binds it to loopback by default and it carries no authentication, so exposing it is a deliberate choice. Leave empty if it does not."
+            placeholder="http://localhost:9090"
+            value={formData.control_api_url}
+            onChange={(e) => setFormData({ ...formData, control_api_url: e.target.value })}
           />
 
           <Paper p="md" withBorder bg="var(--surface-1)" mt="sm">

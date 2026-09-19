@@ -1,6 +1,14 @@
 apisix:
   node_listen: 9080
   enable_ipv6: false
+  # APISIX serves the Control API by default (enable_control), but binds it to
+  # loopback inside the container, where nothing outside can reach it. The
+  # dashboard reads upstream health from it (#281), so this stack moves it to
+  # an address the host can reach - as a deployment would have to do
+  # deliberately, since the port carries no authentication of its own.
+  control:
+    ip: 0.0.0.0
+    port: 9090
   proxy_mode: http&stream
   stream_proxy:
     tcp:
