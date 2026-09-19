@@ -161,6 +161,12 @@
       "configId": "ID de Configuración de Plugin",
       "editPlugin": "Editar Plugin",
       "label": "Plugins",
+      "orderedByPriority": "Listados en el orden en que los ejecuta esta pasarela.",
+      "priority": "Prioridad de ejecución",
+      "priorityCustom": "prioridad {{priority}}, fijada aquí",
+      "priorityDefault": "prioridad {{priority}}",
+      "priorityHelp": "El valor más alto se ejecuta primero. Déjalo vacío para usar el de esta pasarela: {{priority}}.",
+      "priorityHelpUnknown": "El valor más alto se ejecuta primero. Esta pasarela no indica el valor por defecto de este plugin.",
       "searchForSelectedPlugins": "Buscar Plugins Seleccionados",
       "selectPlugins": {
         "title": "Seleccionar Plugins"

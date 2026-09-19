@@ -161,6 +161,12 @@
       "configId": "Plugin-Konfigurations-ID",
       "editPlugin": "Plugin bearbeiten",
       "label": "Plugins",
+      "orderedByPriority": "In der Reihenfolge aufgeführt, in der dieses Gateway sie ausführt.",
+      "priority": "Ausführungspriorität",
+      "priorityCustom": "Priorität {{priority}}, hier gesetzt",
+      "priorityDefault": "Priorität {{priority}}",
+      "priorityHelp": "Höher läuft zuerst. Leer lassen, um den Wert dieses Gateways zu verwenden: {{priority}}.",
+      "priorityHelpUnknown": "Höher läuft zuerst. Dieses Gateway nennt keinen Standardwert für dieses Plugin.",
       "searchForSelectedPlugins": "Nach ausgewählten Plugins suchen",
       "selectPlugins": {
         "title": "Plugins auswählen"
