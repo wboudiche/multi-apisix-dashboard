@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Box, Select, Text } from '@mantine/core';
+import { Box, Button, Group, Select, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +30,7 @@ import {
   FormSectionUpstream,
 } from '../FormPartRoute';
 import { FormSection } from '../FormSection';
+import { protocolConfHelp } from './protocolConf';
 import type { StreamRoutePostType } from './schema';
 
 /**
@@ -106,6 +107,8 @@ const FormSectionStreamRouteProtocol = () => {
   // protocol, and the fields below it have nothing to attach to.
   const hasProtocol = !!name;
 
+  const confHelp = protocolConfHelp(name);
+
   return (
     <FormSection legend={t('form.streamRoutes.protocol.title')}>
       {/* The one section that says "protocol", and the one people reach for
@@ -164,6 +167,32 @@ const FormSectionStreamRouteProtocol = () => {
         disabled={!hasProtocol}
         toObject
       />
+      {/* What this protocol's conf is for, and something to start from. The
+          Admin API describes conf as an object and says no more, so these come
+          from the protocol's own schema inside APISIX - examples, not a
+          contract, and the gateway still judges what is sent (#141). */}
+      {confHelp && hasProtocol && (
+        <Stack gap={4} mt={-8}>
+          <Text size="xs" c="dimmed">
+            {t(confHelp.noteKey)}
+          </Text>
+          {confHelp.example && !formState.disabled && (
+            <Group gap="xs">
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                onClick={() => setValue('protocol.conf', confHelp.example)}
+                data-testid="protocol-conf-example"
+              >
+                {t('form.streamRoutes.protocol.confExample')}
+              </Button>
+              <Text size="xs" c="dimmed">
+                {t('form.streamRoutes.protocol.confExampleHint')}
+              </Text>
+            </Group>
+          )}
+        </Stack>
+      )}
       <FormItemJsonInput
         control={control}
         name="protocol.logger"
