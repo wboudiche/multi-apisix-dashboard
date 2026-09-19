@@ -22,15 +22,22 @@ import (
 
 // Instance represents an APISIX instance configuration
 type Instance struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	AdminAPIURL string    `json:"admin_api_url"` // e.g., http://localhost:9180
-	AdminKey    string    `json:"admin_key"`
-	GatewayURL  string    `json:"gateway_url"` // e.g., http://localhost:9080
-	IsActive    bool      `json:"is_active"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	AdminAPIURL string `json:"admin_api_url"` // e.g., http://localhost:9180
+	AdminKey    string `json:"admin_key"`
+	GatewayURL  string `json:"gateway_url"` // e.g., http://localhost:9080
+	// Where this gateway serves APISIX's Control API, e.g.
+	// http://localhost:9090. Optional, and empty for most gateways: APISIX
+	// binds it to loopback inside the process by default, so exposing it is a
+	// deliberate act. Health is read from it (#281), and a gateway without one
+	// is a gateway whose health this dashboard cannot know - which is a
+	// different thing from a gateway that is unwell.
+	ControlAPIURL string    `json:"control_api_url"`
+	IsActive      bool      `json:"is_active"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // User represents a dashboard user

@@ -53,6 +53,12 @@ const STAGING_APISIX_URL = process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.
 // container publishes only its Admin API, so that instance is left without one
 // and a route test against it is refused, as it should be (#152).
 const LOCAL_GATEWAY_URL = process.env['E2E_LOCAL_GATEWAY_URL'] ?? 'http://127.0.0.1:9080';
+// The local gateway's Control API, which the stack publishes (#281). The
+// staging container does not, and that instance is deliberately left without
+// one: a gateway whose health cannot be read is the ordinary case, and the
+// dashboard has to say so rather than report it as unwell.
+const LOCAL_CONTROL_URL =
+  process.env['E2E_LOCAL_CONTROL_URL'] ?? 'http://127.0.0.1:9090';
 
 export default async function globalSetup(): Promise<void> {
   const token = await loginAdmin();
@@ -66,6 +72,7 @@ export default async function globalSetup(): Promise<void> {
     admin_api_url: LOCAL_APISIX_URL,
     admin_key: APISIX_ADMIN_KEY,
     gateway_url: LOCAL_GATEWAY_URL,
+    control_api_url: LOCAL_CONTROL_URL,
     is_active: true,
   });
 

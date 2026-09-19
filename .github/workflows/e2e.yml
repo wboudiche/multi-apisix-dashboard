@@ -129,6 +129,22 @@ jobs:
             done
           ' || (echo "APISIX dashboard not ready after $TIMEOUT seconds" && exit 1)
 
+      - name: Waiting for the gateway's Control API
+        working-directory: ./e2e/server
+        run: |
+          # The address upstream health is read from (#281). Waited on rather
+          # than assumed: a mistyped key under `apisix.control` merges into the
+          # defaults, APISIX starts happily on loopback inside the container,
+          # and the only symptom would be a health column reading "unknown" -
+          # which is also what a gateway that exposes nothing looks like.
+          TIMEOUT=30
+          timeout $TIMEOUT bash -c '
+            until curl -f http://127.0.0.1:9090/v1/healthcheck > /dev/null 2>&1; do
+              echo "Waiting for the APISIX Control API to be ready..."
+              sleep 5
+            done
+          ' || (echo "APISIX Control API not reachable after $TIMEOUT seconds" && exit 1)
+
       - name: Start Go backend
         env:
           PORT: "8086"

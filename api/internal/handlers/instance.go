@@ -56,6 +56,8 @@ type CreateInstanceRequest struct {
 	AdminAPIURL string `json:"admin_api_url" binding:"required"`
 	AdminKey    string `json:"admin_key" binding:"required"`
 	GatewayURL  string `json:"gateway_url"`
+	// Optional; see models.Instance.ControlAPIURL.
+	ControlAPIURL string `json:"control_api_url"`
 	// A pointer so that an omitted is_active can be defaulted rather than read
 	// as false. An inactive instance cannot be proxied to at all (see
 	// ProxyRequest), so registering one without saying otherwise used to
@@ -69,11 +71,27 @@ type UpdateInstanceRequest struct {
 	AdminAPIURL string `json:"admin_api_url"`
 	AdminKey    string `json:"admin_key"`
 	GatewayURL  string `json:"gateway_url"`
+	// A pointer for the same reason is_active is one, and for one more: a
+	// gateway can stop exposing its control API, so an empty address has to
+	// mean "remove the one held" rather than "say nothing about it". The
+	// fields above cannot be cleared at all, which is a wart this one does not
+	// copy (#281).
+	ControlAPIURL *string `json:"control_api_url"`
 	// A pointer so that omitting is_active leaves the stored value alone,
 	// consistent with every other field in UpdateInstance. As a plain bool an
 	// absent field bound to false, so a partial update meaning to change only
 	// the name also disabled the instance.
 	IsActive *bool `json:"is_active"`
+}
+
+// applyControlAPIURL writes an update's control API address onto an instance:
+// the address when one is given, nothing when the field is absent, and an
+// empty address - the gateway stopped exposing it - when it is given empty.
+func applyControlAPIURL(instance *models.Instance, update *string) {
+	if update == nil {
+		return
+	}
+	instance.ControlAPIURL = *update
 }
 
 type SetUserInstanceRoleRequest struct {
@@ -165,11 +183,12 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 	}
 
 	instance := &models.Instance{
-		Name:        req.Name,
-		Description: req.Description,
-		AdminAPIURL: req.AdminAPIURL,
-		AdminKey:    req.AdminKey,
-		GatewayURL:  req.GatewayURL,
+		Name:          req.Name,
+		Description:   req.Description,
+		AdminAPIURL:   req.AdminAPIURL,
+		ControlAPIURL: req.ControlAPIURL,
+		AdminKey:      req.AdminKey,
+		GatewayURL:    req.GatewayURL,
 		// A newly registered instance is active unless the caller says not to.
 		IsActive: req.IsActive == nil || *req.IsActive,
 	}
@@ -353,6 +372,7 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	if req.GatewayURL != "" {
 		instance.GatewayURL = req.GatewayURL
 	}
+	applyControlAPIURL(instance, req.ControlAPIURL)
 	if req.IsActive != nil {
 		instance.IsActive = *req.IsActive
 	}
