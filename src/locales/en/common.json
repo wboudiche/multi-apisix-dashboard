@@ -1036,6 +1036,7 @@
     "logError": "Log Error",
     "stable": "Stable",
     "loadFailedTitle": "Error",
-    "loadFailed": "Failed to load dashboard overview"
+    "loadFailed": "Failed to load dashboard overview",
+    "uncountedInstances": "Gateways whose resources could not be fully counted, so at least one total above is short: {{count}}"
   }
 }

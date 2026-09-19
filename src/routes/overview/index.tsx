@@ -197,6 +197,17 @@ const Overview = () => {
               </Box>
             </SimpleGrid>
 
+            {/* A sum over what could be counted. A gateway left out of it
+                without a word reads as a smaller estate rather than as an
+                incomplete answer (#286). */}
+            {!!data?.uncounted_instances && (
+              <Text size="xs" c="dimmed" mt="md" data-testid="overview-uncounted">
+                {t('overview.uncountedInstances', {
+                  count: data.uncounted_instances,
+                })}
+              </Text>
+            )}
+
             <Paper withBorder p="md" mt="xl" bg="var(--surface-1)" radius="md">
               <Group justify="space-between">
                 <Text size="sm" fw={500}>{t('overview.systemConfig')}</Text>

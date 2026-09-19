@@ -32,6 +32,7 @@ type OverviewService struct {
 	client           *http.Client
 	cache            map[string]models.InstanceHealth
 	cachedStats      models.ResourceStats
+	cachedUncounted  int
 	cacheExpiry      time.Time
 	mu               sync.RWMutex
 }
@@ -68,7 +69,7 @@ func (s *OverviewService) RefreshOverview(ctx context.Context, userID string, gl
 	var wg sync.WaitGroup
 	newCache := make(map[string]models.InstanceHealth)
 	var mu sync.Mutex
-	var totalRoutes, totalServices, totalUpstreams int
+	var totalRoutes, totalServices, totalUpstreams, uncounted int
 
 	for _, inst := range instances {
 		wg.Add(1)
@@ -89,7 +90,10 @@ func (s *OverviewService) RefreshOverview(ctx context.Context, userID string, gl
 
 			if routes < 0 && services < 0 && upstreams < 0 {
 				health.Status = "Disconnected"
-				health.Error = "Failed to reach admin API"
+				// Not "failed to reach": a gateway that answers something this
+				// dashboard cannot read arrives here too, and it was reached
+				// perfectly well (#286).
+				health.Error = "Could not read the Admin API"
 			}
 
 			mu.Lock()
@@ -102,6 +106,12 @@ func (s *OverviewService) RefreshOverview(ctx context.Context, userID string, gl
 			}
 			if upstreams > 0 {
 				totalUpstreams += upstreams
+			}
+			// One count missing is enough: whatever this gateway holds of that
+			// kind is not in the totals, and the page says so rather than
+			// letting the sum pass for the whole estate.
+			if routes < 0 || services < 0 || upstreams < 0 {
+				uncounted++
 			}
 			mu.Unlock()
 		}(inst)
@@ -116,6 +126,7 @@ func (s *OverviewService) RefreshOverview(ctx context.Context, userID string, gl
 		Services:  totalServices,
 		Upstreams: totalUpstreams,
 	}
+	s.cachedUncounted = uncounted
 	s.cacheExpiry = time.Now().Add(30 * time.Second)
 	data := s.buildOverviewFromCache()
 	s.mu.Unlock()
@@ -140,20 +151,31 @@ func (s *OverviewService) fetchResourceCount(ctx context.Context, instance *mode
 		return -1
 	}
 
+	// A total this dashboard cannot read is unknown, never zero. Reported as
+	// zero, a gateway answering something that is not the Admin API - a port
+	// pointed at the wrong service, a proxy answering for itself - is shown
+	// connected and empty, which is exactly what a healthy gateway with
+	// nothing on it looks like (#286).
+	//
+	// A pointer so an answer that simply omits the field is caught too, and
+	// not only one that fails to decode: any other JSON decodes happily into a
+	// zero. InstanceService.countAdminResource draws the same line for the
+	// delete path, which is why that path refuses the same gateway.
 	var result struct {
-		Total int `json:"total"`
+		Total *int `json:"total"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil || result.Total == nil {
+		return -1
 	}
-	return result.Total
+	return *result.Total
 }
 
 func (s *OverviewService) buildOverviewFromCache() *models.OverviewData {
 	data := &models.OverviewData{
-		TotalInstances: len(s.cache),
-		AllInstances:   make([]models.InstanceHealth, 0, len(s.cache)),
-		GlobalStats:    s.cachedStats,
+		TotalInstances:     len(s.cache),
+		AllInstances:       make([]models.InstanceHealth, 0, len(s.cache)),
+		GlobalStats:        s.cachedStats,
+		UncountedInstances: s.cachedUncounted,
 	}
 
 	for _, health := range s.cache {

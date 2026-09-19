@@ -246,12 +246,20 @@ type ResourceStats struct {
 
 // OverviewData aggregates data for the dashboard landing page
 type OverviewData struct {
-	TotalInstances  int              `json:"total_instances"`
-	ActiveInstances int              `json:"active_instances"`
-	GlobalStats     ResourceStats    `json:"global_stats"`
-	CurrentInstance *InstanceHealth  `json:"current_instance,omitempty"`
-	InstanceStats   ResourceStats    `json:"instance_stats,omitempty"`
-	AllInstances    []InstanceHealth `json:"all_instances"`
+	TotalInstances  int `json:"total_instances"`
+	ActiveInstances int `json:"active_instances"`
+	// UncountedInstances is how many gateways have at least one count missing
+	// from GlobalStats, so at least one of those totals understates what the
+	// estate holds (#286). A gateway whose routes were read but whose services
+	// were not is counted here and still contributes its routes: the totals
+	// are a sum over what could be counted, and a sum that quietly leaves
+	// something out reads as a smaller estate rather than as an incomplete
+	// answer.
+	UncountedInstances int              `json:"uncounted_instances"`
+	GlobalStats        ResourceStats    `json:"global_stats"`
+	CurrentInstance    *InstanceHealth  `json:"current_instance,omitempty"`
+	InstanceStats      ResourceStats    `json:"instance_stats,omitempty"`
+	AllInstances       []InstanceHealth `json:"all_instances"`
 }
 
 // PasswordPolicy is the admin-editable password policy, stored in etcd at

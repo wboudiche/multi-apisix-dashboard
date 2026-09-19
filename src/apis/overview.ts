@@ -31,6 +31,18 @@ export type ResourceStats = {
 export type OverviewData = {
   total_instances: number;
   active_instances: number;
+  /**
+   * How many gateways have at least one count missing from `global_stats`, so
+   * at least one of those totals understates what the estate holds (#286). A
+   * gateway counted here may still have contributed the counts that were
+   * readable.
+   *
+   * Optional, and deliberately not asserted below: a dashboard newer than its
+   * backend would otherwise refuse the whole overview over a field that only
+   * adds a caveat. Absent, the page says nothing extra - which is what it did
+   * before the field existed.
+   */
+  uncounted_instances?: number;
   global_stats: ResourceStats;
   instance_stats?: ResourceStats;
   current_instance?: InstanceHealth;
@@ -94,6 +106,19 @@ export const parseOverview = (value: unknown): OverviewData => {
   // the page never renders. The backend does not even fill instance_stats -
   // it is sent as zeroes on every overview - so a rule about it would be a
   // rule about nothing.
+  // Narrow, but checked: the docblock above promises that every field the page
+  // renders is, and this one is rendered. Absent is allowed - a backend older
+  // than this build sends none - anything else must be the number the page
+  // puts in a sentence.
+  if (
+    value.uncounted_instances !== undefined &&
+    typeof value.uncounted_instances !== 'number'
+  ) {
+    throw new MalformedResponseError(
+      'expected an overview whose uncounted_instances is a number',
+      OVERVIEW_PATH
+    );
+  }
   if (!isResourceStats(value.global_stats)) {
     throw new MalformedResponseError(
       'expected an overview with global_stats counted',

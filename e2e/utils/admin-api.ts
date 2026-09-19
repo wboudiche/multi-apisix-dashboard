@@ -52,6 +52,8 @@ export const listInstances = () => adminFetch<Instance[]>('/api/v1/instances');
 export type OverviewData = {
   total_instances: number;
   active_instances: number;
+  /** Gateways whose resources could not be counted, so the totals leave them out (#286). */
+  uncounted_instances?: number;
   global_stats: {
     routes: number;
     services: number;
