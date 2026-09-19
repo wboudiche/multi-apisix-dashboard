@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -377,12 +378,24 @@ func (s *InstanceService) DeleteInstance(ctx context.Context, id string) error {
 }
 
 // TestConnection tests if an instance is reachable via Admin API
+// maxProbeResponseBytes caps what the connection test reads. The address is
+// one the dashboard was given rather than one it verified, and an answer
+// without an end would otherwise be read without one. The probe asks for ten
+// rows, so a gateway that needs more than this is answering something else.
+const maxProbeResponseBytes = 1 << 20 // 1 MiB
+
 func (s *InstanceService) TestConnection(ctx context.Context, instance *models.Instance) error {
 	if instance.AdminAPIURL == "" {
 		return fmt.Errorf("admin API URL is empty")
 	}
 
-	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin/services"
+	// Paged deliberately: the probe wants the shape of the answer and the
+	// total, not the services themselves. Unpaged, this downloaded every
+	// service on the gateway - on a poll every thirty seconds, per reader -
+	// and a list past the read cap below came back truncated, which reads as
+	// "not an Admin API" for a gateway that is perfectly well (#288).
+	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") +
+		"/apisix/admin/services?page=1&page_size=10"
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
@@ -402,6 +415,34 @@ func (s *InstanceService) TestConnection(ctx context.Context, instance *models.I
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("APISIX returned status %d", resp.StatusCode)
+	}
+
+	// A status is not an answer. This is the probe an operator presses to find
+	// out whether the address they typed is the right one, and anything with a
+	// catch-all handler says 2xx here: this dashboard's own URL serves its
+	// index for a path it does not know, and so does any single-page app or
+	// portal in front of a gateway. Confirming such an address is the one
+	// thing this test must not do (#288).
+	//
+	// The shape asked for is the one the counting paths already require, so a
+	// gateway that passes this test is one whose resources can be counted:
+	// countAdminResource and OverviewService.fetchResourceCount both read
+	// `total` and treat an absent one as unknown.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes+1))
+	if err != nil {
+		return fmt.Errorf("could not read the answer from %s: %w", targetURL, err)
+	}
+	// Said apart from a malformed answer: a body this long is a gateway this
+	// probe cannot check, not a gateway that failed it. Reading one byte past
+	// the cap is what tells the two apart at all.
+	if len(body) > maxProbeResponseBytes {
+		return fmt.Errorf("the answer from %s was too large to check", targetURL)
+	}
+	var probe struct {
+		Total *int `json:"total"`
+	}
+	if err := json.Unmarshal(body, &probe); err != nil || probe.Total == nil {
+		return fmt.Errorf("%s answered, but not as an APISIX Admin API", targetURL)
 	}
 
 	return nil
