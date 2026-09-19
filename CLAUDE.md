@@ -209,6 +209,8 @@ Multi-tenant tests of note: `multi-instance.spec.ts`, `route-test.spec.ts`, `rou
 
 Default target is the dev server, `http://localhost:5173/ui/`; override via `E2E_TARGET_URL` (the image bundle lives at `http://localhost:9180/ui/`).
 
+`stream_routes.show-disabled-error.spec.ts` is the one spec that restarts the gateway — it takes stream mode away, restarts APISIX, and puts it back. It runs on CI and is skipped elsewhere unless `E2E_ALLOW_RESTART=1`, and it refuses outright unless the gateway it would restart is the one reading the config file it would edit. Compose names its project after the directory holding the compose file, which is `server` for every checkout, so running it from a worktree would otherwise restart the stack another checkout started (#290).
+
 ## Conventions enforced by tooling
 
 - **ASF license header** required on every `.ts`/`.tsx` and source file in `src/` and `e2e/` (`headers/header-format` ESLint rule). Go files have a similar comment-block header. `pnpm lint:fix` inserts the JS/TS one. **Do not remove these — they're required by Apache 2.0 §4(b) since the project is a derivative.**
