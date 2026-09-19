@@ -18,10 +18,10 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
-	"github.com/gin-gonic/gin"
 )
 
 type LabelHandler struct {

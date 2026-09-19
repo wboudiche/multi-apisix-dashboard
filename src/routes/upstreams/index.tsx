@@ -16,7 +16,7 @@
  */
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { Text } from '@mantine/core';
+import { Badge, Stack, Text, Tooltip } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,8 @@ import { API_UPSTREAMS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import type { HealthNode } from '@/utils/upstream-health';
+import { summarizeHealth } from '@/utils/upstream-health';
 
 function RouteComponent() {
   const { t } = useTranslation();
@@ -81,6 +83,75 @@ function RouteComponent() {
             return '-';
           }
           return <Text span data-testid="upstream-node-count">{count}</Text>;
+        },
+      },
+      {
+        dataIndex: ['value', '__health'],
+        title: t('upstreams.health'),
+        key: 'health',
+        render: (_, record) => {
+          // Four answers, and only two of them are measurements. A gateway
+          // that exposes no Control API, and an upstream nothing watches, are
+          // not upstreams in trouble - and a colour for either would be a
+          // claim nobody made (#281).
+          const health = summarizeHealth(record.value.__health);
+          if (health.state === 'unknown') {
+            return (
+              <Tooltip label={t('upstreams.healthUnknownHint')} withArrow multiline w={260}>
+                <Text size="sm" c="dimmed" data-testid="upstream-health">
+                  {t('upstreams.healthUnknown')}
+                </Text>
+              </Tooltip>
+            );
+          }
+          if (health.state === 'unchecked') {
+            return (
+              <Tooltip label={t('upstreams.healthUncheckedHint')} withArrow multiline w={260}>
+                <Text size="sm" c="dimmed" data-testid="upstream-health">
+                  {t('upstreams.healthUnchecked')}
+                </Text>
+              </Tooltip>
+            );
+          }
+          if (health.state === 'pending') {
+            return (
+              <Badge variant="outline" color="gray" size="sm" data-testid="upstream-health">
+                {t('upstreams.healthPending')}
+              </Badge>
+            );
+          }
+
+          // The nodes themselves, so the number is answerable: which one is
+          // down, and on which port.
+          const nodes = (
+            (record.value.__health as { nodes?: HealthNode[] })?.nodes ?? []
+            // `||`, not `??`: the backend writes an empty host when the
+            // checker named none, and ":1980 - healthy" reads as a mistake.
+          ).map((node) => `${node.host || '?'}:${node.port || '?'} - ${node.status || '?'}`);
+
+          return (
+            <Tooltip
+              label={
+                <Stack gap={0}>
+                  {nodes.map((line) => (
+                    <Text key={line} size="xs">
+                      {line}
+                    </Text>
+                  ))}
+                </Stack>
+              }
+              withArrow
+            >
+              <Badge
+                variant="light"
+                size="sm"
+                color={health.state === 'up' ? 'green' : health.state === 'down' ? 'red' : 'orange'}
+                data-testid="upstream-health"
+              >
+                {t('upstreams.healthNodes', { up: health.up, total: health.total })}
+              </Badge>
+            </Tooltip>
+          );
         },
       },
       {

@@ -48,6 +48,7 @@ const WARNING_MESSAGES = {
   service_upstream_unresolved: 'listWarning.service_upstream_unresolved',
   route_count_unresolved: 'listWarning.route_count_unresolved',
   upstream_dependants_unresolved: 'listWarning.upstream_dependants_unresolved',
+  upstream_health_unresolved: 'listWarning.upstream_health_unresolved',
 } as const;
 
 /**
@@ -68,6 +69,7 @@ const WARNING_TITLES: Partial<
   // The same, from the other end: every upstream is on screen, only what
   // depends on them is missing.
   upstream_dependants_unresolved: 'listWarning.detailsUnresolved',
+  upstream_health_unresolved: 'listWarning.detailsUnresolved',
 };
 
 export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {

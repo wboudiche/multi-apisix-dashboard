@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -410,6 +411,9 @@ type ProxyHandler struct {
 	serviceRouteCounts *serviceRouteCountCache
 	// And for what depends on each upstream, which the upstream page shows.
 	upstreamDependants *upstreamDependantsCache
+	// And for what its health checkers have seen, read from a different API on
+	// a different port, and held for a shorter while: health moves on its own.
+	upstreamHealth *upstreamHealthCache
 }
 
 func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService) *ProxyHandler {
@@ -419,6 +423,7 @@ func NewProxyHandler(instanceService *services.InstanceService, ownershipService
 		serviceUpstreams:   newServiceUpstreamCache(time.Now),
 		serviceRouteCounts: newServiceRouteCountCache(time.Now),
 		upstreamDependants: newUpstreamDependantsCache(time.Now),
+		upstreamHealth:     newUpstreamHealthCache(time.Now),
 	}
 }
 
@@ -748,6 +753,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			resourceType == "services" || resourceType == "upstreams" {
 			h.upstreamDependants.forget(instanceID)
 		}
+		// An upstream written with a health check is watched from that moment.
+		// Held for three more seconds, the reading taken before it would have
+		// the page say nothing watches it - a firm claim, and the wrong one.
+		if resourceType == "upstreams" {
+			h.upstreamHealth.forget(instanceID)
+		}
 	}
 
 	// 3. Post-mutation: Record ownership for new objects
@@ -973,6 +984,39 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 					upstreamCounts = reading
 				}
 
+				// What the gateway's health checkers have seen. A different
+				// API on a different port, which most gateways do not expose:
+				// no address is not a failure, and the rows simply say nothing
+				// about health rather than showing a colour for a question
+				// nobody could ask (#281).
+				var healthErr error
+				var health upstreamHealth
+				var healthKnown bool
+				if annotateUpstreams {
+					reading, cached := h.upstreamHealth.get(instanceID)
+					if !cached {
+						answer, err := fetchUpstreamHealth(c.Request.Context(), instance)
+						switch {
+						case err == nil:
+							reading = upstreamHealthReading{Health: answer}
+							h.upstreamHealth.put(instanceID, reading)
+						case errors.Is(err, errNoControlAPI):
+							// Not an incident: most gateways expose no control
+							// API. Cached as a failure so the next page does
+							// not ask again either, and no warning is raised.
+							reading = upstreamHealthReading{Failed: true}
+							h.upstreamHealth.put(instanceID, reading)
+						default:
+							log.Printf("[instance %s] could not read upstream health: %v",
+								instanceID, err)
+							reading = upstreamHealthReading{Failed: true}
+							h.upstreamHealth.put(instanceID, reading)
+							healthErr = err
+						}
+					}
+					health, healthKnown = reading.Health, !reading.Failed
+				}
+
 				filtered := make([]map[string]interface{}, 0, len(resources.List))
 				for _, r := range resources.List {
 					val, ok := r["value"].(map[string]interface{})
@@ -997,6 +1041,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						}
 						if upstreamErr == nil && annotateUpstreams {
 							annotateUpstreamDependants(val, upstreamCounts)
+						}
+						// Only when the gateway answered. Without the field a
+						// row reads as "not known", which is what it is.
+						if annotateUpstreams && healthKnown {
+							annotateUpstreamHealth(val, health)
 						}
 
 						// Filter for non-admin users. Unowned resources are
@@ -1030,6 +1079,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 					if resources.Warning == "" {
 						resources.Warning = upstreamDependantsWarning
 					}
+				}
+				// Only when an address was given and did not answer. A gateway
+				// that exposes no control API has nothing to warn about.
+				if annotateUpstreams && healthErr != nil && resources.Warning == "" {
+					resources.Warning = upstreamHealthWarning
 				}
 				// Not only when nothing could be counted: a reading without
 				// its stream routes is a partial one, and the page shows no

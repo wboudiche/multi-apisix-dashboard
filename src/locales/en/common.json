@@ -834,6 +834,13 @@
     "enabled": "Enabled"
   },
   "upstreams": {
+    "health": "Health",
+    "healthNodes": "{{up}}/{{total}} in rotation",
+    "healthPending": "Not measured yet",
+    "healthUnchecked": "No health check",
+    "healthUncheckedHint": "This upstream has no health check configured, so nothing is watching it.",
+    "healthUnknown": "Not known",
+    "healthUnknownHint": "This gateway exposes no Control API, or it could not be reached. Health is read from there.",
     "nodes": "Nodes",
     "routesWithCount": "Routes: {{count}}",
     "servicesWithCount": "Services: {{count}}",
@@ -1004,7 +1011,8 @@
     "title": "Incomplete results",
     "unknown": "Some results may be missing.",
     "unresolvedTitle": "Upstreams not resolved",
-    "upstream_dependants_unresolved": "What depends on each upstream could not be counted in full. Every upstream is listed; some of what depends on them may not be shown."
+    "upstream_dependants_unresolved": "What depends on each upstream could not be counted in full. Every upstream is listed; some of what depends on them may not be shown.",
+    "upstream_health_unresolved": "The health of these upstreams could not be read from the gateway. Every upstream is listed; what its checkers have seen is not shown."
   },
   "pageError": {
     "retry": "Retry",
