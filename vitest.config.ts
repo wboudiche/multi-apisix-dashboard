@@ -24,6 +24,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // e2e/utils too: its helpers are plain modules, and the one that rewrites
+    // the gateway config is worth testing without standing a gateway up
+    // (#290). The specs themselves stay with Playwright.
+    include: ['src/**/*.test.ts', 'e2e/utils/**/*.test.ts'],
   },
 });
