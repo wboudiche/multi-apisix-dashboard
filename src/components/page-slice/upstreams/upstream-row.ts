@@ -29,6 +29,13 @@ export type UpstreamRow = APISIXType['RespUpstreamList']['data']['list'][number]
     __route_count?: number;
     __service_count?: number;
     __stream_route_count?: number;
+    /**
+     * What the gateway's health checkers have seen, or absent when the gateway
+     * could not be asked - it exposes no Control API, or the address it gave
+     * did not answer (#281). Read through summarizeHealth, which is where the
+     * difference between "nothing watches this" and "nothing is known" lives.
+     */
+    __health?: unknown;
   };
 };
 

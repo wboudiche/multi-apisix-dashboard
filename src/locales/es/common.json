@@ -576,6 +576,13 @@
     "enabled": "Habilitado"
   },
   "upstreams": {
+    "health": "Estado",
+    "healthNodes": "{{up}}/{{total}} en rotación",
+    "healthPending": "Aún sin medir",
+    "healthUnchecked": "Sin comprobación de estado",
+    "healthUncheckedHint": "Este upstream no tiene ninguna comprobación de estado configurada, así que nada lo vigila.",
+    "healthUnknown": "No se sabe",
+    "healthUnknownHint": "Esta pasarela no expone la Control API, o no se ha podido alcanzar. El estado se lee de ahí.",
     "nodes": "Nodos",
     "routesWithCount": "Rutas: {{count}}",
     "servicesWithCount": "Servicios: {{count}}",
@@ -624,6 +631,7 @@
     "service_lookup_failed": "No se pudo leer la lista de servicios, por lo que faltan en estos resultados las rutas que alcanzan un upstream a través de un servicio.",
     "title": "Resultados incompletos",
     "unknown": "Es posible que falten algunos resultados.",
-    "upstream_dependants_unresolved": "No se ha podido contar por completo lo que depende de cada upstream. Todos los upstreams aparecen en la lista; puede que no se muestre parte de lo que depende de ellos."
+    "upstream_dependants_unresolved": "No se ha podido contar por completo lo que depende de cada upstream. Todos los upstreams aparecen en la lista; puede que no se muestre parte de lo que depende de ellos.",
+    "upstream_health_unresolved": "No se ha podido leer el estado de estos upstreams desde la pasarela. Todos aparecen en la lista; lo que han visto sus comprobaciones no se muestra."
   }
 }

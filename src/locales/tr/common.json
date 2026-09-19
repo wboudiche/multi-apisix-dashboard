@@ -576,6 +576,13 @@
     "enabled": "Aktif"
   },
   "upstreams": {
+    "health": "Durum",
+    "healthNodes": "{{up}}/{{total}} devrede",
+    "healthPending": "Henüz ölçülmedi",
+    "healthUnchecked": "Durum denetimi yok",
+    "healthUncheckedHint": "Bu upstream için yapılandırılmış bir durum denetimi yok, yani onu izleyen bir şey yok.",
+    "healthUnknown": "Bilinmiyor",
+    "healthUnknownHint": "Bu ağ geçidi Control API’yi sunmuyor ya da erişilemedi. Durum oradan okunur.",
     "nodes": "Düğümler",
     "routesWithCount": "Rotalar: {{count}}",
     "servicesWithCount": "Servisler: {{count}}",
@@ -624,6 +631,7 @@
     "service_lookup_failed": "Servis listesi okunamadı; bu nedenle bir upstream’e servis üzerinden ulaşan rotalar bu sonuçlarda yer almıyor.",
     "title": "Eksik sonuçlar",
     "unknown": "Bazı sonuçlar eksik olabilir.",
-    "upstream_dependants_unresolved": "Her upstream’e bağlı olanlar tam olarak sayılamadı. Tüm upstream’ler listeleniyor; onlara bağlı olanların bir kısmı gösterilmiyor olabilir."
+    "upstream_dependants_unresolved": "Her upstream’e bağlı olanlar tam olarak sayılamadı. Tüm upstream’ler listeleniyor; onlara bağlı olanların bir kısmı gösterilmiyor olabilir.",
+    "upstream_health_unresolved": "Bu upstream’lerin durumu ağ geçidinden okunamadı. Tüm upstream’ler listeleniyor; denetimlerinin gördüğü bilgi gösterilmiyor."
   }
 }

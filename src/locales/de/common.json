@@ -576,6 +576,13 @@
     "enabled": "Aktiviert"
   },
   "upstreams": {
+    "health": "Zustand",
+    "healthNodes": "{{up}}/{{total}} in Rotation",
+    "healthPending": "Noch nicht gemessen",
+    "healthUnchecked": "Keine Zustandsprüfung",
+    "healthUncheckedHint": "Für diesen Upstream ist keine Zustandsprüfung konfiguriert, es wird also nichts überwacht.",
+    "healthUnknown": "Nicht bekannt",
+    "healthUnknownHint": "Dieses Gateway stellt keine Control API bereit oder war nicht erreichbar. Der Zustand wird von dort gelesen.",
     "nodes": "Knoten",
     "routesWithCount": "Routen: {{count}}",
     "servicesWithCount": "Dienste: {{count}}",
@@ -624,6 +631,7 @@
     "service_lookup_failed": "Die Dienstliste konnte nicht gelesen werden. Routen, die einen Upstream über einen Dienst erreichen, fehlen daher in diesen Ergebnissen.",
     "title": "Unvollständige Ergebnisse",
     "unknown": "Einige Ergebnisse fehlen möglicherweise.",
-    "upstream_dependants_unresolved": "Die Abhängigkeiten der Upstreams konnten nicht vollständig gezählt werden. Alle Upstreams sind aufgeführt; ein Teil ihrer Abhängigkeiten wird möglicherweise nicht angezeigt."
+    "upstream_dependants_unresolved": "Die Abhängigkeiten der Upstreams konnten nicht vollständig gezählt werden. Alle Upstreams sind aufgeführt; ein Teil ihrer Abhängigkeiten wird möglicherweise nicht angezeigt.",
+    "upstream_health_unresolved": "Der Zustand dieser Upstreams konnte nicht vom Gateway gelesen werden. Alle Upstreams sind aufgeführt; was ihre Prüfungen gesehen haben, wird nicht angezeigt."
   }
 }

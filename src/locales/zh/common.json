@@ -576,6 +576,13 @@
     "enabled": "已启用"
   },
   "upstreams": {
+    "health": "健康状态",
+    "healthNodes": "{{up}}/{{total}} 在轮询中",
+    "healthPending": "尚未测量",
+    "healthUnchecked": "未配置健康检查",
+    "healthUncheckedHint": "该上游没有配置健康检查，因此没有任何东西在监视它。",
+    "healthUnknown": "未知",
+    "healthUnknownHint": "该网关未开放 Control API，或无法访问。健康状态从那里读取。",
     "nodes": "节点",
     "routesWithCount": "路由：{{count}}",
     "servicesWithCount": "服务：{{count}}",
@@ -624,6 +631,7 @@
     "service_lookup_failed": "无法读取服务列表，因此通过服务访问上游的路由未包含在这些结果中。",
     "title": "结果不完整",
     "unknown": "部分结果可能缺失。",
-    "upstream_dependants_unresolved": "未能完整统计依赖各上游的对象。上游已全部列出，但部分依赖项可能未显示。"
+    "upstream_dependants_unresolved": "未能完整统计依赖各上游的对象。上游已全部列出，但部分依赖项可能未显示。",
+    "upstream_health_unresolved": "无法从网关读取这些上游的健康状态。上游已全部列出，但其检查结果未显示。"
   }
 }
