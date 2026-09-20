@@ -1,1 +1,14 @@
 **/node_modules
+dist
+bin
+# .git stays in the context: the build stamps its sha into the UI (see Dockerfile).
+test-results
+playwright-report
+docs
+.github
+.devcontainer
+deploy
+.superpowers
+.eslintcache
+.env
+.env.*

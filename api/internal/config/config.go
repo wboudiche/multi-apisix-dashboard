@@ -17,6 +17,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"time"
 )
 
@@ -30,6 +31,9 @@ type Config struct {
 type ServerConfig struct {
 	Port string
 	Host string
+	// UIDir is the directory holding the built frontend (vite dist/). Empty
+	// disables static serving, which is the dev and test default.
+	UIDir string
 }
 
 type EtcdConfig struct {
@@ -53,8 +57,9 @@ type SecurityConfig struct {
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port: getEnv("PORT", "8080"),
-			Host: getEnv("HOST", "0.0.0.0"),
+			Port:  getEnv("PORT", "8080"),
+			Host:  getEnv("HOST", "0.0.0.0"),
+			UIDir: os.Getenv("UI_DIR"),
 		},
 		Etcd: EtcdConfig{
 			Endpoints: parseEnvList("ETCD_ENDPOINTS", "http://localhost:2379"),
@@ -81,9 +86,18 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// parseEnvList reads a comma-separated environment variable into a slice,
+// trimming whitespace and dropping empty items. A variable that is unset or
+// contains nothing but separators yields the single default value.
 func parseEnvList(key, defaultValue string) []string {
-	if value := os.Getenv(key); value != "" {
-		return []string{value}
+	var out []string
+	for _, item := range strings.Split(os.Getenv(key), ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
 	}
-	return []string{defaultValue}
+	if len(out) == 0 {
+		return []string{defaultValue}
+	}
+	return out
 }

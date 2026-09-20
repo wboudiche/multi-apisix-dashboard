@@ -46,6 +46,24 @@ Open <http://localhost:5173/ui> and log in with `admin / admin`. Change the pass
 
 See [`docs/en/development.md`](./docs/en/development.md) for the full dev setup, including how to run multiple APISIX instances and how the auth/proxy flow works.
 
+## Run with Docker
+
+The dashboard ships as one image, `ghcr.io/wboudiche/multi-apisix-dashboard`, published on every semver tag (`vX.Y.Z`) (`:latest`, `:<major>.<minor>`, `:<version>`). It needs an etcd to keep its own data (users, teams, instances, roles) and reaches each APISIX over its Admin API, which you register from the UI.
+
+The GHCR image only exists starting with the first `vX.Y.Z` release; until then, or if the package is left private, run `docker compose up -d --build` in [`deploy/`](./deploy/) to build it locally instead of pulling. After the first release, make the GHCR package public in the repository's package settings, otherwise `docker pull` needs an authentication token.
+
+```sh
+docker run -d -p 8080:8080 \
+  -e ETCD_ENDPOINTS=http://etcd:2379 \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
+  -e ADMIN_PASSWORD=change-me \
+  ghcr.io/wboudiche/multi-apisix-dashboard:latest
+```
+
+Open <http://localhost:8080/ui>. `JWT_SECRET` (at least 32 bytes) is required; the container refuses to start without it. `ETCD_ENDPOINTS` accepts a comma-separated list. The Admin URL you register must be resolvable from the container (`http://apisix:9180` on a shared docker network, not `localhost`).
+
+For a complete example with etcd and two APISIX gateways, see [`deploy/`](./deploy/README.md).
+
 ## Architecture
 
 ```
