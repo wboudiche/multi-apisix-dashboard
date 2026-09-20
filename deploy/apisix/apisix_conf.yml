@@ -21,6 +21,19 @@
 apisix:
   node_listen: 9080
   enable_ipv6: false
+  # APISIX binds its Control API to loopback inside the container by default;
+  # the dashboard reads upstream health from it, so expose it on the compose
+  # network (9090 is not published on the host, so it stays internal).
+  control:
+    ip: 0.0.0.0
+    port: 9090
+  # Stream mode on, so the Stream Routes page works on the demo gateways.
+  proxy_mode: http&stream
+  stream_proxy:
+    tcp:
+      - 9100
+    udp:
+      - 9200
 deployment:
   admin:
     allow_admin:

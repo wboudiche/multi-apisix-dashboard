@@ -18,14 +18,13 @@ or if the package is left private, `docker compose up -d --build` builds it
 locally instead of pulling.
 
 Host ports 8080, 9080 and 9081 must be free. The repo's own e2e stack
-(`e2e/server/docker-compose.yml`) publishes 9180, 9181 and 2379 by itself; it
-only binds 9080 when started together with the devcontainer override
-(`.devcontainer/docker-compose.override.yml`), so stop that combination or
-remap first if it's running.
+(`e2e/server/docker-compose.yml`) binds 9080 by default (plus 9180, 9181 and
+2379); if it is running, start it with `E2E_GATEWAY_PORT` set elsewhere, stop
+it, or remap this stack's ports first.
 
 ```sh
 cp .env.example .env
-sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$(openssl rand -hex 32)/" .env
+printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env
 docker compose up -d
 ```
 
