@@ -28,15 +28,14 @@
 FROM --platform=$BUILDPLATFORM node:22-alpine AS ui
 WORKDIR /app
 # packageManager in package.json pins pnpm@10.10.0; corepack fetches it.
-RUN corepack enable pnpm
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-COPY . .
 # unplugin-info stamps the build (sha, branch, date) into the account menu
 # and shells out to git for it: without the binary `pnpm build` dies with
 # "spawn git ENOENT", and without .git in the context every field is null and
 # the page reports an unknown build (#237). Same recipe as e2e/server/Dockerfile.
-RUN apk add --no-cache git
+RUN apk add --no-cache git && corepack enable pnpm
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
 ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN pnpm build
 
