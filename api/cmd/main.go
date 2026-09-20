@@ -18,8 +18,10 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/handlers"
@@ -92,7 +94,7 @@ func main() {
 		port = cfg.Server.Port
 	}
 
-	addr := ":" + port
+	addr := net.JoinHostPort(cfg.Server.Host, port)
 	log.Printf("Server starting on %s", addr)
 	if err := router.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -128,6 +130,13 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 	// Built frontend, only when the deployment ships one (the docker image
 	// sets UI_DIR=/app/ui). Registered as NoRoute so every API route wins.
 	if uiDir != "" {
+		// Fail at startup, not on the first request: a wrong UI_DIR would
+		// otherwise pass the healthcheck and answer every /ui page with a
+		// bare 404.
+		index := filepath.Join(uiDir, "index.html")
+		if _, err := os.Stat(index); err != nil {
+			log.Fatalf("UI_DIR=%q is not a built frontend: %v", uiDir, err)
+		}
 		log.Printf("Serving UI from %s under %s", uiDir, "/ui")
 		router.NoRoute(handlers.NewSPAHandler(uiDir))
 	}

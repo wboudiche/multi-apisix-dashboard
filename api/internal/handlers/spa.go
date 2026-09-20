@@ -51,6 +51,8 @@ func resolveUIPath(root, urlPath string) (fullPath string, relPath string) {
 //   - GET / and GET /ui redirect to /ui/;
 //   - GET /ui/<path> serves the matching regular file when it exists, with a
 //     one-year immutable cache for the hashed files under /ui/assets/;
+//   - a missing file under /ui/assets/ is a JSON 404 (hashed build output
+//     never doubles as a client route);
 //   - any other GET /ui/... serves index.html with no-cache, so the client
 //     router can own the path;
 //   - everything else (wrong method, a mistyped /api path) is a JSON 404, so
@@ -91,6 +93,15 @@ func NewSPAHandler(dir string) gin.HandlerFunc {
 				c.Header("Cache-Control", "public, max-age=31536000, immutable")
 			}
 			c.File(full)
+			return
+		}
+
+		// Vite only ever emits hashed files under /assets/, so a miss there is
+		// a stale chunk from a previous deploy, never a client route. Answer
+		// 404 so the browser reports it instead of choking on index.html
+		// served as a module.
+		if strings.HasPrefix(rel, "/assets/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 			return
 		}
 

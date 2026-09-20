@@ -189,6 +189,22 @@ func TestSPAHandler_HashedAssetIsImmutable(t *testing.T) {
 	}
 }
 
+func TestSPAHandler_MissingAssetIs404JSON(t *testing.T) {
+	r := newSPARouter(t)
+	// A hashed chunk from a previous deploy: never a client route, so the
+	// index fallback must not apply.
+	w := do(r, http.MethodGet, "/ui/assets/app.stale00.js")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Fatalf("Content-Type %q, want JSON", ct)
+	}
+	if strings.Contains(w.Body.String(), "<title>dashboard</title>") {
+		t.Fatal("index.html was served for a missing asset")
+	}
+}
+
 func TestSPAHandler_PlainFileHasNoCacheHeader(t *testing.T) {
 	r := newSPARouter(t)
 	w := do(r, http.MethodGet, "/ui/favicon.ico")
