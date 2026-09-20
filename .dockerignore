@@ -1,7 +1,7 @@
 **/node_modules
 dist
 bin
-.git
+# .git stays in the context: the build stamps its sha into the UI (see Dockerfile).
 test-results
 playwright-report
 docs
