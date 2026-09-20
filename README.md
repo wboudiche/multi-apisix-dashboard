@@ -48,9 +48,9 @@ See [`docs/en/development.md`](./docs/en/development.md) for the full dev setup,
 
 ## Run with Docker
 
-The dashboard ships as one image, `ghcr.io/wboudiche/multi-apisix-dashboard`, published on every `v[0-9]*` tag (`:latest`, `:<major>.<minor>`, `:<version>`). It needs an etcd to keep its own data (users, teams, instances, roles) and reaches each APISIX over its Admin API, which you register from the UI.
+The dashboard ships as one image, `ghcr.io/wboudiche/multi-apisix-dashboard`, published on every semver tag (`vX.Y.Z`) (`:latest`, `:<major>.<minor>`, `:<version>`). It needs an etcd to keep its own data (users, teams, instances, roles) and reaches each APISIX over its Admin API, which you register from the UI.
 
-The GHCR image only exists starting with the first `v[0-9]*` release; until then, or if the package is left private, run `docker compose up -d --build` in [`deploy/`](./deploy/) to build it locally instead of pulling. After the first release, make the GHCR package public in the repository's package settings, otherwise `docker pull` needs an authentication token.
+The GHCR image only exists starting with the first `vX.Y.Z` release; until then, or if the package is left private, run `docker compose up -d --build` in [`deploy/`](./deploy/) to build it locally instead of pulling. After the first release, make the GHCR package public in the repository's package settings, otherwise `docker pull` needs an authentication token.
 
 ```sh
 docker run -d -p 8080:8080 \

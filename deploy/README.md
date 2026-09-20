@@ -13,7 +13,7 @@ APISIX Admin API is reachable solely from the dashboard container.
 
 ## Start
 
-The GHCR image only exists starting with the first `v[0-9]*` release; until then,
+The GHCR image only exists starting with the first `vX.Y.Z` release; until then,
 or if the package is left private, `docker compose up -d --build` builds it
 locally instead of pulling.
 

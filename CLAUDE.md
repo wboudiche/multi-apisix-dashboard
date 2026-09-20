@@ -125,7 +125,7 @@ api/
 /config/admin_initialized
 ```
 
-**Static UI** — when `UI_DIR` is set the backend serves that directory under `/ui` (`handlers/spa.go`, registered as `NoRoute`); anything outside `/ui` stays a JSON 404. Unset in dev. The root `Dockerfile` builds the SPA and the binary into one image (`ghcr.io/wboudiche/multi-apisix-dashboard`, pushed by `.github/workflows/docker.yml` on `v[0-9]*` tags); `deploy/docker-compose.yml` runs it with etcd and two APISIX.
+**Static UI** — when `UI_DIR` is set the backend serves that directory under `/ui` (`handlers/spa.go`, registered as `NoRoute`); anything outside `/ui` stays a JSON 404. Unset in dev. The root `Dockerfile` builds the SPA and the binary into one image (`ghcr.io/wboudiche/multi-apisix-dashboard`, pushed by `.github/workflows/docker.yml` on `vX.Y.Z` tags); `deploy/docker-compose.yml` runs it with etcd and two APISIX.
 
 The backend does **not** read or write APISIX's own `/apisix/` prefix in etcd. APISIX's data lives separately, accessed only through its Admin API.
 
