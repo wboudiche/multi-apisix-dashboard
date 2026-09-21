@@ -401,7 +401,11 @@
         "title": "Service Adı"
       },
       "testConnection": {
-        "notTested": "Test edilmedi: panel dahili adreslere bağlanmaz. Bu upstream'i bir route üzerinden test edin."
+        "failure": "Bağlantı başarısız",
+        "notTested": "Test edilmedi: panel dahili adreslere bağlanmaz. Bu upstream'i bir route üzerinden test edin.",
+        "success": "Bağlandı",
+        "testing": "Test ediliyor...",
+        "title": "Bağlantıyı Test Et"
       },
       "timeout": {
         "connect": "Connect",

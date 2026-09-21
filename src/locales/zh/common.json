@@ -401,7 +401,11 @@
         "title": "服务名称"
       },
       "testConnection": {
-        "notTested": "未测试：控制台不会连接内部地址。请通过路由测试此上游。"
+        "failure": "连接失败",
+        "notTested": "未测试：控制台不会连接内部地址。请通过路由测试此上游。",
+        "success": "已连接",
+        "testing": "测试中...",
+        "title": "测试连接"
       },
       "timeout": {
         "connect": "连接",

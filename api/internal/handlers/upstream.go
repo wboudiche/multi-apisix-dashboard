@@ -20,10 +20,14 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
 // blockedNets are the CIDRs we refuse to dial from /test-upstream. Resolving a
@@ -70,6 +74,13 @@ var (
 	errHostNotFound   = errors.New("host not found")
 )
 
+// lookupIP is net.LookupIP, replaced in tests so that they do not depend on
+// the resolver of the machine running them.
+var lookupIP = net.LookupIP
+
+// maxTestNodes bounds one /test-upstream request, which dials every node.
+const maxTestNodes = 100
+
 func resolveAllowedIP(host string) (net.IP, error) {
 	if ip := net.ParseIP(host); ip != nil {
 		if isBlockedAddr(ip) {
@@ -77,7 +88,7 @@ func resolveAllowedIP(host string) (net.IP, error) {
 		}
 		return ip, nil
 	}
-	ips, err := net.LookupIP(host)
+	ips, err := lookupIP(host)
 	if err != nil || len(ips) == 0 {
 		return nil, errHostNotFound
 	}
@@ -101,7 +112,8 @@ type TestUpstreamNode struct {
 }
 
 type TestUpstreamRequest struct {
-	Nodes  []TestUpstreamNode `json:"nodes" binding:"required,min=1"`
+	// max is maxTestNodes, which a struct tag cannot name.
+	Nodes  []TestUpstreamNode `json:"nodes" binding:"required,min=1,max=100"`
 	Scheme string             `json:"scheme"`
 }
 
@@ -119,6 +131,19 @@ type TestUpstreamResponse struct {
 }
 
 func (h *UpstreamHandler) TestConnection(c *gin.Context) {
+	// A node reported not_allowed tells the caller that its name resolves to
+	// an internal address. That is only for those who could point a route at
+	// the address anyway: the callers who can write upstreams on the
+	// instance. RBACMiddleware has already refused a viewer and a user with no
+	// role on the instance, but it lets through a request naming no instance.
+	if middleware.GetRole(c) != models.RoleSuperAdmin {
+		ui := middleware.GetUserInstance(c)
+		if ui == nil || !models.HasResourcePermission(ui.Role, "upstreams", "write") {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Testing a connection needs write access to upstreams on this instance"})
+			return
+		}
+	}
+
 	var req TestUpstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -138,12 +163,16 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 				return
 			}
 
-			ip, err := resolveAllowedIP(n.Host)
+			// APISIX takes an IPv6 node in brackets, which ParseIP does not.
+			host := n.Host
+			if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+				host = host[1 : len(host)-1]
+			}
+
+			ip, err := resolveAllowedIP(host)
 			// A refused address was never tried, so it is not reported as
 			// down: in a Docker or Kubernetes deployment nearly every
-			// upstream has one (#304). For a name, this does say that it
-			// resolves to an internal address. Anyone who can create a route
-			// can reach such a host through the gateway anyway.
+			// upstream has one (#304).
 			if errors.Is(err, errAddrNotAllowed) {
 				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotAllowed, Message: "Not tested: internal address"}
 				return
@@ -181,7 +210,8 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 	})
 }
 
-// The status of one node's test.
+// The status of one node's test. The overall status of a request is one of
+// these too, or StatusPartial.
 const (
 	NodeConnected = "connected"
 	NodeFailed    = "failed"
@@ -189,21 +219,31 @@ const (
 	NodeNotAllowed = "not_allowed"
 )
 
-// overallStatus is "partial" only when some node did connect. With none
-// connected it is "failed", even when none was tried: nothing was confirmed.
+// StatusPartial: some nodes connected, and some did not.
+const StatusPartial = "partial"
+
+// overallStatus sums up the nodes. It is not_allowed when no node was tried
+// at all: none is known to be down, and "failed" would say they were.
 func overallStatus(results []NodeTestResult) string {
-	connected := 0
+	var connected, notAllowed int
 	for _, r := range results {
-		if r.Status == NodeConnected {
+		switch r.Status {
+		case NodeConnected:
 			connected++
+		case NodeNotAllowed:
+			notAllowed++
 		}
 	}
-	switch connected {
-	case len(results):
-		return NodeConnected
-	case 0:
+	switch {
+	case len(results) == 0:
 		return NodeFailed
+	case connected == len(results):
+		return NodeConnected
+	case connected > 0:
+		return StatusPartial
+	case notAllowed == len(results):
+		return NodeNotAllowed
 	default:
-		return "partial"
+		return NodeFailed
 	}
 }

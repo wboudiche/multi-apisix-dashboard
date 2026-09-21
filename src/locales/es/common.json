@@ -401,7 +401,11 @@
         "title": "Nombre del Servicio"
       },
       "testConnection": {
-        "notTested": "No probado: el panel no se conecta a direcciones internas. Pruebe este upstream a través de una ruta."
+        "failure": "Error de conexión",
+        "notTested": "No probado: el panel no se conecta a direcciones internas. Pruebe este upstream a través de una ruta.",
+        "success": "Conectado",
+        "testing": "Probando...",
+        "title": "Probar conexión"
       },
       "timeout": {
         "connect": "Conectar",

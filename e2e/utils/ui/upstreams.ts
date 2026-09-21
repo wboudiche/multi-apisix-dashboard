@@ -84,8 +84,9 @@ export async function uiAddNode(page: Page, host: string, port?: number) {
   await hostInput.fill(host);
   await expect(hostInput).toHaveValue(host);
   if (port != null) {
-    // fill() does not take on this NumberInput: the field keeps its default
-    // of 1, silently. Typing does.
+    // Leaving the Host field rebuilds every node row (#306), which replaces
+    // this input: fill() writes into the old one and the field keeps its
+    // default of 1, silently. Typing refocuses the new input before each key.
     const portInput = page.getByPlaceholder(NODE_PORT_PH).nth(idx);
     await portInput.click();
     await portInput.press('ControlOrMeta+a');

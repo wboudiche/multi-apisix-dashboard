@@ -401,7 +401,11 @@
         "title": "Service Name"
       },
       "testConnection": {
-        "notTested": "Nicht getestet: Das Dashboard verbindet sich nicht mit internen Adressen. Testen Sie diesen Upstream über eine Route."
+        "failure": "Verbindung fehlgeschlagen",
+        "notTested": "Nicht getestet: Das Dashboard verbindet sich nicht mit internen Adressen. Testen Sie diesen Upstream über eine Route.",
+        "success": "Verbunden",
+        "testing": "Wird getestet...",
+        "title": "Verbindung testen"
       },
       "timeout": {
         "connect": "Verbinden",

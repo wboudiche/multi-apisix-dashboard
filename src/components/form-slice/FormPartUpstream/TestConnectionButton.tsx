@@ -20,6 +20,7 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconNetwork from '~icons/material-symbols/dns';
@@ -36,12 +37,6 @@ type NodeResult = {
   rtt_ms?: number;
 };
 
-const statusLook = {
-  connected: { color: 'green', Icon: IconCheck },
-  not_allowed: { color: 'yellow', Icon: IconWarning },
-  failed: { color: 'red', Icon: IconError },
-};
-
 type TestResponse = {
   status: string;
   results: NodeResult[];
@@ -56,6 +51,7 @@ export const TestConnectionButton = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<TestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const canTest = usePermission().canWriteResource('upstreams');
 
   const hasNodes = nodes && Array.isArray(nodes) && nodes.length > 0 &&
     nodes.some((n: Record<string, unknown>) => n?.host);
@@ -87,6 +83,35 @@ export const TestConnectionButton = () => {
     }
   };
 
+  // How each status reads. One this build does not know reads as a failure.
+  const describe = (r: NodeResult) => {
+    switch (r.status) {
+      case 'connected':
+        return {
+          color: 'green',
+          Icon: IconCheck,
+          // The backend leaves rtt_ms out when it is 0.
+          label: `${t('form.upstreams.testConnection.success')} (${r.rtt_ms ?? 0}ms)`,
+        };
+      case 'not_allowed':
+        return {
+          color: 'yellow',
+          Icon: IconWarning,
+          label: t('form.upstreams.testConnection.notTested'),
+        };
+      default:
+        return {
+          color: 'red',
+          Icon: IconError,
+          label: t('form.upstreams.testConnection.failure'),
+        };
+    }
+  };
+
+  // The backend answers only those who can write upstreams on the instance,
+  // and a viewer would get a 403 for a click.
+  if (!canTest) return null;
+
   return (
     <Stack gap="xs" mt="xs">
       <Group>
@@ -112,7 +137,7 @@ export const TestConnectionButton = () => {
       {results && (
         <Stack gap={4}>
           {results.results.map((r, i) => {
-            const { color, Icon } = statusLook[r.status] ?? statusLook.failed;
+            const { color, Icon, label } = describe(r);
             return (
               <Alert
                 key={i}
@@ -123,13 +148,7 @@ export const TestConnectionButton = () => {
               >
                 <Group gap="xs">
                   <Text size="sm" fw={500}>{r.host}:{r.port}</Text>
-                  <Text size="xs" c="dimmed">
-                    {r.status === 'connected'
-                      ? `${t('form.upstreams.testConnection.success')} (${r.rtt_ms}ms)`
-                      : r.status === 'not_allowed'
-                        ? t('form.upstreams.testConnection.notTested')
-                        : t('form.upstreams.testConnection.failure')}
-                  </Text>
+                  <Text size="xs" c="dimmed">{label}</Text>
                 </Group>
               </Alert>
             );

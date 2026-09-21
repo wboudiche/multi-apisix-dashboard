@@ -17,6 +17,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -49,6 +50,25 @@ func TestFetchRejectsBlockedHost(t *testing.T) {
 
 	if w.Code != http.StatusBadGateway && w.Code != http.StatusBadRequest {
 		t.Fatalf("expected blocked host to fail, got %d", w.Code)
+	}
+}
+
+// Fetch returns the fetch error to the caller. An internal name and a name
+// that does not exist must read the same there, or the endpoint tells which
+// internal names exist.
+func TestFetchDoesNotTellAnInternalNameFromAMissingOne(t *testing.T) {
+	fakeResolver(t, map[string][]net.IP{"etcd": {net.ParseIP("172.19.0.2")}})
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.GET("/fetch", NewWsdlHandler().Fetch)
+
+	body := func(host string) string {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/fetch?url=http://"+host+"/x.wsdl", nil))
+		return strings.ReplaceAll(w.Body.String(), host, "HOST")
+	}
+	if internal, missing := body("etcd"), body("no-such-host.invalid"); internal != missing {
+		t.Errorf("internal name: %s\nmissing name:  %s", internal, missing)
 	}
 }
 
