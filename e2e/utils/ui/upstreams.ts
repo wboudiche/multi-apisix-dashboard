@@ -56,7 +56,7 @@ const nameField = (page: Page) =>
   page.getByRole('textbox', { name: 'Name', exact: true }).first();
 
 /** Discard any restored draft so the wizard starts from a clean step 1. */
-async function uiDiscardDraftIfPresent(page: Page) {
+export async function uiDiscardDraftIfPresent(page: Page) {
   const discardBtn = page.getByRole('button', { name: 'Discard Draft' });
   if (await discardBtn.isVisible().catch(() => false)) {
     await discardBtn.click();
@@ -71,12 +71,12 @@ async function uiDiscardDraftIfPresent(page: Page) {
  * would navigate backwards). Open Mantine dropdowns close on their own once an
  * option is picked, so there is nothing to dismiss before advancing.
  */
-async function uiWizardNext(page: Page) {
+export async function uiWizardNext(page: Page) {
   await page.getByRole('button', { name: 'Next', exact: true }).click();
 }
 
 /** Add a node and fill its host (+ optional port) using the Mantine editor. */
-async function uiAddNode(page: Page, host: string, port?: number) {
+export async function uiAddNode(page: Page, host: string, port?: number) {
   await page.getByRole('button', { name: 'Add a Node' }).click();
   const hostInputs = page.getByPlaceholder(NODE_HOST_PH);
   const idx = (await hostInputs.count()) - 1;
@@ -84,8 +84,13 @@ async function uiAddNode(page: Page, host: string, port?: number) {
   await hostInput.fill(host);
   await expect(hostInput).toHaveValue(host);
   if (port != null) {
+    // fill() does not take on this NumberInput: the field keeps its default
+    // of 1, silently. Typing does.
     const portInput = page.getByPlaceholder(NODE_PORT_PH).nth(idx);
-    await portInput.fill(String(port));
+    await portInput.click();
+    await portInput.press('ControlOrMeta+a');
+    await portInput.pressSequentially(String(port));
+    await expect(portInput).toHaveValue(String(port));
   }
   // Commit changes (FormItemNodes commits on blur / click-outside).
   await page.locator('h1').first().click();
