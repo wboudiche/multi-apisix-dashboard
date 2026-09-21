@@ -34,7 +34,7 @@ Open <http://localhost:8080/ui> and log in with `admin` and the
 ## Register the gateways
 
 Go to **Instances** and add both, using the internal Admin URLs above. The
-demo admin key for each is `edd1c9f034335f136f87ad84b625c8f1` (see
+demo admin key for both is `edd1c9f034335f136f87ad84b625c8f1` (see
 `apisix/apisix_conf.yml`). Replace it before exposing anything.
 
 ## Build the image from this checkout

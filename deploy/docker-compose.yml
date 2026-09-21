@@ -84,8 +84,10 @@ services:
   apisix2:
     image: apache/apisix:3.16.0-debian
     restart: unless-stopped
+    environment:
+      APISIX_ETCD_PREFIX: /apisix2
     volumes:
-      - ./apisix/apisix_conf_2.yml:/usr/local/apisix/conf/config.yaml:ro
+      - ./apisix/apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
     entrypoint:
       - /bin/sh
       - -c
