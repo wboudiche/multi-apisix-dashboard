@@ -65,7 +65,10 @@ func isBlockedAddr(ip net.IP) bool {
 	return false
 }
 
-var errAddrNotAllowed = errors.New("address not allowed")
+var (
+	errAddrNotAllowed = errors.New("address not allowed")
+	errHostNotFound   = errors.New("host not found")
+)
 
 func resolveAllowedIP(host string) (net.IP, error) {
 	if ip := net.ParseIP(host); ip != nil {
@@ -76,7 +79,7 @@ func resolveAllowedIP(host string) (net.IP, error) {
 	}
 	ips, err := net.LookupIP(host)
 	if err != nil || len(ips) == 0 {
-		return nil, errAddrNotAllowed
+		return nil, errHostNotFound
 	}
 	for _, ip := range ips {
 		if isBlockedAddr(ip) {
@@ -131,13 +134,22 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 			defer wg.Done()
 
 			if n.Port < 1 || n.Port > 65535 {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
 				return
 			}
 
 			ip, err := resolveAllowedIP(n.Host)
+			// A refused address was never tried, so it is not reported as
+			// down: in a Docker or Kubernetes deployment nearly every
+			// upstream has one (#304). For a name, this does say that it
+			// resolves to an internal address. Anyone who can create a route
+			// can reach such a host through the gateway anyway.
+			if errors.Is(err, errAddrNotAllowed) {
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotAllowed, Message: "Not tested: internal address"}
+				return
+			}
 			if err != nil {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
 				return
 			}
 
@@ -146,7 +158,7 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 			rtt := time.Since(start).Milliseconds()
 			if err != nil {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
 				return
 			}
 			conn.Close()
@@ -154,7 +166,7 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 			results[idx] = NodeTestResult{
 				Host:    n.Host,
 				Port:    n.Port,
-				Status:  "connected",
+				Status:  NodeConnected,
 				Message: "Connection successful",
 				RTTMs:   rtt,
 			}
@@ -163,21 +175,35 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 
 	wg.Wait()
 
-	allConnected := true
-	for _, r := range results {
-		if r.Status != "connected" {
-			allConnected = false
-			break
-		}
-	}
-
-	status := "connected"
-	if !allConnected {
-		status = "partial"
-	}
-
 	c.JSON(http.StatusOK, TestUpstreamResponse{
-		Status:  status,
+		Status:  overallStatus(results),
 		Results: results,
 	})
+}
+
+// The status of one node's test.
+const (
+	NodeConnected = "connected"
+	NodeFailed    = "failed"
+	// NodeNotAllowed: the address is internal, and was not tried.
+	NodeNotAllowed = "not_allowed"
+)
+
+// overallStatus is "partial" only when some node did connect. With none
+// connected it is "failed", even when none was tried: nothing was confirmed.
+func overallStatus(results []NodeTestResult) string {
+	connected := 0
+	for _, r := range results {
+		if r.Status == NodeConnected {
+			connected++
+		}
+	}
+	switch connected {
+	case len(results):
+		return NodeConnected
+	case 0:
+		return NodeFailed
+	default:
+		return "partial"
+	}
 }

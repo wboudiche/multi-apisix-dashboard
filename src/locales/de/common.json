@@ -400,6 +400,9 @@
       "serviceName": {
         "title": "Service Name"
       },
+      "testConnection": {
+        "notTested": "Nicht getestet: Das Dashboard verbindet sich nicht mit internen Adressen. Testen Sie diesen Upstream über eine Route."
+      },
       "timeout": {
         "connect": "Verbinden",
         "read": "Lesen",

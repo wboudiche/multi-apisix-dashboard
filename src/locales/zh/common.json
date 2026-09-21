@@ -400,6 +400,9 @@
       "serviceName": {
         "title": "服务名称"
       },
+      "testConnection": {
+        "notTested": "未测试：控制台不会连接内部地址。请通过路由测试此上游。"
+      },
       "timeout": {
         "connect": "连接",
         "read": "读取",

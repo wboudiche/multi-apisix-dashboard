@@ -633,7 +633,8 @@
         "title": "Test Connection",
         "success": "Connected",
         "failure": "Connection failed",
-        "testing": "Testing..."
+        "testing": "Testing...",
+        "notTested": "Not tested: the dashboard does not connect to internal addresses. Test this upstream through a route."
       },
       "tls": {
         "clientCert": "Client Cert",

@@ -400,6 +400,9 @@
       "serviceName": {
         "title": "Service Adı"
       },
+      "testConnection": {
+        "notTested": "Test edilmedi: panel dahili adreslere bağlanmaz. Bu upstream'i bir route üzerinden test edin."
+      },
       "timeout": {
         "connect": "Connect",
         "read": "Read",

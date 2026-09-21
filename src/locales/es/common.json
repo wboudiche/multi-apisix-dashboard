@@ -400,6 +400,9 @@
       "serviceName": {
         "title": "Nombre del Servicio"
       },
+      "testConnection": {
+        "notTested": "No probado: el panel no se conecta a direcciones internas. Pruebe este upstream a través de una ruta."
+      },
       "timeout": {
         "connect": "Conectar",
         "read": "Leer",

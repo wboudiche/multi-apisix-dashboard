@@ -24,13 +24,22 @@ import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconNetwork from '~icons/material-symbols/dns';
 import IconError from '~icons/material-symbols/error-outline';
+import IconWarning from '~icons/material-symbols/warning-outline';
 
 type NodeResult = {
   host: string;
   port: number;
-  status: string;
+  // not_allowed: an internal address, which the dashboard refuses to connect
+  // to. The node was not tried, and may well be up (#304).
+  status: 'connected' | 'failed' | 'not_allowed';
   message: string;
   rtt_ms?: number;
+};
+
+const statusLook = {
+  connected: { color: 'green', Icon: IconCheck },
+  not_allowed: { color: 'yellow', Icon: IconWarning },
+  failed: { color: 'red', Icon: IconError },
 };
 
 type TestResponse = {
@@ -102,27 +111,29 @@ export const TestConnectionButton = () => {
 
       {results && (
         <Stack gap={4}>
-          {results.results.map((r, i) => (
-            <Alert
-              key={i}
-              variant="light"
-              color={r.status === 'connected' ? 'green' : 'red'}
-              icon={r.status === 'connected'
-                ? <IconCheck width="16" height="16" />
-                : <IconError width="16" height="16" />
-              }
-              p="xs"
-            >
-              <Group gap="xs">
-                <Text size="sm" fw={500}>{r.host}:{r.port}</Text>
-                <Text size="xs" c="dimmed">
-                  {r.status === 'connected'
-                    ? `${t('form.upstreams.testConnection.success')} (${r.rtt_ms}ms)`
-                    : r.message}
-                </Text>
-              </Group>
-            </Alert>
-          ))}
+          {results.results.map((r, i) => {
+            const { color, Icon } = statusLook[r.status] ?? statusLook.failed;
+            return (
+              <Alert
+                key={i}
+                variant="light"
+                color={color}
+                icon={<Icon width="16" height="16" />}
+                p="xs"
+              >
+                <Group gap="xs">
+                  <Text size="sm" fw={500}>{r.host}:{r.port}</Text>
+                  <Text size="xs" c="dimmed">
+                    {r.status === 'connected'
+                      ? `${t('form.upstreams.testConnection.success')} (${r.rtt_ms}ms)`
+                      : r.status === 'not_allowed'
+                        ? t('form.upstreams.testConnection.notTested')
+                        : t('form.upstreams.testConnection.failure')}
+                  </Text>
+                </Group>
+              </Alert>
+            );
+          })}
         </Stack>
       )}
     </Stack>
