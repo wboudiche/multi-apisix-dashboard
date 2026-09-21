@@ -44,6 +44,8 @@ pnpm dev
 
 Open <http://localhost:5173/ui> and log in with `admin / admin`. Change the password immediately from the user menu.
 
+Wondering which Docker file does what? See [Docker in this repo](./docs/en/development.md#docker-in-this-repo).
+
 See [`docs/en/development.md`](./docs/en/development.md) for the full dev setup, including how to run multiple APISIX instances and how the auth/proxy flow works.
 
 ## Run with Docker
