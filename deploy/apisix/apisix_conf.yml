@@ -15,9 +15,10 @@
 # limitations under the License.
 #
 
-# Demo gateway config, shared by both gateways. The admin port (9180) is not published on the host: only
-# the dashboard reaches it over the compose network, which is why the open
-# allow_admin below is acceptable here and nowhere else.
+# Demo gateway config, shared by both gateways. The admin port (9180) is not
+# published on the host: only the dashboard reaches it over the compose
+# network, which is why the open allow_admin below is acceptable here and
+# nowhere else.
 apisix:
   node_listen: 9080
   enable_ipv6: false

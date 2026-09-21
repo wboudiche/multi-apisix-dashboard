@@ -85,6 +85,8 @@ services:
     image: apache/apisix:3.16.0-debian
     restart: unless-stopped
     environment:
+      # Same file as the first gateway, its own etcd prefix (see the comment on
+      # `prefix` in apisix/apisix_conf.yml).
       APISIX_ETCD_PREFIX: /apisix2
     volumes:
       - ./apisix/apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
