@@ -18,6 +18,17 @@ The stack has three moving parts:
 - **Node 22 + pnpm 10** — frontend toolchain. `pnpm` is pinned via the `packageManager` field in `package.json`.
 - **Go 1.22+** — Go's auto-toolchain will fetch 1.24 (declared in `api/go.mod`) on first build.
 
+## Docker in this repo
+
+| Path | What it is | Used by |
+|---|---|---|
+| `Dockerfile` (+ `.dockerignore`) | The official image: Go backend + built UI, published to GHCR on `vX.Y.Z` tags by `.github/workflows/docker.yml`. | `deploy/`, anyone running the dashboard as a container |
+| `deploy/` | A copyable compose that runs that image with etcd and two APISIX gateways. | People deploying or trying the dashboard |
+| `e2e/server/` | The test stack: two stock APISIX gateways sharing one `apisix_conf.yml` (the second gets its etcd prefix from `APISIX_ETCD_PREFIX`) plus etcd. No image is built. | `pnpm e2e`, CI, the dev container |
+| `.devcontainer/` | The VS Code dev container; it `include`s the e2e stack. | VS Code users |
+
+Nothing in the e2e stack serves the dashboard: `:9180` and `:9181` are Admin APIs, the UI you test is the vite dev server on `:5173` (or the official image).
+
 ## 1. Start APISIX and etcd
 
 ```sh

@@ -26,7 +26,8 @@ import { expect } from '@playwright/test';
 import axios from 'axios';
 
 const PREFIX = randomId('adm-inst');
-// Real second APISIX from e2e/server/docker-compose.yml; key from apisix_conf_2.yml.
+// Real second APISIX from e2e/server/docker-compose.yml; it shares apisix_conf.yml
+// (and its admin key) with the first gateway, only the etcd prefix differs.
 // Read from the same env var global-setup uses: hardcoding it would silently
 // decouple this spec from the instance the fixture actually registered.
 const STAGING_ADMIN_URL =

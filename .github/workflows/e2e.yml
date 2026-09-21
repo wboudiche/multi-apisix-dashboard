@@ -118,16 +118,18 @@ jobs:
         run: |
           docker compose up -d
 
-      - name: Waiting dashboard service to be healthy
+      - name: Waiting for the gateway's Admin API
         working-directory: ./e2e/server
         run: |
+          # 401 is APISIX answering without a key: the gateway is up. Nothing
+          # in this stack serves a UI any more; the suite targets vite.
           TIMEOUT=30
           timeout $TIMEOUT bash -c '
-            until curl -f http://127.0.0.1:9180/ui > /dev/null 2>&1; do
-              echo "Waiting for APISIX dashboard to be ready..."
+            until [ "$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9180/apisix/admin/routes)" = "401" ]; do
+              echo "Waiting for the APISIX Admin API..."
               sleep 5
             done
-          ' || (echo "APISIX dashboard not ready after $TIMEOUT seconds" && exit 1)
+          ' || (echo "APISIX Admin API not ready after $TIMEOUT seconds" && exit 1)
 
       - name: Waiting for the gateway's Control API
         working-directory: ./e2e/server

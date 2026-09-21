@@ -44,6 +44,8 @@ pnpm dev
 
 Open <http://localhost:5173/ui> and log in with `admin / admin`. Change the password immediately from the user menu.
 
+Wondering which Docker file does what? See [Docker in this repo](./docs/en/development.md#docker-in-this-repo).
+
 See [`docs/en/development.md`](./docs/en/development.md) for the full dev setup, including how to run multiple APISIX instances and how the auth/proxy flow works.
 
 ## Run with Docker
@@ -97,7 +99,7 @@ The dashboard speaks the APISIX **Admin API v3**: it reads the `{ "list": [...],
 | `secrets` resource | 3.1 |
 | Consumer `credentials` resource | 3.11 |
 
-So core resource management works against **APISIX 3.0+**, while the full feature set (including consumer credentials) needs **3.11+**, through the current stable **3.16**. CI runs the e2e suite against a pinned **`apache/apisix:3.16.0-debian`** — see [`e2e/server/Dockerfile`](./e2e/server/Dockerfile) and [`e2e/server/docker-compose.yml`](./e2e/server/docker-compose.yml). To move the tested line, bump that pin and cut a new fork release.
+So core resource management works against **APISIX 3.0+**, while the full feature set (including consumer credentials) needs **3.11+**, through the current stable **3.16**. CI runs the e2e suite against a pinned **`apache/apisix:3.16.0-debian`** — see [`e2e/server/docker-compose.yml`](./e2e/server/docker-compose.yml). To move the tested line, bump that pin and cut a new fork release.
 
 ## Contributing
 

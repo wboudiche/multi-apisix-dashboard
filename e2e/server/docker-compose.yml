@@ -17,12 +17,13 @@
 
 services:
   apisix:
-    build:
-      context: ../..
-      dockerfile: e2e/server/Dockerfile
+    image: apache/apisix:3.16.0-debian
     restart: always
     volumes:
       - ./apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
+    environment:
+      # See apisix_conf.yml: only this gateway publishes its Control API.
+      APISIX_CONTROL_IP: 0.0.0.0
     # A unix socket left behind in logs/ survives a container restart, and
     # nginx refuses to bind a path that already exists:
     #
@@ -50,8 +51,9 @@ services:
       - '9180:9180'
       # The Control API, which reports what the health checkers have seen
       # (#281). Only this stack's first gateway publishes it: the second one
-      # exists to prove the dashboard keeps two apart, and a gateway without a
-      # control address is the ordinary case worth testing too.
+      # exists to prove the dashboard keeps two apart, and keeps APISIX's
+      # loopback default (APISIX_CONTROL_IP unset), so it publishes no
+      # control address - the ordinary case worth testing too.
       #
       # Bound to the host's loopback rather than every interface: this API is
       # not read-only - it reloads plugins and triggers dumps - and everything
@@ -66,7 +68,11 @@ services:
     image: apache/apisix:3.16.0-debian
     restart: always
     volumes:
-      - ./apisix_conf_2.yml:/usr/local/apisix/conf/config.yaml:ro
+      - ./apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
+    environment:
+      # Same file as the first gateway, its own etcd prefix (see the comment on
+      # `prefix` in apisix_conf.yml).
+      APISIX_ETCD_PREFIX: /apisix2
     # A unix socket left behind in logs/ survives a container restart, and
     # nginx refuses to bind a path that already exists:
     #

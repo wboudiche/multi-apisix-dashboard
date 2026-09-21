@@ -18,11 +18,12 @@ import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
 /**
- * The dashboard is served two ways: the dev server, and a bundle baked into the
- * APISIX image at :9180 that is only as fresh as the last `docker compose
- * build`. Nothing on screen said which one a page was, so a months-old bundle
- * was indistinguishable from the working tree - which is how #221 came to be
- * reported, and investigated, against behaviour fixed long before it (#237).
+ * The dashboard is served two ways: the vite dev server, and the official
+ * image (the root Dockerfile), which is only as fresh as the release it was
+ * built from. Nothing on screen said which one a page was, so a months-old
+ * image was indistinguishable from the working tree - which is how #221 came
+ * to be reported, and investigated, against behaviour fixed long before it
+ * (#237).
  *
  * In the account menu rather than on the Settings page: /settings is
  * super_admin only, and the person who has a page open to report is often not

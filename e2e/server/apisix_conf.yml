@@ -6,8 +6,13 @@ apisix:
   # dashboard reads upstream health from it (#281), so this stack moves it to
   # an address the host can reach - as a deployment would have to do
   # deliberately, since the port carries no authentication of its own.
+  #
+  # Both gateways read this one file. The compose file sets APISIX_CONTROL_IP
+  # to 0.0.0.0 on the first gateway only; the second keeps the loopback
+  # default, so the stack still has a gateway that exposes nothing, which is
+  # the ordinary case worth testing too.
   control:
-    ip: 0.0.0.0
+    ip: ${{APISIX_CONTROL_IP:=127.0.0.1}}
     port: 9090
   proxy_mode: http&stream
   stream_proxy:
@@ -26,5 +31,7 @@ deployment:
   etcd:
     host:
       - http://etcd:2379
-    prefix: /apisix
+    # The second gateway shares this file and this etcd; the compose file gives
+    # it its own prefix (APISIX_ETCD_PREFIX=/apisix2) so the two stay apart.
+    prefix: ${{APISIX_ETCD_PREFIX:=/apisix}}
     timeout: 30

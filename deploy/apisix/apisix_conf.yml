@@ -15,9 +15,10 @@
 # limitations under the License.
 #
 
-# Demo gateway 1. The admin port (9180) is not published on the host: only
-# the dashboard reaches it over the compose network, which is why the open
-# allow_admin below is acceptable here and nowhere else.
+# Demo gateway config, shared by both gateways. The admin port (9180) is not
+# published on the host: only the dashboard reaches it over the compose
+# network, which is why the open allow_admin below is acceptable here and
+# nowhere else.
 apisix:
   node_listen: 9080
   enable_ipv6: false
@@ -45,5 +46,7 @@ deployment:
   etcd:
     host:
       - http://etcd:2379
-    prefix: /apisix
+    # Both demo gateways read this file and share the etcd; the compose file
+    # gives the second one its own prefix (APISIX_ETCD_PREFIX=/apisix2).
+    prefix: ${{APISIX_ETCD_PREFIX:=/apisix}}
     timeout: 30

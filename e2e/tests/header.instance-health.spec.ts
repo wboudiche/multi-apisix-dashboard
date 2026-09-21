@@ -37,7 +37,8 @@ import { expect, type Page, test as base } from '@playwright/test';
 const HEALTH = '**/api/v1/instances/health';
 const POLL_INTERVAL_MS = 30_000;
 
-// Real second APISIX from e2e/server/docker-compose.yml; key from apisix_conf_2.yml.
+// Real second APISIX from e2e/server/docker-compose.yml; it shares apisix_conf.yml
+// (and its admin key) with the first gateway, only the etcd prefix differs.
 const STAGING_ADMIN_URL =
   process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.0.0.1:9181';
 const STAGING_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
