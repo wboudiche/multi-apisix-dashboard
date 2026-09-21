@@ -38,7 +38,25 @@ docker run -d -p 8080:8080 \
 
 Open <http://localhost:8080/ui>. `JWT_SECRET` (at least 32 bytes) is required; the container refuses to start without it. `ETCD_ENDPOINTS` accepts a comma-separated list. The Admin URL you register must be resolvable from the container (`http://apisix:9180` on a shared docker network, not `localhost`).
 
-For a complete example with etcd and two APISIX gateways, see [`deploy/`](./deploy/README.md).
+### Or bring up the whole demo stack
+
+[`deploy/docker-compose.yml`](./deploy/docker-compose.yml) runs the dashboard with its own etcd and two APISIX gateways, ready to register. Host ports 8080, 9080 and 9081 must be free (the repo's e2e stack binds 9080 by default).
+
+```sh
+cd deploy
+cp .env.example .env
+printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env
+docker compose up -d --build     # drop --build once the image is on GHCR
+```
+
+| Service | Host port | Inside the network |
+|---|---|---|
+| `dashboard` | 8080 | — |
+| `apisix` (gateway 1) | 9080 | Admin API `http://apisix:9180` |
+| `apisix2` (gateway 2) | 9081 | Admin API `http://apisix2:9180` |
+| `etcd` | — | `http://etcd:2379`, shared, one prefix per gateway |
+
+Open <http://localhost:8080/ui>, log in with `admin` and the `ADMIN_PASSWORD` from `.env` (default `admin`), then add both gateways on the **Instances** page with the internal Admin URLs above and the demo key from [`deploy/apisix/apisix_conf.yml`](./deploy/apisix/apisix_conf.yml). Reset, rebuild and the rest are in [`deploy/README.md`](./deploy/README.md).
 
 ## Develop locally
 
