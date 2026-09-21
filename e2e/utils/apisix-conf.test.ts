@@ -78,6 +78,27 @@ describe('withProxyMode', () => {
     expect(roundTripped).toBe(conf);
   });
 
+  // The compose files hand the second gateway its etcd prefix through an
+  // env var that APISIX expands from config.yaml. The placeholder is plain
+  // text to the yaml library; this pins that it is neither quoted nor folded
+  // on the way through.
+  it('keeps APISIX env placeholders byte for byte', () => {
+    const conf = [
+      'apisix:',
+      '  proxy_mode: http&stream',
+      '  control:',
+      '    ip: ${{APISIX_CONTROL_IP:=127.0.0.1}}',
+      'deployment:',
+      '  etcd:',
+      '    prefix: ${{APISIX_ETCD_PREFIX:=/apisix}}',
+    ].join('\n');
+
+    const updated = withProxyMode(conf, 'http');
+
+    expect(updated).toContain('    ip: ${{APISIX_CONTROL_IP:=127.0.0.1}}\n');
+    expect(updated).toContain('    prefix: ${{APISIX_ETCD_PREFIX:=/apisix}}\n');
+  });
+
   // Serialising a broken document throws on its own, so nothing unreadable is
   // written back either way. What this asks for is the message: the parse
   // error names the line, "cannot be stringified" does not.

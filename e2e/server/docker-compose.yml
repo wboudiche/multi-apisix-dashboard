@@ -21,6 +21,9 @@ services:
       context: ../..
       dockerfile: e2e/server/Dockerfile
     restart: always
+    environment:
+      # See apisix_conf.yml: only this gateway publishes its Control API.
+      APISIX_CONTROL_IP: 0.0.0.0
     volumes:
       - ./apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
     # A unix socket left behind in logs/ survives a container restart, and
@@ -66,7 +69,11 @@ services:
     image: apache/apisix:3.16.0-debian
     restart: always
     volumes:
-      - ./apisix_conf_2.yml:/usr/local/apisix/conf/config.yaml:ro
+      - ./apisix_conf.yml:/usr/local/apisix/conf/config.yaml:ro
+    environment:
+      # Same file as the first gateway, its own etcd prefix (see the comment on
+      # `prefix` in apisix_conf.yml).
+      APISIX_ETCD_PREFIX: /apisix2
     # A unix socket left behind in logs/ survives a container restart, and
     # nginx refuses to bind a path that already exists:
     #
