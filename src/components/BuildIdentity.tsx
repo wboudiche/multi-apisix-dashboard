@@ -23,15 +23,14 @@ import buildTime from '~build/time';
 /**
  * Which build this page is.
  *
- * The dashboard is served two ways: the vite dev server, and a bundle baked
- * into the APISIX image at :9180. The second is only as fresh as the last
- * `docker compose build`, and nothing on screen said so - a months-old page
- * looked exactly like a current one. #221 was reported from such a page, about
- * behaviour fixed long before it, and cost a full investigation (#237).
+ * The dashboard is served two ways: the vite dev server, and the official
+ * image (the root Dockerfile), which is only as fresh as the release it was
+ * built from. Nothing on screen said so once: a months-old page looked exactly
+ * like a current one, #221 was reported from such a page about behaviour fixed
+ * long before it, and cost a full investigation (#237).
  *
- * The values come from `unplugin-info`, which was already wired into
- * vite.config.ts with nothing reading it - and which is why the e2e image's
- * Dockerfile installs git.
+ * The values come from `unplugin-info`, which shells out to git at build time -
+ * which is why the Dockerfile installs git and keeps .git in the context.
  */
 export const BuildIdentity = () => {
   const { t } = useTranslation();

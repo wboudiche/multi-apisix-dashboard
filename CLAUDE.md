@@ -54,15 +54,6 @@ pnpm install --frozen-lockfile && pnpm dev              # frontend :5173
 
 Open <http://localhost:5173/ui>, log in with `admin / admin`.
 
-**The dashboard on `:9180` is not the working tree.** It is the bundle baked
-into the APISIX image, only as fresh as the last `docker compose -f
-e2e/server/docker-compose.yml build`. A months-old page there looks exactly
-like a current one, so check the build line in the account menu before
-believing a bug seen on it (#237). E2E runs default to the dev server on
-`:5173`. Open `:9180` in a browser to check what the image serves; the suite
-itself seeds through the dashboard's own API and cannot be pointed at APISIX
-directly.
-
 The e2e compose publishes its etcd on the host at `:2379` (container `server-etcd-1`), and that is the etcd the locally-run backend uses. The `deploy/` compose is a separate, self-contained stack that consumes the published image; its etcd is not published.
 
 ## Architecture
@@ -207,9 +198,9 @@ ESLint enforces no-literal-string, no-unknown-key (keys must exist in `en/common
 
 Specs in `e2e/tests/*.spec.ts`. POM pattern: each resource has `e2e/pom/<resource>.ts` with `locator` / `assert` / `goto` helpers. Worker-scoped auth fixture in `e2e/utils/test.ts` logs in once per worker.
 
-Multi-tenant tests of note: `multi-instance.spec.ts`, `route-test.spec.ts`, `routes.reassign-team.spec.ts`, `routes.request-override.spec.ts`, `routes.proxy-e2e.spec.ts`. Some need a second APISIX (see `e2e/server/apisix_conf_2.yml`) or the Go backend running on `:8086`.
+Multi-tenant tests of note: `multi-instance.spec.ts`, `route-test.spec.ts`, `routes.reassign-team.spec.ts`, `routes.request-override.spec.ts`, `routes.proxy-e2e.spec.ts`. Some need a second APISIX (the e2e compose's `apisix2` service, which shares `e2e/server/apisix_conf.yml` with the first gateway) or the Go backend running on `:8086`.
 
-Default target is the dev server, `http://localhost:5173/ui/`; override via `E2E_TARGET_URL` (the image bundle lives at `http://localhost:9180/ui/`).
+Default target is the dev server, `http://localhost:5173/ui/`; override via `E2E_TARGET_URL`. The e2e stack serves no UI: `:9180` is the Admin API only.
 
 `stream_routes.show-disabled-error.spec.ts` is the one spec that restarts the gateway — it takes stream mode away, restarts APISIX, and puts it back. It runs on CI and is skipped elsewhere unless `E2E_ALLOW_RESTART=1`, and it refuses outright unless the gateway it would restart is the one reading the config file it would edit. Compose names its project after the directory holding the compose file, which is `server` for every checkout, so running it from a worktree would otherwise restart the stack another checkout started (#290).
 
