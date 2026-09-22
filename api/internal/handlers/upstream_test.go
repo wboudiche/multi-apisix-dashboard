@@ -16,12 +16,15 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -36,13 +39,37 @@ import (
 func fakeResolver(t *testing.T, names map[string][]net.IP) {
 	t.Helper()
 	orig := lookupIP
-	lookupIP = func(host string) ([]net.IP, error) {
+	lookupIP = func(_ context.Context, host string) ([]net.IP, error) {
 		if ips, ok := names[host]; ok {
 			return ips, nil
 		}
 		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
 	}
 	t.Cleanup(func() { lookupIP = orig })
+}
+
+// fakeDial connects to the addresses in up, refuses every other one, and
+// records what was dialed.
+func fakeDial(t *testing.T, up ...string) *[]string {
+	t.Helper()
+	orig := dialContext
+	var dialed []string
+	var mu sync.Mutex
+	dialContext = func(_ context.Context, _, addr string) (net.Conn, error) {
+		mu.Lock()
+		dialed = append(dialed, addr)
+		mu.Unlock()
+		for _, a := range up {
+			if a == addr {
+				client, server := net.Pipe()
+				server.Close()
+				return client, nil
+			}
+		}
+		return nil, errors.New("connection refused")
+	}
+	t.Cleanup(func() { dialContext = orig })
+	return &dialed
 }
 
 // callTestUpstream calls the handler as a caller with the given global role
@@ -144,19 +171,49 @@ func TestUpstreamTestStillDoesNotDialAnInternalAddress(t *testing.T) {
 	}
 }
 
-// A name that does not resolve was tried, and failed: it is not an internal
-// address, and must not be reported as one.
-func TestUpstreamTestReportsAnUnresolvableNameAsFailed(t *testing.T) {
-	fakeResolver(t, nil)
-	resp := postTestUpstream(t, oneNode("no-such-host.invalid", 80))
-	if got := resp.Results[0].Status; got != NodeFailed {
-		t.Errorf("status %q, want %q", got, NodeFailed)
+// A name the dashboard's network resolves to an internal address, and a name
+// that does not resolve at all, must get the same answer: two answers would
+// list the internal names on that network - etcd beside the dashboard, say -
+// which no route on the gateway may ever reach.
+func TestUpstreamTestDoesNotTellAnInternalNameFromAMissingOne(t *testing.T) {
+	fakeResolver(t, map[string][]net.IP{"etcd": {net.ParseIP("172.19.0.2")}})
+	internal := postTestUpstream(t, oneNode("etcd", 2379)).Results[0]
+	missing := postTestUpstream(t, oneNode("no-such-host.invalid", 2379)).Results[0]
+
+	if internal.Status != NodeNotAllowed || missing.Status != NodeNotAllowed {
+		t.Errorf("statuses %q and %q, want %q for both", internal.Status, missing.Status, NodeNotAllowed)
+	}
+	if internal.Message != missing.Message {
+		t.Errorf("messages differ: %q, %q", internal.Message, missing.Message)
 	}
 }
 
-// The answer tells whether a name resolves to an internal address, so it is
-// only for those who could point a route at that address anyway: the callers
-// who can write upstreams on the instance.
+// A public address is dialed, and reads as it answered.
+func TestUpstreamTestDialsAPublicAddress(t *testing.T) {
+	fakeResolver(t, map[string][]net.IP{
+		"up.example":   {net.ParseIP("203.0.113.10")},
+		"down.example": {net.ParseIP("203.0.113.11")},
+	})
+	dialed := fakeDial(t, "203.0.113.10:80")
+
+	resp := postTestUpstream(t, `{"nodes":[{"host":"up.example","port":80},{"host":"down.example","port":80}]}`)
+	if got := resp.Results[0].Status; got != NodeConnected {
+		t.Errorf("up.example: status %q, want %q", got, NodeConnected)
+	}
+	if got := resp.Results[1].Status; got != NodeFailed {
+		t.Errorf("down.example: status %q, want %q", got, NodeFailed)
+	}
+	if resp.Status != StatusPartial {
+		t.Errorf("overall %q, want %q", resp.Status, StatusPartial)
+	}
+	if len(*dialed) != 2 {
+		t.Errorf("dialed %v, want both nodes", *dialed)
+	}
+}
+
+// The test has the dashboard open connections on the caller's behalf, so it is
+// for those who configure upstreams: the callers who can write upstreams on
+// the instance.
 func TestUpstreamTestIsForThoseWhoCanWriteUpstreams(t *testing.T) {
 	fakeResolver(t, nil)
 	assigned := func(role string) *models.UserInstance {
@@ -184,15 +241,29 @@ func TestUpstreamTestIsForThoseWhoCanWriteUpstreams(t *testing.T) {
 
 func TestUpstreamTestCapsTheNodesPerRequest(t *testing.T) {
 	fakeResolver(t, nil)
-	nodes := make([]string, maxTestNodes+1)
-	for i := range nodes {
-		nodes[i] = fmt.Sprintf(`{"host":"10.0.0.%d","port":80}`, i%250+1)
+	body := func(n int) string {
+		nodes := make([]string, n)
+		for i := range nodes {
+			nodes[i] = fmt.Sprintf(`{"host":"10.0.0.%d","port":80}`, i%250+1)
+		}
+		return `{"nodes":[` + strings.Join(nodes, ",") + `]}`
 	}
-	body := `{"nodes":[` + strings.Join(nodes, ",") + `]}`
 
-	w := callTestUpstream(t, models.RoleSuperAdmin, nil, body)
+	if w := callTestUpstream(t, models.RoleSuperAdmin, nil, body(maxTestNodes)); w.Code != http.StatusOK {
+		t.Errorf("%d nodes: status %d, want %d", maxTestNodes, w.Code, http.StatusOK)
+	}
+	if w := callTestUpstream(t, models.RoleSuperAdmin, nil, body(maxTestNodes+1)); w.Code != http.StatusBadRequest {
+		t.Errorf("%d nodes: status %d, want %d", maxTestNodes+1, w.Code, http.StatusBadRequest)
+	}
+}
+
+// The body is capped before it is decoded, not after.
+func TestUpstreamTestCapsTheBody(t *testing.T) {
+	fakeResolver(t, nil)
+	pad := strings.Repeat(" ", maxTestBodyBytes)
+	w := callTestUpstream(t, models.RoleSuperAdmin, nil, `{"nodes":[{"host":"10.0.0.1","port":80}]`+pad+`}`)
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("%d nodes: status %d, want %d", len(nodes), w.Code, http.StatusBadRequest)
+		t.Errorf("status %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
 

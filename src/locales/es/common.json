@@ -402,7 +402,7 @@
       },
       "testConnection": {
         "failure": "Error de conexión",
-        "notTested": "No probado: el panel no se conecta a direcciones internas. Pruebe este upstream a través de una ruta.",
+        "notTested": "No probado: el panel solo prueba direcciones públicas que puede resolver. Pruebe este upstream a través de una ruta.",
         "success": "Conectado",
         "testing": "Probando...",
         "title": "Probar conexión"

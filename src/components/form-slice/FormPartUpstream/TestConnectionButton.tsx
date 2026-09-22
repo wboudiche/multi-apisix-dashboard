@@ -42,6 +42,9 @@ type TestResponse = {
   results: NodeResult[];
 };
 
+// The backend tests at most this many nodes per request.
+const NODES_PER_REQUEST = 100;
+
 export const TestConnectionButton = () => {
   const { t } = useTranslation();
   const { control } = useFormContext();
@@ -49,7 +52,7 @@ export const TestConnectionButton = () => {
   const nodes = useWatch({ control, name: np('nodes') });
   const scheme = useWatch({ control, name: np('scheme') });
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<TestResponse | null>(null);
+  const [results, setResults] = useState<NodeResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const canTest = usePermission().canWriteResource('upstreams');
 
@@ -70,11 +73,15 @@ export const TestConnectionButton = () => {
           port: Number(n.port) || (scheme === 'https' || scheme === 'grpcs' ? 443 : 80),
         }));
 
-      const res = await req.post<TestResponse>('/test-upstream', {
-        nodes: testNodes,
-        scheme: scheme || 'http',
-      }, { baseURL: '/api/v1' });
-      setResults(res.data);
+      const tested: NodeResult[] = [];
+      for (let i = 0; i < testNodes.length; i += NODES_PER_REQUEST) {
+        const res = await req.post<TestResponse>('/test-upstream', {
+          nodes: testNodes.slice(i, i + NODES_PER_REQUEST),
+          scheme: scheme || 'http',
+        }, { baseURL: '/api/v1' });
+        tested.push(...res.data.results);
+      }
+      setResults(tested);
     } catch (err: unknown) {
       const e = err as { message?: string };
       setError(e?.message || t('form.upstreams.testConnection.failure'));
@@ -136,7 +143,7 @@ export const TestConnectionButton = () => {
 
       {results && (
         <Stack gap={4}>
-          {results.results.map((r, i) => {
+          {results.map((r, i) => {
             const { color, Icon, label } = describe(r);
             return (
               <Alert

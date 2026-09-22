@@ -86,7 +86,9 @@ export async function uiAddNode(page: Page, host: string, port?: number) {
   if (port != null) {
     // Leaving the Host field rebuilds every node row (#306), which replaces
     // this input: fill() writes into the old one and the field keeps its
-    // default of 1, silently. Typing refocuses the new input before each key.
+    // default of 1, silently. click() and press() re-resolve the locator, so
+    // they reach the new input and leave it focused with its text selected;
+    // the typing that follows goes there.
     const portInput = page.getByPlaceholder(NODE_PORT_PH).nth(idx);
     await portInput.click();
     await portInput.press('ControlOrMeta+a');

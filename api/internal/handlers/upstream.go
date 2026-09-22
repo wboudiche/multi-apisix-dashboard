@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -69,28 +70,38 @@ func isBlockedAddr(ip net.IP) bool {
 	return false
 }
 
+// errAddrNotAllowed is returned for an internal address, and for a name that
+// does not resolve: an answer that told the two apart would say which internal
+// names exist on the dashboard's network.
+var errAddrNotAllowed = errors.New("address not allowed")
+
+// lookupIP resolves a name and dialContext opens a connection. Tests replace
+// them, so that they depend on neither the machine's resolver nor its network.
 var (
-	errAddrNotAllowed = errors.New("address not allowed")
-	errHostNotFound   = errors.New("host not found")
+	lookupIP = func(ctx context.Context, host string) ([]net.IP, error) {
+		return net.DefaultResolver.LookupIP(ctx, "ip", host)
+	}
+	dialContext = (&net.Dialer{Timeout: 5 * time.Second}).DialContext
 )
 
-// lookupIP is net.LookupIP, replaced in tests so that they do not depend on
-// the resolver of the machine running them.
-var lookupIP = net.LookupIP
+const (
+	// maxTestNodes bounds one /test-upstream request, which dials every node.
+	maxTestNodes = 100
+	// maxTestBodyBytes is far more than maxTestNodes nodes take. It keeps a
+	// body of any size from being decoded before the nodes are counted.
+	maxTestBodyBytes = 64 << 10
+)
 
-// maxTestNodes bounds one /test-upstream request, which dials every node.
-const maxTestNodes = 100
-
-func resolveAllowedIP(host string) (net.IP, error) {
+func resolveAllowedIP(ctx context.Context, host string) (net.IP, error) {
 	if ip := net.ParseIP(host); ip != nil {
 		if isBlockedAddr(ip) {
 			return nil, errAddrNotAllowed
 		}
 		return ip, nil
 	}
-	ips, err := lookupIP(host)
+	ips, err := lookupIP(ctx, host)
 	if err != nil || len(ips) == 0 {
-		return nil, errHostNotFound
+		return nil, errAddrNotAllowed
 	}
 	for _, ip := range ips {
 		if isBlockedAddr(ip) {
@@ -112,8 +123,7 @@ type TestUpstreamNode struct {
 }
 
 type TestUpstreamRequest struct {
-	// max is maxTestNodes, which a struct tag cannot name.
-	Nodes  []TestUpstreamNode `json:"nodes" binding:"required,min=1,max=100"`
+	Nodes  []TestUpstreamNode `json:"nodes" binding:"required,min=1"`
 	Scheme string             `json:"scheme"`
 }
 
@@ -131,11 +141,11 @@ type TestUpstreamResponse struct {
 }
 
 func (h *UpstreamHandler) TestConnection(c *gin.Context) {
-	// A node reported not_allowed tells the caller that its name resolves to
-	// an internal address. That is only for those who could point a route at
-	// the address anyway: the callers who can write upstreams on the
-	// instance. RBACMiddleware has already refused a viewer and a user with no
-	// role on the instance, but it lets through a request naming no instance.
+	// The test has the dashboard open connections on the caller's behalf, so
+	// it is for those who configure upstreams: the callers who can write
+	// upstreams on the instance. RBACMiddleware has already refused a viewer
+	// and a user with no role on the instance, but it lets through a request
+	// naming no instance.
 	if middleware.GetRole(c) != models.RoleSuperAdmin {
 		ui := middleware.GetUserInstance(c)
 		if ui == nil || !models.HasResourcePermission(ui.Role, "upstreams", "write") {
@@ -144,12 +154,19 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 		}
 	}
 
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxTestBodyBytes)
 	var req TestUpstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if len(req.Nodes) > maxTestNodes {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("At most %d nodes per request", maxTestNodes)})
+		return
+	}
 
+	// Lookups and dials stop when the caller goes away.
+	ctx := c.Request.Context()
 	results := make([]NodeTestResult, len(req.Nodes))
 	var wg sync.WaitGroup
 
@@ -169,22 +186,18 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 				host = host[1 : len(host)-1]
 			}
 
-			ip, err := resolveAllowedIP(host)
-			// A refused address was never tried, so it is not reported as
-			// down: in a Docker or Kubernetes deployment nearly every
-			// upstream has one (#304).
-			if errors.Is(err, errAddrNotAllowed) {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotAllowed, Message: "Not tested: internal address"}
-				return
-			}
+			ip, err := resolveAllowedIP(ctx, host)
+			// Not tried, so not reported as down (#304): an internal address,
+			// which in a Docker or Kubernetes deployment nearly every upstream
+			// has, or a name that does not resolve, which must read the same.
 			if err != nil {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotAllowed, Message: "Not tested: not a public address the dashboard can resolve"}
 				return
 			}
 
 			addr := net.JoinHostPort(ip.String(), fmt.Sprintf("%d", n.Port))
 			start := time.Now()
-			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+			conn, err := dialContext(ctx, "tcp", addr)
 			rtt := time.Since(start).Milliseconds()
 			if err != nil {
 				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
@@ -215,7 +228,8 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 const (
 	NodeConnected = "connected"
 	NodeFailed    = "failed"
-	// NodeNotAllowed: the address is internal, and was not tried.
+	// NodeNotAllowed: not tried. The address is internal, or the name does
+	// not resolve.
 	NodeNotAllowed = "not_allowed"
 )
 

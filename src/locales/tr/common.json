@@ -402,7 +402,7 @@
       },
       "testConnection": {
         "failure": "Bağlantı başarısız",
-        "notTested": "Test edilmedi: panel dahili adreslere bağlanmaz. Bu upstream'i bir route üzerinden test edin.",
+        "notTested": "Test edilmedi: panel yalnızca çözümleyebildiği genel adresleri test eder. Bu upstream'i bir route üzerinden test edin.",
         "success": "Bağlandı",
         "testing": "Test ediliyor...",
         "title": "Bağlantıyı Test Et"

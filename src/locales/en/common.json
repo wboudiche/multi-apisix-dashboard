@@ -634,7 +634,7 @@
         "success": "Connected",
         "failure": "Connection failed",
         "testing": "Testing...",
-        "notTested": "Not tested: the dashboard does not connect to internal addresses. Test this upstream through a route."
+        "notTested": "Not tested: the dashboard only tests public addresses it can resolve. Test this upstream through a route."
       },
       "tls": {
         "clientCert": "Client Cert",

@@ -28,8 +28,9 @@ import { expect } from '@playwright/test';
 
 // The dashboard refuses to connect to an internal address, so Test Connection
 // never tries one. It used to show such a node as down, which in a Docker or
-// Kubernetes deployment is nearly every upstream (#304). A node it did try and
-// could not reach still reads as a failure.
+// Kubernetes deployment is nearly every upstream (#304). A name that does not
+// resolve reads the same, so that the answer cannot list the internal names
+// on the dashboard's network.
 test('an internal address reads as not tested, not as down', async ({ page }) => {
   await upstreamsPom.toAdd(page);
   await upstreamsPom.isAddPage(page);
@@ -47,22 +48,19 @@ test('an internal address reads as not tested, not as down', async ({ page }) =>
 
   // The answer comes once every node is done, and the missing name waits on
   // the resolver of the machine running the backend.
-  const internal = page.getByRole('alert').filter({ hasText: '10.0.0.1:8080' });
-  await expect(internal).toContainText(
-    'Not tested: the dashboard does not connect to internal addresses',
-    { timeout: 15000 }
-  );
-  await expect(internal).not.toContainText('Connection failed');
-
-  const unknown = page
-    .getByRole('alert')
-    .filter({ hasText: 'no-such-host.invalid:80' });
-  await expect(unknown).toContainText('Connection failed');
+  for (const node of ['10.0.0.1:8080', 'no-such-host.invalid:80']) {
+    const result = page.getByRole('alert').filter({ hasText: node });
+    await expect(result).toContainText(
+      'Not tested: the dashboard only tests public addresses it can resolve',
+      { timeout: 15000 }
+    );
+    await expect(result).not.toContainText('Connection failed');
+  }
 });
 
-// The answer tells whether a name resolves to an internal address, so the
-// backend gives it only to those who can write upstreams on the instance.
-// A viewer is not offered a button that would answer them with a 403.
+// The test has the dashboard open connections on the caller's behalf, so the
+// backend keeps it for those who can write upstreams on the instance. A
+// viewer is not offered a button that would answer them with a 403.
 test('a viewer is not offered the test', async ({ browser }) => {
   // loginAs and switchInstance reload the page more than once.
   test.setTimeout(90_000);
@@ -89,7 +87,11 @@ test('a viewer is not offered the test', async ({ browser }) => {
     await page.goto(`/ui/upstreams/detail/${id}`);
     await page.getByRole('button', { name: 'Nodes', exact: true }).click();
 
-    // The node first, so the absence below is checked on a settled page.
+    // The button is also hidden while the role is still loading. Wait for
+    // the role, and for the node, so the absence below means something.
+    await expect(
+      page.locator('header').getByText('viewer', { exact: true })
+    ).toBeVisible({ timeout: 30000 });
     await expect(page.getByPlaceholder('Hostname or IP')).toHaveValue('10.0.0.1', {
       timeout: 30000,
     });

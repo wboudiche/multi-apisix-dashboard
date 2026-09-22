@@ -58,12 +58,9 @@ func guardedClient() *http.Client {
 				if err != nil {
 					return nil, err
 				}
-				ip, err := resolveAllowedIP(host)
+				ip, err := resolveAllowedIP(ctx, host)
 				if err != nil {
-					// One error for a refused address and for a name that
-					// does not resolve: Fetch hands it to the caller, and two
-					// would tell which internal names exist.
-					return nil, errAddrNotAllowed
+					return nil, err
 				}
 				return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 			},

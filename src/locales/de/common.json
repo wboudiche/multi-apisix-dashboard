@@ -402,7 +402,7 @@
       },
       "testConnection": {
         "failure": "Verbindung fehlgeschlagen",
-        "notTested": "Nicht getestet: Das Dashboard verbindet sich nicht mit internen Adressen. Testen Sie diesen Upstream über eine Route.",
+        "notTested": "Nicht getestet: Das Dashboard testet nur öffentliche Adressen, die es auflösen kann. Testen Sie diesen Upstream über eine Route.",
         "success": "Verbunden",
         "testing": "Wird getestet...",
         "title": "Verbindung testen"
