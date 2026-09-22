@@ -75,10 +75,13 @@ func isBlockedAddr(ip net.IP) bool {
 // names exist on the dashboard's network.
 var errAddrNotAllowed = errors.New("address not allowed")
 
-// lookupIP resolves a name and dialContext opens a connection. Tests replace
-// them, so that they depend on neither the machine's resolver nor its network.
+// lookupIP resolves a name and dialContext opens a connection, each within
+// 5 s. Tests replace them, so that they depend on neither the machine's
+// resolver nor its network.
 var (
 	lookupIP = func(ctx context.Context, host string) ([]net.IP, error) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
 		return net.DefaultResolver.LookupIP(ctx, "ip", host)
 	}
 	dialContext = (&net.Dialer{Timeout: 5 * time.Second}).DialContext
@@ -93,6 +96,10 @@ const (
 )
 
 func resolveAllowedIP(ctx context.Context, host string) (net.IP, error) {
+	// APISIX takes an IPv6 node in brackets, which ParseIP does not.
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = host[1 : len(host)-1]
+	}
 	if ip := net.ParseIP(host); ip != nil {
 		if isBlockedAddr(ip) {
 			return nil, errAddrNotAllowed
@@ -157,6 +164,11 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxTestBodyBytes)
 	var req TestUpstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Request body too large"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -180,13 +192,7 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 				return
 			}
 
-			// APISIX takes an IPv6 node in brackets, which ParseIP does not.
-			host := n.Host
-			if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
-				host = host[1 : len(host)-1]
-			}
-
-			ip, err := resolveAllowedIP(ctx, host)
+			ip, err := resolveAllowedIP(ctx, n.Host)
 			// Not tried, so not reported as down (#304): an internal address,
 			// which in a Docker or Kubernetes deployment nearly every upstream
 			// has, or a name that does not resolve, which must read the same.

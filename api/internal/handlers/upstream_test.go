@@ -117,6 +117,7 @@ func TestUpstreamTestSaysAnInternalAddressWasNotTested(t *testing.T) {
 		"localhost": {net.ParseIP("127.0.0.1")},
 		"httpbin":   {net.ParseIP("172.19.0.6")},
 	})
+	dialed := fakeDial(t)
 	for _, host := range []string{
 		"10.1.2.3",
 		"172.19.0.6", // a Docker bridge network
@@ -138,6 +139,19 @@ func TestUpstreamTestSaysAnInternalAddressWasNotTested(t *testing.T) {
 		if resp.Results[0].Host != host {
 			t.Errorf("%s: result names the node %q", host, resp.Results[0].Host)
 		}
+	}
+	if len(*dialed) != 0 {
+		t.Errorf("dialed %v", *dialed)
+	}
+}
+
+// The guard unbrackets an IPv6 literal itself, so that every caller gets a
+// public one through rather than refused as a name that does not resolve.
+func TestResolveAllowedIPTakesABracketedIPv6Literal(t *testing.T) {
+	fakeResolver(t, nil)
+	ip, err := resolveAllowedIP(context.Background(), "[2001:db8::1]")
+	if err != nil || !ip.Equal(net.ParseIP("2001:db8::1")) {
+		t.Errorf("got %v, %v; want 2001:db8::1", ip, err)
 	}
 }
 
@@ -262,8 +276,8 @@ func TestUpstreamTestCapsTheBody(t *testing.T) {
 	fakeResolver(t, nil)
 	pad := strings.Repeat(" ", maxTestBodyBytes)
 	w := callTestUpstream(t, models.RoleSuperAdmin, nil, `{"nodes":[{"host":"10.0.0.1","port":80}]`+pad+`}`)
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status %d, want %d", w.Code, http.StatusBadRequest)
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("status %d, want %d (%s)", w.Code, http.StatusRequestEntityTooLarge, w.Body.String())
 	}
 }
 

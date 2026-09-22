@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { useNamePrefix } from '@/utils/useNamePrefix';
@@ -30,8 +31,9 @@ import IconWarning from '~icons/material-symbols/warning-outline';
 type NodeResult = {
   host: string;
   port: number;
-  // not_allowed: an internal address, which the dashboard refuses to connect
-  // to. The node was not tried, and may well be up (#304).
+  // not_allowed: not tried, and may well be up (#304). The address is
+  // internal, or the name does not resolve: the two read the same on purpose,
+  // so that the answer cannot list the internal names that exist.
   status: 'connected' | 'failed' | 'not_allowed';
   message: string;
   rtt_ms?: number;
@@ -41,9 +43,6 @@ type TestResponse = {
   status: string;
   results: NodeResult[];
 };
-
-// The backend tests at most this many nodes per request.
-const NODES_PER_REQUEST = 100;
 
 export const TestConnectionButton = () => {
   const { t } = useTranslation();
@@ -65,6 +64,9 @@ export const TestConnectionButton = () => {
     setResults(null);
     setError(null);
 
+    // In batches, one after the other. If one fails, the batches already
+    // answered are still shown, beside the error.
+    const tested: NodeResult[] = [];
     try {
       const testNodes = nodes
         .filter((n: Record<string, unknown>) => n?.host)
@@ -73,19 +75,18 @@ export const TestConnectionButton = () => {
           port: Number(n.port) || (scheme === 'https' || scheme === 'grpcs' ? 443 : 80),
         }));
 
-      const tested: NodeResult[] = [];
-      for (let i = 0; i < testNodes.length; i += NODES_PER_REQUEST) {
+      for (let i = 0; i < testNodes.length; i += TEST_UPSTREAM_MAX_NODES) {
         const res = await req.post<TestResponse>('/test-upstream', {
-          nodes: testNodes.slice(i, i + NODES_PER_REQUEST),
+          nodes: testNodes.slice(i, i + TEST_UPSTREAM_MAX_NODES),
           scheme: scheme || 'http',
         }, { baseURL: '/api/v1' });
         tested.push(...res.data.results);
       }
-      setResults(tested);
     } catch (err: unknown) {
       const e = err as { message?: string };
       setError(e?.message || t('form.upstreams.testConnection.failure'));
     } finally {
+      setResults(tested.length > 0 ? tested : null);
       setLoading(false);
     }
   };
