@@ -19,11 +19,8 @@ import { upstreamsPom } from '@e2e/pom/upstreams';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
-import {
-  uiAddNode,
-  uiDiscardDraftIfPresent,
-  uiWizardNext,
-} from '@e2e/utils/ui/upstreams';
+import { uiAddNode } from '@e2e/utils/ui/nodes';
+import { uiDiscardDraftIfPresent, uiWizardNext } from '@e2e/utils/ui/upstreams';
 import { expect } from '@playwright/test';
 
 // The dashboard refuses to connect to an internal address, so Test Connection
@@ -99,5 +96,41 @@ test('a viewer is not offered the test', async ({ browser }) => {
   } finally {
     await context.close();
     await apiFetch(path, token, { method: 'DELETE', headers }).catch(() => undefined);
+  }
+});
+
+// /test-upstream runs RBACMiddleware, which leaves the caller's assignment
+// where the handler reads it. Without it, every developer would get a 403,
+// and no unit test would notice: they set the assignment themselves.
+test('a developer can test a connection', async ({ browser }) => {
+  // loginAs and switchInstance reload the page more than once.
+  test.setTimeout(90_000);
+  const fx = getFixtures();
+
+  const context = await browser.newContext({ storageState: undefined });
+  try {
+    const page = await context.newPage();
+    await permission.loginAs(page, fx.users.dev.username, fx.users.dev.password);
+    await permission.switchInstance(page, 'Local APISIX');
+    await expect(
+      page.locator('header').getByText('developer', { exact: true })
+    ).toBeVisible({ timeout: 30000 });
+
+    await upstreamsPom.toAdd(page);
+    await upstreamsPom.isAddPage(page);
+    await uiDiscardDraftIfPresent(page);
+    await page
+      .getByRole('textbox', { name: 'Name', exact: true })
+      .first()
+      .fill('e2e-test-connection-dev');
+    await uiWizardNext(page);
+
+    await uiAddNode(page, '10.0.0.1', 8080);
+    await page.getByRole('button', { name: 'Test Connection' }).click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: '10.0.0.1:8080' })
+    ).toContainText('Not tested', { timeout: 15000 });
+  } finally {
+    await context.close();
   }
 });

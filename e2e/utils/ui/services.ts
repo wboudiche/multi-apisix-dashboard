@@ -19,6 +19,7 @@ import { expect, type Page } from '@playwright/test';
 import type { APISIXType } from '@/types/schema/apisix';
 
 import type { Test } from '../test';
+import { uiAddNode } from './nodes';
 
 /**
  * The service add page was redesigned into a multi-step FormWizard:
@@ -37,9 +38,6 @@ import type { Test } from '../test';
  * "Preview"); only the active step's content is mounted.
  */
 
-const NODE_HOST_PH = 'Hostname or IP';
-const NODE_PORT_PH = 'Port';
-
 const nameField = (page: Page) =>
   page.getByRole('textbox', { name: 'Name', exact: true }).first();
 
@@ -56,24 +54,8 @@ export const uiDiscardServiceDraftIfPresent = async (page: Page) => {
   }
 };
 
-/** Add an upstream node via the Mantine node editor on the Upstream step. */
-export const uiAddServiceNode = async (
-  page: Page,
-  host: string,
-  port?: number
-) => {
-  await page.getByRole('button', { name: 'Add a Node' }).click();
-  const hostInputs = page.getByPlaceholder(NODE_HOST_PH);
-  const idx = (await hostInputs.count()) - 1;
-  const hostInput = hostInputs.nth(idx);
-  await hostInput.fill(host);
-  await expect(hostInput).toHaveValue(host);
-  if (port != null) {
-    await page.getByPlaceholder(NODE_PORT_PH).nth(idx).fill(String(port));
-  }
-  // Commit changes (FormItemNodes commits on blur / click-outside).
-  await page.locator('h1').first().click();
-};
+/** Add a node on the Upstream step: the node editor helper all forms share. */
+export const uiAddServiceNode = uiAddNode;
 
 /**
  * Drive the service add wizard with the required fields and stop on the Preview

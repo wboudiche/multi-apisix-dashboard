@@ -18,6 +18,7 @@ import { routesPom } from '@e2e/pom/routes';
 import { expect, type Page } from '@playwright/test';
 
 import { uiHasToastMsg } from '.';
+import { uiAddNode } from './nodes';
 
 /**
  * The route add page (and the route detail page) were redesigned into a
@@ -38,9 +39,6 @@ import { uiHasToastMsg } from '.';
  * The custom-upstream node editor is the Mantine `FormItemNodes` ("Add a Node"
  * button, "Hostname or IP" / "Port" placeholders), not the old antd table.
  */
-
-const NODE_HOST_PH = 'Hostname or IP';
-const NODE_PORT_PH = 'Port';
 
 export const ROUTE_STEP_API_INFO = 'Define API Information';
 export const ROUTE_STEP_UPSTREAM = 'Define Upstream';
@@ -68,20 +66,8 @@ export const uiGotoRouteStep = async (page: Page, label: string) => {
   await page.getByRole('button', { name: label }).first().click();
 };
 
-/** Add a custom-upstream node via the Mantine node editor. */
-export const uiAddRouteNode = async (page: Page, host: string, port?: number) => {
-  await page.getByRole('button', { name: 'Add a Node' }).click();
-  const hostInputs = page.getByPlaceholder(NODE_HOST_PH);
-  const idx = (await hostInputs.count()) - 1;
-  const hostInput = hostInputs.nth(idx);
-  await hostInput.fill(host);
-  await expect(hostInput).toHaveValue(host);
-  if (port != null) {
-    await page.getByPlaceholder(NODE_PORT_PH).nth(idx).fill(String(port));
-  }
-  // Commit changes (FormItemNodes commits on blur / click-outside).
-  await page.locator('h1').first().click();
-};
+/** Add a node on the Upstream step: the node editor helper all forms share. */
+export const uiAddRouteNode = uiAddNode;
 
 /** Select one or more HTTP methods from the tags input on step 1. */
 export const uiSelectHttpMethods = async (page: Page, methods: string[]) => {

@@ -19,6 +19,7 @@ import { expect, type Page } from '@playwright/test';
 import type { APISIXType } from '@/types/schema/apisix';
 
 import type { Test } from '../test';
+import { uiAddNode } from './nodes';
 
 /**
  * The upstream add/detail pages were redesigned into a multi-step FormWizard:
@@ -50,7 +51,6 @@ import type { Test } from '../test';
  */
 
 const NODE_HOST_PH = 'Hostname or IP';
-const NODE_PORT_PH = 'Port';
 
 const nameField = (page: Page) =>
   page.getByRole('textbox', { name: 'Name', exact: true }).first();
@@ -73,30 +73,6 @@ export async function uiDiscardDraftIfPresent(page: Page) {
  */
 export async function uiWizardNext(page: Page) {
   await page.getByRole('button', { name: 'Next', exact: true }).click();
-}
-
-/** Add a node and fill its host (+ optional port) using the Mantine editor. */
-export async function uiAddNode(page: Page, host: string, port?: number) {
-  await page.getByRole('button', { name: 'Add a Node' }).click();
-  const hostInputs = page.getByPlaceholder(NODE_HOST_PH);
-  const idx = (await hostInputs.count()) - 1;
-  const hostInput = hostInputs.nth(idx);
-  await hostInput.fill(host);
-  await expect(hostInput).toHaveValue(host);
-  if (port != null) {
-    // Leaving the Host field rebuilds every node row (#306), which replaces
-    // this input: fill() writes into the old one and the field keeps its
-    // default of 1, silently. click() and press() re-resolve the locator, so
-    // they reach the new input and leave it focused with its text selected;
-    // the typing that follows goes there.
-    const portInput = page.getByPlaceholder(NODE_PORT_PH).nth(idx);
-    await portInput.click();
-    await portInput.press('ControlOrMeta+a');
-    await portInput.pressSequentially(String(port));
-    await expect(portInput).toHaveValue(String(port));
-  }
-  // Commit changes (FormItemNodes commits on blur / click-outside).
-  await page.locator('h1').first().click();
 }
 
 /**
