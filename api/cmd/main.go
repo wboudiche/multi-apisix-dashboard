@@ -87,7 +87,7 @@ func main() {
 	}
 
 	// Setup router
-	router := setupRouter(authService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, maintenanceHandler, cfg.Server.UIDir)
+	router := setupRouter(authService, instanceService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, maintenanceHandler, cfg.Server.UIDir)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -101,7 +101,7 @@ func main() {
 	}
 }
 
-func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, maintenanceHandler *handlers.MaintenanceHandler, uiDir string) *gin.Engine {
+func setupRouter(authService *services.AuthService, instanceService *services.InstanceService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, maintenanceHandler *handlers.MaintenanceHandler, uiDir string) *gin.Engine {
 	router := gin.Default()
 
 	// CORS
@@ -166,14 +166,24 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 			// Dashboard Overview
 			protected.GET("/overview", overviewHandler.GetOverview)
 
+			// The three probes below have the dashboard open connections
+			// from its own network on the caller's behalf, so each is for
+			// the callers who configure that resource on the instance
+			// (#307). RBACMiddleware resolves their assignment;
+			// RequireResourcePermission refuses everyone else, and any
+			// request naming no instance or an inactive one.
+			rbac := middleware.RBACMiddleware(authService)
+			mayWriteUpstreams := middleware.RequireResourcePermission(instanceService, "upstreams", "write")
+			mayWriteRoutes := middleware.RequireResourcePermission(instanceService, "routes", "write")
+
 			// Upstream connectivity test
-			protected.POST("/test-upstream", middleware.RBACMiddleware(authService), upstreamHandler.TestConnection)
+			protected.POST("/test-upstream", rbac, mayWriteUpstreams, upstreamHandler.TestConnection)
 
 			// Route testing via gateway
-			protected.POST("/test-route", routeTestHandler.TestRoute)
+			protected.POST("/test-route", rbac, mayWriteRoutes, routeTestHandler.TestRoute)
 
 			// WSDL fetch (server-side, SSRF-guarded) for the WSDL importer
-			protected.GET("/wsdl/fetch", wsdlHandler.Fetch)
+			protected.GET("/wsdl/fetch", rbac, mayWriteRoutes, wsdlHandler.Fetch)
 
 			// Password policy (readable by any authenticated user)
 			protected.GET("/settings/password-policy", settingsHandler.GetPasswordPolicy)

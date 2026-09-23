@@ -29,9 +29,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-
-	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
-	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
 // fakeResolver answers lookups from names instead of the machine's resolver,
@@ -72,20 +69,15 @@ func fakeDial(t *testing.T, up ...string) *[]string {
 	return &dialed
 }
 
-// callTestUpstream calls the handler as a caller with the given global role
-// and, when ui is not nil, that assignment on the instance - what
-// RBACMiddleware leaves on the context.
-func callTestUpstream(t *testing.T, role string, ui *models.UserInstance, body string) *httptest.ResponseRecorder {
+// callTestUpstream calls the handler. Who may ask is checked before it, by
+// middleware.RequireResourcePermission on the route (#307).
+func callTestUpstream(t *testing.T, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/test-upstream", strings.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
-	c.Set(middleware.RoleKey, role)
-	if ui != nil {
-		c.Set(middleware.UserInstanceKey, ui)
-	}
 
 	NewUpstreamHandler().TestConnection(c)
 	return w
@@ -93,7 +85,7 @@ func callTestUpstream(t *testing.T, role string, ui *models.UserInstance, body s
 
 func postTestUpstream(t *testing.T, body string) TestUpstreamResponse {
 	t.Helper()
-	w := callTestUpstream(t, models.RoleSuperAdmin, nil, body)
+	w := callTestUpstream(t, body)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status %d, body %s", w.Code, w.Body.String())
 	}
@@ -225,34 +217,6 @@ func TestUpstreamTestDialsAPublicAddress(t *testing.T) {
 	}
 }
 
-// The test has the dashboard open connections on the caller's behalf, so it is
-// for those who configure upstreams: the callers who can write upstreams on
-// the instance.
-func TestUpstreamTestIsForThoseWhoCanWriteUpstreams(t *testing.T) {
-	fakeResolver(t, nil)
-	assigned := func(role string) *models.UserInstance {
-		return &models.UserInstance{UserID: "u1", InstanceID: "i1", Role: role}
-	}
-	for _, tc := range []struct {
-		name string
-		role string
-		ui   *models.UserInstance
-		want int
-	}{
-		{"super admin", models.RoleSuperAdmin, nil, http.StatusOK},
-		{"instance admin", "", assigned(models.RoleInstanceAdmin), http.StatusOK},
-		{"developer", "", assigned(models.RoleDeveloper), http.StatusOK},
-		{"viewer", "", assigned(models.RoleViewer), http.StatusForbidden},
-		// RBACMiddleware lets a request that names no instance through.
-		{"no instance", "", nil, http.StatusForbidden},
-	} {
-		w := callTestUpstream(t, tc.role, tc.ui, oneNode("10.0.0.1", 80))
-		if w.Code != tc.want {
-			t.Errorf("%s: status %d, want %d (%s)", tc.name, w.Code, tc.want, w.Body.String())
-		}
-	}
-}
-
 func TestUpstreamTestCapsTheNodesPerRequest(t *testing.T) {
 	fakeResolver(t, nil)
 	body := func(n int) string {
@@ -263,10 +227,10 @@ func TestUpstreamTestCapsTheNodesPerRequest(t *testing.T) {
 		return `{"nodes":[` + strings.Join(nodes, ",") + `]}`
 	}
 
-	if w := callTestUpstream(t, models.RoleSuperAdmin, nil, body(maxTestNodes)); w.Code != http.StatusOK {
+	if w := callTestUpstream(t, body(maxTestNodes)); w.Code != http.StatusOK {
 		t.Errorf("%d nodes: status %d, want %d", maxTestNodes, w.Code, http.StatusOK)
 	}
-	if w := callTestUpstream(t, models.RoleSuperAdmin, nil, body(maxTestNodes+1)); w.Code != http.StatusBadRequest {
+	if w := callTestUpstream(t, body(maxTestNodes+1)); w.Code != http.StatusBadRequest {
 		t.Errorf("%d nodes: status %d, want %d", maxTestNodes+1, w.Code, http.StatusBadRequest)
 	}
 }
@@ -275,7 +239,7 @@ func TestUpstreamTestCapsTheNodesPerRequest(t *testing.T) {
 func TestUpstreamTestCapsTheBody(t *testing.T) {
 	fakeResolver(t, nil)
 	pad := strings.Repeat(" ", maxTestBodyBytes)
-	w := callTestUpstream(t, models.RoleSuperAdmin, nil, `{"nodes":[{"host":"10.0.0.1","port":80}]`+pad+`}`)
+	w := callTestUpstream(t, `{"nodes":[{"host":"10.0.0.1","port":80}]`+pad+`}`)
 	if w.Code != http.StatusRequestEntityTooLarge {
 		t.Errorf("status %d, want %d (%s)", w.Code, http.StatusRequestEntityTooLarge, w.Body.String())
 	}
