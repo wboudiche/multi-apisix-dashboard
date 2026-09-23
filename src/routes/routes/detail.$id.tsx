@@ -310,7 +310,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const { id, onDeleteSuccess } = props;
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit, isAdmin } = usePermission();
+  const { canEdit, isAdmin, canWriteResource } = usePermission();
   const [jsonDrawerOpen, setJsonDrawerOpen] = useBoolean(false);
   const [testDrawerOpen, setTestDrawerOpen] = useBoolean(false);
   const [reassignOpen, setReassignOpen] = useBoolean(false);
@@ -351,15 +351,20 @@ export const RouteDetail = (props: RouteDetailProps) => {
           title: t('info.detail.title', { name: t('routes.singular') }),
           extra: (
             <Group>
-              <Button
-                onClick={() => setTestDrawerOpen(true)}
-                size="compact-sm"
-                variant="light"
-                color="blue"
-                leftSection={<IconPlayArrow width="16" height="16" />}
-              >
-                {t('form.routeTest.title')}
-              </Button>
+              {/* The backend keeps the route test for those who can write
+                  routes on the instance: it sends a request of any method
+                  through the gateway (#307). */}
+              {canWriteResource('routes') && (
+                <Button
+                  onClick={() => setTestDrawerOpen(true)}
+                  size="compact-sm"
+                  variant="light"
+                  color="blue"
+                  leftSection={<IconPlayArrow width="16" height="16" />}
+                >
+                  {t('form.routeTest.title')}
+                </Button>
+              )}
               <Button
                 onClick={() => setJsonDrawerOpen(true)}
                 size="compact-sm"

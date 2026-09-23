@@ -14,7 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { permission } from '@e2e/pom/permission';
 import { randomId } from '@e2e/utils/common';
+import { getFixtures } from '@e2e/utils/fixtures';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiGoto } from '@e2e/utils/ui';
@@ -42,6 +44,10 @@ const ROUTE_ID = randomId('e2e-route-test');
 const ROUTE_PATH = `/${ROUTE_ID}`;
 // A second route, matched only when the request carries ?answer=42 (#256).
 const QUERY_ROUTE_ID = randomId('e2e-route-test-query');
+// Two more, owned by a team each, so that an account of that team can read
+// them: a non-admin sees only their own team's routes.
+const DEV_ROUTE_ID = randomId('e2e-route-test-dev');
+const VIEWER_ROUTE_ID = randomId('e2e-route-test-viewer');
 
 const toEtcdVersion = {
   // etcd answers /version with a small JSON body, and the gateway container
@@ -66,11 +72,24 @@ test.beforeAll(async () => {
     vars: [['arg_answer', '==', '42']],
     ...toEtcdVersion,
   });
+
+  const fx = getFixtures();
+  for (const [id, teamId] of [
+    [DEV_ROUTE_ID, fx.backendTeamId],
+    [VIEWER_ROUTE_ID, fx.viewersTeamId],
+  ] as const) {
+    await e2eReq.put(
+      `${API_ROUTES}/${id}`,
+      { name: id, uri: `/${id}`, methods: ['GET'], ...toEtcdVersion },
+      { headers: { 'X-Team-ID': teamId } }
+    );
+  }
 });
 
 test.afterAll(async () => {
-  await e2eReq.delete(`${API_ROUTES}/${ROUTE_ID}`).catch(() => null);
-  await e2eReq.delete(`${API_ROUTES}/${QUERY_ROUTE_ID}`).catch(() => null);
+  for (const id of [ROUTE_ID, QUERY_ROUTE_ID, DEV_ROUTE_ID, VIEWER_ROUTE_ID]) {
+    await e2eReq.delete(`${API_ROUTES}/${id}`).catch(() => null);
+  }
 });
 
 const openDrawer = async (page: Page, routeId = ROUTE_ID) => {
@@ -165,4 +184,68 @@ test('offers a body once the method can carry one', async ({ page }) => {
   const body = requestPanel(drawer).getByRole('textbox');
   await body.fill('{"test": true}');
   await expect(body).toHaveValue('{"test": true}');
+});
+
+// The route test sends a request of any method through the gateway, from the
+// dashboard's own network. The backend keeps it for the accounts that can
+// write routes on the instance, and the pages do not offer it to the others
+// (#307).
+test('a developer can send a route test', async ({ browser }) => {
+  // loginAs and switchInstance reload the page more than once.
+  test.setTimeout(90_000);
+  const fx = getFixtures();
+
+  const context = await browser.newContext({ storageState: undefined });
+  try {
+    const page = await context.newPage();
+    await permission.loginAs(page, fx.users.dev.username, fx.users.dev.password);
+    await permission.switchInstance(page, 'Local APISIX');
+    await page.goto(`/ui/routes/detail/${DEV_ROUTE_ID}`);
+
+    await page.getByRole('button', { name: 'Test Route' }).click();
+    const drawer = page.getByRole('dialog');
+    await drawer.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(drawer.getByTestId('route-test-status')).toHaveText(/^200\b/, {
+      timeout: 20000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test('a viewer is not offered the route test', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const fx = getFixtures();
+
+  const context = await browser.newContext({ storageState: undefined });
+  try {
+    const page = await context.newPage();
+    await permission.loginAs(page, fx.users.viewer.username, fx.users.viewer.password);
+    await permission.switchInstance(page, 'Local APISIX');
+    // The role first: the button is hidden while it is still loading, so
+    // without this the absence below could mean nothing.
+    await expect(
+      page.locator('header').getByText('viewer', { exact: true })
+    ).toBeVisible({ timeout: 30000 });
+
+    await page.goto(`/ui/routes/detail/${VIEWER_ROUTE_ID}`);
+    // The route is on screen, so the page has settled on what it may read.
+    await expect(page.getByRole('textbox', { name: 'Name', exact: true }).first()).toHaveValue(
+      VIEWER_ROUTE_ID,
+      { timeout: 30000 }
+    );
+    await expect(page.getByRole('button', { name: 'Test Route' })).toHaveCount(0);
+
+    // Nor from the list, where it was a menu item.
+    await page.goto(`/ui/routes?name=${VIEWER_ROUTE_ID}`);
+    const row = page.getByRole('row').filter({ hasText: VIEWER_ROUTE_ID });
+    await expect(row).toHaveCount(1, { timeout: 30000 });
+    await row.getByRole('button', { name: 'More' }).click();
+    // An item that is offered to everyone, so the absence below is read on an
+    // open menu rather than on one that has not rendered yet.
+    await expect(page.getByRole('menuitem', { name: 'View JSON' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Test Route' })).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
 });

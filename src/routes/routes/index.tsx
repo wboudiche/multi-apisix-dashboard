@@ -554,12 +554,17 @@ export const RouteList = (props: RouteListProps) => {
                         <Button size="xs" variant="default" radius="sm" rightSection={<IconArrowDropDown width="14" height="14" />}>{t('routes.list.actionMore')}</Button>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconPlayArrow width="14" height="14" />}
-                          onClick={() => handleTestRoute(record.value)}
-                        >
-                          {t('form.routeTest.title')}
-                        </Menu.Item>
+                        {/* The backend keeps the route test for those who can
+                            write routes on the instance: it sends a request
+                            of any method through the gateway (#307). */}
+                        {canWriteResource('routes') && (
+                          <Menu.Item
+                            leftSection={<IconPlayArrow width="14" height="14" />}
+                            onClick={() => handleTestRoute(record.value)}
+                          >
+                            {t('form.routeTest.title')}
+                          </Menu.Item>
+                        )}
                         <Menu.Item
                           leftSection={<IconCode width="14" height="14" />}
                           onClick={() => handleViewJson(record.value)}

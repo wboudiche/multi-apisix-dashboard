@@ -26,9 +26,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-
-	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
-	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
 // blockedNets are the CIDRs we refuse to dial from /test-upstream. Resolving a
@@ -148,19 +145,8 @@ type TestUpstreamResponse struct {
 }
 
 func (h *UpstreamHandler) TestConnection(c *gin.Context) {
-	// The test has the dashboard open connections on the caller's behalf, so
-	// it is for those who configure upstreams: the callers who can write
-	// upstreams on the instance. RBACMiddleware has already refused a viewer
-	// and a user with no role on the instance, but it lets through a request
-	// naming no instance.
-	if middleware.GetRole(c) != models.RoleSuperAdmin {
-		ui := middleware.GetUserInstance(c)
-		if ui == nil || !models.HasResourcePermission(ui.Role, "upstreams", "write") {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Testing a connection needs write access to upstreams on this instance"})
-			return
-		}
-	}
-
+	// Who may ask this is middleware.RequireResourcePermission's answer, on
+	// the route itself, with the route test and the WSDL fetch (#307).
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxTestBodyBytes)
 	var req TestUpstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
