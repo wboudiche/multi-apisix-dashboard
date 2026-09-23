@@ -18,12 +18,27 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
+
+// InstanceKey holds the instance RequireResourcePermission resolved, so that
+// a handler behind it reads the record the check was made against rather than
+// fetching it again.
+const InstanceKey = "instance"
+
+// GetInstance returns the instance RequireResourcePermission resolved, or nil
+// when the request did not go through it.
+func GetInstance(c *gin.Context) *models.Instance {
+	if v, exists := c.Get(InstanceKey); exists {
+		return v.(*models.Instance)
+	}
+	return nil
+}
 
 // InstanceReader reads a registered instance. *services.InstanceService
 // satisfies it; a test does not need etcd to.
@@ -58,11 +73,20 @@ func RequireResourcePermission(instances InstanceReader, resourceType, action st
 		// place. Neither leaves anything to configure, so neither leaves a
 		// probe to run.
 		instance, err := instances.GetInstance(c.Request.Context(), instanceID)
-		if err != nil || instance == nil || !instance.IsActive {
+		if err != nil {
+			// Not the caller's mistake to go looking for: saying "not found"
+			// here sends an operator to an instance record that is fine.
+			log.Printf("[rbac] instance %s could not be read: %v", instanceID, err)
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "The instance could not be read"})
+			c.Abort()
+			return
+		}
+		if instance == nil || !instance.IsActive {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found or inactive"})
 			c.Abort()
 			return
 		}
+		c.Set(InstanceKey, instance)
 
 		if GetRole(c) == models.RoleSuperAdmin {
 			c.Next()

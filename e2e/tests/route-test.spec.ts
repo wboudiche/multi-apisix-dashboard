@@ -241,6 +241,9 @@ test('a viewer is not offered the route test', async ({ browser }) => {
     const row = page.getByRole('row').filter({ hasText: VIEWER_ROUTE_ID });
     await expect(row).toHaveCount(1, { timeout: 30000 });
     await row.getByRole('button', { name: 'More' }).click();
+    // An item that is offered to everyone, so the absence below is read on an
+    // open menu rather than on one that has not rendered yet.
+    await expect(page.getByRole('menuitem', { name: 'View JSON' })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'Test Route' })).toHaveCount(0);
   } finally {
     await context.close();

@@ -26,19 +26,16 @@ import (
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
-	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type RouteTestHandler struct {
-	instanceService *services.InstanceService
-}
+type RouteTestHandler struct{}
 
-func NewRouteTestHandler(instanceService *services.InstanceService) *RouteTestHandler {
-	return &RouteTestHandler{
-		instanceService: instanceService,
-	}
+// The instance comes from middleware.RequireResourcePermission, on the route,
+// so this handler reads no store of its own.
+func NewRouteTestHandler() *RouteTestHandler {
+	return &RouteTestHandler{}
 }
 
 type TestRouteRequest struct {
@@ -62,18 +59,12 @@ type TestRouteResponse struct {
 
 // TestRoute forwards a test request to the instance's gateway URL and returns the response
 func (h *RouteTestHandler) TestRoute(c *gin.Context) {
-	// Resolve the target instance through the single canonical helper so RBAC
-	// and the handlers never disagree on which instance a request targets.
-	instanceID := middleware.GetInstanceID(c)
-
-	if instanceID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Instance ID required"})
-		return
-	}
-
-	instance, err := h.instanceService.GetInstance(c.Request.Context(), instanceID)
-	if err != nil || instance == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
+	// The instance RequireResourcePermission resolved on the route: read
+	// there rather than fetched again, so the two cannot disagree on which
+	// instance a request targets, nor on whether it may be used at all.
+	instance := middleware.GetInstance(c)
+	if instance == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Instance not resolved"})
 		return
 	}
 

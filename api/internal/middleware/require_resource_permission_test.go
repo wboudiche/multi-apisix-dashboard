@@ -119,12 +119,40 @@ func TestRequireResourcePermission(t *testing.T) {
 	}
 }
 
-// The instance store failing is not the caller's answer to guess at, and it is
-// certainly not permission to probe.
+// A store that cannot be read is not permission to probe, and it is not a
+// missing instance either: "not found" would send an operator to a record
+// that is fine.
 func TestRequireResourcePermissionRefusesWhenTheInstanceCannotBeRead(t *testing.T) {
 	instances := stubInstances{err: errors.New("etcd is away")}
-	if got := probe(t, instances, models.RoleSuperAdmin, nil, activeInstance); got != http.StatusNotFound {
-		t.Errorf("status %d, want %d", got, http.StatusNotFound)
+	if got := probe(t, instances, models.RoleSuperAdmin, nil, activeInstance); got != http.StatusServiceUnavailable {
+		t.Errorf("status %d, want %d", got, http.StatusServiceUnavailable)
+	}
+}
+
+// What the check resolved is left for the handler behind it, which would
+// otherwise read the same record again, and could read it differently.
+func TestRequireResourcePermissionLeavesTheInstanceForTheHandler(t *testing.T) {
+	instances := stubInstances{instances: map[string]*models.Instance{
+		activeInstance: {ID: activeInstance, IsActive: true, Name: "Local APISIX"},
+	}}
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set(RoleKey, models.RoleSuperAdmin)
+		c.Next()
+	})
+	var seen *models.Instance
+	r.POST("/probe", RequireResourcePermission(instances, "routes", "write"), func(c *gin.Context) {
+		seen = GetInstance(c)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/probe", nil)
+	req.Header.Set("X-Instance-ID", activeInstance)
+	r.ServeHTTP(httptest.NewRecorder(), req)
+
+	if seen == nil || seen.ID != activeInstance {
+		t.Errorf("handler saw %v, want the resolved instance", seen)
 	}
 }
 

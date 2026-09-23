@@ -73,7 +73,7 @@ func main() {
 	overviewHandler := handlers.NewOverviewHandler(overviewService)
 	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService)
 	upstreamHandler := handlers.NewUpstreamHandler()
-	routeTestHandler := handlers.NewRouteTestHandler(instanceService)
+	routeTestHandler := handlers.NewRouteTestHandler()
 	labelHandler := handlers.NewLabelHandler(labelService, authService)
 	wsdlHandler := handlers.NewWsdlHandler()
 	settingsHandler := handlers.NewSettingsHandler(policyService)
