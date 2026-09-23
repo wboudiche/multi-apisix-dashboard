@@ -21,7 +21,7 @@ import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
 import { uiAddNode } from '@e2e/utils/ui/nodes';
 import { uiDiscardDraftIfPresent, uiWizardNext } from '@e2e/utils/ui/upstreams';
-import { expect } from '@playwright/test';
+import { type BrowserContext, expect } from '@playwright/test';
 
 // The dashboard refuses to connect to an internal address, so Test Connection
 // never tries one. It used to show such a node as down, which in a Docker or
@@ -69,15 +69,15 @@ test('a viewer is not offered the test', async ({ browser }) => {
     'X-Instance-ID': fx.localInstanceId,
     'X-Team-ID': fx.viewersTeamId,
   };
-  await apiFetch(path, token, {
-    method: 'PUT',
-    headers,
-    json: { name: id, type: 'roundrobin', nodes: { '10.0.0.1:8080': 1 } },
-  });
-
   // A context of its own: the worker's stored session belongs to the admin.
-  const context = await browser.newContext({ storageState: undefined });
+  let context: BrowserContext | undefined;
   try {
+    await apiFetch(path, token, {
+      method: 'PUT',
+      headers,
+      json: { name: id, type: 'roundrobin', nodes: { '10.0.0.1:8080': 1 } },
+    });
+    context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     await permission.loginAs(page, fx.users.viewer.username, fx.users.viewer.password);
     await permission.switchInstance(page, 'Local APISIX');
@@ -94,7 +94,7 @@ test('a viewer is not offered the test', async ({ browser }) => {
     });
     await expect(page.getByRole('button', { name: 'Test Connection' })).toHaveCount(0);
   } finally {
-    await context.close();
+    await context?.close();
     await apiFetch(path, token, { method: 'DELETE', headers }).catch(() => undefined);
   }
 });

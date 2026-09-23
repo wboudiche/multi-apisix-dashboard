@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
+import { describeError } from '@/utils/api-error';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconNetwork from '~icons/material-symbols/dns';
@@ -83,8 +84,9 @@ export const TestConnectionButton = () => {
         tested.push(...res.data.results);
       }
     } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e?.message || t('form.upstreams.testConnection.failure'));
+      // The backend's own reason (a 403, a 413), not axios's "Request failed
+      // with status code N".
+      setError(describeError(err, t('form.upstreams.testConnection.failure')));
     } finally {
       setResults(tested.length > 0 ? tested : null);
       setLoading(false);
