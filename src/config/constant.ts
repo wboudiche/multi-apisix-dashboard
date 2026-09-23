@@ -36,5 +36,8 @@ export const API_SSLS = '/ssls';
 export const API_PLUGIN_CONFIGS = '/plugin_configs';
 
 export const SKIP_INTERCEPTOR_HEADER = '__dashboard__skipInterceptor';
+/** The most nodes /api/v1/test-upstream tests per request: maxTestNodes in
+ * api/internal/handlers/upstream.go, which test-upstream-limit.test.ts checks. */
+export const TEST_UPSTREAM_MAX_NODES = 100;
 export const APPSHELL_HEADER_HEIGHT = 60;
 export const APPSHELL_NAVBAR_WIDTH = 250;

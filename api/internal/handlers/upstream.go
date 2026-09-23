@@ -16,14 +16,19 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
 // blockedNets are the CIDRs we refuse to dial from /test-upstream. Resolving a
@@ -65,16 +70,43 @@ func isBlockedAddr(ip net.IP) bool {
 	return false
 }
 
+// errAddrNotAllowed is returned for an internal address, and for a name that
+// does not resolve: an answer that told the two apart would say which internal
+// names exist on the dashboard's network.
 var errAddrNotAllowed = errors.New("address not allowed")
 
-func resolveAllowedIP(host string) (net.IP, error) {
+// lookupIP resolves a name and dialContext opens a connection, each within
+// 5 s. Tests replace them, so that they depend on neither the machine's
+// resolver nor its network.
+var (
+	lookupIP = func(ctx context.Context, host string) ([]net.IP, error) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return net.DefaultResolver.LookupIP(ctx, "ip", host)
+	}
+	dialContext = (&net.Dialer{Timeout: 5 * time.Second}).DialContext
+)
+
+const (
+	// maxTestNodes bounds one /test-upstream request, which dials every node.
+	maxTestNodes = 100
+	// maxTestBodyBytes is far more than maxTestNodes nodes take. It keeps a
+	// body of any size from being decoded before the nodes are counted.
+	maxTestBodyBytes = 64 << 10
+)
+
+func resolveAllowedIP(ctx context.Context, host string) (net.IP, error) {
+	// APISIX takes an IPv6 node in brackets, which ParseIP does not.
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = host[1 : len(host)-1]
+	}
 	if ip := net.ParseIP(host); ip != nil {
 		if isBlockedAddr(ip) {
 			return nil, errAddrNotAllowed
 		}
 		return ip, nil
 	}
-	ips, err := net.LookupIP(host)
+	ips, err := lookupIP(ctx, host)
 	if err != nil || len(ips) == 0 {
 		return nil, errAddrNotAllowed
 	}
@@ -116,12 +148,37 @@ type TestUpstreamResponse struct {
 }
 
 func (h *UpstreamHandler) TestConnection(c *gin.Context) {
+	// The test has the dashboard open connections on the caller's behalf, so
+	// it is for those who configure upstreams: the callers who can write
+	// upstreams on the instance. RBACMiddleware has already refused a viewer
+	// and a user with no role on the instance, but it lets through a request
+	// naming no instance.
+	if middleware.GetRole(c) != models.RoleSuperAdmin {
+		ui := middleware.GetUserInstance(c)
+		if ui == nil || !models.HasResourcePermission(ui.Role, "upstreams", "write") {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Testing a connection needs write access to upstreams on this instance"})
+			return
+		}
+	}
+
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxTestBodyBytes)
 	var req TestUpstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Request body too large"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if len(req.Nodes) > maxTestNodes {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("At most %d nodes per request", maxTestNodes)})
+		return
+	}
 
+	// Lookups and dials stop when the caller goes away.
+	ctx := c.Request.Context()
 	results := make([]NodeTestResult, len(req.Nodes))
 	var wg sync.WaitGroup
 
@@ -131,22 +188,25 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 			defer wg.Done()
 
 			if n.Port < 1 || n.Port > 65535 {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
 				return
 			}
 
-			ip, err := resolveAllowedIP(n.Host)
+			ip, err := resolveAllowedIP(ctx, n.Host)
+			// Not tried, so not reported as down (#304): an internal address,
+			// which in a Docker or Kubernetes deployment nearly every upstream
+			// has, or a name that does not resolve, which must read the same.
 			if err != nil {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotAllowed, Message: "Not tested: not a public address the dashboard can resolve"}
 				return
 			}
 
 			addr := net.JoinHostPort(ip.String(), fmt.Sprintf("%d", n.Port))
 			start := time.Now()
-			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+			conn, err := dialContext(ctx, "tcp", addr)
 			rtt := time.Since(start).Milliseconds()
 			if err != nil {
-				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: "failed", Message: "Connection failed"}
+				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
 				return
 			}
 			conn.Close()
@@ -154,7 +214,7 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 			results[idx] = NodeTestResult{
 				Host:    n.Host,
 				Port:    n.Port,
-				Status:  "connected",
+				Status:  NodeConnected,
 				Message: "Connection successful",
 				RTTMs:   rtt,
 			}
@@ -163,21 +223,47 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 
 	wg.Wait()
 
-	allConnected := true
-	for _, r := range results {
-		if r.Status != "connected" {
-			allConnected = false
-			break
-		}
-	}
-
-	status := "connected"
-	if !allConnected {
-		status = "partial"
-	}
-
 	c.JSON(http.StatusOK, TestUpstreamResponse{
-		Status:  status,
+		Status:  overallStatus(results),
 		Results: results,
 	})
+}
+
+// The status of one node's test. The overall status of a request is one of
+// these too, or StatusPartial.
+const (
+	NodeConnected = "connected"
+	NodeFailed    = "failed"
+	// NodeNotAllowed: not tried. The address is internal, or the name does
+	// not resolve.
+	NodeNotAllowed = "not_allowed"
+)
+
+// StatusPartial: some nodes connected, and some did not.
+const StatusPartial = "partial"
+
+// overallStatus sums up the nodes. It is not_allowed when no node was tried
+// at all: none is known to be down, and "failed" would say they were.
+func overallStatus(results []NodeTestResult) string {
+	var connected, notAllowed int
+	for _, r := range results {
+		switch r.Status {
+		case NodeConnected:
+			connected++
+		case NodeNotAllowed:
+			notAllowed++
+		}
+	}
+	switch {
+	case len(results) == 0:
+		return NodeFailed
+	case connected == len(results):
+		return NodeConnected
+	case connected > 0:
+		return StatusPartial
+	case notAllowed == len(results):
+		return NodeNotAllowed
+	default:
+		return NodeFailed
+	}
 }

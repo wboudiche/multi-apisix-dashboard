@@ -400,6 +400,13 @@
       "serviceName": {
         "title": "Service Name"
       },
+      "testConnection": {
+        "failure": "Verbindung fehlgeschlagen",
+        "notTested": "Nicht getestet: Das Dashboard testet nur öffentliche Adressen, die es auflösen kann. Testen Sie diesen Upstream über eine Route.",
+        "success": "Verbunden",
+        "testing": "Wird getestet...",
+        "title": "Verbindung testen"
+      },
       "timeout": {
         "connect": "Verbinden",
         "read": "Lesen",

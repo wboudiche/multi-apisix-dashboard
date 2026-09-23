@@ -167,7 +167,7 @@ func setupRouter(authService *services.AuthService, authHandler *handlers.AuthHa
 			protected.GET("/overview", overviewHandler.GetOverview)
 
 			// Upstream connectivity test
-			protected.POST("/test-upstream", upstreamHandler.TestConnection)
+			protected.POST("/test-upstream", middleware.RBACMiddleware(authService), upstreamHandler.TestConnection)
 
 			// Route testing via gateway
 			protected.POST("/test-route", routeTestHandler.TestRoute)

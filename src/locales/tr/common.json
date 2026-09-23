@@ -400,6 +400,13 @@
       "serviceName": {
         "title": "Service Adı"
       },
+      "testConnection": {
+        "failure": "Bağlantı başarısız",
+        "notTested": "Test edilmedi: panel yalnızca çözümleyebildiği genel adresleri test eder. Bu upstream'i bir route üzerinden test edin.",
+        "success": "Bağlandı",
+        "testing": "Test ediliyor...",
+        "title": "Bağlantıyı Test Et"
+      },
       "timeout": {
         "connect": "Connect",
         "read": "Read",

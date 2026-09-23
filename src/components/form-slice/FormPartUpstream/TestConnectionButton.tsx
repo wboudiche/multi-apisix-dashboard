@@ -19,16 +19,23 @@ import { useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
+import { usePermission } from '@/hooks/usePermission';
+import { describeError } from '@/utils/api-error';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconNetwork from '~icons/material-symbols/dns';
 import IconError from '~icons/material-symbols/error-outline';
+import IconWarning from '~icons/material-symbols/warning-outline';
 
 type NodeResult = {
   host: string;
   port: number;
-  status: string;
+  // not_allowed: not tried, and may well be up (#304). The address is
+  // internal, or the name does not resolve: the two read the same on purpose,
+  // so that the answer cannot list the internal names that exist.
+  status: 'connected' | 'failed' | 'not_allowed';
   message: string;
   rtt_ms?: number;
 };
@@ -45,8 +52,9 @@ export const TestConnectionButton = () => {
   const nodes = useWatch({ control, name: np('nodes') });
   const scheme = useWatch({ control, name: np('scheme') });
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<TestResponse | null>(null);
+  const [results, setResults] = useState<NodeResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const canTest = usePermission().canWriteResource('upstreams');
 
   const hasNodes = nodes && Array.isArray(nodes) && nodes.length > 0 &&
     nodes.some((n: Record<string, unknown>) => n?.host);
@@ -57,6 +65,9 @@ export const TestConnectionButton = () => {
     setResults(null);
     setError(null);
 
+    // In batches, one after the other. If one fails, the batches already
+    // answered are still shown, beside the error.
+    const tested: NodeResult[] = [];
     try {
       const testNodes = nodes
         .filter((n: Record<string, unknown>) => n?.host)
@@ -65,18 +76,51 @@ export const TestConnectionButton = () => {
           port: Number(n.port) || (scheme === 'https' || scheme === 'grpcs' ? 443 : 80),
         }));
 
-      const res = await req.post<TestResponse>('/test-upstream', {
-        nodes: testNodes,
-        scheme: scheme || 'http',
-      }, { baseURL: '/api/v1' });
-      setResults(res.data);
+      for (let i = 0; i < testNodes.length; i += TEST_UPSTREAM_MAX_NODES) {
+        const res = await req.post<TestResponse>('/test-upstream', {
+          nodes: testNodes.slice(i, i + TEST_UPSTREAM_MAX_NODES),
+          scheme: scheme || 'http',
+        }, { baseURL: '/api/v1' });
+        tested.push(...res.data.results);
+      }
     } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e?.message || t('form.upstreams.testConnection.failure'));
+      // The backend's own reason (a 403, a 413), not axios's "Request failed
+      // with status code N".
+      setError(describeError(err, t('form.upstreams.testConnection.failure')));
     } finally {
+      setResults(tested.length > 0 ? tested : null);
       setLoading(false);
     }
   };
+
+  // How each status reads. One this build does not know reads as a failure.
+  const describe = (r: NodeResult) => {
+    switch (r.status) {
+      case 'connected':
+        return {
+          color: 'green',
+          Icon: IconCheck,
+          // The backend leaves rtt_ms out when it is 0.
+          label: `${t('form.upstreams.testConnection.success')} (${r.rtt_ms ?? 0}ms)`,
+        };
+      case 'not_allowed':
+        return {
+          color: 'yellow',
+          Icon: IconWarning,
+          label: t('form.upstreams.testConnection.notTested'),
+        };
+      default:
+        return {
+          color: 'red',
+          Icon: IconError,
+          label: t('form.upstreams.testConnection.failure'),
+        };
+    }
+  };
+
+  // The backend answers only those who can write upstreams on the instance,
+  // and a viewer would get a 403 for a click.
+  if (!canTest) return null;
 
   return (
     <Stack gap="xs" mt="xs">
@@ -102,27 +146,23 @@ export const TestConnectionButton = () => {
 
       {results && (
         <Stack gap={4}>
-          {results.results.map((r, i) => (
-            <Alert
-              key={i}
-              variant="light"
-              color={r.status === 'connected' ? 'green' : 'red'}
-              icon={r.status === 'connected'
-                ? <IconCheck width="16" height="16" />
-                : <IconError width="16" height="16" />
-              }
-              p="xs"
-            >
-              <Group gap="xs">
-                <Text size="sm" fw={500}>{r.host}:{r.port}</Text>
-                <Text size="xs" c="dimmed">
-                  {r.status === 'connected'
-                    ? `${t('form.upstreams.testConnection.success')} (${r.rtt_ms}ms)`
-                    : r.message}
-                </Text>
-              </Group>
-            </Alert>
-          ))}
+          {results.map((r, i) => {
+            const { color, Icon, label } = describe(r);
+            return (
+              <Alert
+                key={i}
+                variant="light"
+                color={color}
+                icon={<Icon width="16" height="16" />}
+                p="xs"
+              >
+                <Group gap="xs">
+                  <Text size="sm" fw={500}>{r.host}:{r.port}</Text>
+                  <Text size="xs" c="dimmed">{label}</Text>
+                </Group>
+              </Alert>
+            );
+          })}
         </Stack>
       )}
     </Stack>

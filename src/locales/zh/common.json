@@ -400,6 +400,13 @@
       "serviceName": {
         "title": "服务名称"
       },
+      "testConnection": {
+        "failure": "连接失败",
+        "notTested": "未测试：控制台只测试它能解析的公网地址。请通过路由测试此上游。",
+        "success": "已连接",
+        "testing": "测试中...",
+        "title": "测试连接"
+      },
       "timeout": {
         "connect": "连接",
         "read": "读取",

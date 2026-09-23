@@ -58,7 +58,7 @@ func guardedClient() *http.Client {
 				if err != nil {
 					return nil, err
 				}
-				ip, err := resolveAllowedIP(host)
+				ip, err := resolveAllowedIP(ctx, host)
 				if err != nil {
 					return nil, err
 				}
