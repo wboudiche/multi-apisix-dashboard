@@ -99,8 +99,16 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
     },
     values: [] as DataSource[],
     setValues(data: DataSource[]) {
-      if (equals(toJS(this.values), data)) return;
-      this.values = data;
+      // Compare the nodes, not the rows: the ids are this component's own and
+      // every parse mints new ones, so rows and data never compared equal and
+      // the list was rebuilt on every commit.
+      if (equals(parseToUpstreamNodes(toJS(this.values)), parseToUpstreamNodes(data))) return;
+      // A row that stays keeps its id. The ids key the inputs, so a new one
+      // replaces the element the caret sits in, and what is being typed or
+      // pasted there goes with it (#306).
+      this.values = data.map((node, index) =>
+        this.values[index] ? { ...node, id: this.values[index].id } : node
+      );
     },
     append(data: DataSource) {
       this.values.push(data);

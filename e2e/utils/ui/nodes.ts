@@ -34,15 +34,10 @@ export async function uiAddNode(page: Page, host: string, port?: number) {
   await hostInput.fill(host);
   await expect(hostInput).toHaveValue(host);
   if (port != null) {
-    // Leaving the Host field rebuilds every node row (#306), which replaces
-    // this input: fill() writes into the old one and the field keeps its
-    // default of 1, silently. click() and press() re-resolve the locator, so
-    // they reach the new input and leave it focused with its text selected;
-    // the typing that follows goes there.
+    // Read back: this used to keep its default of 1, silently, because
+    // leaving the Host field replaced the input fill() had written to (#306).
     const portInput = page.getByPlaceholder(NODE_PORT_PH).nth(idx);
-    await portInput.click();
-    await portInput.press('ControlOrMeta+a');
-    await portInput.pressSequentially(String(port));
+    await portInput.fill(String(port));
     await expect(portInput).toHaveValue(String(port));
   }
   // Commit changes (FormItemNodes commits on blur / click-outside).
