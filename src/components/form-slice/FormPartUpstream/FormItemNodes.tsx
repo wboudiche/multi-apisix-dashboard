@@ -93,6 +93,11 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
 
   const commitChanges = () => {
     const vals = parseToUpstreamNodes(toJS(ob.values));
+    // Say nothing when there is nothing to say. useClickOutside listens on
+    // four events, so one click outside used to write four fresh arrays to
+    // the form: each re-entered the sync above, and each marked a form
+    // nobody had edited as dirty.
+    if (equals(vals, parseToNodes(value))) return;
     fOnChange?.(vals);
     restProps.onChange?.(vals);
   };

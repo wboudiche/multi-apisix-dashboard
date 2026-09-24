@@ -16,8 +16,9 @@
  */
 import { expect, type Page } from '@playwright/test';
 
-const NODE_HOST_PH = 'Hostname or IP';
-const NODE_PORT_PH = 'Port';
+/** The node editor's fields, as every spec that drives it locates them. */
+export const NODE_HOST_PH = 'Hostname or IP';
+export const NODE_PORT_PH = 'Port';
 
 /**
  * Add a node on the node editor (FormItemNodes), which the upstream, route and

@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { APISIXType } from '@/types/schema/apisix';
 
-import { mergeRowIds } from './node-rows';
+import { genRecord, mergeRowIds, parseToNodes } from './node-rows';
 
 /**
  * The ids key the node editor's inputs. A row that keeps its id keeps its DOM
@@ -101,5 +101,85 @@ describe('mergeRowIds', () => {
 
   it('empties out with the nodes', () => {
     expect(mergeRowIds([row('a.com', 80, 'id-a')], [])).toEqual([]);
+  });
+
+  // An empty Weight box gives undefined, and the schema wants a number: the
+  // row is repaired, the way every commit used to repair it.
+  it('gives a node with no weight the default', () => {
+    const merged = mergeRowIds([row('a.com', 80, 'id-a')], [
+      { host: 'a.com', port: 80 } as APISIXType['UpstreamNode'],
+    ]);
+
+    expect(merged).toEqual([{ host: 'a.com', port: 80, weight: 1, id: 'id-a' }]);
+  });
+
+  // Two nodes on one address: the one that did not change keeps its row, so
+  // the other cannot take it from under the caret.
+  it('prefers the row that held exactly this node', () => {
+    const prev = [
+      { host: 'a.com', port: 80, weight: 1, id: 'id-1' },
+      { host: 'a.com', port: 80, weight: 5, id: 'id-2' },
+    ];
+    const merged = mergeRowIds(prev, [{ host: 'a.com', port: 80, weight: 5 }]);
+
+    expect(merged).toEqual([{ host: 'a.com', port: 80, weight: 5, id: 'id-2' }]);
+  });
+
+  // The weight of the row being edited changes on every keystroke, so an
+  // exact match is not there to be had: the address carries the id.
+  it('keeps the id while a weight is being changed', () => {
+    const merged = mergeRowIds(
+      [{ host: 'a.com', port: 80, weight: 1, id: 'id-a' }],
+      [{ host: 'a.com', port: 80, weight: 12 }]
+    );
+
+    expect(merged).toEqual([{ host: 'a.com', port: 80, weight: 12, id: 'id-a' }]);
+  });
+});
+
+describe('genRecord', () => {
+  // A new node used to be born at weight 0, which APISIX never picks (#303).
+  it('starts a new node at weight 1', () => {
+    expect(genRecord().weight).toBe(1);
+  });
+
+  it('keeps a weight of 0 that was asked for', () => {
+    expect(genRecord({ host: 'a.com', port: 80, weight: 0 }).weight).toBe(0);
+  });
+
+  it('gives each row an id of its own', () => {
+    const node = { host: 'a.com', port: 80, weight: 1 };
+    expect(genRecord(node).id).not.toBe(genRecord(node).id);
+  });
+});
+
+describe('parseToNodes', () => {
+  it('reads the object form APISIX stores', () => {
+    expect(parseToNodes({ 'a.com:8080': 3 })).toEqual([
+      { host: 'a.com', port: 8080, weight: 3, priority: 0 },
+    ]);
+  });
+
+  // Splitting on the first colon left no host at all, and the editor then
+  // offered to save the upstream with an empty host on port 1.
+  it('reads a bracketed IPv6 node', () => {
+    expect(parseToNodes({ '[::1]:8080': 1 })).toEqual([
+      { host: '::1', port: 8080, weight: 1, priority: 0 },
+    ]);
+  });
+
+  it('keeps a bare IPv6 address whole, port or not', () => {
+    expect(parseToNodes({ 'fd00::1': 2 })).toEqual([
+      { host: 'fd00::1', port: 1, weight: 2, priority: 0 },
+    ]);
+  });
+
+  it('passes the list form through', () => {
+    const nodes = [{ host: 'a.com', port: 80, weight: 1 }];
+    expect(parseToNodes(nodes)).toEqual(nodes);
+  });
+
+  it('answers nothing for no nodes', () => {
+    expect(parseToNodes(undefined)).toEqual([]);
   });
 });

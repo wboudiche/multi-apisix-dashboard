@@ -18,6 +18,8 @@ import { upstreamsPom } from '@e2e/pom/upstreams';
 import { deleteUpstreamsByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
+import { uiHasToastMsg } from '@e2e/utils/ui';
+import { NODE_HOST_PH, NODE_PORT_PH } from '@e2e/utils/ui/nodes';
 import {
   nameField,
   uiDiscardDraftIfPresent,
@@ -38,8 +40,8 @@ import { API_UPSTREAMS } from '@/config/constant';
 
 const PREFIX = 'e2e-node-editor';
 
-const hostFields = (page: Page) => page.getByPlaceholder('Hostname or IP', { exact: true });
-const portFields = (page: Page) => page.getByPlaceholder('Port', { exact: true });
+const hostFields = (page: Page) => page.getByPlaceholder(NODE_HOST_PH, { exact: true });
+const portFields = (page: Page) => page.getByPlaceholder(NODE_PORT_PH, { exact: true });
 
 const goToNodes = async (page: Page, name: string) => {
   await upstreamsPom.toAdd(page);
@@ -113,11 +115,12 @@ test('the nodes reach the gateway as they were typed', async ({ page }) => {
   // saved on port 1, and nodes with a weight of 0 that take no traffic.
   await uiWizardNext(page);
   await uiWizardNext(page);
-  const posted = page.waitForRequest(
-    (r) => r.url().includes(API_UPSTREAMS) && r.method() === 'POST'
+  const posted = page.waitForResponse(
+    (r) => r.url().includes(API_UPSTREAMS) && r.request().method() === 'POST'
   );
   await upstreamsPom.getAddBtn(page).click();
-  const body = (await posted).postDataJSON() as {
+  const response = await posted;
+  const body = response.request().postDataJSON() as {
     nodes: { host: string; port: number; weight: number }[];
   };
 
@@ -125,4 +128,8 @@ test('the nodes reach the gateway as they were typed', async ({ page }) => {
     expect.objectContaining({ host: 'first.example.com', port: 8080, weight: 1 }),
     expect.objectContaining({ host: 'second.example.com', port: 8081, weight: 1 }),
   ]);
+  // And the gateway took them: a body the gateway refuses would otherwise
+  // read as a pass here.
+  expect(response.ok()).toBe(true);
+  await uiHasToastMsg(page, { hasText: 'Add Upstream Successfully' });
 });
