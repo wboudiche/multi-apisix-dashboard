@@ -52,7 +52,7 @@ import { uiAddNode } from './nodes';
 
 const NODE_HOST_PH = 'Hostname or IP';
 
-const nameField = (page: Page) =>
+export const nameField = (page: Page) =>
   page.getByRole('textbox', { name: 'Name', exact: true }).first();
 
 /** Discard any restored draft so the wizard starts from a clean step 1. */

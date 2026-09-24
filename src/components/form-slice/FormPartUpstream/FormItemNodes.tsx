@@ -18,61 +18,21 @@ import { ActionIcon, Button, Flex, InputWrapper, NumberInput, Stack,Text, TextIn
 import { useClickOutside } from '@mantine/hooks';
 import { toJS } from 'mobx';
 import { observer, useLocalObservable } from 'mobx-react-lite';
-import { nanoid } from 'nanoid';
-import { equals, isNil } from 'rambdax';
+import { equals } from 'rambdax';
 import { useEffect, useMemo } from 'react';
 import { type FieldValues, useController, type UseControllerProps } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { APISIX, type APISIXType } from '@/types/schema/apisix';
-import { zGetDefault } from '@/utils/zod';
+import { type APISIXType } from '@/types/schema/apisix';
 
 import { genControllerProps } from '../../form/util';
-
-type DataSource = APISIXType['UpstreamNode'] & APISIXType['ID'];
-
-const genRecord = (data?: DataSource | APISIXType['UpstreamNode']) => {
-  const d = data || zGetDefault(APISIX.UpstreamNode);
-  return {
-    id: nanoid(),
-    ...d,
-    weight: d.weight ?? 1,
-  } as DataSource;
-};
-
-const objToUpstreamNodes = (data: APISIXType['UpstreamNodeObj']) => {
-  return Object.entries(data).map(([key, val]) => {
-    const [host, port] = key.split(':');
-    const d: APISIXType['UpstreamNode'] = {
-      host,
-      port: Number(port) || 1,
-      weight: val,
-      priority: 0,
-    };
-    return d;
-  });
-};
-
-const parseToDataSource = (data: APISIXType['UpstreamNodeListOrObj']) => {
-  let val: APISIXType['UpstreamNodes'];
-  if (isNil(data)) val = [];
-  else if (Array.isArray(data)) val = data as APISIXType['UpstreamNodes'];
-  else val = objToUpstreamNodes(data as APISIXType['UpstreamNodeObj']);
-  return val.map(genRecord);
-};
-
-const parseToUpstreamNodes = (data: DataSource[] | undefined) => {
-  if (!data?.length) return [];
-  return data.map((item) => {
-    const d: APISIXType['UpstreamNode'] = {
-      host: item.host,
-      port: item.port,
-      weight: item.weight,
-      priority: item.priority,
-    };
-    return d;
-  });
-};
+import {
+  type DataSource,
+  genRecord,
+  mergeRowIds,
+  parseToNodes,
+  parseToUpstreamNodes,
+} from './node-rows';
 
 export type FormItemNodesProps<T extends FieldValues> = UseControllerProps<T> & {
   onChange?: (value: APISIXType['UpstreamNode'][]) => void;
@@ -98,17 +58,13 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
       this.disabled = disabled || false;
     },
     values: [] as DataSource[],
-    setValues(data: DataSource[]) {
-      // Compare the nodes, not the rows: the ids are this component's own and
-      // every parse mints new ones, so rows and data never compared equal and
-      // the list was rebuilt on every commit.
-      if (equals(parseToUpstreamNodes(toJS(this.values)), parseToUpstreamNodes(data))) return;
-      // A row that stays keeps its id. The ids key the inputs, so a new one
-      // replaces the element the caret sits in, and what is being typed or
-      // pasted there goes with it (#306).
-      this.values = data.map((node, index) =>
-        this.values[index] ? { ...node, id: this.values[index].id } : node
-      );
+    setValues(nodes: APISIXType['UpstreamNode'][]) {
+      // The rows already say this: leave them, and their ids, alone. This is
+      // the common case, since the value being read here is usually the one
+      // these rows committed a moment ago.
+      const rows = toJS(this.values);
+      if (equals(parseToUpstreamNodes(rows), nodes)) return;
+      this.values = mergeRowIds(rows, nodes);
     },
     append(data: DataSource) {
       this.values.push(data);
@@ -128,7 +84,7 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
   }));
 
   useEffect(() => {
-    ob.setValues(parseToDataSource(value));
+    ob.setValues(parseToNodes(value));
   }, [ob, value]);
 
   useEffect(() => {

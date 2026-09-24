@@ -15,41 +15,58 @@
  * limitations under the License.
  */
 import { upstreamsPom } from '@e2e/pom/upstreams';
+import { deleteUpstreamsByNamePrefix } from '@e2e/utils/cleanup';
+import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import { uiDiscardDraftIfPresent, uiWizardNext } from '@e2e/utils/ui/upstreams';
-import { expect } from '@playwright/test';
+import {
+  nameField,
+  uiDiscardDraftIfPresent,
+  uiWizardNext,
+} from '@e2e/utils/ui/upstreams';
+import { expect, type Page } from '@playwright/test';
+
+import { API_UPSTREAMS } from '@/config/constant';
 
 /**
  * Leaving a node's Host field commits the rows, and the rows used to be
  * rebuilt from that commit with new ids. The ids key the inputs, so every
  * field in the list was replaced: the one the caret had just moved into
  * disappeared under it, and what was typed or pasted there went with it
- * (#306).
+ * (#306). A node was also born with a weight of 0, which APISIX's roundrobin
+ * never picks beside a node that has one (#303).
  */
 
-const goToNodes = async (page: import('@playwright/test').Page) => {
+const PREFIX = 'e2e-node-editor';
+
+const hostFields = (page: Page) => page.getByPlaceholder('Hostname or IP', { exact: true });
+const portFields = (page: Page) => page.getByPlaceholder('Port', { exact: true });
+
+const goToNodes = async (page: Page, name: string) => {
   await upstreamsPom.toAdd(page);
   await upstreamsPom.isAddPage(page);
   await uiDiscardDraftIfPresent(page);
-  await page
-    .getByRole('textbox', { name: 'Name', exact: true })
-    .first()
-    .fill('e2e-node-editor');
+  await nameField(page).fill(name);
   await uiWizardNext(page);
   await page.getByRole('button', { name: 'Add a Node' }).click();
 };
 
-test('the port keeps what is typed after tabbing out of the host', async ({ page }) => {
-  await goToNodes(page);
+test.afterAll(async () => {
+  await deleteUpstreamsByNamePrefix(PREFIX);
+});
 
-  const host = page.getByPlaceholder('Hostname or IP');
-  const port = page.getByPlaceholder('Port');
+test('the port keeps what is typed after tabbing out of the host', async ({ page }) => {
+  await goToNodes(page, randomId(PREFIX));
+
+  const host = hostFields(page);
+  const port = portFields(page);
   await host.fill('node.example.com');
   await host.press('Tab');
 
   // The caret is in the Port field, on the field that is still there.
   await expect(port).toBeFocused();
-  await page.keyboard.press('ControlOrMeta+a');
+  // Select what is there rather than trust a chord: typing over an unselected
+  // "1" would read 18080, and the failure would name the wrong culprit.
+  await port.selectText();
   await page.keyboard.type('8080');
 
   await expect(port).toHaveValue('8080');
@@ -57,10 +74,10 @@ test('the port keeps what is typed after tabbing out of the host', async ({ page
 });
 
 test('a port written in one go is kept', async ({ page }) => {
-  await goToNodes(page);
+  await goToNodes(page, randomId(PREFIX));
 
-  const host = page.getByPlaceholder('Hostname or IP');
-  const port = page.getByPlaceholder('Port');
+  const host = hostFields(page);
+  const port = portFields(page);
   await host.fill('node.example.com');
   // fill() sets the value in one event, the way a paste does. It used to
   // land on an input that the commit above had already replaced.
@@ -68,13 +85,15 @@ test('a port written in one go is kept', async ({ page }) => {
   await page.locator('h1').first().click();
 
   await expect(port).toHaveValue('8080');
+  await expect(host).toHaveValue('node.example.com');
 });
 
-test('a second node does not disturb the first', async ({ page }) => {
-  await goToNodes(page);
+test('the nodes reach the gateway as they were typed', async ({ page }) => {
+  const name = randomId(PREFIX);
+  await goToNodes(page, name);
 
-  const hosts = page.getByPlaceholder('Hostname or IP');
-  const ports = page.getByPlaceholder('Port');
+  const hosts = hostFields(page);
+  const ports = portFields(page);
   await hosts.first().fill('first.example.com');
   await ports.first().fill('8080');
 
@@ -84,8 +103,26 @@ test('a second node does not disturb the first', async ({ page }) => {
   await ports.nth(1).fill('8081');
   await page.locator('h1').first().click();
 
+  // On screen first: a second node must not disturb the first.
   await expect(hosts.first()).toHaveValue('first.example.com');
   await expect(ports.first()).toHaveValue('8080');
   await expect(hosts.nth(1)).toHaveValue('second.example.com');
   await expect(ports.nth(1)).toHaveValue('8081');
+
+  // Then what is actually sent, which is where the damage was: an upstream
+  // saved on port 1, and nodes with a weight of 0 that take no traffic.
+  await uiWizardNext(page);
+  await uiWizardNext(page);
+  const posted = page.waitForRequest(
+    (r) => r.url().includes(API_UPSTREAMS) && r.method() === 'POST'
+  );
+  await upstreamsPom.getAddBtn(page).click();
+  const body = (await posted).postDataJSON() as {
+    nodes: { host: string; port: number; weight: number }[];
+  };
+
+  expect(body.nodes).toEqual([
+    expect.objectContaining({ host: 'first.example.com', port: 8080, weight: 1 }),
+    expect.objectContaining({ host: 'second.example.com', port: 8081, weight: 1 }),
+  ]);
 });
