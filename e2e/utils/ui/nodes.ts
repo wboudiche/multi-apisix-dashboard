@@ -25,7 +25,7 @@ export const NODE_PORT_PH = 'Port';
  * service forms share, and fill its host and, when given, its port.
  */
 export async function uiAddNode(page: Page, host: string, port?: number) {
-  const hostInputs = page.getByPlaceholder(NODE_HOST_PH);
+  const hostInputs = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   const idx = await hostInputs.count();
   await page.getByRole('button', { name: 'Add a Node' }).click();
   // count() does not wait: wait for the new row, or idx could still name the
@@ -37,7 +37,7 @@ export async function uiAddNode(page: Page, host: string, port?: number) {
   if (port != null) {
     // Read back: this used to keep its default of 1, silently, because
     // leaving the Host field replaced the input fill() had written to (#306).
-    const portInput = page.getByPlaceholder(NODE_PORT_PH).nth(idx);
+    const portInput = page.getByPlaceholder(NODE_PORT_PH, { exact: true }).nth(idx);
     await portInput.fill(String(port));
     await expect(portInput).toHaveValue(String(port));
   }

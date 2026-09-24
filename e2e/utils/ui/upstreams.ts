@@ -19,7 +19,7 @@ import { expect, type Page } from '@playwright/test';
 import type { APISIXType } from '@/types/schema/apisix';
 
 import type { Test } from '../test';
-import { uiAddNode } from './nodes';
+import { NODE_HOST_PH, uiAddNode } from './nodes';
 
 /**
  * The upstream add/detail pages were redesigned into a multi-step FormWizard:
@@ -50,7 +50,6 @@ import { uiAddNode } from './nodes';
  *    first (load-balancing) match.
  */
 
-const NODE_HOST_PH = 'Hostname or IP';
 
 export const nameField = (page: Page) =>
   page.getByRole('textbox', { name: 'Name', exact: true }).first();

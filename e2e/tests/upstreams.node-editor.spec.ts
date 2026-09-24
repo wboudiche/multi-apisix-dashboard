@@ -133,3 +133,30 @@ test('the nodes reach the gateway as they were typed', async ({ page }) => {
   expect(response.ok()).toBe(true);
   await uiHasToastMsg(page, { hasText: 'Add Upstream Successfully' });
 });
+
+// An empty Weight box gives no number, and the schema requires one. The form
+// used to stop on an error keyed at a node's weight, which no field renders,
+// so the wizard refused to advance with nothing on screen to say why.
+test('an emptied weight is taken as the default rather than as nothing', async ({ page }) => {
+  const name = randomId(PREFIX);
+  await goToNodes(page, name);
+
+  await hostFields(page).fill('weight.example.com');
+  await portFields(page).fill('8080');
+  const weight = page.getByPlaceholder('1', { exact: true });
+  await weight.fill('');
+  await page.locator('h1').first().click();
+
+  await uiWizardNext(page);
+  await uiWizardNext(page);
+  const posted = page.waitForResponse(
+    (r) => r.url().includes(API_UPSTREAMS) && r.request().method() === 'POST'
+  );
+  await upstreamsPom.getAddBtn(page).click();
+  const response = await posted;
+
+  expect(response.ok()).toBe(true);
+  expect(
+    (response.request().postDataJSON() as { nodes: { weight: number }[] }).nodes
+  ).toEqual([expect.objectContaining({ host: 'weight.example.com', port: 8080, weight: 1 })]);
+});

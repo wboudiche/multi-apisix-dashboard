@@ -112,12 +112,8 @@ export const mergeRowIds = (
 const splitHostPort = (key: string): { host: string; port: number } => {
   if (key.startsWith('[')) {
     const close = key.indexOf(']');
-    if (close > 0) {
-      return {
-        host: key.slice(1, close),
-        port: Number(key.slice(close + 2)) || 1,
-      };
-    }
+    const host = close > 1 ? key.slice(1, close) : '';
+    if (host) return { host, port: Number(key.slice(close + 2)) || 1 };
   }
   const colon = key.lastIndexOf(':');
   // Several colons and no brackets: an IPv6 address written bare, with no
@@ -140,16 +136,25 @@ export const parseToNodes = (data?: APISIXType['UpstreamNodeListOrObj']) => {
   return objToUpstreamNodes(data as APISIXType['UpstreamNodeObj']);
 };
 
-/** The nodes of the given rows, without the ids, which are none of the form's business. */
+/**
+ * The nodes of the given rows: no ids, which are none of the form's business,
+ * no weight left empty, and no key that holds nothing.
+ *
+ * An empty Weight box gives undefined, and the schema requires a number: the
+ * form would refuse to advance, on an error keyed at `nodes.0.weight` that no
+ * field renders. A `priority` nobody set used to be written as an undefined
+ * key, which is not the same object as one without it - `equals` counts keys -
+ * so a value that had not changed compared unequal to itself.
+ */
 export const parseToUpstreamNodes = (data: DataSource[] | undefined) => {
   if (!data?.length) return [];
   return data.map((item) => {
     const node: APISIXType['UpstreamNode'] = {
       host: item.host,
       port: item.port,
-      weight: item.weight,
-      priority: item.priority,
+      weight: item.weight ?? 1,
     };
+    if (item.priority !== undefined) node.priority = item.priority;
     return node;
   });
 };

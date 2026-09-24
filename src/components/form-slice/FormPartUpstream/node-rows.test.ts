@@ -14,11 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { equals } from 'rambdax';
 import { describe, expect, it } from 'vitest';
 
 import type { APISIXType } from '@/types/schema/apisix';
+import { APISIX } from '@/types/schema/apisix';
 
-import { genRecord, mergeRowIds, parseToNodes } from './node-rows';
+import {
+  genRecord,
+  mergeRowIds,
+  parseToNodes,
+  parseToUpstreamNodes,
+} from './node-rows';
 
 /**
  * The ids key the node editor's inputs. A row that keeps its id keeps its DOM
@@ -174,6 +181,13 @@ describe('parseToNodes', () => {
     ]);
   });
 
+  // Shapes APISIX does not write, but which the editor must not turn into
+  // something it would then offer to save.
+  it('keeps a key it cannot read as an address whole', () => {
+    expect(parseToNodes({ 'a.com:8080:extra': 1 })[0].host).toBe('a.com:8080:extra');
+    expect(parseToNodes({ '[]:80': 1 })[0].host).toBe('[]');
+  });
+
   it('passes the list form through', () => {
     const nodes = [{ host: 'a.com', port: 80, weight: 1 }];
     expect(parseToNodes(nodes)).toEqual(nodes);
@@ -181,5 +195,36 @@ describe('parseToNodes', () => {
 
   it('answers nothing for no nodes', () => {
     expect(parseToNodes(undefined)).toEqual([]);
+  });
+});
+
+describe('parseToUpstreamNodes', () => {
+  // An empty Weight box gives undefined, which the schema refuses. The form
+  // then stops on an error keyed at nodes.0.weight, which no field renders,
+  // so the wizard refuses to advance and nothing says why.
+  it('writes the default weight rather than nothing', () => {
+    const nodes = parseToUpstreamNodes([
+      { host: 'a.com', port: 80, weight: undefined as unknown as number, id: 'id-a' },
+    ]);
+
+    expect(nodes).toEqual([{ host: 'a.com', port: 80, weight: 1 }]);
+    expect(APISIX.UpstreamNodes.safeParse(nodes).success).toBe(true);
+  });
+
+  // `equals` counts keys, so a priority nobody set must be absent, not
+  // present and undefined: otherwise a value compares unequal to itself and
+  // every guard built on it misses.
+  it('leaves out a priority nobody set', () => {
+    const value = [{ host: 'a.com', port: 80, weight: 1 }];
+    const rows = mergeRowIds([], parseToNodes(value));
+
+    expect(parseToUpstreamNodes(rows)).toEqual(value);
+    expect(equals(parseToUpstreamNodes(rows), value)).toBe(true);
+  });
+
+  it('keeps a priority that was set', () => {
+    expect(
+      parseToUpstreamNodes([{ host: 'a.com', port: 80, weight: 1, priority: 3, id: 'x' }])
+    ).toEqual([{ host: 'a.com', port: 80, weight: 1, priority: 3 }]);
   });
 });
