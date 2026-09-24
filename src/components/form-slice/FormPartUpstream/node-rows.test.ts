@@ -25,6 +25,7 @@ import {
   mergeRowIds,
   parseToNodes,
   parseToUpstreamNodes,
+  rowNodes,
 } from './node-rows';
 
 /**
@@ -161,9 +162,11 @@ describe('genRecord', () => {
 });
 
 describe('parseToNodes', () => {
+  // No priority: the object form carries none, and a 0 invented here would be
+  // written onto every node saved from an upstream that arrived in it.
   it('reads the object form APISIX stores', () => {
     expect(parseToNodes({ 'a.com:8080': 3 })).toEqual([
-      { host: 'a.com', port: 8080, weight: 3, priority: 0 },
+      { host: 'a.com', port: 8080, weight: 3 },
     ]);
   });
 
@@ -171,13 +174,13 @@ describe('parseToNodes', () => {
   // offered to save the upstream with an empty host on port 1.
   it('reads a bracketed IPv6 node', () => {
     expect(parseToNodes({ '[::1]:8080': 1 })).toEqual([
-      { host: '::1', port: 8080, weight: 1, priority: 0 },
+      { host: '::1', port: 8080, weight: 1 },
     ]);
   });
 
   it('keeps a bare IPv6 address whole, port or not', () => {
     expect(parseToNodes({ 'fd00::1': 2 })).toEqual([
-      { host: 'fd00::1', port: 1, weight: 2, priority: 0 },
+      { host: 'fd00::1', port: 1, weight: 2 },
     ]);
   });
 
@@ -226,5 +229,22 @@ describe('parseToUpstreamNodes', () => {
     expect(
       parseToUpstreamNodes([{ host: 'a.com', port: 80, weight: 1, priority: 3, id: 'x' }])
     ).toEqual([{ host: 'a.com', port: 80, weight: 1, priority: 3 }]);
+  });
+});
+
+describe('rowNodes', () => {
+  // What the rows hold, so that the sync can see that a row is not yet what
+  // the value says - a Weight box left empty, for one.
+  it('keeps an empty weight empty', () => {
+    expect(
+      rowNodes([{ host: 'a.com', port: 80, weight: undefined as unknown as number, id: 'x' }])
+    ).toEqual([{ host: 'a.com', port: 80 }]);
+  });
+
+  it('differs from what the same rows would commit', () => {
+    const rows = [
+      { host: 'a.com', port: 80, weight: undefined as unknown as number, id: 'x' },
+    ];
+    expect(equals(rowNodes(rows), parseToUpstreamNodes(rows))).toBe(false);
   });
 });

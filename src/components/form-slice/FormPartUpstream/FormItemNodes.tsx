@@ -32,6 +32,7 @@ import {
   mergeRowIds,
   parseToNodes,
   parseToUpstreamNodes,
+  rowNodes,
 } from './node-rows';
 
 export type FormItemNodesProps<T extends FieldValues> = UseControllerProps<T> & {
@@ -61,12 +62,14 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
     setValues(nodes: APISIXType['UpstreamNode'][]) {
       // The rows already say this: leave them, and their ids, alone. This is
       // the common case, since the value being read here is usually the one
-      // these rows committed a moment ago. Compare what the rows would commit,
-      // so that a row whose weight is empty reads as the 1 it will be given
-      // and gets rebuilt rather than left waiting for a repair that the
-      // comparison had already skipped.
+      // these rows committed a moment ago.
+      //
+      // Compare what the rows hold, not what they would commit: a row whose
+      // Weight box is empty commits a 1, and comparing that 1 to the value's
+      // 1 would call them equal and leave the box blank while 1 is what gets
+      // saved.
       const rows = toJS(this.values);
-      if (equals(parseToUpstreamNodes(rows), nodes)) return;
+      if (equals(rowNodes(rows), nodes)) return;
       this.values = mergeRowIds(rows, nodes);
     },
     append(data: DataSource) {
@@ -95,19 +98,27 @@ export const FormItemNodes = observer(<T extends FieldValues>(props: FormItemNod
   }, [disabled, ob]);
 
   const commitChanges = () => {
-    // A read-only wizard has nothing to commit, and a form nobody can edit
-    // has no business being marked as edited.
-    if (ob.disabled) return;
-    const vals = parseToUpstreamNodes(toJS(ob.values));
+    const rows = toJS(ob.values);
+    const vals = parseToUpstreamNodes(rows);
+    // Put the repair on screen too. A Weight box left empty commits a 1, and
+    // a box that says nothing while 1 is what gets saved is the same
+    // disagreement as the one this editor exists to avoid - the form value
+    // may well be equal to what it already held, so nothing would come back
+    // through the sync to fill it.
+    if (!equals(rowNodes(rows), vals)) ob.setValues(vals);
     // Say nothing when there is nothing to say. useClickOutside listens on
     // four events, so one click outside used to write four fresh arrays to
     // the form: each re-entered the sync above, and each marked a form
-    // nobody had edited as dirty.
+    // nobody had edited as dirty. A form with no nodes at all has nothing to
+    // hear from an empty editor either.
     //
     // A value still in APISIX's object form is not "nothing to say", however
     // equal its nodes read: the form holds a list, and what reads it - the
-    // connection test, for one - is offered nothing by an object.
-    if (Array.isArray(value) && equals(vals, parseToNodes(value))) return;
+    // connection test, for one - is offered nothing by an object. That is
+    // also why a read-only editor still commits: a detail page is where the
+    // object form arrives, and it is read-only until Edit is pressed.
+    if (Array.isArray(value) ? equals(vals, value) : vals.length === 0) return;
+    if (disabled && Array.isArray(value)) return;
     fOnChange?.(vals);
     restProps.onChange?.(vals);
   };

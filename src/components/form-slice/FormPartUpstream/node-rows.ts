@@ -125,7 +125,10 @@ const splitHostPort = (key: string): { host: string; port: number } => {
 const objToUpstreamNodes = (data: APISIXType['UpstreamNodeObj']) =>
   Object.entries(data).map(([key, weight]) => {
     const { host, port } = splitHostPort(key);
-    const node: APISIXType['UpstreamNode'] = { host, port, weight, priority: 0 };
+    // No priority: the object form carries none, and inventing a 0 here would
+    // write it onto every node saved from this shape, and make the same node
+    // read differently depending on which shape it arrived in.
+    const node: APISIXType['UpstreamNode'] = { host, port, weight };
     return node;
   });
 
@@ -137,24 +140,34 @@ export const parseToNodes = (data?: APISIXType['UpstreamNodeListOrObj']) => {
 };
 
 /**
- * The nodes of the given rows: no ids, which are none of the form's business,
- * no weight left empty, and no key that holds nothing.
+ * The nodes the rows hold, as they are: no ids, which are none of the form's
+ * business, and no key that holds nothing.
  *
- * An empty Weight box gives undefined, and the schema requires a number: the
- * form would refuse to advance, on an error keyed at `nodes.0.weight` that no
- * field renders. A `priority` nobody set used to be written as an undefined
- * key, which is not the same object as one without it - `equals` counts keys -
- * so a value that had not changed compared unequal to itself.
+ * A key written as undefined is not the same object as one that is absent -
+ * `equals` counts keys - so a value that had not changed compared unequal to
+ * itself, and every guard built on that comparison missed.
  */
-export const parseToUpstreamNodes = (data: DataSource[] | undefined) => {
+export const rowNodes = (data: DataSource[] | undefined) => {
   if (!data?.length) return [];
   return data.map((item) => {
     const node: APISIXType['UpstreamNode'] = {
       host: item.host,
       port: item.port,
-      weight: item.weight ?? 1,
-    };
+    } as APISIXType['UpstreamNode'];
+    if (item.weight !== undefined) node.weight = item.weight;
     if (item.priority !== undefined) node.priority = item.priority;
     return node;
   });
 };
+
+/**
+ * What the form should hold for these rows: the nodes, with a weight where a
+ * box was left empty.
+ *
+ * An empty Weight box gives undefined, and the schema requires a number: the
+ * form would refuse to advance, on an error keyed at `nodes.0.weight` that no
+ * field renders. The rows keep what they hold, so that the sync that follows
+ * sees a difference and puts the 1 on screen too.
+ */
+export const parseToUpstreamNodes = (data: DataSource[] | undefined) =>
+  rowNodes(data).map(withWeight);

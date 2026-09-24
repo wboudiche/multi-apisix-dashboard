@@ -147,6 +147,10 @@ test('an emptied weight is taken as the default rather than as nothing', async (
   await weight.fill('');
   await page.locator('h1').first().click();
 
+  // On screen too: the box saying nothing while 1 is what gets saved is the
+  // same disagreement in the other direction.
+  await expect(weight).toHaveValue('1');
+
   await uiWizardNext(page);
   await uiWizardNext(page);
   const posted = page.waitForResponse(
