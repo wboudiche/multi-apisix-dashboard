@@ -16,15 +16,16 @@
  */
 import { expect, type Page } from '@playwright/test';
 
-const NODE_HOST_PH = 'Hostname or IP';
-const NODE_PORT_PH = 'Port';
+/** The node editor's fields, as every spec that drives it locates them. */
+export const NODE_HOST_PH = 'Hostname or IP';
+export const NODE_PORT_PH = 'Port';
 
 /**
  * Add a node on the node editor (FormItemNodes), which the upstream, route and
  * service forms share, and fill its host and, when given, its port.
  */
 export async function uiAddNode(page: Page, host: string, port?: number) {
-  const hostInputs = page.getByPlaceholder(NODE_HOST_PH);
+  const hostInputs = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   const idx = await hostInputs.count();
   await page.getByRole('button', { name: 'Add a Node' }).click();
   // count() does not wait: wait for the new row, or idx could still name the
@@ -34,15 +35,10 @@ export async function uiAddNode(page: Page, host: string, port?: number) {
   await hostInput.fill(host);
   await expect(hostInput).toHaveValue(host);
   if (port != null) {
-    // Leaving the Host field rebuilds every node row (#306), which replaces
-    // this input: fill() writes into the old one and the field keeps its
-    // default of 1, silently. click() and press() re-resolve the locator, so
-    // they reach the new input and leave it focused with its text selected;
-    // the typing that follows goes there.
-    const portInput = page.getByPlaceholder(NODE_PORT_PH).nth(idx);
-    await portInput.click();
-    await portInput.press('ControlOrMeta+a');
-    await portInput.pressSequentially(String(port));
+    // Read back: this used to keep its default of 1, silently, because
+    // leaving the Host field replaced the input fill() had written to (#306).
+    const portInput = page.getByPlaceholder(NODE_PORT_PH, { exact: true }).nth(idx);
+    await portInput.fill(String(port));
     await expect(portInput).toHaveValue(String(port));
   }
   // Commit changes (FormItemNodes commits on blur / click-outside).

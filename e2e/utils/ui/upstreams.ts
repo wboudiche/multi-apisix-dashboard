@@ -19,7 +19,7 @@ import { expect, type Page } from '@playwright/test';
 import type { APISIXType } from '@/types/schema/apisix';
 
 import type { Test } from '../test';
-import { uiAddNode } from './nodes';
+import { NODE_HOST_PH, uiAddNode } from './nodes';
 
 /**
  * The upstream add/detail pages were redesigned into a multi-step FormWizard:
@@ -50,9 +50,8 @@ import { uiAddNode } from './nodes';
  *    first (load-balancing) match.
  */
 
-const NODE_HOST_PH = 'Hostname or IP';
 
-const nameField = (page: Page) =>
+export const nameField = (page: Page) =>
   page.getByRole('textbox', { name: 'Name', exact: true }).first();
 
 /** Discard any restored draft so the wizard starts from a clean step 1. */
@@ -105,11 +104,11 @@ export async function uiFillUpstreamRequiredFields(
   // control is the ActionIcon (a button) whose only text is a literal "-" at
   // the end of each node row.
   await addNodeBtn.click();
-  let hosts = page.getByPlaceholder(NODE_HOST_PH);
+  let hosts = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   await expect(hosts).toHaveCount(3);
   const removeButtons = page.getByRole('button').filter({ hasText: /^\s*-\s*$/ });
   await removeButtons.last().click();
-  hosts = page.getByPlaceholder(NODE_HOST_PH);
+  hosts = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   await expect(hosts).toHaveCount(2);
 
   // Advance through Connection (defaults are valid) to the Preview step.
@@ -134,7 +133,7 @@ export async function uiCheckUpstreamRequiredFields(
   // The tests always pass node arrays (never the object form).
   const nodes = (upstream.nodes ?? []) as APISIXType['UpstreamNode'][];
   await page.getByRole('button', { name: 'Nodes', exact: true }).click();
-  const hosts = page.getByPlaceholder(NODE_HOST_PH);
+  const hosts = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   await expect(hosts).toHaveCount(nodes.length);
   const values = await hosts.evaluateAll((els) =>
     els.map((el) => (el as HTMLInputElement).value)
@@ -231,7 +230,7 @@ export async function uiCheckUpstreamAllFields(
 
   // Step 2 — nodes.
   await page.getByRole('button', { name: 'Nodes', exact: true }).click();
-  const hosts = page.getByPlaceholder(NODE_HOST_PH);
+  const hosts = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   const hostValues = await hosts.evaluateAll((els) =>
     els.map((el) => (el as HTMLInputElement).value)
   );
