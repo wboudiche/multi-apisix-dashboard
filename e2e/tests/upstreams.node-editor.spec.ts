@@ -43,13 +43,17 @@ const PREFIX = 'e2e-node-editor';
 const hostFields = (page: Page) => page.getByPlaceholder(NODE_HOST_PH, { exact: true });
 const portFields = (page: Page) => page.getByPlaceholder(NODE_PORT_PH, { exact: true });
 
-const goToNodes = async (page: Page, name: string) => {
+const goToNodes = async (
+  page: Page,
+  name: string,
+  { addNode = true }: { addNode?: boolean } = {}
+) => {
   await upstreamsPom.toAdd(page);
   await upstreamsPom.isAddPage(page);
   await uiDiscardDraftIfPresent(page);
   await nameField(page).fill(name);
   await uiWizardNext(page);
-  await page.getByRole('button', { name: 'Add a Node' }).click();
+  if (addNode) await page.getByRole('button', { name: 'Add a Node' }).click();
 };
 
 test.afterAll(async () => {
@@ -137,6 +141,18 @@ test('the nodes reach the gateway as they were typed', async ({ page }) => {
 // The editor used to carry one error slot for the whole list, so an issue
 // keyed at a node's own field had nowhere to render: the wizard refused to
 // advance and nothing said why (#313). Each field carries its own now.
+// A list the schema refuses as a whole - no nodes at all - has its own
+// message, and it has to land somewhere: the editor is the one field the form
+// knows about here.
+test('an empty list says what it needs', async ({ page }) => {
+  await goToNodes(page, randomId(PREFIX), { addNode: false });
+
+  await uiWizardNext(page);
+
+  await expect(page.getByText('At least one node is required')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add a Node' })).toBeVisible();
+});
+
 test('a removed row leaves the others alone', async ({ page }) => {
   await goToNodes(page, randomId(PREFIX));
 
@@ -148,14 +164,14 @@ test('a removed row leaves the others alone', async ({ page }) => {
   await hosts.nth(1).fill('second.example.com');
   await ports.nth(1).fill('8081');
 
-  await page
-    .getByRole('button', { name: 'Remove node' })
-    .last()
-    .click();
+  // The first row, not the last: a row that goes from under the others is
+  // what moved a row's identity onto its neighbour before the form owned the
+  // list (#306, #312).
+  await page.getByRole('button', { name: 'Remove node' }).first().click();
 
   await expect(hosts).toHaveCount(1);
-  await expect(hosts.first()).toHaveValue('first.example.com');
-  await expect(ports.first()).toHaveValue('8080');
+  await expect(hosts.first()).toHaveValue('second.example.com');
+  await expect(ports.first()).toHaveValue('8081');
 
   // The row that stayed is still the form's: what is typed in it lands, and
   // what it lacks is still asked for.

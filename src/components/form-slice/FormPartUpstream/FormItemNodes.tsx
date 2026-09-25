@@ -22,14 +22,16 @@ import {
   Stack,
   Text,
 } from '@mantine/core';
+import { path } from 'rambdax';
 import { useEffect, useMemo } from 'react';
 import {
   type Control,
   type FieldValues,
   type Path,
-  useController,
   type UseControllerProps,
   useFieldArray,
+  useFormState,
+  useWatch,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -60,19 +62,30 @@ export type FormItemNodesProps<T extends FieldValues> = UseControllerProps<T> & 
 export const FormItemNodes = <T extends FieldValues>(
   props: FormItemNodesProps<T>
 ) => {
-  const { controllerProps } = useMemo(() => genControllerProps(props), [props]);
+  const { controllerProps } = useMemo(
+    () => genControllerProps(props),
+    // genControllerProps reads these; `props` itself is a new object on every
+    // render, and memoising on it memoises nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.name, props.control, props.defaultValue, props.disabled]
+  );
   const { t } = useTranslation();
-  const {
-    field: { value, disabled },
-    fieldState,
-  } = useController<T>(controllerProps);
   const { label, description, required } = props;
 
   const { control, name } = controllerProps;
+  // The field array owns this name. Registering it a second time, through a
+  // controller, made react-hook-form file the list's own error under `root`
+  // instead of on the field, and "At least one node is required" then had
+  // nowhere to render - the silence of #313, one level up.
   const { fields, append, remove, replace } = useFieldArray({
     control: control as never,
     name: name as never,
   });
+  const { errors, disabled } = useFormState({ control, name });
+  const error = path(name, errors) as
+    | { message?: string; root?: { message?: string } }
+    | undefined;
+  const value = useWatch({ control, name });
 
   // APISIX stores nodes either as a list or as `{"host:port": weight}`, and a
   // detail page hands the form whichever it got. The list is what the form
@@ -89,7 +102,7 @@ export const FormItemNodes = <T extends FieldValues>(
 
   return (
     <InputWrapper
-      error={fieldState.error?.message}
+      error={error?.message ?? error?.root?.message}
       label={label}
       description={description}
       required={required}

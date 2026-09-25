@@ -29,7 +29,7 @@ import type { APISIXType } from '@/types/schema/apisix';
 
 const upstreamName = randomId('test-upstream');
 const nodes: APISIXType['UpstreamNode'][] = [
-  { host: 'test.com' },
+  { host: 'test.com', port: 80 },
   { host: 'test2.com', port: 80 },
 ];
 

@@ -34,12 +34,17 @@ const withWeight = (node: APISIXType['UpstreamNode']) => ({
 /**
  * A new node, for the "Add a Node" button.
  *
- * Only what a node is: the schema's defaults fill every field it has, priority
- * included, and a priority nobody asked for would then be written onto every
- * node added here - the same invention `objToUpstreamNodes` refuses below.
+ * Only what a node is, and only what can be answered for it: a weight of 1,
+ * which is what a node is worth until told otherwise, and no port - there is
+ * no port to guess, and a node prefilled with 1 is a node quietly saved on
+ * port 1, which is the damage #306 was reported for. The field asks.
+ *
+ * The schema's own defaults would fill in a priority as well, and that
+ * invented key would be written onto every node added here - the same
+ * invention `objToUpstreamNodes` refuses below.
  */
 export const genRecord = (data?: APISIXType['UpstreamNode']) =>
-  (data ? withWeight(data) : { host: '', port: 1, weight: 1 }) as APISIXType['UpstreamNode'];
+  (data ? withWeight(data) : { host: '', weight: 1 }) as APISIXType['UpstreamNode'];
 
 /**
  * The host and port of a node as APISIX writes them in the object form of

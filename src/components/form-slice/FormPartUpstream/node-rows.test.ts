@@ -28,8 +28,8 @@ describe('genRecord', () => {
 
   // The schema's defaults would fill in a priority as well, and it would be
   // written onto every node added on the form.
-  it('carries only what a node is', () => {
-    expect(Object.keys(genRecord())).toEqual(['host', 'port', 'weight']);
+  it('carries only what a node is, and no port to guess', () => {
+    expect(genRecord()).toEqual({ host: '', weight: 1 });
   });
 
   it('keeps a weight of 0 that was asked for', () => {

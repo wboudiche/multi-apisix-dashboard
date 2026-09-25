@@ -97,8 +97,8 @@ export async function uiFillUpstreamRequiredFields(
   await expect(addNodeBtn).toBeVisible();
 
   // Add the two required nodes.
-  await uiAddNode(page, nodes[1].host);
-  await uiAddNode(page, nodes[0].host);
+  await uiAddNode(page, nodes[1].host, nodes[1].port);
+  await uiAddNode(page, nodes[0].host, nodes[0].port);
 
   // Add a third node, then remove it again to exercise deletion. The remove
   // control is the ActionIcon (a button) whose only text is a literal "-" at
@@ -106,7 +106,7 @@ export async function uiFillUpstreamRequiredFields(
   await addNodeBtn.click();
   let hosts = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   await expect(hosts).toHaveCount(3);
-  const removeButtons = page.getByRole('button').filter({ hasText: /^\s*-\s*$/ });
+  const removeButtons = page.getByRole('button', { name: 'Remove node' });
   await removeButtons.last().click();
   hosts = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   await expect(hosts).toHaveCount(2);
