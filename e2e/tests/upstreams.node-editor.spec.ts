@@ -134,33 +134,30 @@ test('the nodes reach the gateway as they were typed', async ({ page }) => {
   await uiHasToastMsg(page, { hasText: 'Add Upstream Successfully' });
 });
 
-// An empty Weight box gives no number, and the schema requires one. The form
-// used to stop on an error keyed at a node's weight, which no field renders,
-// so the wizard refused to advance with nothing on screen to say why.
-test('an emptied weight is taken as the default rather than as nothing', async ({ page }) => {
-  const name = randomId(PREFIX);
-  await goToNodes(page, name);
+// A required number a box no longer holds is a number the schema refuses.
+// The editor used to carry one error slot for the whole list, so an issue
+// keyed at a node's own field had nowhere to render: the wizard refused to
+// advance and nothing said why (#313). Each field carries its own now.
+test('an emptied number says so, on its own field', async ({ page }) => {
+  await goToNodes(page, randomId(PREFIX));
 
-  await hostFields(page).fill('weight.example.com');
-  await portFields(page).fill('8080');
+  await hostFields(page).fill('required.example.com');
   const weight = page.getByPlaceholder('1', { exact: true });
   await weight.fill('');
-  await page.locator('h1').first().click();
-
-  // On screen too: the box saying nothing while 1 is what gets saved is the
-  // same disagreement in the other direction.
-  await expect(weight).toHaveValue('1');
-
+  await weight.press('Tab');
   await uiWizardNext(page);
-  await uiWizardNext(page);
-  const posted = page.waitForResponse(
-    (r) => r.url().includes(API_UPSTREAMS) && r.request().method() === 'POST'
-  );
-  await upstreamsPom.getAddBtn(page).click();
-  const response = await posted;
 
-  expect(response.ok()).toBe(true);
-  expect(
-    (response.request().postDataJSON() as { nodes: { weight: number }[] }).nodes
-  ).toEqual([expect.objectContaining({ host: 'weight.example.com', port: 8080, weight: 1 })]);
+  await expect(page.getByText('Required').first()).toBeVisible();
+  // And the step did not advance: the Nodes fields are still the ones on
+  // screen.
+  await expect(hostFields(page)).toHaveValue('required.example.com');
+
+  // The same for a port, which has no default to fall back on.
+  await weight.fill('1');
+  await portFields(page).fill('');
+  await portFields(page).press('Tab');
+  await uiWizardNext(page);
+
+  await expect(page.getByText('Required').first()).toBeVisible();
+  await expect(hostFields(page)).toHaveValue('required.example.com');
 });
