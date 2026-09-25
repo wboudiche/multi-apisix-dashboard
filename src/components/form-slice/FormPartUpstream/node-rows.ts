@@ -16,32 +16,30 @@
  */
 import { isNil } from 'rambdax';
 
-import { APISIX, type APISIXType } from '@/types/schema/apisix';
-import { zGetDefault } from '@/utils/zod';
+import type { APISIXType } from '@/types/schema/apisix';
 
 /**
  * A weight of 1 where a node carries none.
  *
  * A node added on the form used to be born with a weight of 0, which APISIX's
  * roundrobin never picks beside a node that has one: in the upstream, taking
- * no traffic, with nothing on screen to say so (#303). `zGetDefault` answers 0
- * for a required number, and `?? 1` does not replace a 0, so the fallback the
- * code carried never fired. A 0 typed on purpose is data, and is kept; an
- * empty Weight box is not, and used to be repaired on every commit.
+ * no traffic, with nothing on screen to say so (#303). A 0 typed on purpose is
+ * data, and is kept.
  */
 const withWeight = (node: APISIXType['UpstreamNode']) => ({
   ...node,
   weight: node.weight ?? 1,
 });
 
-/** A new node, for the "Add a Node" button. */
+/**
+ * A new node, for the "Add a Node" button.
+ *
+ * Only what a node is: the schema's defaults fill every field it has, priority
+ * included, and a priority nobody asked for would then be written onto every
+ * node added here - the same invention `objToUpstreamNodes` refuses below.
+ */
 export const genRecord = (data?: APISIXType['UpstreamNode']) =>
-  (data
-    ? withWeight(data)
-    : {
-        ...zGetDefault(APISIX.UpstreamNode),
-        weight: 1,
-      }) as APISIXType['UpstreamNode'];
+  (data ? withWeight(data) : { host: '', port: 1, weight: 1 }) as APISIXType['UpstreamNode'];
 
 /**
  * The host and port of a node as APISIX writes them in the object form of

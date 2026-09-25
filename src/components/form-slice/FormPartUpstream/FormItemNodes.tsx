@@ -63,7 +63,7 @@ export const FormItemNodes = <T extends FieldValues>(
   const { controllerProps } = useMemo(() => genControllerProps(props), [props]);
   const { t } = useTranslation();
   const {
-    field: { value, name: fName, disabled },
+    field: { value, disabled },
     fieldState,
   } = useController<T>(controllerProps);
   const { label, description, required } = props;
@@ -94,7 +94,6 @@ export const FormItemNodes = <T extends FieldValues>(
       description={description}
       required={required}
     >
-      <input name={fName} type="hidden" />
       <Stack gap="xs" mt="xs">
         {fields.map((row, index) => (
           <Flex key={row.id} gap="sm" align="center" wrap="wrap">
@@ -108,6 +107,7 @@ export const FormItemNodes = <T extends FieldValues>(
               control={control as Control<T>}
               name={fieldName(index, 'host')}
               placeholder="Hostname or IP"
+              disabled={disabled}
               style={{ flex: 2, minWidth: 150 }}
             />
 
@@ -118,6 +118,7 @@ export const FormItemNodes = <T extends FieldValues>(
               control={control as Control<T>}
               name={fieldName(index, 'port')}
               placeholder="Port"
+              disabled={disabled}
               min={1}
               max={65535}
               allowDecimal={false}
@@ -134,6 +135,7 @@ export const FormItemNodes = <T extends FieldValues>(
               control={control as Control<T>}
               name={fieldName(index, 'weight')}
               placeholder="1"
+              disabled={disabled}
               min={0}
               allowDecimal={false}
               style={{ flex: 1, minWidth: 80 }}
@@ -144,6 +146,7 @@ export const FormItemNodes = <T extends FieldValues>(
                 variant="subtle"
                 color="gray"
                 radius="xl"
+                aria-label={t('form.upstreams.nodes.remove', 'Remove node')}
                 onClick={() => remove(index)}
               >
                 <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>-</span>
