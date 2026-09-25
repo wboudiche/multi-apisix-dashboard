@@ -38,8 +38,8 @@ ownershipMatrixSuite({
     await uiFillUpstreamRequiredFields(page, {
       name,
       nodes: [
-        { host: 'httpbin.org' },
-        { host: 'example.com' },
+        { host: 'httpbin.org', port: 80 },
+        { host: 'example.com', port: 80 },
       ],
     });
     await upstreamsPom.getAddBtn(page).click();

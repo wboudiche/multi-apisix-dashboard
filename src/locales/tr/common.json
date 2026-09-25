@@ -382,6 +382,7 @@
         "priority": {
           "title": "Priority"
         },
+        "remove": "Node'u kaldır",
         "title": "Node'lar",
         "weight": {
           "title": "Weight"

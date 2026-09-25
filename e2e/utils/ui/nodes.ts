@@ -41,6 +41,6 @@ export async function uiAddNode(page: Page, host: string, port?: number) {
     await portInput.fill(String(port));
     await expect(portInput).toHaveValue(String(port));
   }
-  // Commit changes (FormItemNodes commits on blur / click-outside).
+  // Leave the row, the way someone filling the form does.
   await page.locator('h1').first().click();
 }

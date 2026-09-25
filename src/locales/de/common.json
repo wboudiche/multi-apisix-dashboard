@@ -382,6 +382,7 @@
         "priority": {
           "title": "Priorität"
         },
+        "remove": "Node entfernen",
         "title": "Nodes",
         "weight": {
           "title": "Gewicht"

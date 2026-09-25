@@ -382,6 +382,7 @@
         "priority": {
           "title": "Prioridad"
         },
+        "remove": "Eliminar nodo",
         "title": "Nodos",
         "weight": {
           "title": "Peso"

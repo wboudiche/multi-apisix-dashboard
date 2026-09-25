@@ -382,6 +382,7 @@
         "priority": {
           "title": "优先级"
         },
+        "remove": "移除节点",
         "title": "节点",
         "weight": {
           "title": "权重"

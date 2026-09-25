@@ -30,12 +30,12 @@ import { expect, type Page } from '@playwright/test';
 import { API_UPSTREAMS } from '@/config/constant';
 
 /**
- * Leaving a node's Host field commits the rows, and the rows used to be
- * rebuilt from that commit with new ids. The ids key the inputs, so every
- * field in the list was replaced: the one the caret had just moved into
- * disappeared under it, and what was typed or pasted there went with it
- * (#306). A node was also born with a weight of 0, which APISIX's roundrobin
- * never picks beside a node that has one (#303).
+ * The rows of the node editor: the caret stays where it was put, what is typed
+ * or pasted stays where it landed, and what is sent is what was typed.
+ *
+ * The editor used to keep a copy of the list beside the form and rebuild the
+ * rows from every commit, which replaced the input the caret sat in (#306) and
+ * took the weight with it (#303). The form owns the list now (#314).
  */
 
 const PREFIX = 'e2e-node-editor';
@@ -43,13 +43,17 @@ const PREFIX = 'e2e-node-editor';
 const hostFields = (page: Page) => page.getByPlaceholder(NODE_HOST_PH, { exact: true });
 const portFields = (page: Page) => page.getByPlaceholder(NODE_PORT_PH, { exact: true });
 
-const goToNodes = async (page: Page, name: string) => {
+const goToNodes = async (
+  page: Page,
+  name: string,
+  { addNode = true }: { addNode?: boolean } = {}
+) => {
   await upstreamsPom.toAdd(page);
   await upstreamsPom.isAddPage(page);
   await uiDiscardDraftIfPresent(page);
   await nameField(page).fill(name);
   await uiWizardNext(page);
-  await page.getByRole('button', { name: 'Add a Node' }).click();
+  if (addNode) await page.getByRole('button', { name: 'Add a Node' }).click();
 };
 
 test.afterAll(async () => {
@@ -81,10 +85,9 @@ test('a port written in one go is kept', async ({ page }) => {
   const host = hostFields(page);
   const port = portFields(page);
   await host.fill('node.example.com');
-  // fill() sets the value in one event, the way a paste does. It used to
-  // land on an input that the commit above had already replaced.
+  // fill() sets the value in one event, the way a paste does. It used to land
+  // on an input that the row rebuild had already replaced.
   await port.fill('8080');
-  await page.locator('h1').first().click();
 
   await expect(port).toHaveValue('8080');
   await expect(host).toHaveValue('node.example.com');
@@ -134,33 +137,74 @@ test('the nodes reach the gateway as they were typed', async ({ page }) => {
   await uiHasToastMsg(page, { hasText: 'Add Upstream Successfully' });
 });
 
-// An empty Weight box gives no number, and the schema requires one. The form
-// used to stop on an error keyed at a node's weight, which no field renders,
-// so the wizard refused to advance with nothing on screen to say why.
-test('an emptied weight is taken as the default rather than as nothing', async ({ page }) => {
-  const name = randomId(PREFIX);
-  await goToNodes(page, name);
+// A required number a box no longer holds is a number the schema refuses.
+// The editor used to carry one error slot for the whole list, so an issue
+// keyed at a node's own field had nowhere to render: the wizard refused to
+// advance and nothing said why (#313). Each field carries its own now.
+// A list the schema refuses as a whole - no nodes at all - has its own
+// message, and it has to land somewhere: the editor is the one field the form
+// knows about here.
+test('an empty list says what it needs', async ({ page }) => {
+  await goToNodes(page, randomId(PREFIX), { addNode: false });
 
-  await hostFields(page).fill('weight.example.com');
-  await portFields(page).fill('8080');
+  await uiWizardNext(page);
+
+  await expect(page.getByText('At least one node is required')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add a Node' })).toBeVisible();
+});
+
+test('a removed row leaves the others alone', async ({ page }) => {
+  await goToNodes(page, randomId(PREFIX));
+
+  const hosts = hostFields(page);
+  const ports = portFields(page);
+  await hosts.first().fill('first.example.com');
+  await ports.first().fill('8080');
+  await page.getByRole('button', { name: 'Add a Node' }).click();
+  await hosts.nth(1).fill('second.example.com');
+  await ports.nth(1).fill('8081');
+
+  // The first row, not the last: a row that goes from under the others is
+  // what moved a row's identity onto its neighbour before the form owned the
+  // list (#306, #312).
+  await page.getByRole('button', { name: 'Remove node' }).first().click();
+
+  await expect(hosts).toHaveCount(1);
+  await expect(hosts.first()).toHaveValue('second.example.com');
+  await expect(ports.first()).toHaveValue('8081');
+
+  // The row that stayed is still the form's: what is typed in it lands, and
+  // what it lacks is still asked for.
+  await ports.first().fill('');
+  await ports.first().press('Tab');
+  await uiWizardNext(page);
+  await expect(portFields(page)).toHaveAttribute('aria-invalid', 'true');
+});
+
+test('an emptied number says so, on its own field', async ({ page }) => {
+  await goToNodes(page, randomId(PREFIX));
+
+  await hostFields(page).fill('required.example.com');
   const weight = page.getByPlaceholder('1', { exact: true });
   await weight.fill('');
-  await page.locator('h1').first().click();
-
-  // On screen too: the box saying nothing while 1 is what gets saved is the
-  // same disagreement in the other direction.
-  await expect(weight).toHaveValue('1');
-
+  await weight.press('Tab');
   await uiWizardNext(page);
-  await uiWizardNext(page);
-  const posted = page.waitForResponse(
-    (r) => r.url().includes(API_UPSTREAMS) && r.request().method() === 'POST'
-  );
-  await upstreamsPom.getAddBtn(page).click();
-  const response = await posted;
 
-  expect(response.ok()).toBe(true);
-  expect(
-    (response.request().postDataJSON() as { nodes: { weight: number }[] }).nodes
-  ).toEqual([expect.objectContaining({ host: 'weight.example.com', port: 8080, weight: 1 })]);
+  // On the field itself, which is the point: the editor used to carry one
+  // error slot for the whole list.
+  await expect(weight).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByText('Required').first()).toBeVisible();
+  // And the step did not advance.
+  await expect(hostFields(page)).toHaveValue('required.example.com');
+
+  // The same for a port, which has no default to fall back on.
+  await weight.fill('1');
+  await weight.press('Tab');
+  await expect(weight).not.toHaveAttribute('aria-invalid', 'true');
+  await portFields(page).fill('');
+  await portFields(page).press('Tab');
+  await uiWizardNext(page);
+
+  await expect(portFields(page)).toHaveAttribute('aria-invalid', 'true');
+  await expect(hostFields(page)).toHaveValue('required.example.com');
 });

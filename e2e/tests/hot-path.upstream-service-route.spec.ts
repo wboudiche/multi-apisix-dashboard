@@ -109,7 +109,7 @@ test('can create upstream -> service -> route', async ({ page }) => {
       .getByPlaceholder('Port')
       .first()
       .fill(String(upstream.nodes[0].port));
-    await page.locator('h1').first().click(); // commit on blur
+    await page.locator('h1').first().click(); // leave the row
     await wizardNext(page);
 
     // Step 3 — Connection: scheme https

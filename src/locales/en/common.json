@@ -588,7 +588,8 @@
         "weight": {
           "title": "Weight",
           "desc": "Load balancing weight — higher values receive more traffic"
-        }
+        },
+        "remove": "Remove node"
       },
       "passHost": "Pass Host",
       "passHostDesc": "How the Host header is sent to upstream: pass (keep original), node (use target IP), rewrite (custom host)",
