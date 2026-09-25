@@ -19,32 +19,18 @@ import { isNil } from 'rambdax';
 import type { APISIXType } from '@/types/schema/apisix';
 
 /**
- * A weight of 1 where a node carries none.
- *
- * A node added on the form used to be born with a weight of 0, which APISIX's
- * roundrobin never picks beside a node that has one: in the upstream, taking
- * no traffic, with nothing on screen to say so (#303). A 0 typed on purpose is
- * data, and is kept.
- */
-const withWeight = (node: APISIXType['UpstreamNode']) => ({
-  ...node,
-  weight: node.weight ?? 1,
-});
-
-/**
  * A new node, for the "Add a Node" button.
  *
  * Only what a node is, and only what can be answered for it: a weight of 1,
- * which is what a node is worth until told otherwise, and no port - there is
- * no port to guess, and a node prefilled with 1 is a node quietly saved on
- * port 1, which is the damage #306 was reported for. The field asks.
+ * which is what a node is worth until told otherwise (#303), and no port -
+ * there is none to guess, and a node prefilled with 1 is a node quietly saved
+ * on port 1, which is the damage #306 was reported for. The field asks.
  *
  * The schema's own defaults would fill in a priority as well, and that
  * invented key would be written onto every node added here - the same
  * invention `objToUpstreamNodes` refuses below.
  */
-export const genRecord = (data?: APISIXType['UpstreamNode']) =>
-  (data ? withWeight(data) : { host: '', weight: 1 }) as APISIXType['UpstreamNode'];
+export const genRecord = () => ({ host: '', weight: 1 }) as APISIXType['UpstreamNode'];
 
 /**
  * The host and port of a node as APISIX writes them in the object form of

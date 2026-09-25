@@ -81,7 +81,10 @@ export const FormItemNodes = <T extends FieldValues>(
     control: control as never,
     name: name as never,
   });
-  const { errors, disabled } = useFormState({ control, name });
+  const { errors, disabled: formDisabled } = useFormState({ control, name });
+  // The form's flag, or this editor's own: a caller may disable the list
+  // alone, and useController used to answer for both.
+  const disabled = formDisabled || props.disabled;
   const error = path(name, errors) as
     | { message?: string; root?: { message?: string } }
     | undefined;

@@ -100,9 +100,7 @@ export async function uiFillUpstreamRequiredFields(
   await uiAddNode(page, nodes[1].host, nodes[1].port);
   await uiAddNode(page, nodes[0].host, nodes[0].port);
 
-  // Add a third node, then remove it again to exercise deletion. The remove
-  // control is the ActionIcon (a button) whose only text is a literal "-" at
-  // the end of each node row.
+  // Add a third node, then remove it again to exercise deletion.
   await addNodeBtn.click();
   let hosts = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
   await expect(hosts).toHaveCount(3);

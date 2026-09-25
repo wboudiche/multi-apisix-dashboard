@@ -32,15 +32,6 @@ describe('genRecord', () => {
     expect(genRecord()).toEqual({ host: '', weight: 1 });
   });
 
-  it('keeps a weight of 0 that was asked for', () => {
-    expect(genRecord({ host: 'a.com', port: 80, weight: 0 }).weight).toBe(0);
-  });
-
-  it('gives a node with no weight the default', () => {
-    expect(
-      genRecord({ host: 'a.com', port: 80 } as Parameters<typeof genRecord>[0])
-    ).toEqual({ host: 'a.com', port: 80, weight: 1 });
-  });
 });
 
 describe('parseToNodes', () => {
