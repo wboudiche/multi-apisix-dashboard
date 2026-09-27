@@ -435,9 +435,21 @@ test('a delete the backend refuses is reported, and the user stays listed', asyn
   await expect(adminPom.rowByText(page, username)).toBeVisible();
 });
 
+/** The index of a column, found by the header the page gives it. */
+const columnIndex = async (page: Page, header: string) => {
+  const headers = page.getByRole('columnheader');
+  const count = await headers.count();
+  for (let i = 0; i < count; i += 1) {
+    if (((await headers.nth(i).textContent()) ?? '').trim() === header) return i;
+  }
+  throw new Error(`the users table has no "${header}" column`);
+};
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 test('the table dates an account and names its role', async ({ page }) => {
-  // Nothing dated a user record: both accounts created here and the bootstrap
-  // admin were stored with Go's zero time, and the page formatted it as a real
+  // Nothing dated a user record: accounts created here and the bootstrap admin
+  // alike were stored with Go's zero time, and the page formatted it as a real
   // date - every account created on 01/01/1. The Role cell, meanwhile, rendered
   // the global role verbatim, which is empty for every account whose access
   // comes from its per-instance assignments: a badge with a shield and no text
@@ -445,30 +457,41 @@ test('the table dates an account and names its role', async ({ page }) => {
   const plain = `${PREFIX}-dated`;
   const superAdmin = `${PREFIX}-super`;
   const token = await adminToken();
+
+  // The stamp lands between these two readings, so a run that crosses local
+  // midnight has two acceptable dates rather than one wrong one.
+  const before = Date.now();
   await ensureUser(token, { username: plain, password: PASSWORD });
   await ensureUser(token, {
     username: superAdmin,
     password: PASSWORD,
     role: 'super_admin',
   });
+  const after = Date.now();
 
   await adminPom.toUsers(page);
   await adminPom.isUsersPage(page);
 
-  // Read in the browser, so the assertion is in the locale the cell formats
-  // for rather than the one this process happens to run in.
-  const today = await page.evaluate(() => new Date().toLocaleDateString());
+  // Formatted in the browser, so the assertion is in the locale the cell
+  // formats for rather than the one this process happens to run in.
+  const days = await page.evaluate(
+    (bounds) => bounds.map((ms) => new Date(ms).toLocaleDateString()),
+    [before, after]
+  );
+  const dated = new RegExp(`^(${[...new Set(days)].map(escapeRegExp).join('|')})$`);
   const zeroTime = await page.evaluate(() =>
     new Date('0001-01-01T00:00:00Z').toLocaleDateString()
   );
 
-  // Role is the second column, Created the fifth.
+  const role = await columnIndex(page, 'Role');
+  const created = await columnIndex(page, 'Created');
   const cells = (username: string) =>
     adminPom.rowByText(page, username).getByRole('cell');
-  await expect(cells(plain).nth(1)).toHaveText('User');
-  await expect(cells(plain).nth(4)).toHaveText(today);
-  await expect(cells(superAdmin).nth(1)).toHaveText('Super Admin');
-  await expect(cells(superAdmin).nth(4)).toHaveText(today);
+
+  await expect(cells(plain).nth(role)).toHaveText('User');
+  await expect(cells(plain).nth(created)).toHaveText(dated);
+  await expect(cells(superAdmin).nth(role)).toHaveText('Super Admin');
+  await expect(cells(superAdmin).nth(created)).toHaveText(dated);
 
   // And no row anywhere claims the zero time as a date, whatever the locale
   // renders it as - including accounts stored before anything stamped them,
@@ -498,8 +521,11 @@ test('an account stored before the dates existed reads as unknown', async ({
   try {
     await adminPom.toUsers(page);
     await adminPom.isUsersPage(page);
+    // By header, not by position: this row renders the same dash in Instances,
+    // in Teams and in Created, so an index off by one would still read one.
+    const created = await columnIndex(page, 'Created');
     const cells = adminPom.rowByText(page, username).getByRole('cell');
-    await expect(cells.nth(4)).toHaveText('—');
+    await expect(cells.nth(created)).toHaveText('—');
   } finally {
     await etcdDelete(key);
   }

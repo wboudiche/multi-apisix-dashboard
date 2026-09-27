@@ -14,35 +14,58 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import type { TFunction } from 'i18next';
 
 /**
- * The i18n key that names a role.
+ * What a role is called, and the colour that tells one apart at a glance.
  *
- * The Users page rendered the stored value instead: `role.replace('_', ' ')`,
- * untranslated in every language, and an empty string for the accounts that
- * hold no global role at all - a badge with a shield and no text, in the
- * column that exists to tell a super admin from everyone else (#300).
+ * The Users page rendered the stored value instead - `role.replace('_', ' ')`,
+ * untranslated in every language - and switched over the same four strings in
+ * a second place to pick the badge colour. Adding a role meant remembering
+ * both (#300).
+ */
+const ROLES = {
+  super_admin: { labelKey: 'roles.superAdmin', color: 'red' },
+  instance_admin: { labelKey: 'roles.instanceAdmin', color: 'orange' },
+  developer: { labelKey: 'roles.developer', color: 'blue' },
+  viewer: { labelKey: 'roles.viewer', color: 'gray' },
+} as const;
+
+type KnownRole = keyof typeof ROLES;
+
+// Own properties only: every object answers to 'toString' and 'constructor',
+// and a role is a string that arrives from a record in etcd.
+const known = (role?: string | null): KnownRole | undefined =>
+  typeof role === 'string' && Object.prototype.hasOwnProperty.call(ROLES, role)
+    ? (role as KnownRole)
+    : undefined;
+
+/**
+ * The i18n key naming a role, or undefined for anything this build does not
+ * know - including the empty value.
  *
- * An account whose access comes from its per-instance assignments carries no
- * global role, so the empty role has a name of its own here. A role this build
- * does not know gets no key: the caller shows it as it came, because labelling
- * it "User" would understate what it may do.
+ * Empty means different things in the two places a role is stored, and neither
+ * is a name: no global role at all on a `User`, and no role on this instance on
+ * a `UserInstance`. The caller says which, because naming an account "User"
+ * where it holds no access would claim one it does not have.
  */
 export const roleLabelKey = (role?: string | null) => {
-  switch (role) {
-    case 'super_admin':
-      return 'roles.superAdmin' as const;
-    case 'instance_admin':
-      return 'roles.instanceAdmin' as const;
-    case 'developer':
-      return 'roles.developer' as const;
-    case 'viewer':
-      return 'roles.viewer' as const;
-    case '':
-    case null:
-    case undefined:
-      return 'roles.user' as const;
-    default:
-      return undefined;
-  }
+  const r = known(role);
+  return r ? ROLES[r].labelKey : undefined;
+};
+
+/** The badge colour for a role; neutral for one this build does not know. */
+export const roleColor = (role?: string | null) => {
+  const r = known(role);
+  return r ? ROLES[r].color : 'gray';
+};
+
+/**
+ * A role as an operator should read it: translated where this build knows the
+ * role, and shown as it came where it does not - a role nobody has heard of may
+ * well be allowed more than a plain account is.
+ */
+export const roleLabel = (t: TFunction, role?: string | null) => {
+  const key = roleLabelKey(role);
+  return key ? t(key) : (role ?? '').replace(/_/g, ' ');
 };

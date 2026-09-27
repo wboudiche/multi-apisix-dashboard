@@ -45,7 +45,6 @@ import {
 import { type Team } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { BuildIdentity } from '@/components/BuildIdentity';
-import { RoleLabel } from '@/components/RoleLabel';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
@@ -362,7 +361,7 @@ export const Header: FC<HeaderProps> = (props) => {
                     </Text>
                     {activeUserInstance && (
                       <Text size="10px" c="dimmed" style={{ marginTop: -4 }}>
-                        <RoleLabel role={activeUserInstance.role} />
+                        {activeUserInstance.role.replace('_', ' ')}
                       </Text>
                     )}
                   </Box>

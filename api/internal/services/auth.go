@@ -287,6 +287,13 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]*models.User, error) {
 }
 
 func (s *AuthService) UpdateUser(ctx context.Context, user *models.User) error {
+	// The creation date is the stored record's, not the caller's. Every caller
+	// today loads the user first, so it arrives intact - but one built from a
+	// request body would carry none, and writing that back would erase a real
+	// date for good. Restored here instead of trusted, as UpdateLabel does.
+	if existing, err := s.GetUser(ctx, user.ID); err == nil && existing != nil {
+		user.CreatedAt = existing.CreatedAt
+	}
 	stampUpdated(user, time.Now())
 	return s.etcd.PutJSON(ctx, models.KeyPrefixUsers+user.ID, user)
 }

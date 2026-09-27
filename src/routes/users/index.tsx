@@ -45,7 +45,7 @@ import { type Team,teamApi } from '@/apis/teams';
 import { userApi } from '@/apis/users';
 import PageHeader from '@/components/page/PageHeader';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
-import { RoleLabel } from '@/components/RoleLabel';
+import { roleColor, roleLabel } from '@/config/role-labels';
 import { currentUserAtom } from '@/stores/auth';
 import { instancesAtom } from '@/stores/instance';
 import { describeError } from '@/utils/api-error';
@@ -374,15 +374,6 @@ const UsersPage = () => {
     setActiveTab('basic');
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'super_admin': return 'red';
-      case 'instance_admin': return 'orange';
-      case 'developer': return 'blue';
-      default: return 'gray';
-    }
-  };
-
   if (!isSuperAdmin) {
     return (
       <Container size="xl">
@@ -473,11 +464,15 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td>
                   <Badge
-                    color={getRoleColor(user.role)}
+                    color={roleColor(user.role)}
                     variant="light"
                     leftSection={<IconShield width="12" height="12" />}
                   >
-                    <RoleLabel role={user.role} />
+                    {/* No global role is not a missing name: it is an account
+                        whose access comes from its per-instance assignments,
+                        and the column said nothing at all for every one of
+                        them. Named here, where empty has that meaning. */}
+                    {user.role ? roleLabel(t, user.role) : t('roles.user')}
                   </Badge>
                 </Table.Td>
                 <Table.Td>
@@ -495,7 +490,7 @@ const UsersPage = () => {
                           <Group key={a.instance_id} gap={6} wrap="nowrap">
                             <IconInstance width="13" height="13" style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0 }} />
                             <Text size="xs" fw={500}>{inst?.name || a.instance_id.slice(0, 8)}</Text>
-                            <Text size="xs" c="dimmed">(<RoleLabel role={a.role} />)</Text>
+                            <Text size="xs" c="dimmed">({roleLabel(t, a.role)})</Text>
                           </Group>
                         );
                       })}
