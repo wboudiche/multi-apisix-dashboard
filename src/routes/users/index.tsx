@@ -458,7 +458,7 @@ const UsersPage = () => {
                     </ThemeIcon>
                     <Box>
                       <Text fw={600} size="sm">{user.username}</Text>
-                      <Text size="xs" c="dimmed">{user.email || 'No email provided'}</Text>
+                      <Text size="xs" c="dimmed">{user.email || t('users.noEmail')}</Text>
                     </Box>
                   </Group>
                 </Table.Td>
@@ -556,7 +556,7 @@ const UsersPage = () => {
       <Modal
         opened={modalOpen}
         onClose={() => { setModalOpen(false); resetForm(); }}
-        title={editingUser ? 'Edit User & Permissions' : 'Add New User'}
+        title={editingUser ? t('users.dialogEditTitle') : t('users.dialogAddTitle')}
         size="lg"
       >
         {editingUser && unreadableAssignments[editingUser.id] && (
@@ -586,7 +586,9 @@ const UsersPage = () => {
           <Tabs.Panel value="basic">
             <Stack gap="md">
               <TextInput
-                label="Username"
+                label={t('users.fieldUsername')}
+                // An example, not a sentence: a translator cannot improve
+                // "johndoe" without inventing a different person.
                 placeholder="johndoe"
                 required
                 value={formData.username}
@@ -595,15 +597,15 @@ const UsersPage = () => {
                 data-autofocus
               />
               <TextInput
-                label="Email"
+                label={t('users.fieldEmail')}
                 placeholder="john@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
               {!editingUser && (
                 <TextInput
-                  label="Password"
-                  placeholder="Enter secure password"
+                  label={t('users.fieldPassword')}
+                  placeholder={t('users.fieldPasswordPlaceholder')}
                   required
                   type="password"
                   value={formData.password}
@@ -622,8 +624,8 @@ const UsersPage = () => {
                 />
               )}
               <Select
-                label="Global Role"
-                description="Super Admins have full access to all instances. Regular users need per-instance role assignments."
+                label={t('users.fieldGlobalRole')}
+                description={t('users.fieldGlobalRoleDesc')}
                 value={formData.role}
                 onChange={(value) => setFormData({ ...formData, role: value || 'user' })}
                 data={[
@@ -663,8 +665,8 @@ const UsersPage = () => {
                           <Group gap="sm" grow>
                             <Select
                               size="sm"
-                              label="Role"
-                              placeholder="No access"
+                              label={t('users.fieldInstanceRole')}
+                              placeholder={t('users.fieldInstanceRolePlaceholder')}
                               clearable
                               // Mantine hides its clear button from the
                               // accessibility tree and takes it out of the tab
@@ -691,8 +693,8 @@ const UsersPage = () => {
                             {(config?.role === 'developer' || config?.role === 'viewer') && (
                               <Select
                                 size="sm"
-                                label="Team"
-                                placeholder="No team"
+                                label={t('users.fieldTeam')}
+                                placeholder={t('users.fieldTeamPlaceholder')}
                                 clearable
                                 required
                                 data={teams.map(t => ({ value: t.id, label: t.name }))}
@@ -716,7 +718,9 @@ const UsersPage = () => {
 
         <Group justify="flex-end" mt="xl">
           <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>{t('form.btn.cancel')}</Button>
-          <Button onClick={handleSubmit}>{editingUser ? 'Save Changes' : 'Create User'}</Button>
+          <Button onClick={handleSubmit}>
+            {editingUser ? t('users.submitSave') : t('users.submitCreate')}
+          </Button>
         </Group>
       </Modal>
 

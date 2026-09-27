@@ -891,7 +891,22 @@
     "assignmentsUnreadableBody": "Instance assignments could not be read for {{count}} of the accounts listed, so this table cannot say what they may do. Reason: {{reason}}",
     "clearRole": "Clear role",
     "roleOptionSuperAdmin": "Super Admin (Full Access)",
-    "roleOptionUser": "User (Assign per-instance roles below)"
+    "roleOptionUser": "User (Assign per-instance roles below)",
+    "dialogAddTitle": "Add New User",
+    "dialogEditTitle": "Edit User & Permissions",
+    "submitCreate": "Create User",
+    "submitSave": "Save Changes",
+    "fieldUsername": "Username",
+    "fieldEmail": "Email",
+    "fieldPassword": "Password",
+    "fieldPasswordPlaceholder": "Enter secure password",
+    "fieldGlobalRole": "Global Role",
+    "fieldGlobalRoleDesc": "Super Admins have full access to all instances. Regular users need per-instance role assignments.",
+    "fieldInstanceRole": "Role",
+    "fieldInstanceRolePlaceholder": "No access",
+    "fieldTeam": "Team",
+    "fieldTeamPlaceholder": "No team",
+    "noEmail": "No email provided"
   },
   "header": {
     "accountRole": "Role: {{role}}",

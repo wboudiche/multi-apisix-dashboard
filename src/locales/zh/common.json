@@ -640,7 +640,22 @@
     "roleOptionSuperAdmin": "超级管理员（完全访问）",
     "roleOptionUser": "用户（在下方分配按实例角色）",
     "columnUser": "用户",
-    "columnRole": "角色"
+    "columnRole": "角色",
+    "dialogAddTitle": "新增用户",
+    "dialogEditTitle": "编辑用户与权限",
+    "submitCreate": "创建用户",
+    "submitSave": "保存更改",
+    "fieldUsername": "用户名",
+    "fieldEmail": "邮箱",
+    "fieldPassword": "密码",
+    "fieldPasswordPlaceholder": "请输入安全的密码",
+    "fieldGlobalRole": "全局角色",
+    "fieldGlobalRoleDesc": "超级管理员对所有实例拥有完全访问权限。普通用户需要按实例分配角色。",
+    "fieldInstanceRole": "角色",
+    "fieldInstanceRolePlaceholder": "无访问权限",
+    "fieldTeam": "团队",
+    "fieldTeamPlaceholder": "无团队",
+    "noEmail": "未提供邮箱"
   },
   "listWarning": {
     "detailsUnresolved": "部分详情无法获取",

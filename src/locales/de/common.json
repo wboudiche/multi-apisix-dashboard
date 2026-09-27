@@ -640,7 +640,22 @@
     "roleOptionSuperAdmin": "Super-Admin (Vollzugriff)",
     "roleOptionUser": "Benutzer (Rollen pro Instanz unten zuweisen)",
     "columnUser": "Benutzer",
-    "columnRole": "Rolle"
+    "columnRole": "Rolle",
+    "dialogAddTitle": "Neuen Benutzer hinzufügen",
+    "dialogEditTitle": "Benutzer & Berechtigungen bearbeiten",
+    "submitCreate": "Benutzer erstellen",
+    "submitSave": "Änderungen speichern",
+    "fieldUsername": "Benutzername",
+    "fieldEmail": "E-Mail",
+    "fieldPassword": "Passwort",
+    "fieldPasswordPlaceholder": "Sicheres Passwort eingeben",
+    "fieldGlobalRole": "Globale Rolle",
+    "fieldGlobalRoleDesc": "Super-Admins haben vollen Zugriff auf alle Instanzen. Normale Benutzer benötigen Rollenzuweisungen pro Instanz.",
+    "fieldInstanceRole": "Rolle",
+    "fieldInstanceRolePlaceholder": "Kein Zugriff",
+    "fieldTeam": "Team",
+    "fieldTeamPlaceholder": "Kein Team",
+    "noEmail": "Keine E-Mail angegeben"
   },
   "listWarning": {
     "detailsUnresolved": "Einige Details konnten nicht ermittelt werden",

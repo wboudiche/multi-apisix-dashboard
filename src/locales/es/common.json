@@ -640,7 +640,22 @@
     "roleOptionSuperAdmin": "Superadministrador (acceso total)",
     "roleOptionUser": "Usuario (asignar roles por instancia abajo)",
     "columnUser": "Usuario",
-    "columnRole": "Rol"
+    "columnRole": "Rol",
+    "dialogAddTitle": "Añadir nuevo usuario",
+    "dialogEditTitle": "Editar usuario y permisos",
+    "submitCreate": "Crear usuario",
+    "submitSave": "Guardar cambios",
+    "fieldUsername": "Nombre de usuario",
+    "fieldEmail": "Correo electrónico",
+    "fieldPassword": "Contraseña",
+    "fieldPasswordPlaceholder": "Introduce una contraseña segura",
+    "fieldGlobalRole": "Rol global",
+    "fieldGlobalRoleDesc": "Los superadministradores tienen acceso total a todas las instancias. Los usuarios normales necesitan asignaciones de rol por instancia.",
+    "fieldInstanceRole": "Rol",
+    "fieldInstanceRolePlaceholder": "Sin acceso",
+    "fieldTeam": "Equipo",
+    "fieldTeamPlaceholder": "Sin equipo",
+    "noEmail": "Sin correo electrónico"
   },
   "listWarning": {
     "detailsUnresolved": "No se han podido resolver algunos detalles",
