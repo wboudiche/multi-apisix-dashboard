@@ -69,8 +69,11 @@ const objToUpstreamNodes = (data: APISIXType['UpstreamNodeObj']) =>
     // No priority: the object form carries none, and inventing a 0 here would
     // write it onto every node saved from this shape, and make the same node
     // read differently depending on which shape it arrived in.
-    const node = { host, weight } as APISIXType['UpstreamNode'];
-    if (port !== undefined) node.port = port;
+    const node: APISIXType['UpstreamNode'] = {
+      host,
+      weight,
+      ...(port !== undefined && { port }),
+    };
     return node;
   });
 

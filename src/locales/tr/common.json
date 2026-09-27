@@ -377,7 +377,8 @@
           "title": "Host"
         },
         "port": {
-          "title": "Port"
+          "title": "Port",
+          "desc": "Port numarası (1-65535). Şemanın varsayılanını kullanmak için boş bırakın; APISIX bunu http ve https için uygular."
         },
         "priority": {
           "title": "Priority"

@@ -377,7 +377,8 @@
           "title": "主机"
         },
         "port": {
-          "title": "端口"
+          "title": "端口",
+          "desc": "端口号（1-65535）。留空则使用协议默认端口，APISIX 会为 http 和 https 填充。"
         },
         "priority": {
           "title": "优先级"

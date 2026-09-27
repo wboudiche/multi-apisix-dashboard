@@ -18,6 +18,7 @@ import { z } from 'zod';
 
 import { APISIX } from '@/types/schema/apisix';
 
+import { parseToNodes } from '../FormPartUpstream/node-rows';
 import { SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
 
 export const RoutePostSchema = APISIX.Route.omit({
@@ -35,8 +36,7 @@ export const RoutePostSchema = APISIX.Route.omit({
   const hasService = data.service_id && data.service_id !== SERVICE_NONE;
   const hasExistingUpstream = data.upstream_id && data.upstream_id !== UPSTREAM_CUSTOM;
   const hasCustomUpstream = data.upstream_id === UPSTREAM_CUSTOM &&
-    data.upstream?.nodes &&
-    (Array.isArray(data.upstream.nodes) ? data.upstream.nodes.length > 0 : Object.keys(data.upstream.nodes).length > 0);
+    parseToNodes(data.upstream?.nodes).length > 0;
 
   if (!hasService && !hasExistingUpstream && !hasCustomUpstream) {
     ctx.addIssue({

@@ -108,7 +108,7 @@ const ServiceSummary = ({ serviceId }: { serviceId: string }) => {
   const val = service.value;
   const hosts = val.hosts?.length ? val.hosts.join(', ') : null;
   const pluginCount = val.plugins ? Object.keys(val.plugins).length : 0;
-  const nodeHosts = nodeHostsFrom(val.upstream?.nodes);
+  const nodeHosts = [...new Set(nodeHostsFrom(val.upstream?.nodes))];
 
   return (
     <Card padding="sm" radius="md" withBorder bg="var(--mantine-color-blue-0)">
@@ -156,7 +156,7 @@ const UpstreamSummary = ({ upstreamId }: { upstreamId: string }) => {
 
   if (!upstream) return null;
   const val = upstream.value;
-  const nodeHosts = nodeHostsFrom(val.nodes);
+  const nodeHosts = [...new Set(nodeHostsFrom(val.nodes))];
 
   return (
     <Card padding="sm" radius="md" withBorder bg="var(--mantine-color-teal-0)">

@@ -14,6 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { deleteUpstreamsByNamePrefix } from '@e2e/utils/cleanup';
+import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
@@ -26,6 +28,14 @@ import { expect, type Page } from '@playwright/test';
  * editor showed `fd00::1`, the preview `[fd00::1]`, and a bare `fd00::1` key
  * was cut into host `fd00:` on port 1 (#315).
  */
+
+const PREFIX = 'e2e-ipv6-nodes';
+
+// Two runs against one gateway would otherwise share an id, and the second
+// would delete the first one's upstream mid-assertion.
+test.afterAll(async () => {
+  await deleteUpstreamsByNamePrefix(PREFIX);
+});
 
 const seed = async (id: string, nodes: Record<string, number>) => {
   const fx = getFixtures();
@@ -68,9 +78,10 @@ const readBothViews = async (page: Page, id: string) => {
 test('the editor and the preview read a bracketed IPv6 node the same way', async ({
   page,
 }) => {
-  const clean = await seed('e2e-ipv6-bracketed', { '[fd00::1]:8080': 1 });
+  const id = randomId(PREFIX);
+  const clean = await seed(id, { '[fd00::1]:8080': 1 });
   try {
-    const { editor, preview } = await readBothViews(page, 'e2e-ipv6-bracketed');
+    const { editor, preview } = await readBothViews(page, id);
 
     // Exactly the address, brackets and all removed: the previews used to
     // show "[fd00::1]", which a substring check would have accepted.
@@ -82,9 +93,10 @@ test('the editor and the preview read a bracketed IPv6 node the same way', async
 });
 
 test('a bare IPv6 address is not cut in half', async ({ page }) => {
-  const clean = await seed('e2e-ipv6-bare', { 'fd00::1': 2 });
+  const id = randomId(PREFIX);
+  const clean = await seed(id, { 'fd00::1': 2 });
   try {
-    const { editor, preview } = await readBothViews(page, 'e2e-ipv6-bare');
+    const { editor, preview } = await readBothViews(page, id);
 
     // The previews used to read this as host "fd00:" on port 1, and the
     // editor offered to save it that way.

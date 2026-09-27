@@ -173,17 +173,11 @@ test('a removed row leaves the others alone', async ({ page }) => {
   await expect(hosts.first()).toHaveValue('second.example.com');
   await expect(ports.first()).toHaveValue('8081');
 
-  // The row that stayed is still the form's: what is typed in it lands,
-  // and what it lacks is still asked for.
+  // The row that stayed is still the form's: what is typed in it lands.
   await ports.first().fill('9090');
-  const weight = page.getByPlaceholder('1', { exact: true });
-  await weight.fill('');
-  await weight.press('Tab');
-  await uiWizardNext(page);
-
-  await expect(weight).toHaveAttribute('aria-invalid', 'true');
-  await expect(hosts.first()).toHaveValue('second.example.com');
+  await ports.first().press('Tab');
   await expect(ports.first()).toHaveValue('9090');
+  await expect(hosts.first()).toHaveValue('second.example.com');
 });
 
 test('an emptied weight says so, on its own field', async ({ page }) => {

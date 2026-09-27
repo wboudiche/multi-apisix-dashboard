@@ -18,14 +18,15 @@ import { z } from 'zod';
 
 import { APISIXServices } from '@/types/schema/apisix/services';
 
+import { parseToNodes } from '../FormPartUpstream/node-rows';
+
 export const ServicePostSchema = APISIXServices.ServicePost.extend({
     name: z.string().min(1, { message: 'Name is required' }),
     hosts: z.array(z.string().min(1, { message: 'Host cannot be empty' })).optional(),
 }).superRefine((data, ctx) => {
     if (
         (!data.upstream_id || data.upstream_id === 'custom') &&
-        (!data.upstream?.nodes ||
-            (Array.isArray(data.upstream.nodes) && data.upstream.nodes.length === 0))
+        parseToNodes(data.upstream?.nodes).length === 0
     ) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,

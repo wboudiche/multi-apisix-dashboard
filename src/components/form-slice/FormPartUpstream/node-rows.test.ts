@@ -118,6 +118,13 @@ describe('the node schema', () => {
     expect(APISIX.UpstreamNode.safeParse({ host: 'a.com', weight: 1 }).success).toBe(true);
   });
 
+  // The range still holds for a port that is given.
+  it('keeps the port within range when there is one', () => {
+    expect(APISIX.UpstreamNode.safeParse({ host: 'a.com', port: 0, weight: 1 }).success).toBe(false);
+    expect(APISIX.UpstreamNode.safeParse({ host: 'a.com', port: 70000, weight: 1 }).success).toBe(false);
+    expect(APISIX.UpstreamNode.safeParse({ host: 'a.com', port: 8080, weight: 1 }).success).toBe(true);
+  });
+
   it('still wants a host and a weight', () => {
     expect(APISIX.UpstreamNode.safeParse({ weight: 1 }).success).toBe(false);
     expect(APISIX.UpstreamNode.safeParse({ host: 'a.com' }).success).toBe(false);
