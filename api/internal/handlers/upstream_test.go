@@ -106,8 +106,9 @@ func oneNode(host string, port int) string {
 // upstream there is (#304).
 func TestUpstreamTestSaysAnInternalAddressWasNotTested(t *testing.T) {
 	fakeResolver(t, map[string][]net.IP{
-		"localhost": {net.ParseIP("127.0.0.1")},
-		"httpbin":   {net.ParseIP("172.19.0.6")},
+		"localhost":  {net.ParseIP("127.0.0.1")},
+		"httpbin":    {net.ParseIP("172.19.0.6")},
+		"nat64-host": {net.ParseIP("64:ff9b::a00:1")},
 	})
 	dialed := fakeDial(t)
 	for _, host := range []string{
@@ -123,6 +124,16 @@ func TestUpstreamTestSaysAnInternalAddressWasNotTested(t *testing.T) {
 		"[fd00::1]", // APISIX takes an IPv6 node in brackets
 		"localhost",
 		"httpbin", // a name, resolved before the check
+		// The same internal addresses written as an IPv6 address that carries
+		// one, which the guard used to read as public IPv6 (#308).
+		"64:ff9b::a00:1",   // NAT64: 10.0.0.1
+		"[64:ff9b::a00:1]", // and bracketed, as APISIX takes it
+		"2002:c0a8:1::",    // 6to4: 192.168.0.1
+		"::10.0.0.1",       // IPv4-compatible
+		"::ffff:10.0.0.1",  // IPv4-mapped
+		"0.0.0.1",          // "this network"
+		"198.18.0.1",       // benchmarking
+		"nat64-host",       // a name resolving to one of them
 	} {
 		resp := postTestUpstream(t, oneNode(host, 8080))
 		if got := resp.Results[0].Status; got != NodeNotAllowed {
@@ -270,6 +281,100 @@ func TestUpstreamTestOverallStatus(t *testing.T) {
 	} {
 		if got := overallStatus(tc.results); got != tc.want {
 			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// Every form an internal address can take, and the public ones that must still
+// get through. An address in a transition family carries an IPv4 address
+// inside an IPv6 one: on a host with NAT64, 64:ff9b::a00:1 is 10.0.0.1, and
+// the guard read it as a public IPv6 address (#308).
+func TestIsBlockedAddr(t *testing.T) {
+	for _, tt := range []struct {
+		addr    string
+		blocked bool
+		why     string
+	}{
+		// Already covered, kept so a rewrite of the list cannot lose them.
+		{"10.0.0.1", true, "RFC 1918"},
+		{"172.16.0.1", true, "RFC 1918"},
+		{"192.168.0.1", true, "RFC 1918"},
+		{"100.64.0.1", true, "CGNAT"},
+		{"127.0.0.1", true, "loopback"},
+		{"169.254.169.254", true, "link-local, cloud metadata"},
+		{"224.0.0.1", true, "multicast"},
+		{"fd00::1", true, "IPv6 unique-local"},
+		{"fe80::1", true, "IPv6 link-local"},
+		{"::1", true, "IPv6 loopback"},
+		{"::", true, "unspecified"},
+
+		// Added by #308.
+		{"0.0.0.1", true, "this network"},
+		{"0.255.255.255", true, "this network"},
+		{"192.0.0.1", true, "IETF protocol assignments"},
+		{"198.18.0.1", true, "benchmarking"},
+		{"198.19.255.255", true, "benchmarking"},
+		{"240.0.0.1", true, "reserved"},
+		{"255.255.255.255", true, "broadcast"},
+		{"64:ff9b::a00:1", true, "NAT64 carrying 10.0.0.1"},
+		{"64:ff9b::c0a8:1", true, "NAT64 carrying 192.168.0.1"},
+		{"64:ff9b:1::a00:1", true, "NAT64 local-use prefix"},
+		{"2002:c0a8:1::", true, "6to4 carrying 192.168.0.1"},
+		{"2002:cb00:710a::", true, "6to4: the prefix is refused as a range"},
+		{"::10.0.0.1", true, "IPv4-compatible carrying 10.0.0.1"},
+		{"::ffff:10.0.0.1", true, "IPv4-mapped carrying 10.0.0.1"},
+		{"2001::1", true, "Teredo"},
+		// Refused although the address it carries is public: the whole
+		// transition prefix is refused, rather than trusting a host's NAT64 to
+		// send it where it says.
+		{"64:ff9b::cb00:710a", true, "NAT64 carrying 203.0.113.10"},
+
+		// Public, and must stay dialable. The documentation ranges stand in
+		// for a real upstream in the tests above.
+		{"8.8.8.8", false, "public IPv4"},
+		{"203.0.113.10", false, "documentation IPv4, the tests' public node"},
+		{"198.51.100.1", false, "documentation IPv4"},
+		{"192.0.2.1", false, "documentation IPv4"},
+		{"2001:db8::1", false, "documentation IPv6"},
+		{"2606:4700::1111", false, "public IPv6"},
+	} {
+		ip := net.ParseIP(tt.addr)
+		if ip == nil {
+			t.Errorf("%s: not an address", tt.addr)
+			continue
+		}
+		if got := isBlockedAddr(ip); got != tt.blocked {
+			t.Errorf("isBlockedAddr(%s) = %v, want %v (%s)", tt.addr, got, tt.blocked, tt.why)
+		}
+	}
+	if !isBlockedAddr(nil) {
+		t.Error("isBlockedAddr(nil) = false, want true: nothing is an address until it is one")
+	}
+}
+
+// The address a transition family carries, read out of it. nil for everything
+// else, including an IPv4 address, which is what stops the check recurring.
+func TestEmbeddedIPv4(t *testing.T) {
+	for _, tt := range []struct{ addr, want string }{
+		{"64:ff9b::a00:1", "10.0.0.1"},
+		{"64:ff9b::cb00:710a", "203.0.113.10"},
+		{"2002:c0a8:1::", "192.168.0.1"},
+		{"2002:cb00:710a::", "203.0.113.10"},
+		{"::10.0.0.1", "10.0.0.1"},
+		{"10.0.0.1", ""},
+		{"::ffff:10.0.0.1", ""}, // already IPv4 to every helper here
+		{"2001:db8::1", ""},
+		{"fd00::1", ""},
+	} {
+		got := embeddedIPv4(net.ParseIP(tt.addr))
+		if tt.want == "" {
+			if got != nil {
+				t.Errorf("embeddedIPv4(%s) = %v, want none", tt.addr, got)
+			}
+			continue
+		}
+		if got == nil || !got.Equal(net.ParseIP(tt.want)) {
+			t.Errorf("embeddedIPv4(%s) = %v, want %s", tt.addr, got, tt.want)
 		}
 	}
 }

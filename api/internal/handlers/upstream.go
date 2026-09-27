@@ -28,28 +28,77 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func mustCIDR(cidr string) *net.IPNet {
+	_, n, err := net.ParseCIDR(cidr)
+	if err != nil {
+		panic("handlers: bad CIDR " + cidr + ": " + err.Error())
+	}
+	return n
+}
+
+// The IPv6 transition families carry an IPv4 address inside an IPv6 one, which
+// is what makes them worth naming rather than listing: on a host with NAT64,
+// 64:ff9b::a00:1 is 10.0.0.1, and the guard read it as a public IPv6 address
+// (#308). The ranges are refused outright below, and the address they carry is
+// checked as well, so that a range dropped from that list cannot carry an
+// internal address past the guard on its own.
+var (
+	nat64WellKnown = mustCIDR("64:ff9b::/96")   // RFC 6052
+	nat64LocalUse  = mustCIDR("64:ff9b:1::/48") // RFC 8215
+	sixToFour      = mustCIDR("2002::/16")      // RFC 3056
+	ipv4Compatible = mustCIDR("::/96")          // deprecated, still parsed
+)
+
 // blockedNets are the CIDRs we refuse to dial from /test-upstream. Resolving a
 // user-supplied host to any of these makes the endpoint a reachability oracle
 // for the dashboard host's internal network (cloud metadata, etcd, the docker
 // daemon, etc.). The IP-property helpers already cover loopback/link-local/
-// multicast/unspecified; this list adds the private RFC1918 ranges and IPv6
-// unique-local that those helpers do not flag.
-var blockedNets = func() []*net.IPNet {
-	cidrs := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"100.64.0.0/10", // CGNAT
-		"fc00::/7",      // IPv6 unique-local
+// multicast/unspecified; this list adds what those helpers do not flag.
+//
+// The documentation ranges (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24) are
+// deliberately absent: they reach nothing, and the tests use one as the public
+// address they expect to be dialed.
+var blockedNets = []*net.IPNet{
+	mustCIDR("10.0.0.0/8"),
+	mustCIDR("172.16.0.0/12"),
+	mustCIDR("192.168.0.0/16"),
+	mustCIDR("100.64.0.0/10"), // CGNAT
+	mustCIDR("fc00::/7"),      // IPv6 unique-local
+	// "This network". IsUnspecified covers 0.0.0.0 alone, and on Linux the
+	// rest of the range reaches the local host as well.
+	mustCIDR("0.0.0.0/8"),
+	mustCIDR("192.0.0.0/24"),  // IETF protocol assignments
+	mustCIDR("198.18.0.0/15"), // benchmarking, used as internal space
+	mustCIDR("240.0.0.0/4"),   // reserved, and the broadcast address
+	mustCIDR("2001::/32"),     // Teredo, which also carries an IPv4 address
+	nat64WellKnown,
+	nat64LocalUse,
+	sixToFour,
+	ipv4Compatible,
+}
+
+// embeddedIPv4 returns the IPv4 address an IPv6 address carries, for the
+// transition families that carry one, and nil for every other address.
+func embeddedIPv4(ip net.IP) net.IP {
+	if ip.To4() != nil {
+		return nil // already IPv4, including the IPv4-mapped form
 	}
-	out := make([]*net.IPNet, 0, len(cidrs))
-	for _, c := range cidrs {
-		if _, n, err := net.ParseCIDR(c); err == nil {
-			out = append(out, n)
-		}
+	v6 := ip.To16()
+	if v6 == nil {
+		return nil
 	}
-	return out
-}()
+	switch {
+	// RFC 6052 puts the address in the last four bytes of a /96 prefix. The
+	// local-use prefix is a /48, whose layout depends on the prefix length a
+	// network chose, so it is refused as a range rather than read.
+	case nat64WellKnown.Contains(v6), ipv4Compatible.Contains(v6):
+		return net.IPv4(v6[12], v6[13], v6[14], v6[15])
+	// RFC 3056: 2002:V4ADDR::/48.
+	case sixToFour.Contains(v6):
+		return net.IPv4(v6[2], v6[3], v6[4], v6[5])
+	}
+	return nil
+}
 
 func isBlockedAddr(ip net.IP) bool {
 	if ip == nil {
@@ -63,6 +112,11 @@ func isBlockedAddr(ip net.IP) bool {
 		if n.Contains(ip) {
 			return true
 		}
+	}
+	// An IPv4 address inside an IPv6 one is checked as the address it is. It is
+	// IPv4 by then, so this recurs exactly once.
+	if v4 := embeddedIPv4(ip); v4 != nil {
+		return isBlockedAddr(v4)
 	}
 	return false
 }
