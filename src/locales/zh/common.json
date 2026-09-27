@@ -608,16 +608,16 @@
     "viaDiscovery": "通过 {{discovery}}"
   },
   "users": {
-    "accessDenied": "拒绝访问",
-    "accessDeniedMessage": "只有超级管理员可以管理用户和 RBAC 角色。",
+    "accessDeniedTitle": "拒绝访问",
+    "accessDeniedBody": "只有超级管理员可以管理用户和 RBAC 角色。",
     "addUser": "添加用户",
     "allInstances": "所有实例",
     "allTeams": "所有团队",
-    "assignHint": "为该用户分配 APISIX 实例，并指定角色和团队。",
+    "accessHint": "为该用户分配 APISIX 实例，并指定角色和团队。",
     "assigned": "已分配",
     "noInstances": "没有可分配的实例。",
-    "noUsers": "未找到用户",
-    "noUsersHint": "创建您的第一个团队成员以开始协作。",
+    "emptyTitle": "未找到用户",
+    "emptyBody": "创建您的第一个团队成员以开始协作。",
     "pageTitle": "用户管理",
     "permissions": "权限",
     "resetFailed": "重置密码失败",
@@ -650,5 +650,9 @@
     "unknown": "部分结果可能缺失。",
     "upstream_dependants_unresolved": "未能完整统计依赖各上游的对象。上游已全部列出，但部分依赖项可能未显示。",
     "upstream_health_unresolved": "无法从网关读取这些上游的健康状态。上游已全部列出，但其检查结果未显示。"
+  },
+  "common": {
+    "expand": "展开",
+    "collapse": "收起"
   }
 }

@@ -360,9 +360,14 @@ export const Header: FC<HeaderProps> = (props) => {
                     <Text size="sm" fw={600}>
                       {currentUser?.username || 'User'}
                     </Text>
-                    {activeUserInstance && (
+                    {/* The role that governs, not the assignment: an account
+                        holding a viewer assignment and promoted to super admin
+                        read "Viewer" here and "Role: Super Admin" one line
+                        below, understating what it may do on the dashboard's
+                        own authorization surface (#324). */}
+                    {effectiveRole && (
                       <Text size="10px" c="dimmed" style={{ marginTop: -4 }}>
-                        {roleLabel(t, activeUserInstance.role)}
+                        {roleLabel(t, effectiveRole)}
                       </Text>
                     )}
                   </Box>
@@ -371,18 +376,25 @@ export const Header: FC<HeaderProps> = (props) => {
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Label>{t('header.account')}</Menu.Label>
-              <Menu.Item>
-                {currentUser?.email}
-              </Menu.Item>
+              {/* A Label for the same reason as the role below it and the
+                  build line under that: an Item is a tab stop Enter does
+                  nothing to, it closes the menu when clicked, and it cancels
+                  mousedown - so the address could not be selected to be
+                  pasted anywhere. */}
+              <Menu.Label>{currentUser?.email}</Menu.Label>
               {effectiveRole && (
-                <Menu.Item>
-                  {/* The same name as the line above it: the two used to be
-                      spelled differently, and in four languages out of five
-                      this one was not translated at all (#319). */}
+                // A Label, not an Item, for the reason the build line below
+                // gives: an Item is a tab stop that does nothing, and clicking
+                // this one to read it closes the menu.
+                <Menu.Label>
+                  {/* The same role, named the same way, as the line above it:
+                      the two used to be spelled differently, and in four
+                      languages out of five this one was not translated at
+                      all (#319). */}
                   {t('header.accountRole', {
                     role: roleLabel(t, effectiveRole),
                   })}
-                </Menu.Item>
+                </Menu.Label>
               )}
               <Menu.Divider />
               {/* Which build this page is, where someone reporting a bug can

@@ -35,6 +35,7 @@ import {
   HttpError,
 } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
+import { globalRoleText, roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page } from '@playwright/test';
 
 const PREFIX = randomId('adm-user');
@@ -106,7 +107,7 @@ test('assigns a per-instance viewer role through the Permissions modal', async (
   // The users table row now shows the assignment.
   const row = adminPom.rowByText(page, username);
   await expect(row.getByText('Local APISIX')).toBeVisible();
-  await expect(row.getByText('(viewer)')).toBeVisible();
+  await expect(row.getByText(`(${roleText('viewer')})`, { exact: true })).toBeVisible();
 });
 
 test('clearing a role removes the assignment, rather than reporting success and keeping it', async ({
@@ -127,7 +128,7 @@ test('clearing a role removes the assignment, rather than reporting success and 
   await adminPom.toUsers(page);
   await adminPom.isUsersPage(page);
   const row = adminPom.rowByText(page, username);
-  await expect(row.getByText('(viewer)')).toBeVisible();
+  await expect(row.getByText(`(${roleText('viewer')})`, { exact: true })).toBeVisible();
 
   await row.getByRole('button', { name: 'Permissions' }).click();
   await expect(page.getByText('Edit User & Permissions')).toBeVisible();
@@ -143,7 +144,7 @@ test('clearing a role removes the assignment, rather than reporting success and 
   // would satisfy the count on its own.
   const savedRow = adminPom.rowByText(page, username);
   await expect(savedRow).toBeVisible();
-  await expect(savedRow.getByText('(viewer)')).toHaveCount(0);
+  await expect(savedRow.getByText(`(${roleText('viewer')})`, { exact: true })).toHaveCount(0);
 
   // …and so does the backend, which is the part that decides what this
   // account may do.
@@ -178,7 +179,7 @@ test('creating a user after editing one grants the new account nothing', async (
   // that window is seeded from nothing - which is the state this test is
   // supposed to find carried over.
   const seededRow = adminPom.rowByText(page, existing);
-  await expect(seededRow.getByText('(viewer)')).toBeVisible();
+  await expect(seededRow.getByText(`(${roleText('viewer')})`, { exact: true })).toBeVisible();
   await seededRow.getByRole('button', { name: 'Permissions' }).click();
   await expect(page.getByText('Edit User & Permissions')).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
@@ -246,7 +247,7 @@ test('saving a dialog opened before the assignments arrived removes nothing', as
   await expect(page.getByText('Edit User & Permissions')).toBeVisible();
 
   // The assignments arrive while the dialog sits open on an empty form.
-  await expect(adminPom.rowByText(page, username).getByText('(viewer)')).toBeVisible({
+  await expect(adminPom.rowByText(page, username).getByText(`(${roleText('viewer')})`, { exact: true })).toBeVisible({
     timeout: 20000,
   });
 
@@ -311,10 +312,14 @@ test('upgrading the role to instance admin restores write access', async ({
   await page.getByRole('tab', { name: 'Instance Access' }).click();
   const card = localInstanceCard(page);
   await card.getByLabel('Role', { exact: true }).click();
-  await page.getByRole('option', { name: 'Instance Admin', exact: true }).click();
+  await page
+    .getByRole('option', { name: roleText('instance_admin'), exact: true })
+    .click();
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(
-    adminPom.rowByText(page, username).getByText('(instance admin)')
+    adminPom
+      .rowByText(page, username)
+      .getByText(`(${roleText('instance_admin')})`, { exact: true })
   ).toBeVisible();
 
   // The upgrade is effective for the user.
@@ -492,9 +497,9 @@ test('the table dates an account and names its role', async ({ page }) => {
   const cells = (username: string) =>
     adminPom.rowByText(page, username).getByRole('cell');
 
-  await expect(cells(plain).nth(role)).toHaveText('User');
+  await expect(cells(plain).nth(role)).toHaveText(globalRoleText());
   await expect(cells(plain).nth(created)).toHaveText(dated);
-  await expect(cells(superAdmin).nth(role)).toHaveText('Super Admin');
+  await expect(cells(superAdmin).nth(role)).toHaveText(roleText('super_admin'));
   await expect(cells(superAdmin).nth(created)).toHaveText(dated);
 
   // And no row anywhere claims the zero time as a date, whatever the locale

@@ -24,6 +24,9 @@ import type { TFunction } from 'i18next';
  * a second place to pick the badge colour. Adding a role meant remembering
  * both (#300).
  */
+/** What an account with no global role is called. */
+const GLOBAL_USER_LABEL_KEY = 'roles.user';
+
 const ROLES = {
   super_admin: { labelKey: 'roles.superAdmin', color: 'red' },
   instance_admin: { labelKey: 'roles.instanceAdmin', color: 'orange' },
@@ -31,7 +34,9 @@ const ROLES = {
   viewer: { labelKey: 'roles.viewer', color: 'gray' },
 } as const;
 
-type KnownRole = keyof typeof ROLES;
+/** The roles this build knows. Exported so a caller that names one - a spec,
+ *  say - names it at compile time rather than at assertion time. */
+export type KnownRole = keyof typeof ROLES;
 
 // Own properties only: every object answers to 'toString' and 'constructor',
 // and a role is a string that arrives from a record in etcd.
@@ -83,7 +88,7 @@ export const roleLabel = (t: TFunction, role?: string | null) => {
  * every one of them a badge with a shield and no text (#300).
  */
 export const globalRoleLabel = (t: TFunction, role?: string | null) =>
-  role ? roleLabel(t, role) : t('roles.user');
+  role ? roleLabel(t, role) : t(GLOBAL_USER_LABEL_KEY);
 
 /**
  * The roles that can be held on one instance, in the order the form offers
@@ -91,6 +96,19 @@ export const globalRoleLabel = (t: TFunction, role?: string | null) =>
  * the select used to list them again by hand, and nothing tied the two lists
  * together.
  */
+/**
+ * Every key this catalogue asks i18next for.
+ *
+ * They are reached through `roleLabel(t, role)`, so no `t('roles.…')` literal
+ * exists for eslint - or for a check that reads a screen's source - to find.
+ * Exported so the locale check can require them in every language without
+ * keeping a list of its own (#324).
+ */
+export const roleLabelKeys = [
+  ...Object.values(ROLES).map((role) => role.labelKey),
+  GLOBAL_USER_LABEL_KEY,
+];
+
 export const INSTANCE_ROLES = [
   'instance_admin',
   'developer',

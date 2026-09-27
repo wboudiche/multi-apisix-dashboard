@@ -608,16 +608,16 @@
     "viaDiscovery": "{{discovery}} ile"
   },
   "users": {
-    "accessDenied": "Erişim reddedildi",
-    "accessDeniedMessage": "Yalnızca süper yöneticiler kullanıcıları ve RBAC rollerini yönetebilir.",
+    "accessDeniedTitle": "Erişim reddedildi",
+    "accessDeniedBody": "Yalnızca süper yöneticiler kullanıcıları ve RBAC rollerini yönetebilir.",
     "addUser": "Kullanıcı ekle",
     "allInstances": "Tüm örnekler",
     "allTeams": "Tüm takımlar",
-    "assignHint": "Bu kullanıcıyı belirli bir rol ve takımla APISIX örneklerine atayın.",
+    "accessHint": "Bu kullanıcıyı belirli bir rol ve takımla APISIX örneklerine atayın.",
     "assigned": "Atandı",
     "noInstances": "Atanacak örnek yok.",
-    "noUsers": "Kullanıcı bulunamadı",
-    "noUsersHint": "İş birliği için ilk takım üyenizi oluşturun.",
+    "emptyTitle": "Kullanıcı bulunamadı",
+    "emptyBody": "İş birliği için ilk takım üyenizi oluşturun.",
     "pageTitle": "Kullanıcı yönetimi",
     "permissions": "İzinler",
     "resetFailed": "Parola sıfırlanamadı",
@@ -650,5 +650,9 @@
     "unknown": "Bazı sonuçlar eksik olabilir.",
     "upstream_dependants_unresolved": "Her upstream’e bağlı olanlar tam olarak sayılamadı. Tüm upstream’ler listeleniyor; onlara bağlı olanların bir kısmı gösterilmiyor olabilir.",
     "upstream_health_unresolved": "Bu upstream’lerin durumu ağ geçidinden okunamadı. Tüm upstream’ler listeleniyor; denetimlerinin gördüğü bilgi gösterilmiyor."
+  },
+  "common": {
+    "expand": "Genişlet",
+    "collapse": "Daralt"
   }
 }

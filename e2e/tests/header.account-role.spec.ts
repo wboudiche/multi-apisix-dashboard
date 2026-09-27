@@ -14,8 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { permission } from '@e2e/pom/permission';
+import {
+  adminToken,
+  deleteTeamsByPrefix,
+  deleteUsersByPrefix,
+} from '@e2e/utils/admin-api';
+import { randomId } from '@e2e/utils/common';
 import { env } from '@e2e/utils/env';
 import { getFixtures } from '@e2e/utils/fixtures';
+import {
+  ensureTeam,
+  ensureUser,
+  ensureUserInstanceRole,
+} from '@e2e/utils/seed-client';
 import { accountRoleText, roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page, test } from '@playwright/test';
 
@@ -42,6 +54,13 @@ const signIn = async (page: Page, username: string, password: string) => {
     timeout: 15000,
   });
 };
+
+const PREFIX = randomId('hdr-role');
+
+test.afterAll(async () => {
+  await deleteUsersByPrefix(PREFIX);
+  await deleteTeamsByPrefix(PREFIX);
+});
 
 const openAccountMenu = async (page: Page, username: string) => {
   // The header trigger specifically, not the username wherever it appears: the
@@ -76,9 +95,9 @@ test('shows a developer their per-instance role in the account dropdown', async 
 test('shows a super admin their global role in the account dropdown', async ({
   page,
 }) => {
-  // A super_admin has no user_instances row, so the header renders no role
-  // text at all for them — the dropdown is the only place they see it, which
-  // is why the field cannot simply be dropped.
+  // The dropdown says which role the word beside the username is: both read the
+  // effective role since #324, where this line used to be the only place a
+  // super_admin saw one at all.
   const admin = getFixtures().users.admin;
   await signIn(page, admin.username, admin.password);
 
@@ -86,6 +105,45 @@ test('shows a super admin their global role in the account dropdown', async ({
 
   // Exactly: a substring match is case-insensitive, so it would hold just as
   // well against the raw role this line used to render.
+  await expect(
+    page.getByText(accountRoleText('super_admin'), { exact: true })
+  ).toBeVisible({ timeout: 10000 });
+});
+
+
+test('names the role that governs, not an assignment it overrides', async ({
+  page,
+}) => {
+  // The badge read the per-instance assignment while the dropdown below it read
+  // the effective role, which is super_admin whatever the assignments say. An
+  // account holding a viewer assignment and then promoted read "Viewer" under
+  // its username and "Role: Super Admin" one line below, understating what it
+  // may do on the dashboard's own authorization surface (#324).
+  const username = `${PREFIX}-promoted`;
+  const password = 'e2e-Hdr-r0le!pass';
+  const token = await adminToken();
+  const team = await ensureTeam(token, { name: `${PREFIX}-team` });
+  const user = await ensureUser(token, { username, password, role: 'super_admin' });
+  // A viewer assignment carries a team; the backend refuses one without.
+  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+    role: 'viewer',
+    team_id: team.id,
+  });
+
+  await signIn(page, username, password);
+  // The instance the badge reads, pinned: a fresh context auto-selects
+  // whichever instance the backend returns first, and on any other one there is
+  // no assignment for the effective role to override - the test would pass
+  // without exercising anything.
+  await permission.switchInstance(page, 'Local APISIX');
+
+  const header = page.locator('header');
+  await expect(header.getByText(roleText('super_admin'), { exact: true })).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(header.getByText(roleText('viewer'), { exact: true })).toHaveCount(0);
+
+  await openAccountMenu(page, username);
   await expect(
     page.getByText(accountRoleText('super_admin'), { exact: true })
   ).toBeVisible({ timeout: 10000 });
