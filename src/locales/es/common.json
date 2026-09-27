@@ -477,6 +477,13 @@
   "protos": {
     "singular": "Proto"
   },
+  "roles": {
+    "superAdmin": "Superadministrador",
+    "instanceAdmin": "Administrador de instancia",
+    "developer": "Desarrollador",
+    "viewer": "Lector",
+    "user": "Usuario"
+  },
   "routes": {
     "singular": "Ruta",
     "list": {
@@ -632,7 +639,9 @@
     "assignmentsUnreadableTitle": "Asignaciones no disponibles",
     "assignmentsUnreadableForm": "No se pudieron leer las asignaciones actuales de este usuario, por lo que los roles de abajo pueden estar incompletos. Al guardar solo se escriben los roles que elijas aquí; no se elimina ninguno.",
     "assignmentsUnreadableBody": "No se pudieron leer las asignaciones de instancia de {{count}} de las cuentas listadas, así que esta tabla no puede decir qué pueden hacer. Motivo: {{reason}}",
-    "clearRole": "Quitar el rol"
+    "clearRole": "Quitar el rol",
+    "roleOptionSuperAdmin": "Superadministrador (acceso total)",
+    "roleOptionUser": "Usuario (asignar roles por instancia abajo)"
   },
   "listWarning": {
     "detailsUnresolved": "No se han podido resolver algunos detalles",

@@ -242,7 +242,30 @@ func (s *AuthService) CreateUser(ctx context.Context, user *models.User) error {
 		return ErrUserExists
 	}
 
+	stampCreated(user, time.Now())
 	return s.etcd.PutJSON(ctx, models.KeyPrefixUsers+user.ID, user)
+}
+
+// stampCreated dates a record being written for the first time.
+//
+// It stamps here rather than in the caller because both callers - the Add User
+// endpoint and the bootstrap admin - reach etcd through this service and
+// neither set the dates, so every account was stored carrying Go's zero time.
+// The Users page read it back as a real date and showed 01/01/1 (#300).
+func stampCreated(user *models.User, now time.Time) {
+	user.CreatedAt = now
+	user.UpdatedAt = now
+}
+
+// stampUpdated moves UpdatedAt and leaves CreatedAt where it is.
+//
+// Every write after the first one - profile, global role, password change,
+// password reset - loads the stored record first, so the creation date it
+// carries is the real one. Accounts stored before this stamped anything keep a
+// zero CreatedAt: their real date is gone, and inventing one here would hand
+// the page a date nobody set, presented as if someone had.
+func stampUpdated(user *models.User, now time.Time) {
+	user.UpdatedAt = now
 }
 
 func (s *AuthService) ListUsers(ctx context.Context) ([]*models.User, error) {
@@ -264,6 +287,7 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]*models.User, error) {
 }
 
 func (s *AuthService) UpdateUser(ctx context.Context, user *models.User) error {
+	stampUpdated(user, time.Now())
 	return s.etcd.PutJSON(ctx, models.KeyPrefixUsers+user.ID, user)
 }
 

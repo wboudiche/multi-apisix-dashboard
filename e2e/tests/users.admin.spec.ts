@@ -26,6 +26,7 @@ import {
 } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { env } from '@e2e/utils/env';
+import { etcdDelete, etcdPut } from '@e2e/utils/etcd';
 import { getFixtures } from '@e2e/utils/fixtures';
 import {
   apiFetch,
@@ -432,4 +433,74 @@ test('a delete the backend refuses is reported, and the user stays listed', asyn
     page.locator('.mantine-Notification-root').filter({ hasText: refusal })
   ).toBeVisible({ timeout: 10000 });
   await expect(adminPom.rowByText(page, username)).toBeVisible();
+});
+
+test('the table dates an account and names its role', async ({ page }) => {
+  // Nothing dated a user record: both accounts created here and the bootstrap
+  // admin were stored with Go's zero time, and the page formatted it as a real
+  // date - every account created on 01/01/1. The Role cell, meanwhile, rendered
+  // the global role verbatim, which is empty for every account whose access
+  // comes from its per-instance assignments: a badge with a shield and no text
+  // (#300).
+  const plain = `${PREFIX}-dated`;
+  const superAdmin = `${PREFIX}-super`;
+  const token = await adminToken();
+  await ensureUser(token, { username: plain, password: PASSWORD });
+  await ensureUser(token, {
+    username: superAdmin,
+    password: PASSWORD,
+    role: 'super_admin',
+  });
+
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+
+  // Read in the browser, so the assertion is in the locale the cell formats
+  // for rather than the one this process happens to run in.
+  const today = await page.evaluate(() => new Date().toLocaleDateString());
+  const zeroTime = await page.evaluate(() =>
+    new Date('0001-01-01T00:00:00Z').toLocaleDateString()
+  );
+
+  // Role is the second column, Created the fifth.
+  const cells = (username: string) =>
+    adminPom.rowByText(page, username).getByRole('cell');
+  await expect(cells(plain).nth(1)).toHaveText('User');
+  await expect(cells(plain).nth(4)).toHaveText(today);
+  await expect(cells(superAdmin).nth(1)).toHaveText('Super Admin');
+  await expect(cells(superAdmin).nth(4)).toHaveText(today);
+
+  // And no row anywhere claims the zero time as a date, whatever the locale
+  // renders it as - including accounts stored before anything stamped them,
+  // whose real date is gone and is now left unknown.
+  await expect(page.getByText(zeroTime, { exact: true })).toHaveCount(0);
+});
+
+test('an account stored before the dates existed reads as unknown', async ({
+  page,
+}) => {
+  // The accounts already in etcd carry no dates at all, and their real ones
+  // are gone. They unmarshal to Go's zero time, which the page formatted like
+  // any other date and showed as 01/01/1 (#300). Nothing here backfills them:
+  // a date nobody set, shown as though someone had, is worse than saying so.
+  const username = `${PREFIX}-undated`;
+  const key = `/users/${PREFIX}-undated-id`;
+  await etcdPut(key, {
+    id: `${PREFIX}-undated-id`,
+    username,
+    email: `${username}@example.com`,
+    role: '',
+    // Nothing can sign in as this account: bcrypt rejects any password against
+    // an empty hash. It exists to be listed.
+    password_hash: '',
+  });
+
+  try {
+    await adminPom.toUsers(page);
+    await adminPom.isUsersPage(page);
+    const cells = adminPom.rowByText(page, username).getByRole('cell');
+    await expect(cells.nth(4)).toHaveText('—');
+  } finally {
+    await etcdDelete(key);
+  }
 });
