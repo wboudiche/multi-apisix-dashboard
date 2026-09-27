@@ -433,3 +433,114 @@ test('a delete the backend refuses is reported, and the user stays listed', asyn
   ).toBeVisible({ timeout: 10000 });
   await expect(adminPom.rowByText(page, username)).toBeVisible();
 });
+
+/** The index of a column, found by the header the page gives it. */
+const columnIndex = async (page: Page, header: string) => {
+  // Waited for first: count() does not retry, so a table that has not mounted
+  // yet would make this throw "no such column" at a page that still has one.
+  await expect(
+    page.getByRole('columnheader', { name: header, exact: true })
+  ).toBeVisible();
+  const headers = page.getByRole('columnheader');
+  const count = await headers.count();
+  for (let i = 0; i < count; i += 1) {
+    if (((await headers.nth(i).textContent()) ?? '').trim() === header) return i;
+  }
+  throw new Error(`the users table has no "${header}" column`);
+};
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+test('the table dates an account and names its role', async ({ page }) => {
+  // Nothing dated a user record: accounts created here and the bootstrap admin
+  // alike were stored with Go's zero time, and the page formatted it as a real
+  // date - every account created on 01/01/1. The Role cell, meanwhile, rendered
+  // the global role verbatim, which is empty for every account whose access
+  // comes from its per-instance assignments: a badge with a shield and no text
+  // (#300).
+  const plain = `${PREFIX}-dated`;
+  const superAdmin = `${PREFIX}-super`;
+  const token = await adminToken();
+
+  // The stamp lands between these two readings, so a run that crosses local
+  // midnight has two acceptable dates rather than one wrong one.
+  const before = Date.now();
+  await ensureUser(token, { username: plain, password: PASSWORD });
+  await ensureUser(token, {
+    username: superAdmin,
+    password: PASSWORD,
+    role: 'super_admin',
+  });
+  const after = Date.now();
+
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+
+  // Formatted in the browser, so the assertion is in the locale the cell
+  // formats for rather than the one this process happens to run in.
+  const days = await page.evaluate(
+    (bounds) => bounds.map((ms) => new Date(ms).toLocaleDateString()),
+    [before, after]
+  );
+  const dated = new RegExp(`^(${[...new Set(days)].map(escapeRegExp).join('|')})$`);
+  const zeroTime = await page.evaluate(() =>
+    new Date('0001-01-01T00:00:00Z').toLocaleDateString()
+  );
+
+  const role = await columnIndex(page, 'Role');
+  const created = await columnIndex(page, 'Created');
+  const cells = (username: string) =>
+    adminPom.rowByText(page, username).getByRole('cell');
+
+  await expect(cells(plain).nth(role)).toHaveText('User');
+  await expect(cells(plain).nth(created)).toHaveText(dated);
+  await expect(cells(superAdmin).nth(role)).toHaveText('Super Admin');
+  await expect(cells(superAdmin).nth(created)).toHaveText(dated);
+
+  // And no row anywhere claims the zero time as a date, whatever the locale
+  // renders it as - including accounts stored before anything stamped them,
+  // whose real date is gone and is now left unknown.
+  await expect(page.getByText(zeroTime, { exact: true })).toHaveCount(0);
+});
+
+test('an account stored before the dates existed reads as unknown', async ({
+  page,
+}) => {
+  // The accounts already in etcd carry no dates at all, and their real ones
+  // are gone. They unmarshal to Go's zero time, which the page formatted like
+  // any other date and showed as 01/01/1 (#300). Nothing here backfills them:
+  // a date nobody set, shown as though someone had, is worse than saying so.
+  const username = `${PREFIX}-undated`;
+
+  // Added to the response rather than written to etcd: what this test is about
+  // is the shape - a record with no dates, which Go serializes as the zero
+  // time - and fabricating it here keeps the spec off an etcd of its own, the
+  // way the refused-delete test above fabricates its refusal.
+  await page.route(/\/api\/v1\/users(\?.*)?$/, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const response = await route.fetch();
+    const users = (await response.json()) as unknown[];
+    return route.fulfill({
+      response,
+      json: [
+        ...users,
+        {
+          id: `${PREFIX}-undated-id`,
+          username,
+          email: `${username}@example.com`,
+          role: '',
+          created_at: '0001-01-01T00:00:00Z',
+          updated_at: '0001-01-01T00:00:00Z',
+        },
+      ],
+    });
+  });
+
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+  // By header, not by position: this row renders the same dash in Instances,
+  // in Teams and in Created, so an index off by one would still read one.
+  const created = await columnIndex(page, 'Created');
+  const cells = adminPom.rowByText(page, username).getByRole('cell');
+  await expect(cells.nth(created)).toHaveText('—');
+});

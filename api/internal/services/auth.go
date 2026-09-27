@@ -242,7 +242,30 @@ func (s *AuthService) CreateUser(ctx context.Context, user *models.User) error {
 		return ErrUserExists
 	}
 
+	stampCreated(user, time.Now())
 	return s.etcd.PutJSON(ctx, models.KeyPrefixUsers+user.ID, user)
+}
+
+// stampCreated dates a record being written for the first time.
+//
+// It stamps here rather than in the caller because both callers - the Add User
+// endpoint and the bootstrap admin - reach etcd through this service and
+// neither set the dates, so every account was stored carrying Go's zero time.
+// The Users page read it back as a real date and showed 01/01/1 (#300).
+func stampCreated(user *models.User, now time.Time) {
+	user.CreatedAt = now
+	user.UpdatedAt = now
+}
+
+// stampUpdated moves UpdatedAt and leaves CreatedAt where it is.
+//
+// Every write after the first one - profile, global role, password change,
+// password reset - loads the stored record first, so the creation date it
+// carries is the real one. Accounts stored before this stamped anything keep a
+// zero CreatedAt: their real date is gone, and inventing one here would hand
+// the page a date nobody set, presented as if someone had.
+func stampUpdated(user *models.User, now time.Time) {
+	user.UpdatedAt = now
 }
 
 func (s *AuthService) ListUsers(ctx context.Context) ([]*models.User, error) {
@@ -264,6 +287,19 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]*models.User, error) {
 }
 
 func (s *AuthService) UpdateUser(ctx context.Context, user *models.User) error {
+	// Every caller today loads the stored record first, so the creation date
+	// arrives intact and there is nothing to read back. One built from a
+	// request body would carry none - and rather than write that zero over a
+	// real date for good, the record is read back for it, and a read that
+	// fails stops the write instead of dating the account with nothing.
+	if user.CreatedAt.IsZero() {
+		existing, err := s.GetUser(ctx, user.ID)
+		if err != nil {
+			return fmt.Errorf("user %s not updated: its stored record could not be read for its creation date: %w", user.ID, err)
+		}
+		user.CreatedAt = existing.CreatedAt
+	}
+	stampUpdated(user, time.Now())
 	return s.etcd.PutJSON(ctx, models.KeyPrefixUsers+user.ID, user)
 }
 

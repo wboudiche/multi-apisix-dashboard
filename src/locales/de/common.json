@@ -477,6 +477,13 @@
   "protos": {
     "singular": "Proto"
   },
+  "roles": {
+    "superAdmin": "Super-Admin",
+    "instanceAdmin": "Instanz-Admin",
+    "developer": "Entwickler",
+    "viewer": "Betrachter",
+    "user": "Benutzer"
+  },
   "routes": {
     "singular": "Route",
     "list": {
@@ -622,17 +629,20 @@
     "tabBasic": "Basisdaten",
     "tempPassword": "Temporäres Passwort",
     "tempPasswordPlaceholder": "Temporäres Passwort eingeben",
-    "thActions": "Aktionen",
-    "thCreated": "Erstellt",
-    "thInstances": "Instanzen",
+    "columnCreated": "Erstellt",
+    "columnInstances": "Instanzen",
     "thRole": "Rolle",
-    "thTeams": "Teams",
+    "columnTeams": "Teams",
     "thUser": "Benutzer",
     "assignmentsUnreadable": "Konnte nicht gelesen werden",
     "assignmentsUnreadableTitle": "Zuweisungen nicht verfügbar",
     "assignmentsUnreadableForm": "Die aktuellen Zuweisungen dieses Benutzers konnten nicht gelesen werden, die Rollen unten sind daher möglicherweise unvollständig. Beim Speichern werden nur die hier gewählten Rollen geschrieben; es wird keine entfernt.",
     "assignmentsUnreadableBody": "Für {{count}} der aufgeführten Konten konnten die Instanzzuweisungen nicht gelesen werden; diese Tabelle kann daher nicht sagen, was sie dürfen. Grund: {{reason}}",
-    "clearRole": "Rolle entfernen"
+    "clearRole": "Rolle entfernen",
+    "roleOptionSuperAdmin": "Super-Admin (Vollzugriff)",
+    "roleOptionUser": "Benutzer (Rollen pro Instanz unten zuweisen)",
+    "columnUser": "Benutzer",
+    "columnRole": "Rolle"
   },
   "listWarning": {
     "detailsUnresolved": "Einige Details konnten nicht ermittelt werden",

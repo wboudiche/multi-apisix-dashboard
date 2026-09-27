@@ -45,9 +45,11 @@ import { type Team,teamApi } from '@/apis/teams';
 import { userApi } from '@/apis/users';
 import PageHeader from '@/components/page/PageHeader';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
+import { globalRoleLabel, INSTANCE_ROLES, roleColor, roleLabel } from '@/config/role-labels';
 import { currentUserAtom } from '@/stores/auth';
 import { instancesAtom } from '@/stores/instance';
 import { describeError } from '@/utils/api-error';
+import { recordDate } from '@/utils/record-date';
 import IconPlus from '~icons/material-symbols/add';
 import IconInstance from '~icons/material-symbols/dns-outline';
 import IconGroup from '~icons/material-symbols/group-outline';
@@ -372,15 +374,6 @@ const UsersPage = () => {
     setActiveTab('basic');
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'super_admin': return 'red';
-      case 'instance_admin': return 'orange';
-      case 'developer': return 'blue';
-      default: return 'gray';
-    }
-  };
-
   if (!isSuperAdmin) {
     return (
       <Container size="xl">
@@ -471,11 +464,11 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td>
                   <Badge
-                    color={getRoleColor(user.role)}
+                    color={roleColor(user.role)}
                     variant="light"
                     leftSection={<IconShield width="12" height="12" />}
                   >
-                    {user.role.replace('_', ' ')}
+                    {globalRoleLabel(t, user.role)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>
@@ -493,7 +486,7 @@ const UsersPage = () => {
                           <Group key={a.instance_id} gap={6} wrap="nowrap">
                             <IconInstance width="13" height="13" style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0 }} />
                             <Text size="xs" fw={500}>{inst?.name || a.instance_id.slice(0, 8)}</Text>
-                            <Text size="xs" c="dimmed">({a.role.replace('_', ' ')})</Text>
+                            <Text size="xs" c="dimmed">({roleLabel(t, a.role)})</Text>
                           </Group>
                         );
                       })}
@@ -522,7 +515,7 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td>
                   <Text size="sm" c="dimmed">
-                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                    {recordDate(user.created_at) ?? '—'}
                   </Text>
                 </Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
@@ -634,8 +627,8 @@ const UsersPage = () => {
                 value={formData.role}
                 onChange={(value) => setFormData({ ...formData, role: value || 'user' })}
                 data={[
-                  { value: 'super_admin', label: 'Super Admin (Full Access)' },
-                  { value: 'user', label: 'User (Assign per-instance roles below)' },
+                  { value: 'super_admin', label: t('users.roleOptionSuperAdmin') },
+                  { value: 'user', label: t('users.roleOptionUser') },
                 ]}
               />
             </Stack>
@@ -690,11 +683,10 @@ const UsersPage = () => {
                                 ...instanceRoles,
                                 [inst.id]: { ...instanceRoles[inst.id], role: role || '', team_id: instanceRoles[inst.id]?.team_id || '' }
                               })}
-                              data={[
-                                { value: 'instance_admin', label: 'Instance Admin' },
-                                { value: 'developer', label: 'Developer' },
-                                { value: 'viewer', label: 'Viewer' },
-                              ]}
+                              data={INSTANCE_ROLES.map((role) => ({
+                                value: role,
+                                label: roleLabel(t, role),
+                              }))}
                             />
                             {(config?.role === 'developer' || config?.role === 'viewer') && (
                               <Select

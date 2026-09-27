@@ -477,6 +477,13 @@
   "protos": {
     "singular": "Proto"
   },
+  "roles": {
+    "superAdmin": "Süper yönetici",
+    "instanceAdmin": "Örnek yöneticisi",
+    "developer": "Geliştirici",
+    "viewer": "Görüntüleyici",
+    "user": "Kullanıcı"
+  },
   "routes": {
     "singular": "Route",
     "list": {
@@ -622,17 +629,20 @@
     "tabBasic": "Temel bilgiler",
     "tempPassword": "Geçici parola",
     "tempPasswordPlaceholder": "Geçici bir parola girin",
-    "thActions": "İşlemler",
-    "thCreated": "Oluşturulma",
-    "thInstances": "Örnekler",
+    "columnCreated": "Oluşturulma",
+    "columnInstances": "Örnekler",
     "thRole": "Rol",
-    "thTeams": "Takımlar",
+    "columnTeams": "Takımlar",
     "thUser": "Kullanıcı",
     "assignmentsUnreadable": "Okunamadı",
     "assignmentsUnreadableTitle": "Atamalar kullanılamıyor",
     "assignmentsUnreadableForm": "Bu kullanıcının mevcut atamaları okunamadı, bu yüzden aşağıdaki roller eksik olabilir. Kaydetmek yalnızca burada seçtiğiniz rolleri yazar; hiçbirini kaldırmaz.",
     "assignmentsUnreadableBody": "Listelenen hesaplardan {{count}} tanesi için örnek atamaları okunamadı, bu nedenle bu tablo ne yapabileceklerini söyleyemiyor. Neden: {{reason}}",
-    "clearRole": "Rolü kaldır"
+    "clearRole": "Rolü kaldır",
+    "roleOptionSuperAdmin": "Süper yönetici (tam erişim)",
+    "roleOptionUser": "Kullanıcı (aşağıda örnek başına rol atayın)",
+    "columnUser": "Kullanıcı",
+    "columnRole": "Rol"
   },
   "listWarning": {
     "detailsUnresolved": "Bazı ayrıntılar çözümlenemedi",
