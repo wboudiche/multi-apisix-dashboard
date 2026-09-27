@@ -20,8 +20,15 @@ import { recordDate } from './record-date';
 
 describe('recordDate', () => {
   it('formats a date the record carries', () => {
-    const value = '2026-09-27T14:05:00Z';
-    expect(recordDate(value)).toBe(new Date(value).toLocaleDateString());
+    // Asserted part by part rather than against the same expression the
+    // implementation uses, which would stay green through a change of format:
+    // whatever the locale's order and separators, the day, the month and the
+    // year are all in there, and it is not an ISO string.
+    const shown = recordDate('2026-09-27T14:05:00Z');
+    expect(shown).toMatch(/2026/);
+    expect(shown).toMatch(/\b0?9\b/);
+    expect(shown).toMatch(/\b27\b/);
+    expect(shown).not.toContain('T');
   });
 
   it('reads Go zero time as unknown, rather than as the year 1', () => {

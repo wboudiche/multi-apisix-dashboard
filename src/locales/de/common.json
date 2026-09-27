@@ -629,11 +629,10 @@
     "tabBasic": "Basisdaten",
     "tempPassword": "Temporäres Passwort",
     "tempPasswordPlaceholder": "Temporäres Passwort eingeben",
-    "thActions": "Aktionen",
-    "thCreated": "Erstellt",
-    "thInstances": "Instanzen",
+    "columnCreated": "Erstellt",
+    "columnInstances": "Instanzen",
     "thRole": "Rolle",
-    "thTeams": "Teams",
+    "columnTeams": "Teams",
     "thUser": "Benutzer",
     "assignmentsUnreadable": "Konnte nicht gelesen werden",
     "assignmentsUnreadableTitle": "Zuweisungen nicht verfügbar",
@@ -641,7 +640,9 @@
     "assignmentsUnreadableBody": "Für {{count}} der aufgeführten Konten konnten die Instanzzuweisungen nicht gelesen werden; diese Tabelle kann daher nicht sagen, was sie dürfen. Grund: {{reason}}",
     "clearRole": "Rolle entfernen",
     "roleOptionSuperAdmin": "Super-Admin (Vollzugriff)",
-    "roleOptionUser": "Benutzer (Rollen pro Instanz unten zuweisen)"
+    "roleOptionUser": "Benutzer (Rollen pro Instanz unten zuweisen)",
+    "columnUser": "Benutzer",
+    "columnRole": "Rolle"
   },
   "listWarning": {
     "detailsUnresolved": "Einige Details konnten nicht ermittelt werden",

@@ -629,11 +629,10 @@
     "tabBasic": "Información básica",
     "tempPassword": "Contraseña temporal",
     "tempPasswordPlaceholder": "Introduce una contraseña temporal",
-    "thActions": "Acciones",
-    "thCreated": "Creado",
-    "thInstances": "Instancias",
+    "columnCreated": "Creado",
+    "columnInstances": "Instancias",
     "thRole": "Rol",
-    "thTeams": "Equipos",
+    "columnTeams": "Equipos",
     "thUser": "Usuario",
     "assignmentsUnreadable": "No se pudo leer",
     "assignmentsUnreadableTitle": "Asignaciones no disponibles",
@@ -641,7 +640,9 @@
     "assignmentsUnreadableBody": "No se pudieron leer las asignaciones de instancia de {{count}} de las cuentas listadas, así que esta tabla no puede decir qué pueden hacer. Motivo: {{reason}}",
     "clearRole": "Quitar el rol",
     "roleOptionSuperAdmin": "Superadministrador (acceso total)",
-    "roleOptionUser": "Usuario (asignar roles por instancia abajo)"
+    "roleOptionUser": "Usuario (asignar roles por instancia abajo)",
+    "columnUser": "Usuario",
+    "columnRole": "Rol"
   },
   "listWarning": {
     "detailsUnresolved": "No se han podido resolver algunos detalles",

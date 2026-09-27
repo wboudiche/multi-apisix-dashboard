@@ -46,10 +46,11 @@ const known = (role?: string | null): KnownRole | undefined =>
  *
  * Empty means different things in the two places a role is stored, and neither
  * is a name: no global role at all on a `User`, and no role on this instance on
- * a `UserInstance`. The caller says which, because naming an account "User"
- * where it holds no access would claim one it does not have.
+ * a `UserInstance`. Hence `globalRoleLabel` for the first and a plain
+ * `roleLabel` for the second, rather than one name for both - calling an
+ * account "User" where it holds no access would claim one it does not have.
  */
-export const roleLabelKey = (role?: string | null) => {
+const roleLabelKey = (role?: string | null) => {
   const r = known(role);
   return r ? ROLES[r].labelKey : undefined;
 };
@@ -62,10 +63,36 @@ export const roleColor = (role?: string | null) => {
 
 /**
  * A role as an operator should read it: translated where this build knows the
- * role, and shown as it came where it does not - a role nobody has heard of may
- * well be allowed more than a plain account is.
+ * role, and otherwise the stored value with its underscores loosened - a role
+ * nobody here has heard of is shown rather than named, because it may well be
+ * allowed more than a plain account is.
+ *
+ * Empty in, empty out: on a per-instance assignment that means no role on that
+ * instance, which is not something to put a word to.
  */
 export const roleLabel = (t: TFunction, role?: string | null) => {
   const key = roleLabelKey(role);
   return key ? t(key) : (role ?? '').replace(/_/g, ' ');
 };
+
+/**
+ * A global role as the Users page shows it.
+ *
+ * No global role is not a missing name: it is an account whose access comes
+ * from its per-instance assignments, which is most of them. The column showed
+ * every one of them a badge with a shield and no text (#300).
+ */
+export const globalRoleLabel = (t: TFunction, role?: string | null) =>
+  role ? roleLabel(t, role) : t('roles.user');
+
+/**
+ * The roles that can be held on one instance, in the order the form offers
+ * them. The order is a choice, the names are checked against the catalogue:
+ * the select used to list them again by hand, and nothing tied the two lists
+ * together.
+ */
+export const INSTANCE_ROLES = [
+  'instance_admin',
+  'developer',
+  'viewer',
+] as const satisfies readonly KnownRole[];

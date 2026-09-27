@@ -26,7 +26,6 @@ import {
 } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { env } from '@e2e/utils/env';
-import { etcdDelete, etcdPut } from '@e2e/utils/etcd';
 import { getFixtures } from '@e2e/utils/fixtures';
 import {
   apiFetch,
@@ -437,6 +436,11 @@ test('a delete the backend refuses is reported, and the user stays listed', asyn
 
 /** The index of a column, found by the header the page gives it. */
 const columnIndex = async (page: Page, header: string) => {
+  // Waited for first: count() does not retry, so a table that has not mounted
+  // yet would make this throw "no such column" at a page that still has one.
+  await expect(
+    page.getByRole('columnheader', { name: header, exact: true })
+  ).toBeVisible();
   const headers = page.getByRole('columnheader');
   const count = await headers.count();
   for (let i = 0; i < count; i += 1) {
@@ -507,26 +511,36 @@ test('an account stored before the dates existed reads as unknown', async ({
   // any other date and showed as 01/01/1 (#300). Nothing here backfills them:
   // a date nobody set, shown as though someone had, is worse than saying so.
   const username = `${PREFIX}-undated`;
-  const key = `/users/${PREFIX}-undated-id`;
-  await etcdPut(key, {
-    id: `${PREFIX}-undated-id`,
-    username,
-    email: `${username}@example.com`,
-    role: '',
-    // Nothing can sign in as this account: bcrypt rejects any password against
-    // an empty hash. It exists to be listed.
-    password_hash: '',
+
+  // Added to the response rather than written to etcd: what this test is about
+  // is the shape - a record with no dates, which Go serializes as the zero
+  // time - and fabricating it here keeps the spec off an etcd of its own, the
+  // way the refused-delete test above fabricates its refusal.
+  await page.route(/\/api\/v1\/users(\?.*)?$/, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const response = await route.fetch();
+    const users = (await response.json()) as unknown[];
+    return route.fulfill({
+      response,
+      json: [
+        ...users,
+        {
+          id: `${PREFIX}-undated-id`,
+          username,
+          email: `${username}@example.com`,
+          role: '',
+          created_at: '0001-01-01T00:00:00Z',
+          updated_at: '0001-01-01T00:00:00Z',
+        },
+      ],
+    });
   });
 
-  try {
-    await adminPom.toUsers(page);
-    await adminPom.isUsersPage(page);
-    // By header, not by position: this row renders the same dash in Instances,
-    // in Teams and in Created, so an index off by one would still read one.
-    const created = await columnIndex(page, 'Created');
-    const cells = adminPom.rowByText(page, username).getByRole('cell');
-    await expect(cells.nth(created)).toHaveText('—');
-  } finally {
-    await etcdDelete(key);
-  }
+  await adminPom.toUsers(page);
+  await adminPom.isUsersPage(page);
+  // By header, not by position: this row renders the same dash in Instances,
+  // in Teams and in Created, so an index off by one would still read one.
+  const created = await columnIndex(page, 'Created');
+  const cells = adminPom.rowByText(page, username).getByRole('cell');
+  await expect(cells.nth(created)).toHaveText('—');
 });

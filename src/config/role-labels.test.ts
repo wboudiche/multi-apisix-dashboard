@@ -18,11 +18,19 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../locales/en/common.json';
-import { roleColor, roleLabel, roleLabelKey } from './role-labels';
+import {
+  globalRoleLabel,
+  INSTANCE_ROLES,
+  roleColor,
+  roleLabel,
+} from './role-labels';
 
 const KNOWN = ['super_admin', 'instance_admin', 'developer', 'viewer'];
 
-/** The translation, as i18next would resolve the dotted key. */
+/** Hands back whatever key was asked for, so a test can read it. */
+const echo = ((key: string) => key) as unknown as TFunction;
+
+/** The translation, resolved the way i18next resolves a dotted key. */
 const resolve = (key: string): unknown =>
   key
     .split('.')
@@ -31,72 +39,66 @@ const resolve = (key: string): unknown =>
       en
     );
 
-// t() is called with a variable here, so eslint's no-unknown-key cannot check
-// these keys and a rename of the block would ship "roles.superAdmin" into the
-// badge with a green lint.
+// These keys reach i18next through a variable, so eslint's no-unknown-key
+// cannot check them: a rename of the block would ship "roles.superAdmin" into
+// the badge with a green lint and a green test suite.
 describe('the role names reach i18n', () => {
-  it.each(KNOWN)('%s has a key en/common.json holds', (role) => {
-    const key = roleLabelKey(role);
-    expect(key).toBeDefined();
-    expect(resolve(key!)).toEqual(expect.any(String));
+  it.each(KNOWN)('%s is named by a key en/common.json holds', (role) => {
+    expect(resolve(roleLabel(echo, role))).toEqual(expect.any(String));
   });
 
-  it('an account with no global role has one too', () => {
-    // Used by the Users page for the empty global role.
-    expect(resolve('roles.user')).toEqual(expect.any(String));
+  it('an account with no global role is named too', () => {
+    expect(resolve(globalRoleLabel(echo, ''))).toEqual(expect.any(String));
+  });
+
+  it.each([...INSTANCE_ROLES])('the form offers %s by name', (role) => {
+    expect(resolve(roleLabel(echo, role))).toEqual(expect.any(String));
   });
 });
 
-describe('roleLabelKey', () => {
+describe('roleLabel', () => {
   it.each([
     ['super_admin', 'roles.superAdmin'],
     ['instance_admin', 'roles.instanceAdmin'],
     ['developer', 'roles.developer'],
     ['viewer', 'roles.viewer'],
-  ])('names %s', (role, key) => {
-    expect(roleLabelKey(role)).toBe(key);
+  ])('translates %s', (role, key) => {
+    expect(roleLabel(echo, role)).toBe(key);
+  });
+
+  it('shows a role it does not know rather than naming it', () => {
+    // Not called a plain account: a role nobody here has heard of may well be
+    // allowed more than a user is.
+    expect(roleLabel(echo, 'audit_reader')).toBe('audit reader');
   });
 
   it.each([['empty', ''], ['missing', undefined], ['null', null]])(
-    'has no name for a role that is %s',
+    'says nothing for a role that is %s',
     (_name, role) => {
-      // Empty means "no global role" on a User and "no role on this instance"
-      // on a UserInstance. Neither is a name, and calling both "User" would
-      // claim an access the second one does not hold.
-      expect(roleLabelKey(role)).toBeUndefined();
+      // On a per-instance assignment an empty role means no role on that
+      // instance. Naming it would claim an access the account does not hold.
+      expect(roleLabel(echo, role)).toBe('');
     }
   );
 
-  it('has no name for a role it does not know', () => {
-    expect(roleLabelKey('auditor')).toBeUndefined();
-  });
-
   it('is not fooled by a property every object has', () => {
-    expect(roleLabelKey('toString')).toBeUndefined();
-    expect(roleLabelKey('constructor')).toBeUndefined();
+    expect(roleLabel(echo, 'toString')).toBe('toString');
+    expect(roleLabel(echo, 'constructor')).toBe('constructor');
     expect(roleColor('toString')).toBe('gray');
   });
 });
 
-describe('roleLabel', () => {
-  const t = ((key: string) => `translated:${key}`) as unknown as TFunction;
-
-  it('translates a role it knows', () => {
-    expect(roleLabel(t, 'developer')).toBe('translated:roles.developer');
+describe('globalRoleLabel', () => {
+  it('names an account that holds no global role', () => {
+    // Most accounts: their access comes from their per-instance assignments,
+    // and the column showed them a badge with a shield and no text.
+    expect(globalRoleLabel(echo, '')).toBe('roles.user');
+    expect(globalRoleLabel(echo, undefined)).toBe('roles.user');
   });
 
-  it('shows a role it does not know as it came', () => {
-    // Rather than as a plain account: a role nobody here has heard of may well
-    // be allowed more than a user is.
-    expect(roleLabel(t, 'audit_reader')).toBe('audit reader');
+  it('names the ones that do', () => {
+    expect(globalRoleLabel(echo, 'super_admin')).toBe('roles.superAdmin');
   });
-
-  it.each([['', ''], [undefined, ''], [null, '']])(
-    'says nothing for %s',
-    (role, expected) => {
-      expect(roleLabel(t, role)).toBe(expected);
-    }
-  );
 });
 
 describe('roleColor', () => {

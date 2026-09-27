@@ -629,11 +629,10 @@
     "tabBasic": "Temel bilgiler",
     "tempPassword": "Geçici parola",
     "tempPasswordPlaceholder": "Geçici bir parola girin",
-    "thActions": "İşlemler",
-    "thCreated": "Oluşturulma",
-    "thInstances": "Örnekler",
+    "columnCreated": "Oluşturulma",
+    "columnInstances": "Örnekler",
     "thRole": "Rol",
-    "thTeams": "Takımlar",
+    "columnTeams": "Takımlar",
     "thUser": "Kullanıcı",
     "assignmentsUnreadable": "Okunamadı",
     "assignmentsUnreadableTitle": "Atamalar kullanılamıyor",
@@ -641,7 +640,9 @@
     "assignmentsUnreadableBody": "Listelenen hesaplardan {{count}} tanesi için örnek atamaları okunamadı, bu nedenle bu tablo ne yapabileceklerini söyleyemiyor. Neden: {{reason}}",
     "clearRole": "Rolü kaldır",
     "roleOptionSuperAdmin": "Süper yönetici (tam erişim)",
-    "roleOptionUser": "Kullanıcı (aşağıda örnek başına rol atayın)"
+    "roleOptionUser": "Kullanıcı (aşağıda örnek başına rol atayın)",
+    "columnUser": "Kullanıcı",
+    "columnRole": "Rol"
   },
   "listWarning": {
     "detailsUnresolved": "Bazı ayrıntılar çözümlenemedi",

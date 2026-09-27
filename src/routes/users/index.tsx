@@ -45,7 +45,7 @@ import { type Team,teamApi } from '@/apis/teams';
 import { userApi } from '@/apis/users';
 import PageHeader from '@/components/page/PageHeader';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
-import { roleColor, roleLabel } from '@/config/role-labels';
+import { globalRoleLabel, INSTANCE_ROLES, roleColor, roleLabel } from '@/config/role-labels';
 import { currentUserAtom } from '@/stores/auth';
 import { instancesAtom } from '@/stores/instance';
 import { describeError } from '@/utils/api-error';
@@ -468,11 +468,7 @@ const UsersPage = () => {
                     variant="light"
                     leftSection={<IconShield width="12" height="12" />}
                   >
-                    {/* No global role is not a missing name: it is an account
-                        whose access comes from its per-instance assignments,
-                        and the column said nothing at all for every one of
-                        them. Named here, where empty has that meaning. */}
-                    {user.role ? roleLabel(t, user.role) : t('roles.user')}
+                    {globalRoleLabel(t, user.role)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>
@@ -687,11 +683,10 @@ const UsersPage = () => {
                                 ...instanceRoles,
                                 [inst.id]: { ...instanceRoles[inst.id], role: role || '', team_id: instanceRoles[inst.id]?.team_id || '' }
                               })}
-                              data={[
-                                { value: 'instance_admin', label: t('roles.instanceAdmin') },
-                                { value: 'developer', label: t('roles.developer') },
-                                { value: 'viewer', label: t('roles.viewer') },
-                              ]}
+                              data={INSTANCE_ROLES.map((role) => ({
+                                value: role,
+                                label: roleLabel(t, role),
+                              }))}
                             />
                             {(config?.role === 'developer' || config?.role === 'viewer') && (
                               <Select

@@ -629,11 +629,10 @@
     "tabBasic": "基本信息",
     "tempPassword": "临时密码",
     "tempPasswordPlaceholder": "请输入临时密码",
-    "thActions": "操作",
-    "thCreated": "创建时间",
-    "thInstances": "实例",
+    "columnCreated": "创建时间",
+    "columnInstances": "实例",
     "thRole": "角色",
-    "thTeams": "团队",
+    "columnTeams": "团队",
     "thUser": "用户",
     "assignmentsUnreadable": "无法读取",
     "assignmentsUnreadableTitle": "分配信息不可用",
@@ -641,7 +640,9 @@
     "assignmentsUnreadableBody": "列出的账号中有 {{count}} 个无法读取实例分配，因此此表无法说明它们的权限。原因：{{reason}}",
     "clearRole": "清除角色",
     "roleOptionSuperAdmin": "超级管理员（完全访问）",
-    "roleOptionUser": "用户（在下方分配按实例角色）"
+    "roleOptionUser": "用户（在下方分配按实例角色）",
+    "columnUser": "用户",
+    "columnRole": "角色"
   },
   "listWarning": {
     "detailsUnresolved": "部分详情无法获取",
