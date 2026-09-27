@@ -17,6 +17,7 @@
 import { permission } from '@e2e/pom/permission';
 import { routesPom } from '@e2e/pom/routes';
 import { getFixtures } from '@e2e/utils/fixtures';
+import { roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page, test } from '@playwright/test';
 
 /**
@@ -57,9 +58,13 @@ const holdUserInstances = async (page: Page) => {
   return () => release();
 };
 
-/** The role the header names under the username, once it has read one. */
+/**
+ * The role the header names under the username, once it has read one. The
+ * words come from the app's own catalogue: matched exactly, so the negative
+ * assertions below keep discriminating rather than silently matching nothing.
+ */
 const headerRole = (page: Page, role: string) =>
-  page.locator('header').getByText(role, { exact: true });
+  page.locator('header').getByText(roleText(role), { exact: true });
 
 test('a viewer is offered no write control while their role is loading', async ({
   browser,

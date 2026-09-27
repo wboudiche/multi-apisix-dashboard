@@ -20,6 +20,7 @@ import { getFixtures } from '@e2e/utils/fixtures';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { uiGoto } from '@e2e/utils/ui';
+import { roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page } from '@playwright/test';
 
 import { API_ROUTES } from '@/config/constant';
@@ -225,7 +226,7 @@ test('a viewer is not offered the route test', async ({ browser }) => {
     // The role first: the button is hidden while it is still loading, so
     // without this the absence below could mean nothing.
     await expect(
-      page.locator('header').getByText('viewer', { exact: true })
+      page.locator('header').getByText(roleText('viewer'), { exact: true })
     ).toBeVisible({ timeout: 30000 });
 
     await page.goto(`/ui/routes/detail/${VIEWER_ROUTE_ID}`);
