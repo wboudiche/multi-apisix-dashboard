@@ -16,18 +16,9 @@
  */
 import { readFileSync } from 'node:fs';
 
-import type { TFunction } from 'i18next';
+import i18next from 'i18next';
 
-import { roleLabel } from '@/config/role-labels';
-
-// Read rather than imported: this runs in node, where a JSON import needs an
-// attribute the rest of the suite does not use.
-const en = JSON.parse(
-  readFileSync(
-    new URL('../../../src/locales/en/common.json', import.meta.url),
-    'utf8'
-  )
-) as Record<string, unknown>;
+import { type KnownRole, roleLabel } from '@/config/role-labels';
 
 /**
  * The words the dashboard shows for a role, and the account dropdown's line
@@ -37,19 +28,30 @@ const en = JSON.parse(
  * out here: the header used to render the stored value, so specs asserted
  * `viewer` against it with `exact: true`, and naming the role broke nine of
  * them at once (#319). Derived, they follow a change of wording instead of
- * pinning the old one.
+ * pinning the old one - and `KnownRole` makes a role this build does not know a
+ * compile error, rather than a locator the page can never match (#324).
+ *
+ * The real i18next does the interpolating, including the escaping it applies to
+ * an interpolated value, so these are the strings the page renders rather than
+ * an approximation of them.
  */
-const fromEn = ((key: string) =>
-  key
-    .split('.')
-    .reduce<unknown>(
-      (node, part) => (node as Record<string, unknown> | undefined)?.[part],
-      en
-    )) as unknown as TFunction;
+const en = JSON.parse(
+  readFileSync(
+    new URL('../../../src/locales/en/common.json', import.meta.url),
+    'utf8'
+  )
+) as Record<string, unknown>;
+
+const i18n = i18next.createInstance();
+void i18n.init({
+  lng: 'en',
+  defaultNS: 'common',
+  resources: { en: { common: en } },
+});
 
 /** What the header shows under the username for `role`. */
-export const roleText = (role: string) => roleLabel(fromEn, role);
+export const roleText = (role: KnownRole) => roleLabel(i18n.t, role);
 
 /** What the account dropdown shows for `role`. */
-export const accountRoleText = (role: string) =>
-  String(fromEn('header.accountRole')).replace('{{role}}', roleText(role));
+export const accountRoleText = (role: KnownRole) =>
+  i18n.t('header.accountRole', { role: roleText(role) });

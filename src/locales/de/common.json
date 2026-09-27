@@ -608,16 +608,16 @@
     "viaDiscovery": "über {{discovery}}"
   },
   "users": {
-    "accessDenied": "Zugriff verweigert",
-    "accessDeniedMessage": "Nur Super-Admins können Benutzer und RBAC-Rollen verwalten.",
+    "accessDeniedTitle": "Zugriff verweigert",
+    "accessDeniedBody": "Nur Super-Admins können Benutzer und RBAC-Rollen verwalten.",
     "addUser": "Benutzer hinzufügen",
     "allInstances": "Alle Instanzen",
     "allTeams": "Alle Teams",
-    "assignHint": "Weisen Sie diesen Benutzer APISIX-Instanzen mit einer bestimmten Rolle und einem Team zu.",
+    "accessHint": "Weisen Sie diesen Benutzer APISIX-Instanzen mit einer bestimmten Rolle und einem Team zu.",
     "assigned": "Zugewiesen",
     "noInstances": "Keine Instanzen zum Zuweisen verfügbar.",
-    "noUsers": "Keine Benutzer gefunden",
-    "noUsersHint": "Erstellen Sie Ihr erstes Teammitglied für die Zusammenarbeit.",
+    "emptyTitle": "Keine Benutzer gefunden",
+    "emptyBody": "Erstellen Sie Ihr erstes Teammitglied für die Zusammenarbeit.",
     "pageTitle": "Benutzerverwaltung",
     "permissions": "Berechtigungen",
     "resetFailed": "Passwort konnte nicht zurückgesetzt werden",
@@ -650,5 +650,9 @@
     "unknown": "Einige Ergebnisse fehlen möglicherweise.",
     "upstream_dependants_unresolved": "Die Abhängigkeiten der Upstreams konnten nicht vollständig gezählt werden. Alle Upstreams sind aufgeführt; ein Teil ihrer Abhängigkeiten wird möglicherweise nicht angezeigt.",
     "upstream_health_unresolved": "Der Zustand dieser Upstreams konnte nicht vom Gateway gelesen werden. Alle Upstreams sind aufgeführt; was ihre Prüfungen gesehen haben, wird nicht angezeigt."
+  },
+  "common": {
+    "expand": "Ausklappen",
+    "collapse": "Einklappen"
   }
 }

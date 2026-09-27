@@ -20,6 +20,8 @@ import { getFixtures } from '@e2e/utils/fixtures';
 import { roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page, test } from '@playwright/test';
 
+import type { KnownRole } from '@/config/role-labels';
+
 /**
  * What the interface offers while an account's role is still loading.
  *
@@ -63,7 +65,7 @@ const holdUserInstances = async (page: Page) => {
  * words come from the app's own catalogue: matched exactly, so the negative
  * assertions below keep discriminating rather than silently matching nothing.
  */
-const headerRole = (page: Page, role: string) =>
+const headerRole = (page: Page, role: KnownRole) =>
   page.locator('header').getByText(roleText(role), { exact: true });
 
 test('a viewer is offered no write control while their role is loading', async ({

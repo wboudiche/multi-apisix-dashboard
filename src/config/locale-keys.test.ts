@@ -14,60 +14,116 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
-import { resources } from './i18n';
+import { defaultNS, resources } from './i18n';
 
 /**
- * The keys the header and the Users page read, in every language.
+ * What a rename leaves behind, and what a screen needs in every language.
  *
- * Twice a translation has sat on a key nothing resolves: `users.th*` after the
- * columns were renamed to `users.column*` (#300), and `header.role` after the
- * account dropdown moved to `header.accountRole` (#319). Both times four
- * languages out of five read English while the words were right there in the
- * file, and nothing failed - i18next falls back to `en` without complaining.
+ * i18next answers a missing key with the English one and says nothing, so a
+ * renamed key strands its translations silently. It has happened three times:
+ * `users.th*` when the columns were renamed (#300), `header.role` when the
+ * account dropdown moved to `header.accountRole` (#319), and five more on the
+ * Users page that the hand-written lists of the first attempt missed (#324).
+ *
+ * Neither check below holds a list of keys. A list has to be extended by hand
+ * on every rename, which is the thing that keeps being forgotten.
  */
-const LANGUAGES = Object.keys(resources) as (keyof typeof resources)[];
 
-const READ_BY_THE_APP = [
-  'header.accountRole',
-  'roles.superAdmin',
-  'roles.instanceAdmin',
-  'roles.developer',
-  'roles.viewer',
-  'roles.user',
-  'users.columnUser',
-  'users.columnRole',
-  'users.columnInstances',
-  'users.columnTeams',
-  'users.columnCreated',
-];
+type Lang = keyof typeof resources;
 
-/** Keys that were renamed: a translation put back on one would be unreachable. */
-const RETIRED = [
-  'header.role',
-  'users.thUser',
-  'users.thRole',
-  'users.thInstances',
-  'users.thTeams',
-  'users.thCreated',
-  'users.thActions',
-];
+const BASE: Lang = 'en';
+const LANGUAGES = (Object.keys(resources) as Lang[]).filter((l) => l !== BASE);
 
-const resolve = (lang: keyof typeof resources, key: string): unknown =>
-  key
-    .split('.')
-    .reduce<unknown>(
-      (node, part) => (node as Record<string, unknown> | undefined)?.[part],
-      resources[lang].common
-    );
+const bundle = (lang: Lang) => resources[lang][defaultNS] as Record<string, unknown>;
+
+/** Every leaf, as the dotted key i18next resolves. */
+const flatten = (node: unknown, prefix = ''): Map<string, string> => {
+  const out = new Map<string, string>();
+  if (typeof node === 'string') {
+    out.set(prefix, node);
+    return out;
+  }
+  if (node && typeof node === 'object') {
+    for (const [key, value] of Object.entries(node)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      for (const [k, v] of flatten(value, path)) out.set(k, v);
+    }
+  }
+  return out;
+};
+
+const placeholders = (value: string) =>
+  [...value.matchAll(/\{\{\s*([^}\s]+)\s*\}\}/g)].map((m) => m[1]).sort();
+
+const en = flatten(bundle(BASE));
 
 describe.each(LANGUAGES)('%s', (lang) => {
-  it.each(READ_BY_THE_APP)('translates %s', (key) => {
-    expect(resolve(lang, key)).toEqual(expect.any(String));
+  const translated = flatten(bundle(lang));
+
+  // The retired-key check. A translation on a key `en` does not have is a
+  // translation nothing can resolve - which is what a rename leaves behind.
+  it('holds no key en does not have', () => {
+    const stranded = [...translated.keys()].filter((key) => !en.has(key));
+    expect(stranded).toEqual([]);
   });
 
-  it.each(RETIRED)('has nothing left on %s', (key) => {
-    expect(resolve(lang, key)).toBeUndefined();
+  // The other half of a rename: the words must still say the same thing about
+  // their arguments. eslint's i18n/interpolation-data only lints en, so a
+  // translation that dropped {{role}} lints clean and renders a blank role.
+  it('keeps the placeholders en uses', () => {
+    const changed = [...translated.entries()]
+      .filter(([key]) => en.has(key))
+      .map(([key, value]) => ({
+        key,
+        mine: placeholders(value),
+        en: placeholders(en.get(key)!),
+      }))
+      .filter(({ mine, en: base }) => mine.join() !== base.join());
+    expect(changed).toEqual([]);
+  });
+});
+
+/**
+ * The screens whose every key must exist in every language. Read out of the
+ * source rather than enumerated: a list of keys goes stale, and the first
+ * attempt at this test listed 11 of the 48 these two files read.
+ *
+ * Only the two screens the three renames touched, for now - the rest of the
+ * dashboard is translated as far as it is translated, which is what
+ * vite-plugin-i18n-progress reports on.
+ */
+const FULLY_TRANSLATED_SCREENS = [
+  'src/routes/users/index.tsx',
+  'src/components/Header/index.tsx',
+];
+
+/** The keys a file asks for by name. A key built from a variable is invisible
+ *  here, which is the price of not keeping a list. */
+const keysRead = (file: string) =>
+  [...readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8')
+    .matchAll(/\bt\('([^']+)'/g)]
+    .map((m) => m[1])
+    .filter((key) => en.has(key));
+
+describe.each(FULLY_TRANSLATED_SCREENS)('%s', (file) => {
+  const keys = [...new Set(keysRead(file))].sort();
+
+  it('reads keys en holds', () => {
+    // Guards the regex above: a file whose keys stopped being found would make
+    // every language below pass on an empty list.
+    expect(keys.length).toBeGreaterThan(10);
+  });
+
+  it.each(LANGUAGES)('is translated into %s', (lang) => {
+    const translated = flatten(bundle(lang));
+    const missing = keys.filter((key) => {
+      const value = translated.get(key);
+      return typeof value !== 'string' || value.trim() === '';
+    });
+    expect(missing).toEqual([]);
   });
 });

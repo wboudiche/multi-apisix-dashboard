@@ -608,16 +608,16 @@
     "viaDiscovery": "vía {{discovery}}"
   },
   "users": {
-    "accessDenied": "Acceso denegado",
-    "accessDeniedMessage": "Solo los superadministradores pueden gestionar usuarios y roles RBAC.",
+    "accessDeniedTitle": "Acceso denegado",
+    "accessDeniedBody": "Solo los superadministradores pueden gestionar usuarios y roles RBAC.",
     "addUser": "Añadir usuario",
     "allInstances": "Todas las instancias",
     "allTeams": "Todos los equipos",
-    "assignHint": "Asigna este usuario a instancias de APISIX con un rol y un equipo específicos.",
+    "accessHint": "Asigna este usuario a instancias de APISIX con un rol y un equipo específicos.",
     "assigned": "Asignado",
     "noInstances": "No hay instancias disponibles para asignar.",
-    "noUsers": "No se encontraron usuarios",
-    "noUsersHint": "Crea tu primer miembro del equipo para colaborar.",
+    "emptyTitle": "No se encontraron usuarios",
+    "emptyBody": "Crea tu primer miembro del equipo para colaborar.",
     "pageTitle": "Gestión de usuarios",
     "permissions": "Permisos",
     "resetFailed": "No se pudo restablecer la contraseña",
@@ -650,5 +650,9 @@
     "unknown": "Es posible que falten algunos resultados.",
     "upstream_dependants_unresolved": "No se ha podido contar por completo lo que depende de cada upstream. Todos los upstreams aparecen en la lista; puede que no se muestre parte de lo que depende de ellos.",
     "upstream_health_unresolved": "No se ha podido leer el estado de estos upstreams desde la pasarela. Todos aparecen en la lista; lo que han visto sus comprobaciones no se muestra."
+  },
+  "common": {
+    "expand": "Expandir",
+    "collapse": "Contraer"
   }
 }

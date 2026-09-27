@@ -31,7 +31,9 @@ const ROLES = {
   viewer: { labelKey: 'roles.viewer', color: 'gray' },
 } as const;
 
-type KnownRole = keyof typeof ROLES;
+/** The roles this build knows. Exported so a caller that names one - a spec,
+ *  say - names it at compile time rather than at assertion time. */
+export type KnownRole = keyof typeof ROLES;
 
 // Own properties only: every object answers to 'toString' and 'constructor',
 // and a role is a string that arrives from a record in etcd.
