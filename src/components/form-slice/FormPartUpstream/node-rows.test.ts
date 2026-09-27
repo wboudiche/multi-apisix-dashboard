@@ -16,6 +16,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { APISIX } from '@/types/schema/apisix';
+
 import { genRecord, nodeHostsFrom, parseToNodes } from './node-rows';
 
 describe('genRecord', () => {
@@ -53,14 +55,25 @@ describe('parseToNodes', () => {
 
   // No port where the key carries none: a node shown or saved on port 1 is
   // what #306 was reported for, and the previews read this too.
+  // toStrictEqual, because toEqual reads a key set to undefined as absent,
+  // and "no port" is the whole point here.
   it('keeps a bare IPv6 address whole, and invents no port', () => {
-    expect(parseToNodes({ 'fd00::1': 2 })).toEqual([
+    expect(parseToNodes({ 'fd00::1': 2 })).toStrictEqual([
       { host: 'fd00::1', weight: 2 },
     ]);
   });
 
   it('invents no port for a key that has none', () => {
-    expect(parseToNodes({ 'a.com': 1 })).toEqual([{ host: 'a.com', weight: 1 }]);
+    expect(parseToNodes({ 'a.com': 1 })).toStrictEqual([
+      { host: 'a.com', weight: 1 },
+    ]);
+  });
+
+  // A bracket with no separator behind it is not a port either.
+  it('invents no port for a key it cannot read past the brackets', () => {
+    expect(parseToNodes({ '[::1]8080': 1 })).toStrictEqual([
+      { host: '::1', weight: 1 },
+    ]);
   });
 
   // Shapes APISIX does not write, but which the editor must not turn into
@@ -87,7 +100,26 @@ describe('nodeHostsFrom', () => {
     expect(nodeHostsFrom([{ host: 'b.com', port: 80, weight: 1 }])).toEqual(['b.com']);
   });
 
+  // The spelling the old one-liner cut in half, stripping /:\d+$/.
+  it('keeps a bare IPv6 host whole', () => {
+    expect(nodeHostsFrom({ 'fd00::1': 1 })).toEqual(['fd00::1']);
+  });
+
   it('answers nothing for no nodes', () => {
     expect(nodeHostsFrom(undefined)).toEqual([]);
+  });
+});
+
+describe('the node schema', () => {
+  // APISIX takes a node with no port, in either shape, and answers 201: the
+  // form used to refuse one, so an upstream stored without a port could not
+  // be edited without inventing one.
+  it('takes a node with no port', () => {
+    expect(APISIX.UpstreamNode.safeParse({ host: 'a.com', weight: 1 }).success).toBe(true);
+  });
+
+  it('still wants a host and a weight', () => {
+    expect(APISIX.UpstreamNode.safeParse({ weight: 1 }).success).toBe(false);
+    expect(APISIX.UpstreamNode.safeParse({ host: 'a.com' }).success).toBe(false);
   });
 });

@@ -173,15 +173,20 @@ test('a removed row leaves the others alone', async ({ page }) => {
   await expect(hosts.first()).toHaveValue('second.example.com');
   await expect(ports.first()).toHaveValue('8081');
 
-  // The row that stayed is still the form's: what is typed in it lands, and
-  // what it lacks is still asked for.
-  await ports.first().fill('');
-  await ports.first().press('Tab');
+  // The row that stayed is still the form's: what is typed in it lands,
+  // and what it lacks is still asked for.
+  await ports.first().fill('9090');
+  const weight = page.getByPlaceholder('1', { exact: true });
+  await weight.fill('');
+  await weight.press('Tab');
   await uiWizardNext(page);
-  await expect(portFields(page)).toHaveAttribute('aria-invalid', 'true');
+
+  await expect(weight).toHaveAttribute('aria-invalid', 'true');
+  await expect(hosts.first()).toHaveValue('second.example.com');
+  await expect(ports.first()).toHaveValue('9090');
 });
 
-test('an emptied number says so, on its own field', async ({ page }) => {
+test('an emptied weight says so, on its own field', async ({ page }) => {
   await goToNodes(page, randomId(PREFIX));
 
   await hostFields(page).fill('required.example.com');
@@ -196,15 +201,28 @@ test('an emptied number says so, on its own field', async ({ page }) => {
   await expect(page.getByText('Required').first()).toBeVisible();
   // And the step did not advance.
   await expect(hostFields(page)).toHaveValue('required.example.com');
+});
 
-  // The same for a port, which has no default to fall back on.
-  await weight.fill('1');
-  await weight.press('Tab');
-  await expect(weight).not.toHaveAttribute('aria-invalid', 'true');
-  await portFields(page).fill('');
-  await portFields(page).press('Tab');
+// A port is not required: APISIX takes a node without one, in either shape,
+// and lets the scheme decide. The form used to refuse it, which made an
+// upstream stored that way impossible to edit without inventing a port.
+test('a node with no port is taken as it is', async ({ page }) => {
+  const name = randomId(PREFIX);
+  await goToNodes(page, name);
+
+  await hostFields(page).fill('noport.example.com');
+  await expect(portFields(page)).toHaveValue('');
+  await uiWizardNext(page);
   await uiWizardNext(page);
 
-  await expect(portFields(page)).toHaveAttribute('aria-invalid', 'true');
-  await expect(hostFields(page)).toHaveValue('required.example.com');
+  const posted = page.waitForResponse(
+    (r) => r.url().includes(API_UPSTREAMS) && r.request().method() === 'POST'
+  );
+  await upstreamsPom.getAddBtn(page).click();
+  const response = await posted;
+
+  expect(response.ok()).toBe(true);
+  expect(
+    (response.request().postDataJSON() as { nodes: object[] }).nodes
+  ).toEqual([{ host: 'noport.example.com', weight: 1 }]);
 });

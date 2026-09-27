@@ -37,13 +37,16 @@ export const genRecord = () => ({ host: '', weight: 1 }) as APISIXType['Upstream
  * `nodes`, `"host:port"`. An IPv6 address comes bracketed, `"[::1]:8080"`,
  * and splitting such a key on its first colon leaves no host at all.
  */
-export const splitHostPort = (
-  key: string
-): { host: string; port?: number } => {
+const splitHostPort = (key: string): { host: string; port?: number } => {
   if (key.startsWith('[')) {
     const close = key.indexOf(']');
     const host = close > 1 ? key.slice(1, close) : '';
-    if (host) return { host, port: Number(key.slice(close + 2)) || undefined };
+    // Only what follows a "]:" is a port. Reading past anything else would
+    // invent one out of the rest of the key.
+    if (host && key[close + 1] === ':') {
+      return { host, port: Number(key.slice(close + 2)) || undefined };
+    }
+    if (host) return { host };
   }
   const colon = key.lastIndexOf(':');
   // Several colons and no brackets: an IPv6 address written bare, with no

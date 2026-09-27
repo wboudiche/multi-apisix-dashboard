@@ -220,7 +220,11 @@ export const parseWsdlBundle = (
         if (opts.upstream.serviceId) route.service_id = opts.upstream.serviceId;
       } else {
         const scheme = url.protocol.replace(':', '') || 'http';
-        const host = url.hostname;
+        // URL drops the brackets of an IPv6 host; the node key needs them
+        // back, or its colons read as the separator before the port.
+        const host = url.hostname.includes(':')
+          ? `[${url.hostname}]`
+          : url.hostname;
         const port = url.port || (scheme === 'https' ? '443' : '80');
         route.upstream = {
           nodes: { [`${host}:${port}`]: 1 },

@@ -18,7 +18,7 @@ import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
 import { NODE_HOST_PH, NODE_PORT_PH } from '@e2e/utils/ui/nodes';
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 /**
  * APISIX stores an IPv6 node bracketed, `{"[fd00::1]:8080": 1}`. The editor
@@ -27,43 +27,70 @@ import { expect } from '@playwright/test';
  * was cut into host `fd00:` on port 1 (#315).
  */
 
-const UPSTREAM_ID = 'e2e-ipv6-nodes';
-const PATH = `/api/v1/apisix/admin/upstreams/${UPSTREAM_ID}`;
-
-test('the editor and the preview read an IPv6 node the same way', async ({
-  page,
-}) => {
+const seed = async (id: string, nodes: Record<string, number>) => {
   const fx = getFixtures();
   const token = await loginAdmin();
   const headers = { 'X-Instance-ID': fx.localInstanceId };
-  await apiFetch(PATH, token, {
+  const path = `/api/v1/apisix/admin/upstreams/${id}`;
+  await apiFetch(path, token, {
     method: 'PUT',
     headers,
-    json: {
-      name: UPSTREAM_ID,
-      type: 'roundrobin',
-      nodes: { '[fd00::1]:8080': 1 },
-    },
+    json: { name: id, type: 'roundrobin', nodes },
   });
+  return () =>
+    apiFetch(path, token, { method: 'DELETE', headers }).catch(() => undefined);
+};
 
+/** The host and port as the editor reads them, then as the preview shows them. */
+const readBothViews = async (page: Page, id: string) => {
+  await page.goto(`/ui/upstreams/detail/${id}`);
+  await page.getByRole('button', { name: 'Nodes', exact: true }).click();
+
+  const host = page.getByPlaceholder(NODE_HOST_PH, { exact: true });
+  await expect(host).not.toHaveValue('', { timeout: 30000 });
+  const editor = {
+    host: await host.inputValue(),
+    port: await page.getByPlaceholder(NODE_PORT_PH, { exact: true }).inputValue(),
+  };
+
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  const cells = page.getByRole('row').filter({ hasText: 'fd00' }).getByRole('cell');
+  await expect(cells.first()).toBeVisible({ timeout: 30000 });
+  return {
+    editor,
+    preview: {
+      host: (await cells.nth(0).textContent())?.trim(),
+      port: (await cells.nth(1).textContent())?.trim(),
+    },
+  };
+};
+
+test('the editor and the preview read a bracketed IPv6 node the same way', async ({
+  page,
+}) => {
+  const clean = await seed('e2e-ipv6-bracketed', { '[fd00::1]:8080': 1 });
   try {
-    await page.goto(`/ui/upstreams/detail/${UPSTREAM_ID}`);
-    await page.getByRole('button', { name: 'Nodes' }).click();
+    const { editor, preview } = await readBothViews(page, 'e2e-ipv6-bracketed');
 
-    await expect(
-      page.getByPlaceholder(NODE_HOST_PH, { exact: true })
-    ).toHaveValue('fd00::1', { timeout: 30000 });
-    await expect(
-      page.getByPlaceholder(NODE_PORT_PH, { exact: true })
-    ).toHaveValue('8080');
-
-    await page.getByRole('button', { name: 'Preview' }).click();
-    const row = page.getByRole('row').filter({ hasText: 'fd00' });
-    await expect(row).toContainText('fd00::1');
-    await expect(row).toContainText('8080');
+    // Exactly the address, brackets and all removed: the previews used to
+    // show "[fd00::1]", which a substring check would have accepted.
+    expect(editor).toEqual({ host: 'fd00::1', port: '8080' });
+    expect(preview).toEqual({ host: 'fd00::1', port: '8080' });
   } finally {
-    await apiFetch(PATH, token, { method: 'DELETE', headers }).catch(
-      () => undefined
-    );
+    await clean();
+  }
+});
+
+test('a bare IPv6 address is not cut in half', async ({ page }) => {
+  const clean = await seed('e2e-ipv6-bare', { 'fd00::1': 2 });
+  try {
+    const { editor, preview } = await readBothViews(page, 'e2e-ipv6-bare');
+
+    // The previews used to read this as host "fd00:" on port 1, and the
+    // editor offered to save it that way.
+    expect(editor).toEqual({ host: 'fd00::1', port: '' });
+    expect(preview).toEqual({ host: 'fd00::1', port: '-' });
+  } finally {
+    await clean();
   }
 });
