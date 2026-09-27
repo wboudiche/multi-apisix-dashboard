@@ -46,6 +46,7 @@ import { type Team } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { BuildIdentity } from '@/components/BuildIdentity';
 import { queryClient } from '@/config/global';
+import { roleLabel } from '@/config/role-labels';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom, instancesAtom, setInstancesAtom } from '@/stores/instance';
@@ -361,7 +362,7 @@ export const Header: FC<HeaderProps> = (props) => {
                     </Text>
                     {activeUserInstance && (
                       <Text size="10px" c="dimmed" style={{ marginTop: -4 }}>
-                        {activeUserInstance.role.replace('_', ' ')}
+                        {roleLabel(t, activeUserInstance.role)}
                       </Text>
                     )}
                   </Box>
@@ -375,8 +376,11 @@ export const Header: FC<HeaderProps> = (props) => {
               </Menu.Item>
               {effectiveRole && (
                 <Menu.Item>
+                  {/* The same name as the line above it: the two used to be
+                      spelled differently, and in four languages out of five
+                      this one was not translated at all (#319). */}
                   {t('header.accountRole', {
-                    role: effectiveRole.replace('_', ' '),
+                    role: roleLabel(t, effectiveRole),
                   })}
                 </Menu.Item>
               )}

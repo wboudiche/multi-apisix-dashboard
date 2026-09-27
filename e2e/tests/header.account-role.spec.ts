@@ -16,6 +16,7 @@
  */
 import { env } from '@e2e/utils/env';
 import { getFixtures } from '@e2e/utils/fixtures';
+import { accountRoleText, roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page, test } from '@playwright/test';
 
 /**
@@ -58,16 +59,18 @@ test('shows a developer their per-instance role in the account dropdown', async 
   // Wait for the role beside the username, which only renders once the
   // instance list and the user's assignment for it have loaded. Asserting it
   // first keeps the dropdown check below from racing that fetch.
-  await expect(page.getByText('developer', { exact: true })).toBeVisible({
-    timeout: 15000,
-  });
+  await expect(
+    page.getByText(roleText('developer'), { exact: true })
+  ).toBeVisible({ timeout: 15000 });
 
   await openAccountMenu(page, dev.username);
 
   // The dropdown must agree with the header rather than leaving Role: blank.
-  await expect(page.getByText('Role: developer')).toBeVisible({
-    timeout: 10000,
-  });
+  // Exactly: a substring match is case-insensitive, so it would hold just as
+  // well against the raw role this line used to render.
+  await expect(
+    page.getByText(accountRoleText('developer'), { exact: true })
+  ).toBeVisible({ timeout: 10000 });
 });
 
 test('shows a super admin their global role in the account dropdown', async ({
@@ -81,7 +84,9 @@ test('shows a super admin their global role in the account dropdown', async ({
 
   await openAccountMenu(page, admin.username);
 
-  await expect(page.getByText('Role: super admin')).toBeVisible({
-    timeout: 10000,
-  });
+  // Exactly: a substring match is case-insensitive, so it would hold just as
+  // well against the raw role this line used to render.
+  await expect(
+    page.getByText(accountRoleText('super_admin'), { exact: true })
+  ).toBeVisible({ timeout: 10000 });
 });

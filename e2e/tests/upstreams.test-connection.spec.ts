@@ -20,6 +20,7 @@ import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
 import { uiAddNode } from '@e2e/utils/ui/nodes';
+import { roleText } from '@e2e/utils/ui/roles';
 import { uiDiscardDraftIfPresent, uiWizardNext } from '@e2e/utils/ui/upstreams';
 import { type BrowserContext, expect } from '@playwright/test';
 
@@ -87,7 +88,7 @@ test('a viewer is not offered the test', async ({ browser }) => {
     // The button is also hidden while the role is still loading. Wait for
     // the role, and for the node, so the absence below means something.
     await expect(
-      page.locator('header').getByText('viewer', { exact: true })
+      page.locator('header').getByText(roleText('viewer'), { exact: true })
     ).toBeVisible({ timeout: 30000 });
     await expect(page.getByPlaceholder('Hostname or IP')).toHaveValue('10.0.0.1', {
       timeout: 30000,
@@ -113,7 +114,7 @@ test('a developer can test a connection', async ({ browser }) => {
     await permission.loginAs(page, fx.users.dev.username, fx.users.dev.password);
     await permission.switchInstance(page, 'Local APISIX');
     await expect(
-      page.locator('header').getByText('developer', { exact: true })
+      page.locator('header').getByText(roleText('developer'), { exact: true })
     ).toBeVisible({ timeout: 30000 });
 
     await upstreamsPom.toAdd(page);

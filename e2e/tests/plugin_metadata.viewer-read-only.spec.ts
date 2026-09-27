@@ -20,6 +20,7 @@ import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { e2eReq } from '@e2e/utils/req';
 import { ensureUser, ensureUserInstanceRole } from '@e2e/utils/seed-client';
+import { roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page, test } from '@playwright/test';
 
 import { API_PLUGIN_METADATA } from '@/config/constant';
@@ -163,7 +164,7 @@ const openAsViewerThenBecomeAdmin = async (page: Page, username: string) => {
   await permission.switchInstance(page, 'Staging APISIX');
   await page.goto('/ui/routes');
   await expect(
-    page.locator('header').getByText('viewer', { exact: true })
+    page.locator('header').getByText(roleText('viewer'), { exact: true })
   ).toBeVisible({ timeout: 30000 });
 
   await page.getByRole('link', { name: 'Plugin Metadata', exact: true }).click();
@@ -180,7 +181,7 @@ const openAsViewerThenBecomeAdmin = async (page: Page, username: string) => {
   await page.getByRole('option', { name: 'Local APISIX' }).click();
   await expect(switcher).toHaveValue('Local APISIX');
   await expect(
-    page.locator('header').getByText('instance admin', { exact: true })
+    page.locator('header').getByText(roleText('instance_admin'), { exact: true })
   ).toBeVisible({ timeout: 30000 });
 
   return card;
