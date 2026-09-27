@@ -376,9 +376,12 @@ export const Header: FC<HeaderProps> = (props) => {
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Label>{t('header.account')}</Menu.Label>
-              <Menu.Item>
-                {currentUser?.email}
-              </Menu.Item>
+              {/* A Label for the same reason as the role below it and the
+                  build line under that: an Item is a tab stop Enter does
+                  nothing to, it closes the menu when clicked, and it cancels
+                  mousedown - so the address could not be selected to be
+                  pasted anywhere. */}
+              <Menu.Label>{currentUser?.email}</Menu.Label>
               {effectiveRole && (
                 // A Label, not an Item, for the reason the build line below
                 // gives: an Item is a tab stop that does nothing, and clicking

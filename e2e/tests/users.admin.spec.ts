@@ -35,7 +35,7 @@ import {
   HttpError,
 } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
-import { roleText } from '@e2e/utils/ui/roles';
+import { globalRoleText, roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page } from '@playwright/test';
 
 const PREFIX = randomId('adm-user');
@@ -497,9 +497,9 @@ test('the table dates an account and names its role', async ({ page }) => {
   const cells = (username: string) =>
     adminPom.rowByText(page, username).getByRole('cell');
 
-  await expect(cells(plain).nth(role)).toHaveText('User');
+  await expect(cells(plain).nth(role)).toHaveText(globalRoleText());
   await expect(cells(plain).nth(created)).toHaveText(dated);
-  await expect(cells(superAdmin).nth(role)).toHaveText('Super Admin');
+  await expect(cells(superAdmin).nth(role)).toHaveText(roleText('super_admin'));
   await expect(cells(superAdmin).nth(created)).toHaveText(dated);
 
   // And no row anywhere claims the zero time as a date, whatever the locale

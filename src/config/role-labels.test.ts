@@ -32,13 +32,19 @@ void i18n.init({ lng: 'en', defaultNS, resources });
 const t = i18n.t;
 
 describe('roleLabel', () => {
+  // Against the bundle's own value, not against the words written out here:
+  // this is about which key a role reaches, and rewording a label in
+  // en/common.json is not a thing that should break six assertions.
   it.each([
-    ['super_admin', 'Super Admin'],
-    ['instance_admin', 'Instance Admin'],
-    ['developer', 'Developer'],
-    ['viewer', 'Viewer'],
-  ])('names %s', (role, name) => {
-    expect(roleLabel(t, role)).toBe(name);
+    ['super_admin', 'roles.superAdmin'],
+    ['instance_admin', 'roles.instanceAdmin'],
+    ['developer', 'roles.developer'],
+    ['viewer', 'roles.viewer'],
+    // as const, so the key stays a literal: t() takes the keys en holds, not
+    // any string.
+  ] as const)('names %s', (role, key) => {
+    expect(roleLabel(t, role)).toBe(t(key));
+    expect(roleLabel(t, role)).not.toContain('roles.');
   });
 
   it('shows a role it does not know rather than naming it', () => {
@@ -67,12 +73,13 @@ describe('globalRoleLabel', () => {
   it('names an account that holds no global role', () => {
     // Most accounts: their access comes from their per-instance assignments,
     // and the column showed them a badge with a shield and no text (#300).
-    expect(globalRoleLabel(t, '')).toBe('User');
-    expect(globalRoleLabel(t, undefined)).toBe('User');
+    expect(globalRoleLabel(t, '')).toBe(t('roles.user'));
+    expect(globalRoleLabel(t, '')).not.toContain('roles.');
+    expect(globalRoleLabel(t, undefined)).toBe(t('roles.user'));
   });
 
   it('names the ones that do', () => {
-    expect(globalRoleLabel(t, 'super_admin')).toBe('Super Admin');
+    expect(globalRoleLabel(t, 'super_admin')).toBe(t('roles.superAdmin'));
   });
 });
 

@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 
 import i18next from 'i18next';
 
-import { type KnownRole, roleLabel } from '@/config/role-labels';
+import { globalRoleLabel, type KnownRole, roleLabel } from '@/config/role-labels';
 
 /**
  * The words the dashboard shows for a role, and the account dropdown's line
@@ -35,6 +35,9 @@ import { type KnownRole, roleLabel } from '@/config/role-labels';
  * an interpolated value, so these are the strings the page renders rather than
  * an approximation of them.
  */
+// Read rather than imported: this runs in node, where a JSON import needs an
+// attribute the rest of the suite does not use, and the whole run fails to load
+// the module without it.
 const en = JSON.parse(
   readFileSync(
     new URL('../../../src/locales/en/common.json', import.meta.url),
@@ -51,6 +54,9 @@ void i18n.init({
 
 /** What the header shows under the username for `role`. */
 export const roleText = (role: KnownRole) => roleLabel(i18n.t, role);
+
+/** What the Users page shows for an account that holds no global role. */
+export const globalRoleText = () => globalRoleLabel(i18n.t, '');
 
 /** What the account dropdown shows for `role`. */
 export const accountRoleText = (role: KnownRole) =>

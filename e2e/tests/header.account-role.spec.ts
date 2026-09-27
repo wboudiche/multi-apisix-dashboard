@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { permission } from '@e2e/pom/permission';
 import {
   adminToken,
   deleteTeamsByPrefix,
@@ -94,9 +95,9 @@ test('shows a developer their per-instance role in the account dropdown', async 
 test('shows a super admin their global role in the account dropdown', async ({
   page,
 }) => {
-  // A super_admin has no user_instances row, so the header renders no role
-  // text at all for them — the dropdown is the only place they see it, which
-  // is why the field cannot simply be dropped.
+  // The dropdown says which role the word beside the username is: both read the
+  // effective role since #324, where this line used to be the only place a
+  // super_admin saw one at all.
   const admin = getFixtures().users.admin;
   await signIn(page, admin.username, admin.password);
 
@@ -130,6 +131,11 @@ test('names the role that governs, not an assignment it overrides', async ({
   });
 
   await signIn(page, username, password);
+  // The instance the badge reads, pinned: a fresh context auto-selects
+  // whichever instance the backend returns first, and on any other one there is
+  // no assignment for the effective role to override - the test would pass
+  // without exercising anything.
+  await permission.switchInstance(page, 'Local APISIX');
 
   const header = page.locator('header');
   await expect(header.getByText(roleText('super_admin'), { exact: true })).toBeVisible({
