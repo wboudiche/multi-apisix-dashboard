@@ -58,7 +58,11 @@ const UpstreamPassHost = z.union([
 
 const UpstreamNode = z.object({
   host: z.string().min(1),
-  port: z.number().int().gte(1).lte(65535),
+  // Optional, as APISIX has it: a node with no port is accepted in either
+  // shape, and the gateway then uses the scheme's own. Requiring one here
+  // made an upstream stored without a port impossible to edit without
+  // inventing one.
+  port: z.number().int().gte(1).lte(65535).optional(),
   weight: z.number().int(),
   priority: z.number().int().optional(),
 });

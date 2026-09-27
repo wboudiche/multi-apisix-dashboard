@@ -17,6 +17,8 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
+import type { APISIXType } from '@/types/schema/apisix';
 import { parseWsdlBundle, parseWsdlString } from '@/utils/wsdl-import';
 
 const SOAP11 = `<?xml version="1.0"?>
@@ -59,6 +61,27 @@ describe('parseWsdlString — per-operation, SOAP 1.1', () => {
     expect(get.upstream_id).toBe('billing-soap');
     expect(get.labels?.['soap-service']).toBe('BillingService');
     expect(get.status).toBe(1);
+  });
+
+  // An IPv6 endpoint: URL.hostname hands back the brackets, and the node key
+  // wants them - the one reader of that key splits on the "]:" (#315).
+  it('writes an IPv6 endpoint as a node key that reads back', () => {
+    const r = parseWsdlString(
+      SOAP11.replace(
+        'http://billing-soap:8080/services/Billing',
+        'http://[fd00::1]:8080/services/Billing'
+      ),
+      { mode: 'passthrough', upstream: { kind: 'auto' } }
+    );
+
+    expect(r.routes[0].upstream?.nodes).toEqual({ '[fd00::1]:8080': 1 });
+    expect(
+      parseToNodes(
+        r.routes[0].upstream?.nodes as APISIXType['UpstreamNodeListOrObj']
+      )
+    ).toEqual([
+      { host: 'fd00::1', port: 8080, weight: 1 },
+    ]);
   });
 
   it('passthrough mode creates one route per service with no vars', () => {

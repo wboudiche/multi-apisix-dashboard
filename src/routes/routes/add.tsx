@@ -39,6 +39,7 @@ import {
 import { UpstreamModeSelector } from '@/components/form-slice/FormPartRoute/UpstreamModeSelector';
 import { useDuplicateRouteCheck } from '@/components/form-slice/FormPartRoute/useDuplicateRouteCheck';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
+import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
 import { FormWizard } from '@/components/form-slice/FormWizard';
 import PageHeader from '@/components/page/PageHeader';
 import { PAGE_SIZE_MAX } from '@/config/constant';
@@ -231,8 +232,8 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
       getSummary: (values: Record<string, any>) => {
         if (values.service_id && values.service_id !== 'none') return 'Bound to service';
         if (values.upstream_id === 'custom') {
-          const nodes = values.upstream?.nodes;
-          return nodes?.length ? `Custom: ${nodes.length} node(s)` : 'Custom upstream';
+          const nodes = parseToNodes(values.upstream?.nodes);
+          return nodes.length ? `Custom: ${nodes.length} node(s)` : 'Custom upstream';
         }
         if (values.upstream_id) return 'Existing upstream';
         return null;

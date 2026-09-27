@@ -32,21 +32,11 @@ import { getUpstreamQueryOptions } from '@/apis/hooks';
 import { TestConnectionButton } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 
+import { parseToNodes } from '../FormPartUpstream/node-rows';
+
 type Props = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: Record<string, any>;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const normalizeNodes = (raw: any): Array<{ host: string; port: string | number; weight: number }> => {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  return Object.entries(raw).map(([key, weight]) => {
-    const lastColon = key.lastIndexOf(':');
-    const host = lastColon > 0 ? key.substring(0, lastColon) : key;
-    const port = lastColon > 0 ? key.substring(lastColon + 1) : '';
-    return { host, port, weight: weight as number };
-  });
 };
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
@@ -78,7 +68,7 @@ export const ServicePreviewSummary = ({ data }: Props) => {
   });
   const fetchedUpstream = upstreamQuery.data?.value;
   const upstreamData = resolvedUpstreamId ? fetchedUpstream : upstream;
-  const nodes = normalizeNodes(upstreamData?.nodes);
+  const nodes = parseToNodes(upstreamData?.nodes);
 
   return (
     <Stack gap={4}>

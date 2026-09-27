@@ -579,7 +579,7 @@
         },
         "port": {
           "title": "Port",
-          "desc": "Port number (1-65535)"
+          "desc": "Port number (1-65535). Leave empty to use the scheme default, which APISIX fills for http and https."
         },
         "priority": {
           "title": "Priority"

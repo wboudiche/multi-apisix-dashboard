@@ -377,7 +377,8 @@
           "title": "Host"
         },
         "port": {
-          "title": "Port"
+          "title": "Port",
+          "desc": "Portnummer (1-65535). Leer lassen, um den Standard des Schemas zu verwenden, den APISIX für http und https einsetzt."
         },
         "priority": {
           "title": "Priorität"

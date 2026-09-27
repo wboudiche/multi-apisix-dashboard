@@ -33,8 +33,9 @@ import { TestConnectionButton } from '@/components/form-slice/FormPartUpstream/T
 import { isResourceEnabled } from '@/utils/status';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 
+import { parseToNodes } from '../FormPartUpstream/node-rows';
 import type { RoutePostType } from './schema';
-import { METHOD_COLORS, normalizeNodes, SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
+import { METHOD_COLORS, SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
 
 type Props = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,7 +81,7 @@ export const RoutePreviewSummary = ({ data }: Props) => {
   const fetchedUpstream = upstreamQuery.data?.value;
   const isCustom = upstreamId === UPSTREAM_CUSTOM || (!upstreamId && upstream?.nodes);
   const upstreamData = isCustom ? upstream : fetchedUpstream;
-  const nodes = normalizeNodes(upstreamData?.nodes);
+  const nodes = parseToNodes(upstreamData?.nodes);
 
   return (
     <Stack gap={4}>

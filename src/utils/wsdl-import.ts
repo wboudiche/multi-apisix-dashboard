@@ -220,6 +220,8 @@ export const parseWsdlBundle = (
         if (opts.upstream.serviceId) route.service_id = opts.upstream.serviceId;
       } else {
         const scheme = url.protocol.replace(':', '') || 'http';
+        // Already bracketed for an IPv6 host, which is the shape the node
+        // key wants: "[fd00::1]:8080".
         const host = url.hostname;
         const port = url.port || (scheme === 'https' ? '443' : '80');
         route.upstream = {

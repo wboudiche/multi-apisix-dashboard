@@ -20,6 +20,7 @@ import { APISIXCommon } from '@/types/schema/apisix/common';
 import { APISIXStreamRoutes } from '@/types/schema/apisix/stream_routes';
 
 import { SERVICE_NONE, UPSTREAM_CUSTOM } from '../FormPartRoute/util';
+import { parseToNodes } from '../FormPartUpstream/node-rows';
 
 export const StreamRoutePostSchema = APISIXStreamRoutes.StreamRoute.omit({
   create_time: true,
@@ -38,8 +39,7 @@ export const StreamRoutePostSchema = APISIXStreamRoutes.StreamRoute.omit({
     const nodes = data.upstream?.nodes;
     const hasCustomUpstream =
       data.upstream_id === UPSTREAM_CUSTOM &&
-      !!nodes &&
-      (Array.isArray(nodes) ? nodes.length > 0 : Object.keys(nodes).length > 0);
+      parseToNodes(nodes).length > 0;
 
     if (!hasService && !hasExistingUpstream && !hasCustomUpstream) {
       ctx.addIssue({

@@ -377,7 +377,8 @@
           "title": "Host"
         },
         "port": {
-          "title": "Puerto"
+          "title": "Puerto",
+          "desc": "Número de puerto (1-65535). Déjelo vacío para usar el predeterminado del esquema, que APISIX aplica a http y https."
         },
         "priority": {
           "title": "Prioridad"
