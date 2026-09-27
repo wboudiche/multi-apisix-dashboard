@@ -640,7 +640,22 @@
     "roleOptionSuperAdmin": "Süper yönetici (tam erişim)",
     "roleOptionUser": "Kullanıcı (aşağıda örnek başına rol atayın)",
     "columnUser": "Kullanıcı",
-    "columnRole": "Rol"
+    "columnRole": "Rol",
+    "dialogAddTitle": "Yeni kullanıcı ekle",
+    "dialogEditTitle": "Kullanıcı ve izinleri düzenle",
+    "submitCreate": "Kullanıcı oluştur",
+    "submitSave": "Değişiklikleri kaydet",
+    "fieldUsername": "Kullanıcı adı",
+    "fieldEmail": "E-posta",
+    "fieldPassword": "Parola",
+    "fieldPasswordPlaceholder": "Güçlü bir parola girin",
+    "fieldGlobalRole": "Genel rol",
+    "fieldGlobalRoleDesc": "Süper yöneticiler tüm örneklere tam erişime sahiptir. Normal kullanıcılar örnek başına rol atamasına ihtiyaç duyar.",
+    "fieldInstanceRole": "Rol",
+    "fieldInstanceRolePlaceholder": "Erişim yok",
+    "fieldTeam": "Takım",
+    "fieldTeamPlaceholder": "Takım yok",
+    "noEmail": "E-posta belirtilmemiş"
   },
   "listWarning": {
     "detailsUnresolved": "Bazı ayrıntılar çözümlenemedi",
