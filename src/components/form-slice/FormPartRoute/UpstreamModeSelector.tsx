@@ -42,9 +42,10 @@ import IconSettings from '~icons/material-symbols/settings-outline';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
 import { FormPartUpstream } from '../FormPartUpstream';
+import { nodeHostsFrom } from '../FormPartUpstream/node-rows';
 import { FormSection } from '../FormSection';
 import type { RoutePostType } from './schema';
-import { nodeHostsFrom, SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
+import { SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
 
 type UpstreamMode = 'service' | 'existing' | 'custom';
 

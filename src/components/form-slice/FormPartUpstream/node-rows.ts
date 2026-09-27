@@ -37,18 +37,28 @@ export const genRecord = () => ({ host: '', weight: 1 }) as APISIXType['Upstream
  * `nodes`, `"host:port"`. An IPv6 address comes bracketed, `"[::1]:8080"`,
  * and splitting such a key on its first colon leaves no host at all.
  */
-const splitHostPort = (key: string): { host: string; port: number } => {
+export const splitHostPort = (
+  key: string
+): { host: string; port?: number } => {
   if (key.startsWith('[')) {
     const close = key.indexOf(']');
     const host = close > 1 ? key.slice(1, close) : '';
-    if (host) return { host, port: Number(key.slice(close + 2)) || 1 };
+    if (host) return { host, port: Number(key.slice(close + 2)) || undefined };
   }
   const colon = key.lastIndexOf(':');
   // Several colons and no brackets: an IPv6 address written bare, with no
   // port to take off it. Keep the address rather than cut it in half.
-  if (colon === -1 || key.indexOf(':') !== colon) return { host: key, port: 1 };
-  return { host: key.slice(0, colon), port: Number(key.slice(colon + 1)) || 1 };
+  if (colon === -1 || key.indexOf(':') !== colon) return { host: key };
+  // No port invented where the key carries none: a node shown on port 1, or
+  // saved on it, is the damage #306 was reported for.
+  return { host: key.slice(0, colon), port: Number(key.slice(colon + 1)) || undefined };
 };
+
+/** The hosts of a value in either shape, without their ports. */
+export const nodeHostsFrom = (data?: APISIXType['UpstreamNodeListOrObj']) =>
+  parseToNodes(data)
+    .map((node) => node.host)
+    .filter(Boolean);
 
 const objToUpstreamNodes = (data: APISIXType['UpstreamNodeObj']) =>
   Object.entries(data).map(([key, weight]) => {
@@ -56,7 +66,8 @@ const objToUpstreamNodes = (data: APISIXType['UpstreamNodeObj']) =>
     // No priority: the object form carries none, and inventing a 0 here would
     // write it onto every node saved from this shape, and make the same node
     // read differently depending on which shape it arrived in.
-    const node: APISIXType['UpstreamNode'] = { host, port, weight };
+    const node = { host, weight } as APISIXType['UpstreamNode'];
+    if (port !== undefined) node.port = port;
     return node;
   });
 

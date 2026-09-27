@@ -16,7 +16,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { genRecord, parseToNodes } from './node-rows';
+import { genRecord, nodeHostsFrom, parseToNodes } from './node-rows';
 
 describe('genRecord', () => {
   // A new node used to be born at weight 0, which APISIX's roundrobin never
@@ -51,10 +51,16 @@ describe('parseToNodes', () => {
     ]);
   });
 
-  it('keeps a bare IPv6 address whole, port or not', () => {
+  // No port where the key carries none: a node shown or saved on port 1 is
+  // what #306 was reported for, and the previews read this too.
+  it('keeps a bare IPv6 address whole, and invents no port', () => {
     expect(parseToNodes({ 'fd00::1': 2 })).toEqual([
-      { host: 'fd00::1', port: 1, weight: 2 },
+      { host: 'fd00::1', weight: 2 },
     ]);
+  });
+
+  it('invents no port for a key that has none', () => {
+    expect(parseToNodes({ 'a.com': 1 })).toEqual([{ host: 'a.com', weight: 1 }]);
   });
 
   // Shapes APISIX does not write, but which the editor must not turn into
@@ -71,5 +77,17 @@ describe('parseToNodes', () => {
 
   it('answers nothing for no nodes', () => {
     expect(parseToNodes(undefined)).toEqual([]);
+  });
+});
+
+describe('nodeHostsFrom', () => {
+  // The route form offers these as the hosts a route's upstream answers on.
+  it('reads the hosts of either shape, without their ports', () => {
+    expect(nodeHostsFrom({ 'a.com:8080': 1, '[::1]:80': 1 })).toEqual(['a.com', '::1']);
+    expect(nodeHostsFrom([{ host: 'b.com', port: 80, weight: 1 }])).toEqual(['b.com']);
+  });
+
+  it('answers nothing for no nodes', () => {
+    expect(nodeHostsFrom(undefined)).toEqual([]);
   });
 });

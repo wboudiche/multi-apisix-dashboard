@@ -26,23 +26,12 @@ import {
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { parseToNodes } from './node-rows';
 import { TestConnectionButton } from './TestConnectionButton';
 
 type Props = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: Record<string, any>;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const normalizeNodes = (raw: any): Array<{ host: string; port: string | number; weight: number }> => {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  return Object.entries(raw).map(([key, weight]) => {
-    const lastColon = key.lastIndexOf(':');
-    const host = lastColon > 0 ? key.substring(0, lastColon) : key;
-    const port = lastColon > 0 ? key.substring(lastColon + 1) : '';
-    return { host, port, weight: weight as number };
-  });
 };
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
@@ -60,7 +49,7 @@ export const UpstreamPreviewSummary = ({ data }: Props) => {
   const { t } = useTranslation();
   const values = data || getValues();
 
-  const nodes = normalizeNodes(values.nodes);
+  const nodes = parseToNodes(values.nodes);
   const scheme = values.scheme || 'http';
   const type = values.type || 'roundrobin';
   const passHost = values.pass_host || 'pass';
