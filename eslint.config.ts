@@ -97,6 +97,48 @@ const e2eRules = tseslint.config(
   }
 );
 
+/**
+ * The screens whose attributes are held to i18n as well as their text.
+ *
+ * i18next/no-literal-string runs in its jsx-text-only mode everywhere, which
+ * never looks at an attribute, and i18n/no-text-as-attribute covers alt and
+ * title alone - which is how thirteen strings came to be written in English on
+ * the Users page (#320) and how the next label would be (#328).
+ *
+ * A list that grows: turning it on everywhere reports 97 occurrences, so each
+ * screen joins this once its own strings have keys, and cannot slip back.
+ */
+const attributesTranslated = tseslint.config({
+  files: ['src/components/Header/**/*.tsx'],
+  plugins: { i18next },
+  rules: {
+    'i18next/no-literal-string': [
+      'error',
+      {
+        mode: 'jsx-only',
+        'jsx-attributes': {
+          include: [
+            'label',
+            'placeholder',
+            'description',
+            'title',
+            'aria-label',
+            'data',
+          ],
+        },
+        // `data` holds options, so the fields of an option that are read out
+        // loud are checked too - and only those, or the CSS variable the language
+        // menu spreads into `style` reads as a string to translate. It reaches an
+        // array written in the JSX; one lifted into a `const` above is out of
+        // this mode's reach, and stays a matter for review.
+        'object-properties': {
+          include: ['label', 'placeholder', 'description', 'title'],
+        },
+      },
+    ],
+  },
+});
+
 const i18nRules = tseslint.config({
   files: ['src/**/*.{ts,tsx,js}'],
   plugins: {
@@ -186,5 +228,6 @@ export default tseslint.config(
   { ignores: ['dist', 'src/routeTree.gen.ts'] },
   e2eRules,
   i18nRules,
+  attributesTranslated,
   srcRules
 );

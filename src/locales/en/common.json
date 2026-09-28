@@ -939,7 +939,16 @@
     "accessLoadFailedTitle": "Access list unavailable",
     "accessLoadFailed": "Could not read which instances this account may use, so its role is unknown here.",
     "build": "Build {{sha}} ({{branch}}), {{date}}",
-    "buildUnknown": "Build of unknown commit, {{date}}"
+    "buildUnknown": "Build of unknown commit, {{date}}",
+    "allTeams": "All Teams",
+    "selectInstance": "Select instance",
+    "healthConnected": "Connected",
+    "healthDisconnected": "Disconnected",
+    "healthDisconnectedWhy": "Disconnected: {{reason}}",
+    "healthUnknown": "Unknown",
+    "healthUnknownWhy": "Unknown: {{reason}}",
+    "healthChecking": "Checking…",
+    "noUsername": "User"
   },
   "teams": {
     "title": "Teams",

@@ -38,7 +38,16 @@
     "accessLoadFailedTitle": "Erişim listesi kullanılamıyor",
     "accessLoadFailed": "Bu hesabın hangi örnekleri kullanabileceği okunamadı, bu nedenle rolü burada bilinmiyor.",
     "build": "Yapı {{sha}} ({{branch}}), {{date}}",
-    "buildUnknown": "Bilinmeyen bir commit’in yapısı, {{date}}"
+    "buildUnknown": "Bilinmeyen bir commit’in yapısı, {{date}}",
+    "allTeams": "Tüm takımlar",
+    "selectInstance": "Örnek seçin",
+    "healthConnected": "Bağlı",
+    "healthDisconnected": "Bağlı değil",
+    "healthDisconnectedWhy": "Bağlı değil: {{reason}}",
+    "healthUnknown": "Bilinmiyor",
+    "healthUnknownWhy": "Bilinmiyor: {{reason}}",
+    "healthChecking": "Kontrol ediliyor…",
+    "noUsername": "Kullanıcı"
   },
   "instanceGuard": {
     "noInstances": {

@@ -38,7 +38,16 @@
     "accessLoadFailedTitle": "Zugriffsliste nicht verfügbar",
     "accessLoadFailed": "Es konnte nicht gelesen werden, welche Instanzen dieses Konto nutzen darf; seine Rolle ist hier daher unbekannt.",
     "build": "Build {{sha}} ({{branch}}), {{date}}",
-    "buildUnknown": "Build eines unbekannten Commits, {{date}}"
+    "buildUnknown": "Build eines unbekannten Commits, {{date}}",
+    "allTeams": "Alle Teams",
+    "selectInstance": "Instanz auswählen",
+    "healthConnected": "Verbunden",
+    "healthDisconnected": "Nicht verbunden",
+    "healthDisconnectedWhy": "Nicht verbunden: {{reason}}",
+    "healthUnknown": "Unbekannt",
+    "healthUnknownWhy": "Unbekannt: {{reason}}",
+    "healthChecking": "Wird geprüft…",
+    "noUsername": "Benutzer"
   },
   "instanceGuard": {
     "noInstances": {

@@ -69,17 +69,32 @@ const Logo = () => {
 
 /** Small pulsing health dot */
 const HealthDot: FC<{ status?: 'Connected' | 'Disconnected' | 'Unknown'; error?: string }> = ({ status, error }) => {
+  const { t } = useTranslation();
   const isConnected = status === 'Connected';
   const color = isConnected ? '#10b981' : status === 'Disconnected' ? '#ef4444' : '#6b7280';
   // Unknown and absent read the same here: grey, and the reason if there is
   // one. Neither is a gateway this dashboard found unwell.
   const label = isConnected
-    ? 'Connected'
+    ? t('header.healthConnected')
     : status === 'Disconnected'
-      ? `Disconnected${error ? ': ' + error : ''}`
+      ? error
+        ? t('header.healthDisconnectedWhy', {
+            reason: error,
+            // The reason is a backend message naming the admin URL it could
+            // not reach. i18next escapes interpolations for markup, and this
+            // tooltip renders none: unescaped, or https://gw:9180 reaches the
+            // eye as https:&#x2F;&#x2F;gw:9180.
+            interpolation: { escapeValue: false },
+          })
+        : t('header.healthDisconnected')
       : status === 'Unknown'
-        ? `Unknown${error ? ': ' + error : ''}`
-        : 'Checking…';
+        ? error
+          ? t('header.healthUnknownWhy', {
+              reason: error,
+              interpolation: { escapeValue: false },
+            })
+          : t('header.healthUnknown')
+        : t('header.healthChecking');
 
   return (
     <Tooltip label={label} withArrow>
@@ -106,6 +121,7 @@ type TeamSwitcherProps = {
 };
 
 const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
+  const { t } = useTranslation();
   const [currentTeamId, setCurrentTeamId] = useAtom(currentTeamIdAtom);
 
   const handleTeamChange = (value: string | null) => {
@@ -118,13 +134,16 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
 
   if (isAdmin) {
     const teamData = [
-      { value: '', label: 'All Teams' },
-      ...teams.map((t) => ({ value: t.id, label: t.name })),
+      { value: '', label: t('header.allTeams') },
+      // `team`, not `t`: the parameter shadowed i18next's own `t` one line under
+      // a call to it, which is how a translated option becomes a property of a
+      // Team (#311 found the same shape on the Users page).
+      ...teams.map((team) => ({ value: team.id, label: team.name })),
     ];
 
     return (
       <Select
-        placeholder="All Teams"
+        placeholder={t('header.allTeams')}
         data={teamData}
         value={currentTeamId}
         onChange={handleTeamChange}
@@ -335,7 +354,7 @@ export const Header: FC<HeaderProps> = (props) => {
             <Group gap={6} wrap="nowrap">
               <HealthDot status={currentHealth?.status} error={currentHealth?.error} />
               <Select
-                placeholder="Select instance"
+                placeholder={t('header.selectInstance')}
                 data={instanceData}
                 value={currentInstanceId}
                 onChange={(value) => setCurrentInstanceId(value || '')}
@@ -366,7 +385,7 @@ export const Header: FC<HeaderProps> = (props) => {
                   )}
                   <Box>
                     <Text size="sm" fw={600}>
-                      {currentUser?.username || 'User'}
+                      {currentUser?.username || t('header.noUsername')}
                     </Text>
                     {/* The role that governs, not the assignment: an account
                         holding a viewer assignment and promoted to super admin
