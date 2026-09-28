@@ -33,8 +33,24 @@ import { MalformedResponseError } from '@/utils/response-shape';
  * dashboard rather than a fault of the request, so the caller reads it in their
  * own language rather than being handed the backend's English sentence (#310).
  */
-export const isProbeLimited = (error: unknown): boolean =>
-  axios.isAxiosError(error) && error.response?.status === 429;
+/**
+ * Which ceiling refused a probe: the dashboard's, or this account's share of it.
+ *
+ * One account could hold every slot and leave everybody else refused, so the
+ * ceilings keep a share back once they are busy, and the two refusals are not
+ * the same news - one says wait, the other says you already have several running
+ * (#310, #331). Undefined when this is not a refusal of that kind.
+ *
+ * An answer that names neither code reads as the dashboard's, which is what the
+ * refusal was before it had a name: a backend older than #331 says nothing more.
+ */
+export const probeLimitKey = (
+  error: unknown
+): 'error.probeBusy' | 'error.probeBusyCaller' | undefined => {
+  if (!axios.isAxiosError(error) || error.response?.status !== 429) return undefined;
+  const code = (error.response?.data as { code?: string } | undefined)?.code;
+  return code === 'probe_limit_caller' ? 'error.probeBusyCaller' : 'error.probeBusy';
+};
 
 export const describeError = (error: unknown, fallback: string): string => {
   if (axios.isAxiosError(error)) {

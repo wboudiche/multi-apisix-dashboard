@@ -19,10 +19,10 @@ import { useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
+import { SKIP_INTERCEPTOR_HEADER, TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
-import { describeError, isProbeLimited } from '@/utils/api-error';
+import { describeError, probeLimitKey } from '@/utils/api-error';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconNetwork from '~icons/material-symbols/dns';
@@ -83,15 +83,21 @@ export const TestConnectionButton = () => {
         const res = await req.post<TestResponse>('/test-upstream', {
           nodes: testNodes.slice(i, i + TEST_UPSTREAM_MAX_NODES),
           scheme: scheme || 'http',
-        }, { baseURL: '/api/v1' });
+        }, {
+          baseURL: '/api/v1',
+          // This button says a 429 itself, in the operator's language; without
+          // this the interceptor also toasts the backend's English (#331).
+          headers: { [SKIP_INTERCEPTOR_HEADER]: ['429'] },
+        });
         tested.push(...res.data.results);
       }
     } catch (err: unknown) {
       // The backend's own reason (a 403, a 413), not axios's "Request failed
       // with status code N".
+      const limited = probeLimitKey(err);
       setError(
-        isProbeLimited(err)
-          ? t('error.probeBusy')
+        limited
+          ? t(limited)
           : describeError(err, t('form.upstreams.testConnection.failure'))
       );
     } finally {

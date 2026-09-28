@@ -694,6 +694,7 @@
     "collapse": "Daralt"
   },
   "error": {
-    "probeBusy": "Panel şu anda aynı anda izin verdiği kadar giden test çalıştırıyor. Birazdan yeniden deneyin."
+    "probeBusy": "Panel şu anda aynı anda izin verdiği kadar giden test çalıştırıyor. Birazdan yeniden deneyin.",
+    "probeBusyCaller": "Bir hesabın çalıştırabileceği kadar giden testi hâlihazırda çalıştırıyorsunuz. Birinin bitmesini bekleyin."
   }
 }
