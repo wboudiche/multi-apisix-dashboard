@@ -233,7 +233,8 @@
       "response": "Response",
       "header": "Header",
       "value": "Value",
-      "emptyResponse": "Send a request to see the response"
+      "emptyResponse": "Send a request to see the response",
+      "requestFailed": "Request failed"
     },
     "plugins": {
       "addPlugin": "Add Plugin",
@@ -635,7 +636,8 @@
         "success": "Connected",
         "failure": "Connection failed",
         "testing": "Testing...",
-        "notTested": "Not tested: the dashboard only tests public addresses it can resolve. Test this upstream through a route."
+        "notTested": "Not tested: the dashboard only tests public addresses it can resolve. Test this upstream through a route.",
+        "notTestedTimeout": "Not tested (the dashboard ran out of time)"
       },
       "tls": {
         "clientCert": "Client Cert",
@@ -973,7 +975,8 @@
     "notFound": "Not found.",
     "generic": "The request failed ({{status}}).",
     "malformedResponse": "The server did not answer with data for {{- url}}. The dashboard may be behind a misconfigured proxy.",
-    "refreshFailed": "Could not renew your session: {{- reason}}. Your sign-in is still valid — try again."
+    "refreshFailed": "Could not renew your session: {{- reason}}. Your sign-in is still valid — try again.",
+    "probeBusy": "The dashboard is already running as many outbound tests as it allows at once. Try again in a moment."
   },
   "labelFilter": {
     "add": "Add to filter",

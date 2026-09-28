@@ -192,13 +192,16 @@ const (
 	// maxTestBodyBytes is far more than maxTestNodes nodes take. It keeps a
 	// body of any size from being decoded before the nodes are counted.
 	maxTestBodyBytes = 64 << 10
-	// probeWorkers bounds one request's own fan-out. A hundred nodes used to
-	// mean a hundred goroutines, each with a lookup and a dial of up to five
-	// seconds; with middleware.MaxConcurrentProbes requests in flight, the
-	// connections the dashboard holds open have a ceiling of their own rather
-	// than one per request (#310).
-	probeWorkers = 8
 )
+
+// testBudget is how long one connection-test request may take. Nodes it does
+// not reach in time read as not tested, which is what they are.
+//
+// The connections are bounded by probeDialSlots, so under load a node waits for
+// a slot; without a budget that wait is unbounded and the request holds one of
+// middleware.MaxConcurrentProbes slots while it lasts (#310). A var so a test
+// can shorten it rather than wait out the real one.
+var testBudget = 20 * time.Second
 
 func resolveAllowedIP(ctx context.Context, host string) (net.IP, error) {
 	// APISIX takes an IPv6 node in brackets, which ParseIP does not.
@@ -271,21 +274,17 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 		return
 	}
 
-	// Lookups and dials stop when the caller goes away.
-	ctx := c.Request.Context()
+	// Lookups and dials stop when the caller goes away, and when the request
+	// runs out of its budget.
+	ctx, cancel := context.WithTimeout(c.Request.Context(), testBudget)
+	defer cancel()
 	results := make([]NodeTestResult, len(req.Nodes))
 	var wg sync.WaitGroup
 
-	// Acquired before the goroutine starts, so the ceiling bounds the
-	// goroutines as well as the connections.
-	slots := make(chan struct{}, probeWorkers)
-
 	for i, node := range req.Nodes {
 		wg.Add(1)
-		slots <- struct{}{}
 		go func(idx int, n TestUpstreamNode) {
 			defer wg.Done()
-			defer func() { <-slots }()
 
 			if n.Port < 1 || n.Port > 65535 {
 				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
@@ -297,15 +296,26 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 			// which in a Docker or Kubernetes deployment nearly every upstream
 			// has, or a name that does not resolve, which must read the same.
 			if err != nil {
+				if ctx.Err() != nil {
+					results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotTested, Message: "Not tested: the dashboard ran out of time for this request"}
+					return
+				}
 				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotAllowed, Message: "Not tested: not a public address the dashboard can resolve"}
 				return
 			}
 
 			addr := net.JoinHostPort(ip.String(), fmt.Sprintf("%d", n.Port))
 			start := time.Now()
-			conn, err := dialContext(ctx, "tcp", addr)
+			conn, err := probeDial(ctx, "tcp", addr)
 			rtt := time.Since(start).Milliseconds()
 			if err != nil {
+				// Out of time, or the caller went away: not tried, so not
+				// reported as down. A node the dashboard never dialed must not
+				// read as an upstream that is unwell.
+				if ctx.Err() != nil {
+					results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeNotTested, Message: "Not tested: the dashboard ran out of time for this request"}
+					return
+				}
 				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
 				return
 			}
@@ -337,21 +347,28 @@ const (
 	// NodeNotAllowed: not tried. The address is internal, or the name does
 	// not resolve.
 	NodeNotAllowed = "not_allowed"
+	// NodeNotTested: not tried either, for a reason that has nothing to do
+	// with the node - the request ran out of its budget, or the caller went
+	// away, while the dashboard was waiting for a connection slot.
+	NodeNotTested = "not_tested"
 )
 
 // StatusPartial: some nodes connected, and some did not.
 const StatusPartial = "partial"
 
-// overallStatus sums up the nodes. It is not_allowed when no node was tried
-// at all: none is known to be down, and "failed" would say they were.
+// overallStatus sums up the nodes. It never says failed for a request where no
+// node was tried at all: none of them is known to be down, and "failed" would
+// say they were (#304).
 func overallStatus(results []NodeTestResult) string {
-	var connected, notAllowed int
+	var connected, notAllowed, notTested int
 	for _, r := range results {
 		switch r.Status {
 		case NodeConnected:
 			connected++
 		case NodeNotAllowed:
 			notAllowed++
+		case NodeNotTested:
+			notTested++
 		}
 	}
 	switch {
@@ -363,6 +380,10 @@ func overallStatus(results []NodeTestResult) string {
 		return StatusPartial
 	case notAllowed == len(results):
 		return NodeNotAllowed
+	case notAllowed+notTested == len(results):
+		// Some were not a public address, some ran out of time, and not one
+		// was dialed.
+		return NodeNotTested
 	default:
 		return NodeFailed
 	}

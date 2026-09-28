@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
-import { describeError } from '@/utils/api-error';
+import { describeError, isProbeLimited } from '@/utils/api-error';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconNetwork from '~icons/material-symbols/dns';
@@ -35,7 +35,10 @@ type NodeResult = {
   // not_allowed: not tried, and may well be up (#304). The address is
   // internal, or the name does not resolve: the two read the same on purpose,
   // so that the answer cannot list the internal names that exist.
-  status: 'connected' | 'failed' | 'not_allowed';
+  // not_tested: not tried either, and for a reason that is about the
+  // dashboard rather than the node - it was at its ceiling on outbound tests
+  // and this node's turn never came (#310).
+  status: 'connected' | 'failed' | 'not_allowed' | 'not_tested';
   message: string;
   rtt_ms?: number;
 };
@@ -86,7 +89,11 @@ export const TestConnectionButton = () => {
     } catch (err: unknown) {
       // The backend's own reason (a 403, a 413), not axios's "Request failed
       // with status code N".
-      setError(describeError(err, t('form.upstreams.testConnection.failure')));
+      setError(
+        isProbeLimited(err)
+          ? t('error.probeBusy')
+          : describeError(err, t('form.upstreams.testConnection.failure'))
+      );
     } finally {
       setResults(tested.length > 0 ? tested : null);
       setLoading(false);
@@ -108,6 +115,14 @@ export const TestConnectionButton = () => {
           color: 'yellow',
           Icon: IconWarning,
           label: t('form.upstreams.testConnection.notTested'),
+        };
+      // Not tried either, and for a reason the operator can act on: the
+      // dashboard was at its ceiling and this node's turn never came (#310).
+      case 'not_tested':
+        return {
+          color: 'yellow',
+          Icon: IconWarning,
+          label: t('form.upstreams.testConnection.notTestedTimeout'),
         };
       default:
         return {

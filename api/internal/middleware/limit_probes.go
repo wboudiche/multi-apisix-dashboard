@@ -21,8 +21,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MaxConcurrentProbes is how many probe requests the dashboard runs at once,
-// across the connection test, the route test and the WSDL fetch together.
+// MaxConcurrentProbes is how many connection tests and route tests the
+// dashboard runs at once, and MaxConcurrentWsdlFetches how many WSDL imports.
 //
 // These are the endpoints that have the dashboard open connections from its own
 // address on a caller's behalf. Who may ask is RequireResourcePermission's
@@ -31,23 +31,36 @@ import (
 // thousand lookups and dials, each up to five seconds, from the dashboard's
 // address (#310).
 //
-// Sixteen leaves room for a handful of operators probing at once, and for this
-// repo's own e2e suite, which runs probe specs in parallel across shards. The
-// number that matters is its product with the connection test's own ceiling:
-// 128 outbound connections, whatever the traffic, rather than a limit per
-// request and none on the requests.
-const MaxConcurrentProbes = 16
+// Two buckets rather than one, because the hold times are not comparable: a
+// connection test is bounded by its own budget of twenty seconds, while a WSDL
+// import follows up to twenty documents at ten seconds each. Sharing one bucket
+// let the slow endpoint refuse the quick ones for minutes.
+//
+// Neither number is the ceiling on the resource - that is probeDialSlots in the
+// handlers, on the connections themselves. These bound how many callers are
+// served at once, so that a burst is refused at the door rather than queued
+// inside.
+const (
+	MaxConcurrentProbes      = 16
+	MaxConcurrentWsdlFetches = 4
+)
+
+// probeRetryAfterSeconds is what a refused caller is told to wait. It is the
+// order of a real hold - a connection test's budget is twenty seconds - rather
+// than one second, which would turn a refusal into a retry loop through every
+// check in front of this one.
+const probeRetryAfterSeconds = "5"
 
 // LimitProbes refuses a probe request beyond the given number in flight.
 //
 // A refusal rather than a queue: the caller is a person waiting on an answer,
 // and a queue would hold the dashboard's own connections while they waited -
 // which is the resource this exists to protect. 429 with Retry-After says to
-// come back, and the UI shows the message.
+// come back, and the UI translates it.
+//
+// Each call returns a handler with a bucket of its own, so routes that are to
+// share one must share the handler the call returns.
 func LimitProbes(max int) gin.HandlerFunc {
-	if max < 1 {
-		max = 1
-	}
 	inFlight := make(chan struct{}, max)
 	return func(c *gin.Context) {
 		select {
@@ -55,9 +68,12 @@ func LimitProbes(max int) gin.HandlerFunc {
 			defer func() { <-inFlight }()
 			c.Next()
 		default:
-			c.Header("Retry-After", "1")
+			c.Header("Retry-After", probeRetryAfterSeconds)
+			// The frontend answers a 429 from these endpoints with a sentence
+			// of its own, in the operator's language; this is for everything
+			// else that reads the API.
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "The dashboard is already running as many connection tests as it allows at once. Try again in a moment.",
+				"error": "The dashboard is already running as many outbound tests as it allows at once. Try again in a moment.",
 			})
 		}
 	}

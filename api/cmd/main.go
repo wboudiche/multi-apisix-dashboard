@@ -22,14 +22,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/handlers"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 const (
@@ -96,7 +97,18 @@ func main() {
 
 	addr := net.JoinHostPort(cfg.Server.Host, port)
 	log.Printf("Server starting on %s", addr)
-	if err := router.Run(addr); err != nil {
+	// Timeouts rather than router.Run's none. A client that stops reading its
+	// response otherwise holds whatever the handler held for the life of the
+	// socket - a probe slot, in the case of the endpoints that take one (#310).
+	// The write timeout is generous because a WSDL bundle can be 20 MiB.
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      2 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
@@ -176,10 +188,13 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			mayWriteUpstreams := middleware.RequireResourcePermission(instanceService, "upstreams", "write")
 			mayWriteRoutes := middleware.RequireResourcePermission(instanceService, "routes", "write")
 
-			// The three endpoints that have the dashboard open connections
-			// from its own address share one ceiling on how many run at
-			// once (#310), as they share who may ask (#307).
+			// How many of the endpoints that have the dashboard open
+			// connections from its own address run at once (#310), as they
+			// share who may ask (#307). The connection test and the route test
+			// share a bucket; the WSDL fetch, which can legitimately hold one
+			// for minutes, has its own so that it cannot refuse the others.
 			limitProbes := middleware.LimitProbes(middleware.MaxConcurrentProbes)
+			limitWsdl := middleware.LimitProbes(middleware.MaxConcurrentWsdlFetches)
 
 			// Upstream connectivity test
 			protected.POST("/test-upstream", rbac, mayWriteUpstreams, limitProbes, upstreamHandler.TestConnection)
@@ -188,7 +203,7 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			protected.POST("/test-route", rbac, mayWriteRoutes, limitProbes, routeTestHandler.TestRoute)
 
 			// WSDL fetch (server-side, SSRF-guarded) for the WSDL importer
-			protected.GET("/wsdl/fetch", rbac, mayWriteRoutes, limitProbes, wsdlHandler.Fetch)
+			protected.GET("/wsdl/fetch", rbac, mayWriteRoutes, limitWsdl, wsdlHandler.Fetch)
 
 			// Password policy (readable by any authenticated user)
 			protected.GET("/settings/password-policy", settingsHandler.GetPasswordPolicy)

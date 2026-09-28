@@ -408,7 +408,8 @@
         "notTested": "未测试：控制台只测试它能解析的公网地址。请通过路由测试此上游。",
         "success": "已连接",
         "testing": "测试中...",
-        "title": "测试连接"
+        "title": "测试连接",
+        "notTestedTimeout": "未测试（仪表板超时）"
       },
       "timeout": {
         "connect": "连接",
@@ -430,6 +431,9 @@
       "upstreamHost": "上游主机名",
       "upstreamHostDesc": "`pass_host` 为 `rewrite` 时设置",
       "upstreamId": "上游ID"
+    },
+    "routeTest": {
+      "requestFailed": "请求失败"
     }
   },
   "globalRules": {
@@ -683,5 +687,8 @@
   "common": {
     "expand": "展开",
     "collapse": "收起"
+  },
+  "error": {
+    "probeBusy": "仪表板已在同时运行其允许的最大数量的外部测试。请稍后重试。"
   }
 }

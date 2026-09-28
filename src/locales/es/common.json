@@ -408,7 +408,8 @@
         "notTested": "No probado: el panel solo prueba direcciones públicas que puede resolver. Pruebe este upstream a través de una ruta.",
         "success": "Conectado",
         "testing": "Probando...",
-        "title": "Probar conexión"
+        "title": "Probar conexión",
+        "notTestedTimeout": "No probado (el panel se quedó sin tiempo)"
       },
       "timeout": {
         "connect": "Conectar",
@@ -430,6 +431,9 @@
       "upstreamHost": "Host de Upstream",
       "upstreamHostDesc": "Configura esto cuando `pass_host` sea `rewrite`",
       "upstreamId": "ID de Upstream"
+    },
+    "routeTest": {
+      "requestFailed": "La solicitud falló"
     }
   },
   "globalRules": {
@@ -683,5 +687,8 @@
   "common": {
     "expand": "Expandir",
     "collapse": "Contraer"
+  },
+  "error": {
+    "probeBusy": "El panel ya está ejecutando tantas pruebas salientes como permite a la vez. Vuelve a intentarlo en un momento."
   }
 }
