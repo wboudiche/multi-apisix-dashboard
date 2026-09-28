@@ -433,7 +433,12 @@
       "upstreamId": "ID de Upstream"
     },
     "routeTest": {
-      "requestFailed": "La solicitud falló"
+      "requestFailed": "La solicitud falló",
+      "badPath": "Esa ruta no puede enviarse: contiene un segmento \".\", \"..\" o vacío.",
+      "otherTeam": "Esta ruta pertenece a otro equipo.",
+      "noSuchRoute": "Esta ruta ya no existe en esta instancia.",
+      "pathNotMatched": "Esa ruta de acceso no coincide con esta ruta.",
+      "unverified": "El panel no pudo comprobar de quién es esta ruta, así que no envió la solicitud."
     }
   },
   "globalRules": {

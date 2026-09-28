@@ -417,6 +417,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
       <RouteTestDrawer
         opened={testDrawerOpen}
         onClose={() => setTestDrawerOpen(false)}
+        routeId={id}
         defaultPath={routeUri}
         defaultMethod={routeMethod}
         defaultHost={routeHost}

@@ -102,7 +102,13 @@ export const RouteList = (props: RouteListProps) => {
   const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
   const [jsonSaving, setJsonSaving] = useState(false);
   const [testDrawerOpen, setTestDrawerOpen] = useState(false);
-  const [testDrawerRoute, setTestDrawerRoute] = useState<{ path: string; method: string; host?: string; soapAction?: string } | null>(null);
+  const [testDrawerRoute, setTestDrawerRoute] = useState<{
+    id: string;
+    path: string;
+    method: string;
+    host?: string;
+    soapAction?: string;
+  } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const currentUser = useAtomValue(currentUserAtom);
@@ -180,6 +186,9 @@ export const RouteList = (props: RouteListProps) => {
     const method = (record.methods as string[])?.[0] || 'GET';
     const host = (record.host as string) || (record.hosts as string[])?.[0] || undefined;
     setTestDrawerRoute({
+      // Converted, not cast: APISIX's id schema accepts a number, and a
+      // number would be sent as one and refused by the binding.
+      id: String(record.id),
       path: uri,
       method,
       host,
@@ -657,6 +666,7 @@ export const RouteList = (props: RouteListProps) => {
       <RouteTestDrawer
         opened={testDrawerOpen}
         onClose={() => setTestDrawerOpen(false)}
+        routeId={testDrawerRoute?.id ?? ''}
         defaultPath={testDrawerRoute?.path}
         defaultMethod={testDrawerRoute?.method}
         defaultHost={testDrawerRoute?.host}

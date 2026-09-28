@@ -19,26 +19,56 @@ package handlers
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
 
-type RouteTestHandler struct{}
+// ownerReader reads which team owns a resource. *services.OwnershipService
+// satisfies it; a test does not need etcd to, as middleware.InstanceReader
+// already does for the permission check.
+type ownerReader interface {
+	GetOwner(ctx context.Context, instanceID, resourceType, resourceID string) (string, error)
+}
 
-// The instance comes from middleware.RequireResourcePermission, on the route,
-// so this handler reads no store of its own.
-func NewRouteTestHandler() *RouteTestHandler {
-	return &RouteTestHandler{}
+// The refusals this endpoint has of its own, named so the UI can say them in
+// the operator's language rather than showing the sentence below (#311).
+const (
+	routeTestBadPathCode     = "route_test_bad_path"
+	routeTestOtherTeamCode   = "route_test_other_team"
+	routeTestNoSuchRouteCode = "route_test_no_such_route"
+	routeTestNotMatchedCode  = "route_test_path_not_matched"
+	routeTestUnverifiedCode  = "route_test_unverified"
+)
+
+type RouteTestHandler struct {
+	ownershipService ownerReader
+}
+
+// The instance comes from middleware.RequireResourcePermission, on the route.
+// The ownership store is read here, to answer whose route is being tested
+// (#311).
+func NewRouteTestHandler(ownershipService ownerReader) *RouteTestHandler {
+	return &RouteTestHandler{ownershipService: ownershipService}
 }
 
 type TestRouteRequest struct {
+	// RouteID names the route being tested. Required: the endpoint used to take
+	// any path and send it, so a developer in one team could send a DELETE to a
+	// route of another team's that they cannot even see in the list (#311).
+	RouteID string            `json:"route_id" binding:"required"`
 	Method  string            `json:"method" binding:"required"`
 	Path    string            `json:"path" binding:"required"`
 	Headers map[string]string `json:"headers"`
@@ -97,12 +127,80 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid path"})
 		return
 	}
+	// A "." or ".." segment is refused before anything reads the path: nginx and
+	// APISIX collapse them, so /mine/../victim is checked against the route's
+	// uri as written and sent as the gateway resolves it, which is how a path
+	// bound to one route reached another (#311). invalidProxyPath refuses the
+	// same shapes on the Admin API side, for the same reason (#191).
+	if invalidProxyPath(parsed.Path) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "path must not contain a '.', '..' or empty segment",
+			"code":  routeTestBadPathCode,
+		})
+		return
+	}
 	// A fragment is never sent, and a path carrying one would quietly drop the
 	// parameters with it.
 	if parsed.Fragment != "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "path must not carry a fragment"})
 		return
 	}
+	// Whose route this is, and whether the path belongs to it. The gateway is
+	// the data plane and would answer anybody who can reach it - but it is the
+	// dashboard that sits on its network, and an account that may write routes
+	// on this instance is not thereby entitled to send traffic at another
+	// team's (#311).
+	isAdmin, teamID := callerTeamScope(c)
+	if !isAdmin {
+		owner, err := h.ownershipService.GetOwner(c.Request.Context(), instance.ID, "routes", req.RouteID)
+		if err != nil {
+			// Fail closed: a route whose owner cannot be read is not a route to
+			// send a request to.
+			c.JSON(http.StatusBadGateway, gin.H{
+				"error": couldNotVerifyMsg,
+				"code":  routeTestUnverifiedCode,
+			})
+			return
+		}
+		if !nonAdminMayAccess(owner, teamID) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": otherTeamMsg,
+				"code":  routeTestOtherTeamCode,
+			})
+			return
+		}
+	}
+
+	route, err := h.readRoute(c.Request.Context(), instance, req.RouteID)
+	if err != nil {
+		if errors.Is(err, errRouteNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "No such route on this instance",
+				"code":  routeTestNoSuchRouteCode,
+			})
+			return
+		}
+		c.JSON(http.StatusBadGateway, gin.H{
+			"error": couldNotVerifyMsg,
+			"code":  routeTestUnverifiedCode,
+		})
+		return
+	}
+	// The path is checked after parsing, so a query string travels with the
+	// request without taking part in the match.
+	if !routeMatchesPath(route, parsed.Path) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "The path is not one this route matches",
+			"code":  routeTestNotMatchedCode,
+		})
+		return
+	}
+
+	// Quoted, so that a method or a path carrying a newline cannot write a line
+	// of its own into the record of who tested what.
+	log.Printf("[route-test] user=%q instance=%q route=%q team=%q admin=%t %q %q",
+		middleware.GetUserID(c), instance.ID, req.RouteID, teamID, isAdmin, req.Method, parsed.Path)
+
 	// Merged into whatever the path already asks for, rather than appended
 	// behind a second "?", which left the last parameter of the path holding
 	// the rest of the query and the gateway matching nothing (#256).
@@ -184,4 +282,110 @@ func queryFor(existing url.Values, query map[string]string) string {
 		existing.Set(key, value)
 	}
 	return existing.Encode()
+}
+
+// errRouteNotFound says the instance has no such route, which is a 404 for the
+// caller rather than a failure to check.
+var errRouteNotFound = errors.New("route not found")
+
+// apisixRoute is the part of a route this handler reads. APISIX answers a
+// detail read as {"value": {...}}, and has answered it flat in the past, so
+// both shapes are accepted - a route that decodes to neither would otherwise
+// read as one that matches nothing.
+type apisixRoute struct {
+	URI  string   `json:"uri"`
+	URIs []string `json:"uris"`
+}
+
+// routeLookupTimeout bounds the read of the route being tested. It runs inside
+// the probe slot middleware.LimitProbes holds for this request, and
+// proxyClient's own timeout is thirty seconds: an Admin API that accepts a
+// connection and never answers would hold that slot for all of it (#310).
+const routeLookupTimeout = 5 * time.Second
+
+func (h *RouteTestHandler) readRoute(ctx context.Context, instance *models.Instance, routeID string) (apisixRoute, error) {
+	ctx, cancel := context.WithTimeout(ctx, routeLookupTimeout)
+	defer cancel()
+
+	req, err := newAdminRequest(ctx, instance, "/routes/"+url.PathEscape(routeID))
+	if err != nil {
+		return apisixRoute{}, err
+	}
+
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		return apisixRoute{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return apisixRoute{}, errRouteNotFound
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return apisixRoute{}, fmt.Errorf("admin API returned status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Value *apisixRoute `json:"value"`
+		apisixRoute
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return apisixRoute{}, err
+	}
+	if body.Value != nil {
+		return *body.Value, nil
+	}
+	return body.apisixRoute, nil
+}
+
+// routeMatchesPath reports whether path is one the route accepts.
+//
+// It reads APISIX's uri forms - lua-resty-radixtree's - and not APISIX's
+// matching: a route also selects on host, method, vars and priority, so a
+// request can still reach a route this did not name. What it closes is naming
+// one route and sending the request at another, which is what the endpoint was
+// open to (#311).
+//
+//	/a/b        exactly that path
+//	/a/:name    one segment, whatever it holds
+//	/a/*        the rest of the path, and /a/*name the same with a name
+func routeMatchesPath(route apisixRoute, path string) bool {
+	for _, uri := range append([]string{route.URI}, route.URIs...) {
+		if uriMatchesPath(uri, path) {
+			return true
+		}
+	}
+	return false
+}
+
+func uriMatchesPath(uri, path string) bool {
+	// A uri that names no absolute path matches nothing here. APISIX stores any
+	// non-empty string, so "*" alone is storable - and would otherwise read as
+	// a catch-all that matches every path there is.
+	if !strings.HasPrefix(uri, "/") {
+		return false
+	}
+
+	want := strings.Split(uri, "/")
+	got := strings.Split(path, "/")
+	for i, segment := range want {
+		// A catch-all takes the rest, and needs a rest to take.
+		if strings.HasPrefix(segment, "*") {
+			return i < len(got)
+		}
+		if i >= len(got) {
+			return false
+		}
+		// A parameter takes one segment, and an empty one is not a segment.
+		if strings.HasPrefix(segment, ":") {
+			if got[i] == "" {
+				return false
+			}
+			continue
+		}
+		if got[i] != segment {
+			return false
+		}
+	}
+	return len(got) == len(want)
 }

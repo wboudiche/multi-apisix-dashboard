@@ -44,11 +44,27 @@ import IconSend from '~icons/material-symbols/send';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
+/**
+ * What the backend calls each of its own refusals, and what to say about it.
+ *
+ * By name rather than by status: a 400 from this endpoint is a path it will not
+ * send for one of several reasons, and only the backend knows which.
+ */
+const ROUTE_TEST_REFUSALS = {
+  route_test_bad_path: 'form.routeTest.badPath',
+  route_test_other_team: 'form.routeTest.otherTeam',
+  route_test_no_such_route: 'form.routeTest.noSuchRoute',
+  route_test_path_not_matched: 'form.routeTest.pathNotMatched',
+  route_test_unverified: 'form.routeTest.unverified',
+} as const;
+
 type HeaderRow = { key: string; value: string };
 
 type RouteTestDrawerProps = {
   opened: boolean;
   onClose: () => void;
+  /** The route this drawer tests. The backend narrows the request to it. */
+  routeId: string;
   defaultPath?: string;
   defaultMethod?: string;
   defaultHost?: string;
@@ -76,6 +92,7 @@ const formatBody = (body: string): string => {
 export const RouteTestDrawer = ({
   opened,
   onClose,
+  routeId,
   defaultPath = '/',
   defaultMethod = 'GET',
   defaultHost,
@@ -99,7 +116,13 @@ export const RouteTestDrawer = ({
   // defaults change while it is open: while rendering, compared with the
   // defaults it last reset for, rather than in an effect.
   const openedFor = opened
-    ? JSON.stringify([defaultPath, defaultMethod, defaultHost ?? null, defaultSoapAction ?? null])
+    ? JSON.stringify([
+        routeId,
+        defaultPath,
+        defaultMethod,
+        defaultHost ?? null,
+        defaultSoapAction ?? null,
+      ])
     : null;
   const [lastOpenedFor, setLastOpenedFor] = useState<string | null>(null);
   if (openedFor !== lastOpenedFor) {
@@ -142,6 +165,7 @@ export const RouteTestDrawer = ({
         if (q.key.trim()) queryMap[q.key.trim()] = q.value;
       }
       const result = await testRoute({
+        route_id: routeId,
         method,
         path,
         headers: Object.keys(headerMap).length > 0 ? headerMap : undefined,
@@ -151,16 +175,28 @@ export const RouteTestDrawer = ({
       setResponse(result);
       setResponseTab('body');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } }; message?: string };
+      const e = err as {
+        response?: { data?: { error?: string; code?: string } };
+        message?: string;
+      };
+      // The backend names its own refusals, so they read in the operator's
+      // language rather than as the English sentence beside the name (#311).
+      const code = e?.response?.data?.code;
+      const named =
+        code && code in ROUTE_TEST_REFUSALS
+          ? ROUTE_TEST_REFUSALS[code as keyof typeof ROUTE_TEST_REFUSALS]
+          : undefined;
       setError(
         isProbeLimited(err)
           ? t('error.probeBusy')
-          : (e?.response?.data?.error || e?.message || t('form.routeTest.requestFailed'))
+          : named
+            ? t(named)
+            : (e?.response?.data?.error || e?.message || t('form.routeTest.requestFailed'))
       );
     } finally {
       setLoading(false);
     }
-  }, [method, path, headers, body, queryParams, t]);
+  }, [routeId, method, path, headers, body, queryParams, t]);
 
   const addHeader = () => setHeaders((prev) => [...prev, { key: '', value: '' }]);
   const removeHeader = (i: number) => setHeaders((prev) => prev.filter((_, idx) => idx !== i));

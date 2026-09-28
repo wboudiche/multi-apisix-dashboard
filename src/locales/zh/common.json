@@ -433,7 +433,12 @@
       "upstreamId": "上游ID"
     },
     "routeTest": {
-      "requestFailed": "请求失败"
+      "requestFailed": "请求失败",
+      "badPath": "该路径无法发送：其中包含 \".\"、\"..\" 或空的路径段。",
+      "otherTeam": "该路由属于其他团队。",
+      "noSuchRoute": "该路由在此实例上已不存在。",
+      "pathNotMatched": "该路径与此路由不匹配。",
+      "unverified": "仪表板无法确认该路由的归属，因此未发送请求。"
     }
   },
   "globalRules": {
