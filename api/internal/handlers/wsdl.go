@@ -62,6 +62,14 @@ func guardedClient() *http.Client {
 				if err != nil {
 					return nil, err
 				}
+				// Through the dashboard's ceiling on outbound connections: a
+				// WSDL graph is followed one document at a time, but twenty
+				// imports across the requests in flight still add up (#310).
+				release, err := acquireProbeSlot(ctx)
+				if err != nil {
+					return nil, err
+				}
+				defer release()
 				return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 			},
 		},

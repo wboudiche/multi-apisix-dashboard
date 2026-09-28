@@ -37,6 +37,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type RouteTestResponse, testRoute } from '@/apis/route-test';
+import { isProbeLimited } from '@/utils/api-error';
 import IconAdd from '~icons/material-symbols/add';
 import IconDelete from '~icons/material-symbols/close';
 import IconSend from '~icons/material-symbols/send';
@@ -151,11 +152,15 @@ export const RouteTestDrawer = ({
       setResponseTab('body');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } }; message?: string };
-      setError(e?.response?.data?.error || e?.message || 'Request failed');
+      setError(
+        isProbeLimited(err)
+          ? t('error.probeBusy')
+          : (e?.response?.data?.error || e?.message || t('form.routeTest.requestFailed'))
+      );
     } finally {
       setLoading(false);
     }
-  }, [method, path, headers, body, queryParams]);
+  }, [method, path, headers, body, queryParams, t]);
 
   const addHeader = () => setHeaders((prev) => [...prev, { key: '', value: '' }]);
   const removeHeader = (i: number) => setHeaders((prev) => prev.filter((_, idx) => idx !== i));

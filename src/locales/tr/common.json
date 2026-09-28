@@ -408,7 +408,8 @@
         "notTested": "Test edilmedi: panel yalnızca çözümleyebildiği genel adresleri test eder. Bu upstream'i bir route üzerinden test edin.",
         "success": "Bağlandı",
         "testing": "Test ediliyor...",
-        "title": "Bağlantıyı Test Et"
+        "title": "Bağlantıyı Test Et",
+        "notTestedTimeout": "Test edilmedi (panelin süresi doldu)"
       },
       "timeout": {
         "connect": "Connect",
@@ -430,6 +431,9 @@
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "`pass_host` değeri `rewrite` olduğunda ayarlayın",
       "upstreamId": "Upstream ID"
+    },
+    "routeTest": {
+      "requestFailed": "İstek başarısız oldu"
     }
   },
   "globalRules": {
@@ -683,5 +687,8 @@
   "common": {
     "expand": "Genişlet",
     "collapse": "Daralt"
+  },
+  "error": {
+    "probeBusy": "Panel şu anda aynı anda izin verdiği kadar giden test çalıştırıyor. Birazdan yeniden deneyin."
   }
 }

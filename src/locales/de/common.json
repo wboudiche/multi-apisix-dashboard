@@ -408,7 +408,8 @@
         "notTested": "Nicht getestet: Das Dashboard testet nur öffentliche Adressen, die es auflösen kann. Testen Sie diesen Upstream über eine Route.",
         "success": "Verbunden",
         "testing": "Wird getestet...",
-        "title": "Verbindung testen"
+        "title": "Verbindung testen",
+        "notTestedTimeout": "Nicht getestet (dem Dashboard ist die Zeit ausgegangen)"
       },
       "timeout": {
         "connect": "Verbinden",
@@ -430,6 +431,9 @@
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "Setzen Sie dies, wenn `pass_host` den Wert `rewrite` hat",
       "upstreamId": "Upstream ID"
+    },
+    "routeTest": {
+      "requestFailed": "Anfrage fehlgeschlagen"
     }
   },
   "globalRules": {
@@ -683,5 +687,8 @@
   "common": {
     "expand": "Ausklappen",
     "collapse": "Einklappen"
+  },
+  "error": {
+    "probeBusy": "Das Dashboard führt bereits so viele ausgehende Tests aus, wie es gleichzeitig zulässt. Versuchen Sie es in einem Moment erneut."
   }
 }

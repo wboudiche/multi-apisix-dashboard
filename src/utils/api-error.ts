@@ -26,6 +26,16 @@ import { MalformedResponseError } from '@/utils/response-shape';
  * collapsing a 403, a binding error and an etcd outage into one generic message
  * throws away the only thing that tells the operator what to do next.
  */
+/**
+ * A 429 from the endpoints that dial on the caller's behalf.
+ *
+ * The dashboard is at its ceiling on outbound tests, which is a state of the
+ * dashboard rather than a fault of the request, so the caller reads it in their
+ * own language rather than being handed the backend's English sentence (#310).
+ */
+export const isProbeLimited = (error: unknown): boolean =>
+  axios.isAxiosError(error) && error.response?.status === 429;
+
 export const describeError = (error: unknown, fallback: string): string => {
   if (axios.isAxiosError(error)) {
     const reason = (error.response?.data as { error?: string } | undefined)?.error;
