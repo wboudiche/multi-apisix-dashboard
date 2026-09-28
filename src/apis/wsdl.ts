@@ -23,7 +23,16 @@ export type WsdlFetchResponse = {
   warnings?: string[];
 };
 
-export const fetchWsdl = (url: string) =>
+/**
+ * Follows the WSDL's imports on the dashboard's side.
+ *
+ * The signal is how a caller that has given up says so: the graph can run to
+ * twenty documents at ten seconds apiece, and the request holds one of the
+ * dashboard's outbound slots for all of it (#310, #331). Abandoned rather than
+ * aborted, it spends them for an answer nobody will read - and can refuse the
+ * same operator's next attempt (#336).
+ */
+export const fetchWsdl = (url: string, signal?: AbortSignal) =>
   apiClient
-    .get<WsdlFetchResponse>('/api/v1/wsdl/fetch', { params: { url } })
+    .get<WsdlFetchResponse>('/api/v1/wsdl/fetch', { params: { url }, signal })
     .then((r) => r.data);

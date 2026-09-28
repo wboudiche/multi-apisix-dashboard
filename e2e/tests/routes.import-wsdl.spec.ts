@@ -240,3 +240,113 @@ test('expands a multi-file WSDL ZIP and follows wsdl:import', async ({ page }, t
   // service's two operations.
   await expect(page.getByText('1 service(s), 2 operation(s)')).toBeVisible();
 });
+
+test('the URL fetch says it is running, and takes no second click', async ({
+  page,
+}) => {
+  // A graph of imports can take minutes, and nothing said one was under way:
+  // the operator clicked again, and the second call wiped what the first had
+  // built (#336).
+  await openImporter(page);
+
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let calls = 0;
+  await page.route('**/api/v1/wsdl/fetch**', async (route) => {
+    calls += 1;
+    await held;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      json: { entry: 'main', docs: { main: wsdl }, warnings: [] },
+    });
+  });
+
+  try {
+    await page.getByRole('tab', { name: 'From URL' }).click();
+    await page
+      .getByPlaceholder('http://host/service?wsdl')
+      .fill('http://wsdl.example/svc?wsdl');
+
+    // Twice in one go, before React can disable anything: the guard has to be
+    // the one in the handler, not the button's attribute.
+    await page.evaluate(() => {
+      const fetchButton = Array.from(document.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Fetch'
+      );
+      fetchButton?.click();
+      fetchButton?.click();
+    });
+
+    const fetchButton = page.getByRole('button', { name: /Fetch/ });
+    // While it runs, the button says so - in words, since Mantine's spinner is
+    // hidden from the accessibility tree - and takes no further click.
+    await expect(fetchButton).toBeDisabled();
+    await expect(fetchButton).toHaveText('Fetching…');
+    await expect(fetchButton).toHaveAttribute('aria-busy', 'true');
+    // And the graph was fetched once, which is what the second click cost.
+    expect(calls).toBe(1);
+  } finally {
+    // Released whatever the assertions did: a route handler left parked on this
+    // promise makes a failure read as a teardown problem.
+    release();
+  }
+
+  // It comes back with what it fetched: the source box names the URL and how
+  // many documents came with it.
+  await expect(page.getByRole('button', { name: 'Fetch' })).toBeEnabled({ timeout: 15000 });
+  await page.getByRole('tab', { name: 'Upload / Paste' }).click();
+  await expect(page.getByPlaceholder('Paste WSDL XML here…')).toHaveValue(
+    /\[URL\] http:\/\/wsdl\.example\/svc\?wsdl — 1 document\(s\)/
+  );
+});
+
+// What the operator does next is theirs: a fetch they have moved on from must
+// not land on top of it (#336).
+test('a fetch left behind does not overwrite what the operator did next', async ({
+  page,
+}) => {
+  await openImporter(page);
+
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/v1/wsdl/fetch**', async (route) => {
+    await held;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      json: { entry: 'main', docs: { main: wsdl }, warnings: [] },
+    });
+  });
+
+  try {
+    await page.getByRole('tab', { name: 'From URL' }).click();
+    await page
+      .getByPlaceholder('http://host/service?wsdl')
+      .fill('http://wsdl.example/svc?wsdl');
+    await page.getByRole('button', { name: /Fetch/ }).click();
+    await expect(page.getByRole('button', { name: /Fetch/ })).toBeDisabled();
+
+    // The operator gives up on it and pastes a document instead.
+    await page.getByRole('tab', { name: 'Upload / Paste' }).click();
+    await page.getByPlaceholder('Paste WSDL XML here…').fill(wsdl);
+    await page.getByLabel('Auto-create from WSDL address').check();
+  } finally {
+    release();
+  }
+
+  // The fetch lands with nobody waiting for it, and what was pasted stays -
+  // with no complaint about the request that was given up on, which the
+  // operator did not make and cannot act on.
+  await expect(page.getByPlaceholder('Paste WSDL XML here…')).not.toHaveValue(/\[URL\]/, {
+    timeout: 15000,
+  });
+  await expect(page.getByText(/could not|failed|canceled|cancelled/i)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Parse' }).click();
+  // What it parsed is what was pasted, not what the fetch carried.
+  await expect(page.getByText('1 service(s), 2 operation(s)')).toBeVisible();
+});
