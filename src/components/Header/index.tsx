@@ -68,10 +68,18 @@ const Logo = () => {
 };
 
 /** Small pulsing health dot */
-const HealthDot: FC<{ status?: 'Connected' | 'Disconnected'; error?: string }> = ({ status, error }) => {
+const HealthDot: FC<{ status?: 'Connected' | 'Disconnected' | 'Unknown'; error?: string }> = ({ status, error }) => {
   const isConnected = status === 'Connected';
   const color = isConnected ? '#10b981' : status === 'Disconnected' ? '#ef4444' : '#6b7280';
-  const label = isConnected ? 'Connected' : status === 'Disconnected' ? `Disconnected${error ? ': ' + error : ''}` : 'Checking…';
+  // Unknown and absent read the same here: grey, and the reason if there is
+  // one. Neither is a gateway this dashboard found unwell.
+  const label = isConnected
+    ? 'Connected'
+    : status === 'Disconnected'
+      ? `Disconnected${error ? ': ' + error : ''}`
+      : status === 'Unknown'
+        ? `Unknown${error ? ': ' + error : ''}`
+        : 'Checking…';
 
   return (
     <Tooltip label={label} withArrow>

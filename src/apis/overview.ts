@@ -59,10 +59,11 @@ const isResourceStats = (value: unknown): value is ResourceStats =>
  * One row of the connectivity table, with the fields that table renders.
  *
  * `status` is checked as a string and not against the union it is typed as: a
- * status this dashboard does not know reads as disconnected, in red, carrying
- * its own name - wrong in the colour, right in the text, and a row the operator
- * can still act on. Refusing the body over it would take the whole page away
- * instead, which is worse than the defect it would be reporting.
+ * status this dashboard does not know carries its own name into the row, which
+ * the operator can still act on. Refusing the body over it would take the whole
+ * page away instead, which is worse than the defect it would be reporting.
+ * Connected reads green, Unknown grey - not read is not the same as read and
+ * unwell (#330) - and anything else red.
  */
 const isInstanceHealth = (value: unknown): value is InstanceHealth =>
   isRecord(value) &&

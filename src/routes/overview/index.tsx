@@ -49,6 +49,7 @@ import IconUpstream from '~icons/material-symbols/hub-outline';
 import IconRefresh from '~icons/material-symbols/refresh';
 import IconRoute from '~icons/material-symbols/route-outline';
 import IconService from '~icons/material-symbols/settings-suggest-outline';
+import IconWarning from '~icons/material-symbols/warning-outline';
 
 const Overview = () => {
   const { t } = useTranslation();
@@ -238,12 +239,28 @@ const Overview = () => {
                       <Text size="10px" ff="monospace" c="dimmed">{inst.instance_id}</Text>
                     </Table.Td>
                     <Table.Td>
+                      {/* Three states, not two: a gateway the refresh did not
+                          get to is not one it reached and found unwell, and
+                          red would say it was (#286, #330). */}
                       <Group gap="xs">
-                        {inst.status === 'Connected' ? 
-                          <IconCheck width="16" height="16" color="green" /> : 
+                        {inst.status === 'Connected' ? (
+                          <IconCheck width="16" height="16" color="green" />
+                        ) : inst.status === 'Unknown' ? (
+                          <IconWarning width="16" height="16" color="gray" />
+                        ) : (
                           <IconError width="16" height="16" color="red" />
-                        }
-                        <Text size="sm" fw={500} c={inst.status === 'Connected' ? 'green' : 'red'}>
+                        )}
+                        <Text
+                          size="sm"
+                          fw={500}
+                          c={
+                            inst.status === 'Connected'
+                              ? 'green'
+                              : inst.status === 'Unknown'
+                                ? 'dimmed'
+                                : 'red'
+                          }
+                        >
                           {inst.status}
                         </Text>
                       </Group>

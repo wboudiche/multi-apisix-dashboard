@@ -18,7 +18,6 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -36,19 +35,17 @@ func NewOverviewHandler(overviewService *services.OverviewService) *OverviewHand
 
 // GetOverview returns dashboard summary data
 func (h *OverviewHandler) GetOverview(c *gin.Context) {
-	userID := middleware.GetUserID(c)
-	role := middleware.GetRole(c)
-	teamID := middleware.GetTeamID(c)
-
 	forceRefresh := c.Query("refresh") == "true"
 
 	var data interface{}
 	var err error
 
+	// The overview is the same for everyone who may see it, which is what lets
+	// the reads of it collapse into one (#330).
 	if forceRefresh {
-		data, err = h.overviewService.RefreshOverview(c.Request.Context(), userID, role, teamID)
+		data, err = h.overviewService.ForceRefresh(c.Request.Context())
 	} else {
-		data, err = h.overviewService.GetOverview(c.Request.Context(), userID, role, teamID)
+		data, err = h.overviewService.GetOverview(c.Request.Context())
 	}
 
 	if err != nil {

@@ -129,6 +129,15 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 	// Execute with a 10 second timeout
 	client := &http.Client{
 		Timeout: 10 * time.Second,
+		// Within the dashboard's ceiling on outbound connections, like the
+		// connection test and the WSDL fetch: this dials the gateway from the
+		// dashboard's own address (#330).
+		Transport: &http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
+			DialContext:         guardedDial,
+			TLSHandshakeTimeout: 5 * time.Second,
+			DisableKeepAlives:   true,
+		},
 	}
 
 	start := time.Now()
