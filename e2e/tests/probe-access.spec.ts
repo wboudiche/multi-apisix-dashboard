@@ -65,6 +65,17 @@ const statusOf = async (path: string, token: string, options: object) => {
   }
 };
 
+/** The refusal itself, so a 400 can be told from another 400. */
+const refusalOf = async (path: string, token: string, options: object) => {
+  try {
+    await apiFetch(path, token, options);
+    return '';
+  } catch (err) {
+    if (err instanceof HttpError) return err.message;
+    throw err;
+  }
+};
+
 test('the probes are refused to an account that configures nothing', async () => {
   const fx = getFixtures();
   const onInstance = { 'X-Instance-ID': fx.localInstanceId };
@@ -83,8 +94,11 @@ test('the probes are refused to an account that configures nothing', async () =>
       // is that it was let through.
       expect(await statusOf(probe.path, developer, options)).not.toBe(403);
       // RBACMiddleware lets a request that names no instance through, so the
-      // permission check refuses it itself.
-      expect(await statusOf(probe.path, developer, probe.options)).toBe(400);
+      // permission check refuses it itself. Read by its reason and not only by
+      // its status: test-route's own binding answers 400 as well, so a status
+      // alone would pass with the instance check gone.
+      const noInstance = await refusalOf(probe.path, developer, probe.options);
+      expect(noInstance).toMatch(/instance/i);
     });
   }
 });

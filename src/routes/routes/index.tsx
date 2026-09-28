@@ -186,7 +186,9 @@ export const RouteList = (props: RouteListProps) => {
     const method = (record.methods as string[])?.[0] || 'GET';
     const host = (record.host as string) || (record.hosts as string[])?.[0] || undefined;
     setTestDrawerRoute({
-      id: record.id as string,
+      // Converted, not cast: APISIX's id schema accepts a number, and a
+      // number would be sent as one and refused by the binding.
+      id: String(record.id),
       path: uri,
       method,
       host,
@@ -661,11 +663,7 @@ export const RouteList = (props: RouteListProps) => {
         onSave={canEdit ? handleJsonSave : undefined}
         loading={jsonSaving}
       />
-      {/* Keyed on the route so the drawer resets when another one is
-          tested, and mounted only with a route to test: the backend narrows
-          the request to it (#311). */}
       <RouteTestDrawer
-        key={testDrawerRoute?.id}
         opened={testDrawerOpen}
         onClose={() => setTestDrawerOpen(false)}
         routeId={testDrawerRoute?.id ?? ''}

@@ -433,7 +433,12 @@
       "upstreamId": "Upstream ID"
     },
     "routeTest": {
-      "requestFailed": "İstek başarısız oldu"
+      "requestFailed": "İstek başarısız oldu",
+      "badPath": "Bu yol gönderilemez: \".\", \"..\" veya boş bir bölüm içeriyor.",
+      "otherTeam": "Bu rota başka bir takıma ait.",
+      "noSuchRoute": "Bu rota artık bu örnekte yok.",
+      "pathNotMatched": "Bu yol, bu rotanın eşleştiği yollardan biri değil.",
+      "unverified": "Panel bu rotanın kime ait olduğunu doğrulayamadı, bu yüzden isteği göndermedi."
     }
   },
   "globalRules": {

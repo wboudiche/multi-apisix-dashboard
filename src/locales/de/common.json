@@ -433,7 +433,12 @@
       "upstreamId": "Upstream ID"
     },
     "routeTest": {
-      "requestFailed": "Anfrage fehlgeschlagen"
+      "requestFailed": "Anfrage fehlgeschlagen",
+      "badPath": "Dieser Pfad kann nicht gesendet werden: er enthält ein \".\", \"..\" oder ein leeres Segment.",
+      "otherTeam": "Diese Route gehört einem anderen Team.",
+      "noSuchRoute": "Diese Route existiert auf dieser Instanz nicht mehr.",
+      "pathNotMatched": "Dieser Pfad passt nicht zu dieser Route.",
+      "unverified": "Das Dashboard konnte nicht prüfen, wem diese Route gehört, und hat die Anfrage daher nicht gesendet."
     }
   },
   "globalRules": {

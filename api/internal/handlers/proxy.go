@@ -430,15 +430,25 @@ func NewProxyHandler(instanceService *services.InstanceService, ownershipService
 // resourceExists asks the instance's Admin API whether the resource at path is
 // already there. Used to tell a creating PUT apart from a write against an
 // existing but unassigned resource.
-func (h *ProxyHandler) resourceExists(ctx context.Context, instance *models.Instance, path string) (bool, error) {
-	targetURL := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin" + path
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+// newAdminRequest builds a GET against an instance's Admin API: the base URL
+// trimmed the one way, the admin key under the one header name. Three places
+// had their own copy of both (#311).
+func newAdminRequest(ctx context.Context, instance *models.Instance, path string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		strings.TrimRight(instance.AdminAPIURL, "/")+"/apisix/admin"+path, nil)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if instance.AdminKey != "" {
 		req.Header.Set("X-API-Key", instance.AdminKey)
+	}
+	return req, nil
+}
+
+func (h *ProxyHandler) resourceExists(ctx context.Context, instance *models.Instance, path string) (bool, error) {
+	req, err := newAdminRequest(ctx, instance, path)
+	if err != nil {
+		return false, err
 	}
 
 	resp, err := proxyClient.Do(req)
@@ -493,8 +503,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// User.Role was somehow set to instance_admin) from masquerading as an
 	// admin on instances they have no business with.
 	effRole := jwtRole
-	isSuperAdmin := jwtRole == models.RoleSuperAdmin
-	if !isSuperAdmin && ui != nil {
+	if jwtRole != models.RoleSuperAdmin && ui != nil {
 		effRole = ui.Role
 	}
 	// Who this caller acts as, and for which team: callerTeamScope, so that the

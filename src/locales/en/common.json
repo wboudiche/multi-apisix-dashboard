@@ -234,7 +234,12 @@
       "header": "Header",
       "value": "Value",
       "emptyResponse": "Send a request to see the response",
-      "requestFailed": "Request failed"
+      "requestFailed": "Request failed",
+      "badPath": "That path cannot be sent: it contains a \".\", \"..\" or empty segment.",
+      "otherTeam": "This route belongs to another team.",
+      "noSuchRoute": "This route no longer exists on this instance.",
+      "pathNotMatched": "That path is not one this route matches.",
+      "unverified": "The dashboard could not check who owns this route, so it did not send the request."
     },
     "plugins": {
       "addPlugin": "Add Plugin",

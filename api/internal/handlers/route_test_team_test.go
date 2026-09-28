@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -234,6 +235,78 @@ func TestRouteTestFailsClosedWhenOwnershipCannotBeRead(t *testing.T) {
 	}
 }
 
+// A "." or ".." segment: the gateway collapses it, so the path the route was
+// checked against is not the path it serves. Confirmed to reach the gateway
+// before this refused it.
+func TestRouteTestRefusesADotSegment(t *testing.T) {
+	adminAPI := adminAPIWithRoute(t, testRouteID, map[string]any{"uri": "/mine/*"})
+	gateway, reached := gatewayThatAnswers(t)
+	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
+
+	for _, path := range []string{"/mine/../victim", "/mine/./victim", "/mine//victim", "/mine/%2e%2e/victim"} {
+		w := callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
+			models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+			`{"route_id":"`+testRouteID+`","method":"DELETE","path":"`+path+`"}`)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want %d", path, w.Code, http.StatusBadRequest)
+		}
+	}
+	if len(*reached) != 0 {
+		t.Errorf("the gateway was sent %v", *reached)
+	}
+}
+
+// A method carrying a newline used to write a line of its own into the record
+// of who tested what.
+func TestRouteTestDoesNotLetTheCallerWriteTheLog(t *testing.T) {
+	adminAPI := adminAPIWithRoute(t, testRouteID, map[string]any{"uri": "/mine"})
+	gateway, _ := gatewayThatAnswers(t)
+	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
+
+	var logged strings.Builder
+	orig := log.Writer()
+	log.SetOutput(&logged)
+	t.Cleanup(func() { log.SetOutput(orig) })
+
+	callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		`{"route_id":"`+testRouteID+`","method":"GET\n2026/01/01 00:00:00 [route-test] user=admin FORGED","path":"/mine"}`)
+
+	// One line, whatever the method carried.
+	if lines := strings.Count(strings.TrimRight(logged.String(), "\n"), "\n"); lines != 0 {
+		t.Errorf("the log took %d extra lines:\n%s", lines, logged.String())
+	}
+}
+
+// The Admin API has answered a detail read flat as well as under "value", and
+// a route that decodes to neither reads as one that matches nothing - which
+// would refuse every test against such a gateway.
+func TestRouteTestReadsAFlatAdminAnswer(t *testing.T) {
+	flat := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/apisix/admin/routes/"+testRouteID) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"uri":"/mine","name":"mine"}`)
+	}))
+	t.Cleanup(flat.Close)
+	gateway, reached := gatewayThatAnswers(t)
+	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
+
+	w := callTestRoute(t, owners, instanceFor(flat.URL, gateway.URL),
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		`{"route_id":"`+testRouteID+`","method":"GET","path":"/mine"}`)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d, want %d: body %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	if len(*reached) != 1 {
+		t.Errorf("the gateway saw %v", *reached)
+	}
+}
+
 func TestRouteMatchesPath(t *testing.T) {
 	for _, tt := range []struct {
 		name  string
@@ -254,6 +327,19 @@ func TestRouteMatchesPath(t *testing.T) {
 		// to send anything.
 		{"no uri at all", apisixRoute{}, "/a", false},
 		{"an empty entry", apisixRoute{URIs: []string{""}}, "", false},
+		// APISIX's own uri forms, which a route is written in and the drawer
+		// prefills verbatim.
+		{"a parameter", apisixRoute{URI: "/user/:name"}, "/user/bob", true},
+		{"a parameter, one segment only", apisixRoute{URI: "/user/:name"}, "/user/bob/x", false},
+		{"a parameter, nothing in it", apisixRoute{URI: "/user/:name"}, "/user/", false},
+		{"a parameter in the middle", apisixRoute{URI: "/user/:name/edit"}, "/user/bob/edit", true},
+		{"a named catch-all", apisixRoute{URI: "/files/*path"}, "/files/a/b", true},
+		{"a named catch-all, nothing under it", apisixRoute{URI: "/files/*path"}, "/files", false},
+		{"a catch-all at the root", apisixRoute{URI: "/*"}, "/anything", true},
+		// Storable, and not a licence to send anything: APISIX matches paths,
+		// which begin with a slash.
+		{"a bare star", apisixRoute{URI: "*"}, "/anything", false},
+		{"a relative uri", apisixRoute{URI: "mine"}, "mine", false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := routeMatchesPath(tt.route, tt.path); got != tt.want {
