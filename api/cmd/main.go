@@ -193,8 +193,8 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			// share who may ask (#307). The connection test and the route test
 			// share a bucket; the WSDL fetch, which can legitimately hold one
 			// for minutes, has its own so that it cannot refuse the others.
-			limitProbes := middleware.LimitProbes(middleware.MaxConcurrentProbes)
-			limitWsdl := middleware.LimitProbes(middleware.MaxConcurrentWsdlFetches)
+			limitProbes := middleware.LimitProbes(middleware.MaxConcurrentProbes, middleware.ProbeRetryAfter)
+			limitWsdl := middleware.LimitProbes(middleware.MaxConcurrentWsdlFetches, middleware.WsdlRetryAfter)
 
 			// Upstream connectivity test
 			protected.POST("/test-upstream", rbac, mayWriteUpstreams, limitProbes, upstreamHandler.TestConnection)

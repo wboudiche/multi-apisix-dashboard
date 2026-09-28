@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { req } from '@/config/req';
 
 export type RouteTestRequest = {
@@ -40,6 +41,11 @@ export type RouteTestResponse = {
 };
 
 export const testRoute = async (data: RouteTestRequest): Promise<RouteTestResponse> => {
-  const response = await req.post<RouteTestResponse>('/test-route', data, { baseURL: '/api/v1' });
+  const response = await req.post<RouteTestResponse>('/test-route', data, {
+    baseURL: '/api/v1',
+    // The drawer says a 429 in the operator's language; without this the
+    // interceptor also toasts the backend's English sentence beside it (#331).
+    headers: { [SKIP_INTERCEPTOR_HEADER]: ['429'] },
+  });
   return response.data;
 };

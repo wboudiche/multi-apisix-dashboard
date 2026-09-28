@@ -19,7 +19,7 @@ import { useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
+import { SKIP_INTERCEPTOR_HEADER, TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { describeError, probeLimitKey } from '@/utils/api-error';
@@ -83,7 +83,12 @@ export const TestConnectionButton = () => {
         const res = await req.post<TestResponse>('/test-upstream', {
           nodes: testNodes.slice(i, i + TEST_UPSTREAM_MAX_NODES),
           scheme: scheme || 'http',
-        }, { baseURL: '/api/v1' });
+        }, {
+          baseURL: '/api/v1',
+          // This button says a 429 itself, in the operator's language; without
+          // this the interceptor also toasts the backend's English (#331).
+          headers: { [SKIP_INTERCEPTOR_HEADER]: ['429'] },
+        });
         tested.push(...res.data.results);
       }
     } catch (err: unknown) {

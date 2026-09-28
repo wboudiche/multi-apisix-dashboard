@@ -39,7 +39,7 @@ func newProbeRouter(t *testing.T, max int, release <-chan struct{}) (*gin.Engine
 	entered := make(chan struct{}, 64)
 	r := gin.New()
 	r.Use(withCaller)
-	r.POST("/probe", LimitProbes(max), func(c *gin.Context) {
+	r.POST("/probe", LimitProbes(max, ProbeRetryAfter), func(c *gin.Context) {
 		entered <- struct{}{}
 		<-release
 		c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -152,9 +152,17 @@ func TestLimitProbesHoldsExactlyItsCeiling(t *testing.T) {
 		}
 	}
 
-	refused := answerWithin(t, inBackground(r, "/probe", "u2"), 2*time.Second)
+	// From a caller holding nothing: sent from one of the callers above, its own
+	// share would answer first and this would not be about the ceiling at all.
+	refused := answerWithin(t, inBackground(r, "/probe", "holds-nothing"), 2*time.Second)
 	if refused.Code != http.StatusTooManyRequests {
 		t.Errorf("request %d: status %d, want %d", max+1, refused.Code, http.StatusTooManyRequests)
+	}
+	if code := refusalCode(t, refused); code != probeLimitAllCode {
+		t.Errorf("refused with %q, want %q: the bucket was full, not this caller's share", code, probeLimitAllCode)
+	}
+	if got := refused.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After %q, want 5 seconds", got)
 	}
 
 	// The admitted ones answered, which the count of requests that entered the
@@ -175,13 +183,14 @@ func TestLimitProbesIsOneBucketAcrossTheRoutesThatShareIt(t *testing.T) {
 	release := make(chan struct{})
 	entered := make(chan struct{}, 4)
 
-	shared := LimitProbes(1)
+	shared := LimitProbes(1, ProbeRetryAfter)
 	handler := func(c *gin.Context) {
 		entered <- struct{}{}
 		<-release
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 	r := gin.New()
+	r.Use(withCaller)
 	r.POST("/probe", shared, handler)
 	r.POST("/other-probe", shared, handler)
 
@@ -216,8 +225,9 @@ func TestLimitProbesGivesEachCallItsOwnBucket(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 	r := gin.New()
-	r.POST("/probe", LimitProbes(1), handler)
-	r.POST("/wsdl", LimitProbes(1), handler)
+	r.Use(withCaller)
+	r.POST("/probe", LimitProbes(1, ProbeRetryAfter), handler)
+	r.POST("/wsdl", LimitProbes(1, WsdlRetryAfter), handler)
 
 	held := inBackground(r, "/wsdl", "u1")
 	select {
@@ -251,28 +261,44 @@ func refusalCode(t *testing.T, w *httptest.ResponseRecorder) string {
 	return body.Code
 }
 
-// One account holds its share and no more, and the bucket it did not fill is
-// still open to everybody else. Before this, a developer looping a probe held
-// every slot and left every other operator refused (#331).
-func TestLimitProbesKeepsOneCallerToItsShare(t *testing.T) {
-	const max = 8 // a share of two
+// A quiet bucket is not one to hold an operator under: alone on the dashboard,
+// one account may take it up to where the reserve begins - more than its share -
+// which is what the ceiling was chosen to allow (#310, #331).
+func TestLimitProbesLetsOneCallerUseAQuietBucket(t *testing.T) {
+	bucket := newProbeBucket(8, ProbeRetryAfter) // share 2, reserve from 6
+
+	if bucket.busyFrom <= bucket.share {
+		t.Fatalf("reserve begins at %d and the share is %d, so this pins nothing", bucket.busyFrom, bucket.share)
+	}
+	for i := range bucket.busyFrom {
+		if ok, code := bucket.take("alone"); !ok {
+			t.Fatalf("slot %d of %d: refused with %q, and nobody else was asking", i+1, bucket.busyFrom, code)
+		}
+	}
+}
+
+// Once the bucket is busy, what is left is for whoever is not already holding a
+// share: the account that filled it waits, another is served. One account used
+// to hold every slot and leave everybody else refused (#331).
+func TestLimitProbesKeepsTheLastSlotsForSomebodyElse(t *testing.T) {
+	const max = 8
 	release := make(chan struct{})
 	r, entered := newProbeRouter(t, max, release)
 
-	share := callerShare(max)
-	held := make([]<-chan *httptest.ResponseRecorder, 0, share)
-	for range share {
+	busyFrom := max - callerShare(max)
+	held := make([]<-chan *httptest.ResponseRecorder, 0, busyFrom)
+	for range busyFrom {
 		held = append(held, inBackground(r, "/probe", "greedy"))
 	}
-	for i := range share {
+	for i := range busyFrom {
 		select {
 		case <-entered:
 		case <-time.After(2 * time.Second):
-			t.Fatalf("only %d of %d requests from one caller reached the handler", i, share)
+			t.Fatalf("only %d of %d requests from one caller reached the handler", i, busyFrom)
 		}
 	}
 
-	// Its share is full, and the bucket is not: refused, and told which.
+	// Held to its share now, with room left in the bucket.
 	refused := answerWithin(t, inBackground(r, "/probe", "greedy"), 2*time.Second)
 	if refused.Code != http.StatusTooManyRequests {
 		t.Errorf("the same caller again: status %d, want %d", refused.Code, http.StatusTooManyRequests)
@@ -281,12 +307,12 @@ func TestLimitProbesKeepsOneCallerToItsShare(t *testing.T) {
 		t.Errorf("refused with %q, want %q", code, probeLimitCallerCode)
 	}
 
-	// And somebody else is served, which is the whole point.
+	// And that room is somebody else's, which is the whole point.
 	other := inBackground(r, "/probe", "somebody-else")
 	select {
 	case <-entered:
 	case <-time.After(2 * time.Second):
-		t.Fatal("another caller was refused although the bucket had room")
+		t.Fatal("another caller was refused although the bucket kept room for one")
 	}
 
 	close(release)
@@ -298,30 +324,67 @@ func TestLimitProbesKeepsOneCallerToItsShare(t *testing.T) {
 	}
 }
 
-// A share given back is a share the same caller may take again, and the counter
-// is not left behind: the map would otherwise keep an entry for every account
-// that ever probed.
-func TestLimitProbesGivesACallerItsShareBack(t *testing.T) {
-	bucket := newProbeBucket(8)
+// A slot given back is one the same caller may take again, and the counter is
+// not left behind: the map would otherwise keep an entry for every account that
+// ever probed.
+func TestLimitProbesGivesACallerItsSlotsBack(t *testing.T) {
+	bucket := newProbeBucket(8, ProbeRetryAfter)
 
-	for i := range bucket.share {
+	for i := range bucket.busyFrom {
 		if ok, code := bucket.take("u1"); !ok {
-			t.Fatalf("slot %d of %d: refused with %q", i+1, bucket.share, code)
+			t.Fatalf("slot %d of %d: refused with %q", i+1, bucket.busyFrom, code)
 		}
 	}
-	if ok, _ := bucket.take("u1"); ok {
-		t.Fatal("a fourth was allowed past the share")
+	if ok, code := bucket.take("u1"); ok {
+		t.Fatalf("slot %d was allowed past the reserve", bucket.busyFrom+1)
+	} else if code != probeLimitCallerCode {
+		t.Errorf("refused with %q, want %q", code, probeLimitCallerCode)
 	}
 
-	for range bucket.share {
+	for range bucket.busyFrom {
 		bucket.give("u1")
 	}
 	if got := len(bucket.perUser); got != 0 {
 		t.Errorf("%d callers still counted, want 0: the counter outlived the requests", got)
 	}
-	if ok, code := bucket.take("u1"); !ok {
-		t.Errorf("after giving the share back: refused with %q", code)
+	if got := bucket.inFlight; got != 0 {
+		t.Errorf("%d in flight, want 0", got)
 	}
+	if ok, code := bucket.take("u1"); !ok {
+		t.Errorf("after giving them back: refused with %q", code)
+	}
+}
+
+// A give without a take must not raise the bucket's real ceiling: the channel
+// this replaced could not go negative, and this count must not either.
+func TestLimitProbesDoesNotGiveBackWhatWasNotTaken(t *testing.T) {
+	bucket := newProbeBucket(4, ProbeRetryAfter)
+
+	bucket.give("never-asked")
+	bucket.give("never-asked")
+	if got := bucket.inFlight; got != 0 {
+		t.Errorf("%d in flight after two spurious gives, want 0", got)
+	}
+
+	for i := range bucket.max {
+		if ok, _ := bucket.take(fmt.Sprintf("u%d", i)); !ok {
+			t.Fatalf("slot %d of %d was refused: the ceiling moved", i+1, bucket.max)
+		}
+	}
+	if ok, code := bucket.take("one-more"); ok || code != probeLimitAllCode {
+		t.Errorf("beyond the ceiling: ok %v, code %q", ok, code)
+	}
+}
+
+func TestProbeBucketRefusesToBeBuiltWithoutACeiling(t *testing.T) {
+	// A wiring mistake is not a runtime condition: clamped to one, it would
+	// leave an endpoint that merely felt slow.
+	defer func() {
+		if recover() == nil {
+			t.Error("newProbeBucket(0) did not panic")
+		}
+	}()
+	newProbeBucket(0, ProbeRetryAfter)
 }
 
 func TestCallerShareIsAQuarterAndNeverNothing(t *testing.T) {

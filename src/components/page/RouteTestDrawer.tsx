@@ -180,19 +180,18 @@ export const RouteTestDrawer = ({
         message?: string;
       };
       // The backend names its own refusals, so they read in the operator's
-      // language rather than as the English sentence beside the name (#311).
+      // language rather than as the English sentence beside the name (#311),
+      // and a ceiling says which one it was (#331).
       const code = e?.response?.data?.code;
       const named =
-        code && code in ROUTE_TEST_REFUSALS
+        probeLimitKey(err) ??
+        (code && code in ROUTE_TEST_REFUSALS
           ? ROUTE_TEST_REFUSALS[code as keyof typeof ROUTE_TEST_REFUSALS]
-          : undefined;
-      const limited = probeLimitKey(err);
+          : undefined);
       setError(
-        limited
-          ? t(limited)
-          : named
-            ? t(named)
-            : (e?.response?.data?.error || e?.message || t('form.routeTest.requestFailed'))
+        named
+          ? t(named)
+          : (e?.response?.data?.error || e?.message || t('form.routeTest.requestFailed'))
       );
     } finally {
       setLoading(false);
