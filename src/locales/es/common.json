@@ -38,7 +38,16 @@
     "accessLoadFailedTitle": "Lista de accesos no disponible",
     "accessLoadFailed": "No se pudo leer qué instancias puede usar esta cuenta, así que aquí su rol es desconocido.",
     "build": "Compilación {{sha}} ({{branch}}), {{date}}",
-    "buildUnknown": "Compilación de un commit desconocido, {{date}}"
+    "buildUnknown": "Compilación de un commit desconocido, {{date}}",
+    "allTeams": "Todos los equipos",
+    "selectInstance": "Seleccionar instancia",
+    "healthConnected": "Conectado",
+    "healthDisconnected": "Desconectado",
+    "healthDisconnectedWhy": "Desconectado: {{reason}}",
+    "healthUnknown": "Desconocido",
+    "healthUnknownWhy": "Desconocido: {{reason}}",
+    "healthChecking": "Comprobando…",
+    "noUsername": "Usuario"
   },
   "instanceGuard": {
     "noInstances": {

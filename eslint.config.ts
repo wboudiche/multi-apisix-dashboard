@@ -97,6 +97,56 @@ const e2eRules = tseslint.config(
   }
 );
 
+/**
+ * The screens whose attributes are held to i18n as well as their text.
+ *
+ * i18next/no-literal-string runs in its jsx-text-only mode everywhere, which
+ * never looks at an attribute, and i18n/no-text-as-attribute covers alt and
+ * title alone - which is how thirteen strings came to be written in English on
+ * the Users page (#320) and how the next label would be (#328).
+ *
+ * A list that grows: turning it on everywhere reports 97 occurrences, so each
+ * screen joins this once its own strings have keys, and cannot slip back.
+ */
+const attributesTranslated = tseslint.config({
+  files: ['src/components/Header/**/*.tsx'],
+  plugins: { i18next },
+  rules: {
+    'i18next/no-literal-string': [
+      'error',
+      {
+        mode: 'jsx-only',
+        // The attributes whose contents are read: a literal in one is prose,
+        // and - since naming an attribute is also what makes the rule walk
+        // inside it - a literal anywhere under one is too. That second half is
+        // why the render props are here: `renderOption={() => <span>Draft</span>}`
+        // is text on the screen, and an attribute left off this list hides what
+        // it holds rather than merely being unchecked itself.
+        'jsx-attributes': {
+          include: [
+            'label',
+            'placeholder',
+            'description',
+            'title',
+            'aria-label',
+            'data',
+            'renderOption',
+            'leftSection',
+            'rightSection',
+          ],
+        },
+        // Named the other way round: an option's fields are prose unless said
+        // otherwise, so a grouped `data` - Mantine's `{ group, items: [...] }` -
+        // is walked to the labels inside it, which an include list could not
+        // reach past `group`. Out: `value`, which is the id a select matches on;
+        // `style`, through which the language menu spreads a CSS variable; and
+        // SCREAMING_CASE, which is a constant rather than a sentence.
+        'object-properties': { exclude: ['[A-Z_-]+', 'style', 'value'] },
+      },
+    ],
+  },
+});
+
 const i18nRules = tseslint.config({
   files: ['src/**/*.{ts,tsx,js}'],
   plugins: {
@@ -186,5 +236,6 @@ export default tseslint.config(
   { ignores: ['dist', 'src/routeTree.gen.ts'] },
   e2eRules,
   i18nRules,
+  attributesTranslated,
   srcRules
 );

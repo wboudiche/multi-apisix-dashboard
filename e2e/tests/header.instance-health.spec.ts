@@ -117,6 +117,40 @@ test('reads the status of the selected instance out of the response', async ({
   });
 });
 
+test('gives the reason for being disconnected as the gateway wrote it', async ({
+  page,
+}) => {
+  const fx = getFixtures();
+
+  // A probe failure quotes the admin URL it could not reach. i18next escapes
+  // what it interpolates, for markup a tooltip does not render, so the reason
+  // arrived as http:&#x2F;&#x2F;127.0.0.1:19999 - unreadable, and unpastable
+  // (the build line had the same thing done to its branch name, #237).
+  const reason =
+    'Get "http://127.0.0.1:19999/apisix/admin/routes": connection refused';
+  await page.route(HEALTH, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          instance_id: fx.localInstanceId,
+          name: 'Local APISIX',
+          status: 'Disconnected',
+          last_check: new Date().toISOString(),
+          error: reason,
+        },
+      ]),
+    })
+  );
+
+  await page.goto('/ui/routes');
+  await healthDot(page).hover();
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toContainText(reason, { timeout: 20000 });
+  await expect(tooltip).not.toContainText('&#x');
+});
+
 test('loads the instance list once rather than on every render', async ({
   page,
 }) => {
