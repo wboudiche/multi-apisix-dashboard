@@ -40,6 +40,10 @@ const probes = [
   {
     name: 'test-route',
     path: '/api/v1/test-route',
+    // No route_id, which the endpoint requires since #311: a developer's answer
+    // here is the 400 that binding gives, which is past the permission check
+    // and is what this spec reads. Whose route may be tested is
+    // route-test.team-scope.spec.ts.
     options: { method: 'POST', json: { method: 'GET', path: '/e2e-probe-access' } },
   },
   {

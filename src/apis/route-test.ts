@@ -18,6 +18,12 @@
 import { req } from '@/config/req';
 
 export type RouteTestRequest = {
+  /**
+   * The route being tested. Required by the backend: the endpoint used to take
+   * any path and send it through the gateway, so a developer could aim a
+   * request at a route of another team's that they cannot even see (#311).
+   */
+  route_id: string;
   method: string;
   path: string;
   headers?: Record<string, string>;

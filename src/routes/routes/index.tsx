@@ -102,7 +102,13 @@ export const RouteList = (props: RouteListProps) => {
   const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
   const [jsonSaving, setJsonSaving] = useState(false);
   const [testDrawerOpen, setTestDrawerOpen] = useState(false);
-  const [testDrawerRoute, setTestDrawerRoute] = useState<{ path: string; method: string; host?: string; soapAction?: string } | null>(null);
+  const [testDrawerRoute, setTestDrawerRoute] = useState<{
+    id: string;
+    path: string;
+    method: string;
+    host?: string;
+    soapAction?: string;
+  } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const currentUser = useAtomValue(currentUserAtom);
@@ -180,6 +186,7 @@ export const RouteList = (props: RouteListProps) => {
     const method = (record.methods as string[])?.[0] || 'GET';
     const host = (record.host as string) || (record.hosts as string[])?.[0] || undefined;
     setTestDrawerRoute({
+      id: record.id as string,
       path: uri,
       method,
       host,
@@ -654,9 +661,14 @@ export const RouteList = (props: RouteListProps) => {
         onSave={canEdit ? handleJsonSave : undefined}
         loading={jsonSaving}
       />
+      {/* Keyed on the route so the drawer resets when another one is
+          tested, and mounted only with a route to test: the backend narrows
+          the request to it (#311). */}
       <RouteTestDrawer
+        key={testDrawerRoute?.id}
         opened={testDrawerOpen}
         onClose={() => setTestDrawerOpen(false)}
+        routeId={testDrawerRoute?.id ?? ''}
         defaultPath={testDrawerRoute?.path}
         defaultMethod={testDrawerRoute?.method}
         defaultHost={testDrawerRoute?.host}

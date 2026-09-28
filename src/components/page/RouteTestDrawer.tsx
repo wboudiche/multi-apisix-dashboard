@@ -49,6 +49,8 @@ type HeaderRow = { key: string; value: string };
 type RouteTestDrawerProps = {
   opened: boolean;
   onClose: () => void;
+  /** The route this drawer tests. The backend narrows the request to it. */
+  routeId: string;
   defaultPath?: string;
   defaultMethod?: string;
   defaultHost?: string;
@@ -76,6 +78,7 @@ const formatBody = (body: string): string => {
 export const RouteTestDrawer = ({
   opened,
   onClose,
+  routeId,
   defaultPath = '/',
   defaultMethod = 'GET',
   defaultHost,
@@ -142,6 +145,7 @@ export const RouteTestDrawer = ({
         if (q.key.trim()) queryMap[q.key.trim()] = q.value;
       }
       const result = await testRoute({
+        route_id: routeId,
         method,
         path,
         headers: Object.keys(headerMap).length > 0 ? headerMap : undefined,
@@ -160,7 +164,7 @@ export const RouteTestDrawer = ({
     } finally {
       setLoading(false);
     }
-  }, [method, path, headers, body, queryParams, t]);
+  }, [routeId, method, path, headers, body, queryParams, t]);
 
   const addHeader = () => setHeaders((prev) => [...prev, { key: '', value: '' }]);
   const removeHeader = (i: number) => setHeaders((prev) => prev.filter((_, idx) => idx !== i));

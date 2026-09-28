@@ -497,15 +497,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	if !isSuperAdmin && ui != nil {
 		effRole = ui.Role
 	}
-	isInstanceAdmin := !isSuperAdmin && ui != nil && ui.Role == models.RoleInstanceAdmin
-	isAdmin := isSuperAdmin || isInstanceAdmin
-
-	var effectiveTeamID string
-	if isAdmin {
-		effectiveTeamID = c.GetHeader("X-Team-ID")
-	} else if ui != nil {
-		effectiveTeamID = ui.TeamID
-	}
+	// Who this caller acts as, and for which team: callerTeamScope, so that the
+	// route test cannot come to a different answer about the same request
+	// (#311).
+	isAdmin, effectiveTeamID := callerTeamScope(c)
 
 	// Resolve the target instance through the same canonical helper RBACMiddleware
 	// uses. Resolving it differently here (e.g. header-first vs RBAC's query-first)

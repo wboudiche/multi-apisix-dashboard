@@ -19,26 +19,46 @@ package handlers
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
 
-type RouteTestHandler struct{}
+// ownerReader reads which team owns a resource. *services.OwnershipService
+// satisfies it; a test does not need etcd to, as middleware.InstanceReader
+// already does for the permission check.
+type ownerReader interface {
+	GetOwner(ctx context.Context, instanceID, resourceType, resourceID string) (string, error)
+}
 
-// The instance comes from middleware.RequireResourcePermission, on the route,
-// so this handler reads no store of its own.
-func NewRouteTestHandler() *RouteTestHandler {
-	return &RouteTestHandler{}
+type RouteTestHandler struct {
+	ownershipService ownerReader
+}
+
+// The instance comes from middleware.RequireResourcePermission, on the route.
+// The ownership store is read here, to answer whose route is being tested
+// (#311).
+func NewRouteTestHandler(ownershipService ownerReader) *RouteTestHandler {
+	return &RouteTestHandler{ownershipService: ownershipService}
 }
 
 type TestRouteRequest struct {
+	// RouteID names the route being tested. Required: the endpoint used to take
+	// any path and send it, so a developer in one team could send a DELETE to a
+	// route of another team's that they cannot even see in the list (#311).
+	RouteID string            `json:"route_id" binding:"required"`
 	Method  string            `json:"method" binding:"required"`
 	Path    string            `json:"path" binding:"required"`
 	Headers map[string]string `json:"headers"`
@@ -103,6 +123,47 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "path must not carry a fragment"})
 		return
 	}
+	// Whose route this is, and whether the path belongs to it. The gateway is
+	// the data plane and would answer anybody who can reach it - but it is the
+	// dashboard that sits on its network, and an account that may write routes
+	// on this instance is not thereby entitled to send traffic at another
+	// team's (#311).
+	isAdmin, teamID := callerTeamScope(c)
+	if !isAdmin {
+		owner, err := h.ownershipService.GetOwner(c.Request.Context(), instance.ID, "routes", req.RouteID)
+		if err != nil {
+			// Fail closed: a route whose owner cannot be read is not a route to
+			// send a request to.
+			c.JSON(http.StatusBadGateway, gin.H{"error": couldNotVerifyMsg})
+			return
+		}
+		if !nonAdminMayAccess(owner, teamID) {
+			c.JSON(http.StatusForbidden, gin.H{"error": otherTeamMsg})
+			return
+		}
+	}
+
+	route, err := h.readRoute(c.Request.Context(), instance, req.RouteID)
+	if err != nil {
+		if errors.Is(err, errRouteNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No such route on this instance"})
+			return
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": couldNotVerifyMsg})
+		return
+	}
+	// The path is checked after parsing, so a query string travels with the
+	// request without taking part in the match.
+	if !routeMatchesPath(route, parsed.Path) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "The path is not one this route matches",
+		})
+		return
+	}
+
+	log.Printf("[route-test] user=%s instance=%s route=%s team=%s admin=%t %s %s",
+		middleware.GetUserID(c), instance.ID, req.RouteID, teamID, isAdmin, req.Method, parsed.Path)
+
 	// Merged into whatever the path already asks for, rather than appended
 	// behind a second "?", which left the last parameter of the path holding
 	// the rest of the query and the gateway matching nothing (#256).
@@ -184,4 +245,79 @@ func queryFor(existing url.Values, query map[string]string) string {
 		existing.Set(key, value)
 	}
 	return existing.Encode()
+}
+
+// errRouteNotFound says the instance has no such route, which is a 404 for the
+// caller rather than a failure to check.
+var errRouteNotFound = errors.New("route not found")
+
+// apisixRoute is the part of a route this handler reads. APISIX answers a
+// detail read as {"value": {...}}, and has answered it flat in the past, so
+// both shapes are accepted - a route that decodes to neither would otherwise
+// read as one that matches nothing.
+type apisixRoute struct {
+	URI  string   `json:"uri"`
+	URIs []string `json:"uris"`
+}
+
+func (h *RouteTestHandler) readRoute(ctx context.Context, instance *models.Instance, routeID string) (apisixRoute, error) {
+	target := strings.TrimRight(instance.AdminAPIURL, "/") + "/apisix/admin/routes/" + url.PathEscape(routeID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return apisixRoute{}, err
+	}
+	if instance.AdminKey != "" {
+		req.Header.Set("X-API-Key", instance.AdminKey)
+	}
+
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		return apisixRoute{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return apisixRoute{}, errRouteNotFound
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return apisixRoute{}, fmt.Errorf("admin API returned status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Value *apisixRoute `json:"value"`
+		apisixRoute
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return apisixRoute{}, err
+	}
+	if body.Value != nil {
+		return *body.Value, nil
+	}
+	return body.apisixRoute, nil
+}
+
+// routeMatchesPath reports whether path is one the route accepts.
+//
+// It is APISIX's uri form, not APISIX's matching: a route also selects on host,
+// method, vars and priority, so a request can still reach a route this did not
+// name. What it does close is the case the endpoint was open to - naming one
+// route and sending a request at another - and it is deliberately strict about
+// nothing else.
+func routeMatchesPath(route apisixRoute, path string) bool {
+	for _, uri := range append([]string{route.URI}, route.URIs...) {
+		if uri == "" {
+			continue
+		}
+		if prefix, wild := strings.CutSuffix(uri, "*"); wild {
+			if strings.HasPrefix(path, prefix) {
+				return true
+			}
+			continue
+		}
+		if path == uri {
+			return true
+		}
+	}
+	return false
 }
