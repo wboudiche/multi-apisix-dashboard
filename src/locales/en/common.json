@@ -202,6 +202,7 @@
       "urlPlaceholder": "http://host/service?wsdl",
       "urlLabel": "WSDL URL",
       "fetch": "Fetch",
+      "fetching": "Fetching…",
       "placeholder": "Paste WSDL XML here…",
       "mode": "Output",
       "modePerOperation": "One route per operation",

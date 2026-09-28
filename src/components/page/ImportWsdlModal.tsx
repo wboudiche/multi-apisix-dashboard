@@ -77,6 +77,18 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   /** True while the URL is being fetched: the button says so and refuses a
       second click, which used to start a second fetch of the same graph. */
   const [fetching, setFetching] = useState(false);
+  /**
+   * The fetch that is current, and the way to stop it.
+   *
+   * A ref rather than the state above for the guard: two clicks delivered in one
+   * React batch both read the state as it was rendered, so only the disabled
+   * attribute stood between them. And a fetch the operator has moved on from -
+   * closed the dialog, uploaded a file, pasted a document, started another one -
+   * must neither land in the dialog they left nor go on holding one of the
+   * dashboard's outbound slots (#310, #331, #336).
+   */
+  const fetchRef = useRef<{ id: number; abort: AbortController } | null>(null);
+  const fetchSeq = useRef(0);
   const [sourceWarnings, setSourceWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
@@ -88,6 +100,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
+    abandonFetch();
     setContent('');
     setUrlValue('');
     setBundle(null);
@@ -122,6 +135,8 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
     const file = event.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file) return;
+    // This file is the source now: a fetch still running would land on top of it.
+    abandonFetch();
     clearDerived();
     setSourceUrl(undefined);
     try {
@@ -143,29 +158,58 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   const handleFetchUrl = useCallback(async () => {
     // A graph of imports can take minutes - twenty documents at ten seconds
     // apiece - and nothing said one was under way, so an operator clicked again
-    // and the second call wiped what the first had built (#336).
-    if (fetching) return;
+    // and the second call wiped what the first had built (#336). Read from the
+    // ref: two clicks in one React batch see the same rendered state.
+    if (fetchRef.current) return;
+
+    const url = urlValue.trim();
+    const id = ++fetchSeq.current;
+    const abort = new AbortController();
+    fetchRef.current = { id, abort };
     setFetching(true);
     clearDerived();
     setBundle(null);
+
     try {
-      const out = await fetchWsdl(urlValue.trim());
+      const out = await fetchWsdl(url, abort.signal);
+      // Dropped if the operator has moved on - uploaded a file, pasted a
+      // document, closed the dialog, started another fetch: landing anyway, this
+      // overwrote what they did with a source they had left behind.
+      if (fetchSeq.current !== id) return;
+      clearDerived();
       setBundle({ entry: out.entry, docs: out.docs });
-      setSourceUrl(urlValue.trim());
+      setSourceUrl(url);
       setSourceWarnings(out.warnings ?? []);
-      setContent(`[URL] ${urlValue.trim()} — ${Object.keys(out.docs).length} document(s)`);
+      setContent(`[URL] ${url} — ${Object.keys(out.docs).length} document(s)`);
     } catch (err: unknown) {
+      if (fetchSeq.current !== id || abort.signal.aborted) return;
       const e = err as { response?: { data?: { error?: string } }; message?: string };
       const limited = probeLimitKey(err);
+      // The source goes with the failure: left behind, its marker kept Parse
+      // enabled on a document that never arrived, and Parse then reported no
+      // SOAP services in a WSDL nobody had.
+      setContent('');
+      setSourceUrl(undefined);
       setParseError(
         limited
           ? t(limited)
           : (e?.response?.data?.error ?? e?.message ?? t('form.importWsdl.fetchError'))
       );
     } finally {
-      setFetching(false);
+      if (fetchRef.current?.id === id) {
+        fetchRef.current = null;
+        setFetching(false);
+      }
     }
-  }, [fetching, urlValue, t]);
+  }, [urlValue, t]);
+
+  /** Gives up on the fetch in flight, if there is one. */
+  const abandonFetch = useCallback(() => {
+    fetchSeq.current += 1;
+    fetchRef.current?.abort.abort();
+    fetchRef.current = null;
+    setFetching(false);
+  }, []);
 
   const effectiveBundle = (): Bundle | null => {
     if (bundle) return bundle;
@@ -299,6 +343,8 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
               <Textarea
                 value={content}
                 onChange={(e) => {
+                  // What is typed here is the source now, as an upload is.
+                  abandonFetch();
                   setContent(e.target.value);
                   setBundle(null);
                   setSourceUrl(undefined);
@@ -324,10 +370,15 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
               />
               <Button
                 onClick={handleFetchUrl}
+                disabled={!urlValue.trim()}
                 loading={fetching}
-                disabled={!urlValue.trim() || fetching}
+                aria-busy={fetching}
               >
-                {t('form.importWsdl.fetch')}
+                {/* Swapped rather than left to the spinner: Mantine blanks the
+                    label under `loading` and hides its loader from the
+                    accessibility tree, so the button would say nothing at all
+                    for the minutes this can take. */}
+                {fetching ? t('form.importWsdl.fetching') : t('form.importWsdl.fetch')}
               </Button>
             </Group>
           </Tabs.Panel>
@@ -471,7 +522,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
             {importResults?.success ? t('form.btn.back') : t('form.btn.cancel')}
           </Button>
           {!importResults && (
-            <Button onClick={handleParse} disabled={!content.trim()}>
+            <Button onClick={handleParse} disabled={!content.trim() || fetching}>
               {t('form.importWsdl.parse')}
             </Button>
           )}
