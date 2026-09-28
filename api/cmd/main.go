@@ -176,14 +176,19 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			mayWriteUpstreams := middleware.RequireResourcePermission(instanceService, "upstreams", "write")
 			mayWriteRoutes := middleware.RequireResourcePermission(instanceService, "routes", "write")
 
+			// The three endpoints that have the dashboard open connections
+			// from its own address share one ceiling on how many run at
+			// once (#310), as they share who may ask (#307).
+			limitProbes := middleware.LimitProbes(middleware.MaxConcurrentProbes)
+
 			// Upstream connectivity test
-			protected.POST("/test-upstream", rbac, mayWriteUpstreams, upstreamHandler.TestConnection)
+			protected.POST("/test-upstream", rbac, mayWriteUpstreams, limitProbes, upstreamHandler.TestConnection)
 
 			// Route testing via gateway
-			protected.POST("/test-route", rbac, mayWriteRoutes, routeTestHandler.TestRoute)
+			protected.POST("/test-route", rbac, mayWriteRoutes, limitProbes, routeTestHandler.TestRoute)
 
 			// WSDL fetch (server-side, SSRF-guarded) for the WSDL importer
-			protected.GET("/wsdl/fetch", rbac, mayWriteRoutes, wsdlHandler.Fetch)
+			protected.GET("/wsdl/fetch", rbac, mayWriteRoutes, limitProbes, wsdlHandler.Fetch)
 
 			// Password policy (readable by any authenticated user)
 			protected.GET("/settings/password-policy", settingsHandler.GetPasswordPolicy)

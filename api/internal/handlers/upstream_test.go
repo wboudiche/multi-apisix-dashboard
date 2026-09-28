@@ -411,3 +411,57 @@ func TestEmbeddedIPv4(t *testing.T) {
 		}
 	}
 }
+
+// One request used to start a goroutine per node - a hundred lookups and dials
+// at once, each up to five seconds, from the dashboard's own address. With
+// middleware.MaxConcurrentProbes requests in flight, what the dashboard held
+// open had no ceiling at all (#310).
+func TestUpstreamTestDialsNoMoreThanItsWorkers(t *testing.T) {
+	fakeResolver(t, nil)
+
+	var mu sync.Mutex
+	inFlight, peak, dialed := 0, 0, 0
+	orig := dialContext
+	dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+		mu.Lock()
+		inFlight++
+		dialed++
+		if inFlight > peak {
+			peak = inFlight
+		}
+		mu.Unlock()
+		// Held long enough that a request fanning out past its ceiling would
+		// overlap here rather than by luck of scheduling.
+		time.Sleep(5 * time.Millisecond)
+		mu.Lock()
+		inFlight--
+		mu.Unlock()
+		return nil, errors.New("connection refused")
+	}
+	t.Cleanup(func() { dialContext = orig })
+
+	nodes := make([]string, 0, maxTestNodes)
+	for i := range maxTestNodes {
+		// Public addresses, so every node reaches the dial.
+		nodes = append(nodes, fmt.Sprintf(`{"host":"8.8.%d.%d","port":80}`, i/256, i%256))
+	}
+	resp := postTestUpstream(t, `{"nodes":[`+strings.Join(nodes, ",")+`]}`)
+
+	if len(resp.Results) != maxTestNodes {
+		t.Fatalf("%d results, want %d", len(resp.Results), maxTestNodes)
+	}
+	// Every node is still tried: a ceiling that dropped nodes would report
+	// them as down without having dialed them.
+	mu.Lock()
+	gotDialed, gotPeak := dialed, peak
+	mu.Unlock()
+	if gotDialed != maxTestNodes {
+		t.Errorf("dialed %d of %d nodes", gotDialed, maxTestNodes)
+	}
+	if gotPeak > probeWorkers {
+		t.Errorf("%d dials at once, want at most %d", gotPeak, probeWorkers)
+	}
+	if gotPeak < 2 {
+		t.Errorf("peak of %d: the nodes were dialed one at a time, so this pins nothing", gotPeak)
+	}
+}

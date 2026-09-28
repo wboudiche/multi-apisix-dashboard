@@ -192,6 +192,12 @@ const (
 	// maxTestBodyBytes is far more than maxTestNodes nodes take. It keeps a
 	// body of any size from being decoded before the nodes are counted.
 	maxTestBodyBytes = 64 << 10
+	// probeWorkers bounds one request's own fan-out. A hundred nodes used to
+	// mean a hundred goroutines, each with a lookup and a dial of up to five
+	// seconds; with middleware.MaxConcurrentProbes requests in flight, the
+	// connections the dashboard holds open have a ceiling of their own rather
+	// than one per request (#310).
+	probeWorkers = 8
 )
 
 func resolveAllowedIP(ctx context.Context, host string) (net.IP, error) {
@@ -270,10 +276,16 @@ func (h *UpstreamHandler) TestConnection(c *gin.Context) {
 	results := make([]NodeTestResult, len(req.Nodes))
 	var wg sync.WaitGroup
 
+	// Acquired before the goroutine starts, so the ceiling bounds the
+	// goroutines as well as the connections.
+	slots := make(chan struct{}, probeWorkers)
+
 	for i, node := range req.Nodes {
 		wg.Add(1)
+		slots <- struct{}{}
 		go func(idx int, n TestUpstreamNode) {
 			defer wg.Done()
+			defer func() { <-slots }()
 
 			if n.Port < 1 || n.Port > 65535 {
 				results[idx] = NodeTestResult{Host: n.Host, Port: n.Port, Status: NodeFailed, Message: "Connection failed"}
