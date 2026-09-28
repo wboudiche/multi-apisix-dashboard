@@ -694,6 +694,7 @@
     "collapse": "Einklappen"
   },
   "error": {
-    "probeBusy": "Das Dashboard führt bereits so viele ausgehende Tests aus, wie es gleichzeitig zulässt. Versuchen Sie es in einem Moment erneut."
+    "probeBusy": "Das Dashboard führt bereits so viele ausgehende Tests aus, wie es gleichzeitig zulässt. Versuchen Sie es in einem Moment erneut.",
+    "probeBusyCaller": "Sie haben bereits so viele ausgehende Tests laufen, wie ein Konto haben darf. Warten Sie, bis einer fertig ist."
   }
 }

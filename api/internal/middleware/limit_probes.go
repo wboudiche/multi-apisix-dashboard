@@ -17,6 +17,7 @@ package middleware
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,7 +52,85 @@ const (
 // check in front of this one.
 const probeRetryAfterSeconds = "5"
 
-// LimitProbes refuses a probe request beyond the given number in flight.
+// callerShare is how much of a bucket one account may hold: a quarter of it, and
+// never less than one.
+//
+// The ceilings bound what the dashboard spends. Nothing bounded what one account
+// spent of it, so a single developer looping a probe held every slot and left
+// every other operator - super admins on unrelated instances included - refused
+// on all three endpoints. That does not exhaust the host any more, which is what
+// #310 was about; it hands the cost to the other people (#331).
+//
+// A quarter, rather than a number of its own, so that the two buckets keep their
+// proportions: four of the sixteen quick probes, one of the four WSDL imports -
+// which is one page action each, and the Test Connection button sends its
+// batches one after another rather than at once.
+func callerShare(max int) int {
+	if share := max / 4; share > 0 {
+		return share
+	}
+	return 1
+}
+
+// The refusals, named so the UI can say which one it was in the operator's
+// language: the dashboard is busy, or this account already holds its share.
+const (
+	probeLimitAllCode    = "probe_limit_all"
+	probeLimitCallerCode = "probe_limit_caller"
+)
+
+// probeBucket is a ceiling and, within it, each caller's share.
+type probeBucket struct {
+	mu       sync.Mutex
+	inFlight int
+	perUser  map[string]int
+	max      int
+	share    int
+}
+
+func newProbeBucket(max int) *probeBucket {
+	if max < 1 {
+		max = 1
+	}
+	return &probeBucket{
+		perUser: make(map[string]int),
+		max:     max,
+		share:   callerShare(max),
+	}
+}
+
+// take reports whether the request may run, and why not when it may not.
+func (b *probeBucket) take(user string) (ok bool, code string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.perUser[user] >= b.share {
+		return false, probeLimitCallerCode
+	}
+	if b.inFlight >= b.max {
+		return false, probeLimitAllCode
+	}
+	b.inFlight++
+	b.perUser[user]++
+	return true, ""
+}
+
+func (b *probeBucket) give(user string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.inFlight--
+	// Dropped at zero: the map would otherwise keep a counter for every account
+	// that ever probed, which is a slow leak on a long-running dashboard.
+	if b.perUser[user] <= 1 {
+		delete(b.perUser, user)
+		return
+	}
+	b.perUser[user]--
+}
+
+// LimitProbes refuses a probe request beyond the given number in flight, and
+// beyond one account's share of that number.
 //
 // A refusal rather than a queue: the caller is a person waiting on an answer,
 // and a queue would hold the dashboard's own connections while they waited -
@@ -61,20 +140,30 @@ const probeRetryAfterSeconds = "5"
 // Each call returns a handler with a bucket of its own, so routes that are to
 // share one must share the handler the call returns.
 func LimitProbes(max int) gin.HandlerFunc {
-	inFlight := make(chan struct{}, max)
+	bucket := newProbeBucket(max)
 	return func(c *gin.Context) {
-		select {
-		case inFlight <- struct{}{}:
-			defer func() { <-inFlight }()
-			c.Next()
-		default:
+		// The caller, as AuthMiddleware left it. An account that somehow
+		// carries none counts as one caller rather than as none: an exemption
+		// here would be the hole this closes.
+		user := GetUserID(c)
+
+		ok, code := bucket.take(user)
+		if !ok {
 			c.Header("Retry-After", probeRetryAfterSeconds)
 			// The frontend answers a 429 from these endpoints with a sentence
 			// of its own, in the operator's language; this is for everything
 			// else that reads the API.
+			message := "The dashboard is already running as many outbound tests as it allows at once. Try again in a moment."
+			if code == probeLimitCallerCode {
+				message = "You already have as many outbound tests running as one account may. Wait for one to finish."
+			}
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "The dashboard is already running as many outbound tests as it allows at once. Try again in a moment.",
+				"error": message,
+				"code":  code,
 			})
+			return
 		}
+		defer bucket.give(user)
+		c.Next()
 	}
 }

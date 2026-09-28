@@ -37,7 +37,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type RouteTestResponse, testRoute } from '@/apis/route-test';
-import { isProbeLimited } from '@/utils/api-error';
+import { probeLimitKey } from '@/utils/api-error';
 import IconAdd from '~icons/material-symbols/add';
 import IconDelete from '~icons/material-symbols/close';
 import IconSend from '~icons/material-symbols/send';
@@ -186,9 +186,10 @@ export const RouteTestDrawer = ({
         code && code in ROUTE_TEST_REFUSALS
           ? ROUTE_TEST_REFUSALS[code as keyof typeof ROUTE_TEST_REFUSALS]
           : undefined;
+      const limited = probeLimitKey(err);
       setError(
-        isProbeLimited(err)
-          ? t('error.probeBusy')
+        limited
+          ? t(limited)
           : named
             ? t(named)
             : (e?.response?.data?.error || e?.message || t('form.routeTest.requestFailed'))

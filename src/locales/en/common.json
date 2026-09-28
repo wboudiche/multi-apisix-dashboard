@@ -981,7 +981,8 @@
     "generic": "The request failed ({{status}}).",
     "malformedResponse": "The server did not answer with data for {{- url}}. The dashboard may be behind a misconfigured proxy.",
     "refreshFailed": "Could not renew your session: {{- reason}}. Your sign-in is still valid — try again.",
-    "probeBusy": "The dashboard is already running as many outbound tests as it allows at once. Try again in a moment."
+    "probeBusy": "The dashboard is already running as many outbound tests as it allows at once. Try again in a moment.",
+    "probeBusyCaller": "You already have as many outbound tests running as one account may. Wait for one to finish."
   },
   "labelFilter": {
     "add": "Add to filter",

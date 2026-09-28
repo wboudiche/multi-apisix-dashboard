@@ -694,6 +694,7 @@
     "collapse": "Contraer"
   },
   "error": {
-    "probeBusy": "El panel ya está ejecutando tantas pruebas salientes como permite a la vez. Vuelve a intentarlo en un momento."
+    "probeBusy": "El panel ya está ejecutando tantas pruebas salientes como permite a la vez. Vuelve a intentarlo en un momento.",
+    "probeBusyCaller": "Ya tienes en marcha tantas pruebas salientes como permite una cuenta. Espera a que termine una."
   }
 }

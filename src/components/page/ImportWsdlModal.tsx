@@ -40,7 +40,7 @@ import { getRouteListReq } from '@/apis/routes';
 import { fetchWsdl } from '@/apis/wsdl';
 import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import { req } from '@/config/req';
-import { isProbeLimited } from '@/utils/api-error';
+import { probeLimitKey } from '@/utils/api-error';
 import {
   type ComparableRoute,
   findRouteDuplicates,
@@ -148,9 +148,10 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
       setContent(`[URL] ${urlValue.trim()} — ${Object.keys(out.docs).length} document(s)`);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } }; message?: string };
+      const limited = probeLimitKey(err);
       setParseError(
-        isProbeLimited(err)
-          ? t('error.probeBusy')
+        limited
+          ? t(limited)
           : (e?.response?.data?.error ?? e?.message ?? t('form.importWsdl.fetchError'))
       );
     }

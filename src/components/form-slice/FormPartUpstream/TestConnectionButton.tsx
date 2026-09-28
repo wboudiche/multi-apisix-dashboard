@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
-import { describeError, isProbeLimited } from '@/utils/api-error';
+import { describeError, probeLimitKey } from '@/utils/api-error';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
 import IconNetwork from '~icons/material-symbols/dns';
@@ -89,9 +89,10 @@ export const TestConnectionButton = () => {
     } catch (err: unknown) {
       // The backend's own reason (a 403, a 413), not axios's "Request failed
       // with status code N".
+      const limited = probeLimitKey(err);
       setError(
-        isProbeLimited(err)
-          ? t('error.probeBusy')
+        limited
+          ? t(limited)
           : describeError(err, t('form.upstreams.testConnection.failure'))
       );
     } finally {
