@@ -89,7 +89,10 @@ export const getInstanceConflict = (error: unknown): InstanceConflict | null => 
 export type InstanceHealth = {
   instance_id: string;
   name: string;
-  status: 'Connected' | 'Disconnected';
+  // Unknown: the refresh did not get to this gateway - it ran out of the
+  // budget for the round - so nothing is known about it. Not the same as
+  // reached and unwell (#330).
+  status: 'Connected' | 'Disconnected' | 'Unknown';
   last_check: string;
   error?: string;
 };

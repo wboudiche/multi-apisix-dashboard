@@ -30,25 +30,38 @@ import (
 	"sync"
 )
 
-// Slots is how many such connections may be open at once.
+// Slots is how many connections the endpoints a caller waits on may have open
+// at once: the connection test, the route test, the WSDL fetch.
 //
-// Sixty-four is room for every screen that probes to work at once on a
-// dashboard a handful of operators share, and small enough that the host's file
-// descriptors and the network's conntrack table are not the limit anybody meets
-// first.
-const Slots = 64
+// OverviewSlots is the overview page's own share. Two buckets rather than one,
+// although the resource is one: the overview is a page that refreshes itself,
+// and a caller looping it would otherwise take every slot and leave the tests
+// somebody is waiting on with none. The host's outbound connections are bounded
+// by their sum.
+const (
+	Slots         = 64
+	OverviewSlots = 16
+)
 
-var slots = make(chan struct{}, Slots)
+var (
+	slots         = make(chan struct{}, Slots)
+	overviewSlots = make(chan struct{}, OverviewSlots)
+)
 
 // Acquire waits for a slot and returns the function that gives it back.
 //
 // It returns the context's error if the caller goes away, or its request runs
 // out of budget, while waiting - so what never got a slot reads as work that
 // was not done rather than as an answer.
-func Acquire(ctx context.Context) (func(), error) {
+func Acquire(ctx context.Context) (func(), error) { return acquire(ctx, slots) }
+
+// AcquireOverview waits for one of the overview's own slots.
+func AcquireOverview(ctx context.Context) (func(), error) { return acquire(ctx, overviewSlots) }
+
+func acquire(ctx context.Context, pool chan struct{}) (func(), error) {
 	select {
-	case slots <- struct{}{}:
-		return func() { <-slots }, nil
+	case pool <- struct{}{}:
+		return func() { <-pool }, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -94,6 +107,3 @@ func (c *slotConn) Close() error {
 	defer c.once.Do(c.release)
 	return c.Conn.Close()
 }
-
-// InFlight is how many slots are taken, for a test that asserts the ceiling.
-func InFlight() int { return len(slots) }

@@ -13,22 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package handlers
+package probe
 
-import (
-	"context"
-	"net"
-
-	"github.com/wboudiche/multi-apisix-dashboard/api/internal/probe"
-)
-
-// probeDial opens one probe connection within the dashboard's ceiling, holding
-// its slot for as long as the connection is open.
-//
-// Tests replace dialContext, and go through here to reach it, so what they
-// observe is what the ceiling allows.
-func probeDial(ctx context.Context, network, addr string) (net.Conn, error) {
-	return probe.Guard(func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return dialContext(ctx, network, addr)
-	})(ctx, network, addr)
-}
+// InFlight is how many slots are taken. Test-only: production code has no
+// business asking, and an answer is stale the moment it is given.
+func InFlight() int { return len(slots) }

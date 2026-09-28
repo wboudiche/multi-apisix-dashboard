@@ -29,6 +29,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/probe"
 )
 
 // fakeResolver answers lookups from names instead of the machine's resolver,
@@ -455,7 +457,7 @@ func TestUpstreamTestDialsNoMoreThanTheCeiling(t *testing.T) {
 	t.Cleanup(func() { dialContext = orig })
 
 	// Two requests at once, of a hundred nodes each: 200 dials against a
-	// ceiling of probeDialSlots.
+	// ceiling of probe.Slots.
 	var wg sync.WaitGroup
 	for range 2 {
 		wg.Add(1)
@@ -477,8 +479,8 @@ func TestUpstreamTestDialsNoMoreThanTheCeiling(t *testing.T) {
 	if gotDialed != 2*maxTestNodes {
 		t.Errorf("dialed %d of %d nodes", gotDialed, 2*maxTestNodes)
 	}
-	if gotPeak > probeDialSlots {
-		t.Errorf("%d dials at once, want at most %d", gotPeak, probeDialSlots)
+	if gotPeak > probe.Slots {
+		t.Errorf("%d dials at once, want at most %d", gotPeak, probe.Slots)
 	}
 	if gotPeak < 2 {
 		t.Errorf("peak of %d: the nodes were dialed one at a time, so this pins nothing", gotPeak)

@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -29,6 +28,11 @@ import (
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/probe"
 )
+
+// overviewBudget is how long one read of every instance may take. It bounds
+// the wait for a slot as well as the reads themselves, so a caller is never
+// held on a queue without end.
+const overviewBudget = 30 * time.Second
 
 // instanceLister is the part of *InstanceService the overview reads. A test
 // stands in for it rather than standing up etcd, as middleware.InstanceReader
@@ -54,24 +58,18 @@ func NewOverviewService(instanceService *InstanceService, ownershipService *Owne
 	return &OverviewService{
 		instanceService:  instanceService,
 		ownershipService: ownershipService,
+		// The default transport, proxy settings and all: the ceiling is taken
+		// per instance below, not per connection, so this client keeps its
+		// connection reuse - three counts against one gateway travel on one
+		// connection.
 		client: &http.Client{
 			Timeout: 5 * time.Second,
-			// Through the dashboard's ceiling on outbound connections: this
-			// endpoint starts one goroutine per registered instance and three
-			// Admin API calls each, on a page any authenticated account can
-			// ask for, and it was outside that accounting (#330).
-			Transport: &http.Transport{
-				DialContext: probe.Guard((&net.Dialer{Timeout: 5 * time.Second}).DialContext),
-				// A slot is held while the connection is open, so an idle one
-				// in the pool would hold one for nothing.
-				DisableKeepAlives: true,
-			},
 		},
 		cache: make(map[string]models.InstanceHealth),
 	}
 }
 
-func (s *OverviewService) GetOverview(ctx context.Context, userID string, globalRole string, teamID string) (*models.OverviewData, error) {
+func (s *OverviewService) GetOverview(ctx context.Context) (*models.OverviewData, error) {
 	s.mu.RLock()
 	if time.Now().Before(s.cacheExpiry) && len(s.cache) > 0 {
 		data := s.buildOverviewFromCache()
@@ -80,7 +78,7 @@ func (s *OverviewService) GetOverview(ctx context.Context, userID string, global
 	}
 	s.mu.RUnlock()
 
-	return s.RefreshOverview(ctx, userID, globalRole, teamID)
+	return s.RefreshOverview(ctx)
 }
 
 // RefreshOverview reads every instance and rebuilds the cache.
@@ -89,14 +87,41 @@ func (s *OverviewService) GetOverview(ctx context.Context, userID string, global
 // requests arriving on a cold cache used to start fifty fan-outs of one
 // goroutine per instance and three Admin API calls each (#330). singleflight
 // gives the ones that arrive while a read is in progress that read's result.
-func (s *OverviewService) RefreshOverview(ctx context.Context, userID string, globalRole string, teamID string) (*models.OverviewData, error) {
-	data, err, _ := s.refreshing.Do("overview", func() (any, error) {
-		return s.refreshOverview(ctx)
+func (s *OverviewService) RefreshOverview(ctx context.Context) (*models.OverviewData, error) {
+	// The read runs on a context of its own, with its own budget. Sharing the
+	// leader's would let one caller closing a tab cancel the read every other
+	// caller is waiting on, and write "Disconnected" for healthy gateways into
+	// a cache the next thirty seconds of page loads are served from.
+	flight := s.refreshing.DoChan("overview", func() (any, error) {
+		readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), overviewBudget)
+		defer cancel()
+		return s.refreshOverview(readCtx)
 	})
-	if err != nil {
-		return nil, err
+
+	select {
+	case res := <-flight:
+		if res.Err != nil {
+			return nil, res.Err
+		}
+		return res.Val.(*models.OverviewData), nil
+	case <-ctx.Done():
+		// This caller went away. The read carries on for the others, and for
+		// the cache.
+		return nil, ctx.Err()
 	}
-	return data.(*models.OverviewData), nil
+}
+
+// ForceRefresh reads every instance now, without joining a read that started
+// before this caller asked.
+//
+// An operator who registers an instance and then presses Refresh must not be
+// handed an answer that predates the change. The fan-out is bounded by the
+// overview's own ceiling whether or not the reads collapse, so a caller looping
+// this costs connections it cannot exceed rather than an unbounded fan-out.
+func (s *OverviewService) ForceRefresh(ctx context.Context) (*models.OverviewData, error) {
+	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), overviewBudget)
+	defer cancel()
+	return s.refreshOverview(readCtx)
 }
 
 func (s *OverviewService) refreshOverview(ctx context.Context) (*models.OverviewData, error) {
@@ -122,10 +147,30 @@ func (s *OverviewService) refreshOverview(ctx context.Context) (*models.Overview
 				LastCheck:  time.Now(),
 			}
 
+			// One slot for this instance's three reads, taken before the first
+			// request rather than inside each connection. The wait is then
+			// outside the client's own five-second timeout: queued behind it,
+			// a gateway that is perfectly well would have timed out and been
+			// written down as Disconnected (#330).
+			release, err := probe.AcquireOverview(ctx)
+			if err != nil {
+				// Not read, so nothing is known about it: reported as
+				// unreachable it would say this dashboard had tried and
+				// failed, which is the line #286 drew.
+				health.Status = "Unknown"
+				health.Error = "Not read: the dashboard ran out of time for this refresh"
+				mu.Lock()
+				newCache[instance.ID] = health
+				uncounted++
+				mu.Unlock()
+				return
+			}
+
 			// Fetch resource counts from the instance
 			routes := s.fetchResourceCount(ctx, instance, "/apisix/admin/routes")
 			services := s.fetchResourceCount(ctx, instance, "/apisix/admin/services")
 			upstreams := s.fetchResourceCount(ctx, instance, "/apisix/admin/upstreams")
+			release()
 
 			if routes < 0 && services < 0 && upstreams < 0 {
 				health.Status = "Disconnected"

@@ -24,8 +24,13 @@ import (
 	"time"
 )
 
-func TestAcquireHoldsAtItsCeiling(t *testing.T) {
-	held := make([]func(), 0, Slots)
+// fillTheCeiling takes every slot, and gives them back when the test ends.
+// Bounded, and registered before the first acquire: a leaked slot must fail
+// here rather than park the package until go test's own timeout.
+func fillTheCeiling(t *testing.T) (releaseOne func()) {
+	t.Helper()
+
+	var held []func()
 	t.Cleanup(func() {
 		for _, release := range held {
 			release()
@@ -33,48 +38,53 @@ func TestAcquireHoldsAtItsCeiling(t *testing.T) {
 	})
 
 	for i := range Slots {
-		release, err := Acquire(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		release, err := Acquire(ctx)
+		cancel()
 		if err != nil {
-			t.Fatalf("slot %d of %d: %v", i+1, Slots, err)
+			t.Fatalf("slot %d of %d: %v - a slot was leaked by an earlier test", i+1, Slots, err)
 		}
 		held = append(held, release)
 	}
+	// Releasing from the caller has to come out of the same slice the cleanup
+	// walks, or a slot is given back twice and the cleanup waits for a token
+	// nobody holds.
+	return func() {
+		if len(held) == 0 {
+			return
+		}
+		held[len(held)-1]()
+		held = held[:len(held)-1]
+	}
+}
+
+func TestAcquireHoldsAtItsCeiling(t *testing.T) {
+	releaseOne := fillTheCeiling(t)
 	if got := InFlight(); got != Slots {
 		t.Errorf("%d slots taken, want %d", got, Slots)
 	}
 
 	// The next one waits rather than opening a connection anyway.
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
 	if _, err := Acquire(ctx); !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("beyond the ceiling: err %v, want %v", err, context.DeadlineExceeded)
 	}
+	cancel()
 
 	// And a slot given back lets the next one through.
-	held[0]()
-	held = held[1:]
-	release, err := Acquire(context.Background())
+	releaseOne()
+	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	release, err := Acquire(ctx)
 	if err != nil {
 		t.Fatalf("after a release: %v", err)
 	}
-	held = append(held, release)
+	release()
 }
 
 func TestAcquireStopsWhenTheCallerGoesAway(t *testing.T) {
 	// Every slot taken, so the next caller is the one waiting.
-	held := make([]func(), 0, Slots)
-	for range Slots {
-		release, err := Acquire(context.Background())
-		if err != nil {
-			t.Fatal(err)
-		}
-		held = append(held, release)
-	}
-	t.Cleanup(func() {
-		for _, release := range held {
-			release()
-		}
-	})
+	fillTheCeiling(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	got := make(chan error, 1)
@@ -139,5 +149,54 @@ func TestGuardNeverOpensMoreThanTheCeiling(t *testing.T) {
 	}
 	if gotPeak < 2 {
 		t.Errorf("peak of %d: they went one at a time, so this pins nothing", gotPeak)
+	}
+}
+
+// The connection the guard hands back gives its slot up when it closes, and
+// only once however many times it is closed - a second release would hand out a
+// slot another caller is holding, and the ceiling would drift upwards with
+// every reuse.
+func TestGuardedConnectionReleasesOnceOnClose(t *testing.T) {
+	guarded := Guard(func(context.Context, string, string) (net.Conn, error) {
+		client, server := net.Pipe()
+		t.Cleanup(func() { server.Close() })
+		return client, nil
+	})
+
+	before := InFlight()
+	conn, err := guarded(context.Background(), "tcp", "192.0.2.1:80")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := InFlight(); got != before+1 {
+		t.Errorf("%d slots taken while the connection is open, want %d", got, before+1)
+	}
+
+	if err := conn.Close(); err != nil {
+		t.Errorf("close: %v", err)
+	}
+	if got := InFlight(); got != before {
+		t.Errorf("%d slots taken after the close, want %d", got, before)
+	}
+
+	// Closed again, as an http.Transport may: the slot is not given back twice.
+	_ = conn.Close()
+	if got := InFlight(); got != before {
+		t.Errorf("%d slots taken after a second close, want %d - a slot was released twice", got, before)
+	}
+}
+
+// A dial that fails gives the slot back too.
+func TestGuardReleasesWhenTheDialFails(t *testing.T) {
+	guarded := Guard(func(context.Context, string, string) (net.Conn, error) {
+		return nil, errors.New("connection refused")
+	})
+
+	before := InFlight()
+	if _, err := guarded(context.Background(), "tcp", "192.0.2.1:80"); err == nil {
+		t.Fatal("want an error")
+	}
+	if got := InFlight(); got != before {
+		t.Errorf("%d slots taken after a failed dial, want %d", got, before)
 	}
 }

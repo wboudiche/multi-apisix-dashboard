@@ -47,15 +47,18 @@ type WsdlHandler struct {
 	client *http.Client
 }
 
-// guardedClient dials only IPs that pass resolveAllowedIP, re-checking on every
-// connection (including redirects), which also defeats DNS rebinding.
-// guardedDial opens a connection within the dashboard's ceiling.
+// guardedDial opens a connection within the dashboard's ceiling, holding its
+// slot for as long as the connection is open (#330). It does not check the
+// address: the callers that need that do it first, as guardedClient does.
 var guardedDial = probe.Guard((&net.Dialer{Timeout: 5 * time.Second}).DialContext)
 
+// guardedClient dials only IPs that pass resolveAllowedIP, re-checking on every
+// connection (including redirects), which also defeats DNS rebinding.
 func guardedClient() *http.Client {
 	return &http.Client{
 		Timeout: wsdlHTTPTimeout,
 		Transport: &http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
 			TLSHandshakeTimeout: 5 * time.Second,
 			// A slot is held while the connection is open (probe.Guard), so an
 			// idle one in the pool would hold one for nothing.
