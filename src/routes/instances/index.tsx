@@ -761,7 +761,7 @@ const InstancesPage = () => {
               {t('form.btn.cancel')}
             </Button>
             <Button onClick={handleSubmit} loading={saving}>
-              {editingInstance ? t('instances.saveChanges') : t('instances.createInstance')}
+              {editingInstance ? t('form.btn.saveChanges') : t('instances.createInstance')}
             </Button>
           </Group>
         </Stack>

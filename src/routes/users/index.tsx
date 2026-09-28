@@ -159,8 +159,8 @@ const UsersPage = () => {
       }
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: describeError(err, 'Failed to load user management data'),
+        title: t('users.errorTitle'),
+        message: describeError(err, t('users.loadFailed')),
         color: 'red',
       });
     } finally {
@@ -181,7 +181,7 @@ const UsersPage = () => {
       const config = instanceRoles[instanceID];
       if (config.role && (config.role === 'developer' || config.role === 'viewer') && !config.team_id) {
         notifications.show({
-          message: 'Team is required for developer and viewer roles',
+          message: t('users.teamRequired'),
           color: 'red',
         });
         return;
@@ -201,8 +201,8 @@ const UsersPage = () => {
           userId = newUser.id;
         } catch (err) {
           notifications.show({
-            title: 'Error',
-            message: describeError(err, 'Failed to create user'),
+            title: t('users.errorTitle'),
+            message: describeError(err, t('users.createFailed')),
             color: 'red',
           });
           return;
@@ -219,8 +219,8 @@ const UsersPage = () => {
           });
         } catch (err) {
           notifications.show({
-            title: 'Error',
-            message: describeError(err, 'Failed to update user'),
+            title: t('users.errorTitle'),
+            message: describeError(err, t('users.updateFailed')),
             color: 'red',
           });
           return;
@@ -251,8 +251,8 @@ const UsersPage = () => {
             await instanceApi.removeUserRole(userId, assignment.instance_id);
           } catch (err) {
             notifications.show({
-              title: 'Error',
-              message: describeError(err, 'Failed to remove the role for one of the instances'),
+              title: t('users.errorTitle'),
+              message: describeError(err, t('users.roleRemoveFailed')),
               color: 'red',
             });
             // The rows behind this dialog were read before any of this ran, so
@@ -278,8 +278,8 @@ const UsersPage = () => {
             });
           } catch (err) {
             notifications.show({
-              title: 'Error',
-              message: describeError(err, 'Failed to assign the role for one of the instances'),
+              title: t('users.errorTitle'),
+              message: describeError(err, t('users.roleAssignFailed')),
               color: 'red',
             });
             loadData();
@@ -289,8 +289,10 @@ const UsersPage = () => {
       }
 
       notifications.show({
-        title: 'Success',
-        message: editingUser ? 'Permissions updated successfully' : 'User and permissions created successfully',
+        title: t('users.successTitle'),
+        message: editingUser
+          ? t('users.permissionsUpdated')
+          : t('users.createdWithPermissions'),
         color: 'green',
       });
       setModalOpen(false);
@@ -298,8 +300,10 @@ const UsersPage = () => {
       loadData();
     } catch {
       notifications.show({
-        title: 'Error',
-        message: editingUser ? 'Failed to update permissions' : 'Failed to create user',
+        title: t('users.errorTitle'),
+        message: editingUser
+          ? t('users.permissionsFailed')
+          : t('users.createFailed'),
         color: 'red',
       });
     }
@@ -335,25 +339,31 @@ const UsersPage = () => {
   };
 
   const handleDelete = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!confirm(t('users.deleteConfirm'))) return;
     try {
       await userApi.delete(userId);
       notifications.show({
-        title: 'Success',
-        message: 'User deleted successfully',
+        title: t('users.successTitle'),
+        message: t('users.deleted'),
         color: 'green',
       });
     } catch (err) {
       // A refused delete — the last super admin, an id already gone — said
       // nothing, the row still there as though the click had missed (#210).
       notifications.show({
-        title: 'Error',
-        message: describeError(err, 'Failed to delete user'),
+        title: t('users.errorTitle'),
+        message: describeError(err, t('users.deleteFailed')),
         color: 'red',
       });
     }
     // Reloaded either way: a user already gone leaves the list.
     loadData();
+  };
+
+  /** Closes the dialog and clears what it was editing. */
+  const closeModal = () => {
+    setModalOpen(false);
+    resetForm();
   };
 
   const resetForm = () => {
@@ -445,9 +455,11 @@ const UsersPage = () => {
             {users.map((user, index) => {
               const assignments = getAssignments(user.id);
               const assignedTeams = assignments
-                .map((a) => teams.find((t) => t.id === a.team_id))
+                .map((a) => teams.find((team) => team.id === a.team_id))
                 .filter(Boolean);
-              const uniqueTeams = [...new Map(assignedTeams.map((t) => [t!.id, t!])).values()];
+              const uniqueTeams = [
+                ...new Map(assignedTeams.map((team) => [team!.id, team!])).values(),
+              ];
 
               return (
               <Table.Tr key={user.id} className={`stagger-${(index % 5) + 1}`}>
@@ -458,7 +470,7 @@ const UsersPage = () => {
                     </ThemeIcon>
                     <Box>
                       <Text fw={600} size="sm">{user.username}</Text>
-                      <Text size="xs" c="dimmed">{user.email || 'No email provided'}</Text>
+                      <Text size="xs" c="dimmed">{user.email || t('users.noEmail')}</Text>
                     </Box>
                   </Group>
                 </Table.Td>
@@ -555,8 +567,8 @@ const UsersPage = () => {
 
       <Modal
         opened={modalOpen}
-        onClose={() => { setModalOpen(false); resetForm(); }}
-        title={editingUser ? 'Edit User & Permissions' : 'Add New User'}
+        onClose={closeModal}
+        title={editingUser ? t('users.dialogEditTitle') : t('users.dialogAddTitle')}
         size="lg"
       >
         {editingUser && unreadableAssignments[editingUser.id] && (
@@ -586,7 +598,10 @@ const UsersPage = () => {
           <Tabs.Panel value="basic">
             <Stack gap="md">
               <TextInput
-                label="Username"
+                label={t('users.fieldUsername')}
+                // This and the e-mail below stay as they are: they are
+                // examples, not sentences, and a translator cannot improve
+                // "johndoe" without inventing a different person.
                 placeholder="johndoe"
                 required
                 value={formData.username}
@@ -595,15 +610,15 @@ const UsersPage = () => {
                 data-autofocus
               />
               <TextInput
-                label="Email"
+                label={t('users.fieldEmail')}
                 placeholder="john@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
               {!editingUser && (
                 <TextInput
-                  label="Password"
-                  placeholder="Enter secure password"
+                  label={t('users.fieldPassword')}
+                  placeholder={t('users.fieldPasswordPlaceholder')}
                   required
                   type="password"
                   value={formData.password}
@@ -622,8 +637,8 @@ const UsersPage = () => {
                 />
               )}
               <Select
-                label="Global Role"
-                description="Super Admins have full access to all instances. Regular users need per-instance role assignments."
+                label={t('users.fieldGlobalRole')}
+                description={t('users.fieldGlobalRoleDesc')}
                 value={formData.role}
                 onChange={(value) => setFormData({ ...formData, role: value || 'user' })}
                 data={[
@@ -663,8 +678,8 @@ const UsersPage = () => {
                           <Group gap="sm" grow>
                             <Select
                               size="sm"
-                              label="Role"
-                              placeholder="No access"
+                              label={t('users.fieldInstanceRole')}
+                              placeholder={t('users.fieldInstanceRolePlaceholder')}
                               clearable
                               // Mantine hides its clear button from the
                               // accessibility tree and takes it out of the tab
@@ -691,11 +706,14 @@ const UsersPage = () => {
                             {(config?.role === 'developer' || config?.role === 'viewer') && (
                               <Select
                                 size="sm"
-                                label="Team"
-                                placeholder="No team"
+                                label={t('users.fieldTeam')}
+                                placeholder={t('users.fieldTeamPlaceholder')}
                                 clearable
                                 required
-                                data={teams.map(t => ({ value: t.id, label: t.name }))}
+                                data={teams.map((team) => ({
+                                  value: team.id,
+                                  label: team.name,
+                                }))}
                                 value={config?.team_id || null}
                                 onChange={(teamId) => setInstanceRoles({
                                   ...instanceRoles,
@@ -715,8 +733,15 @@ const UsersPage = () => {
         </Tabs>
 
         <Group justify="flex-end" mt="xl">
-          <Button variant="subtle" color="gray" onClick={() => setModalOpen(false)}>{t('form.btn.cancel')}</Button>
-          <Button onClick={handleSubmit}>{editingUser ? 'Save Changes' : 'Create User'}</Button>
+          {/* The same teardown as the dialog's own onClose: Cancel used to
+              leave the edited account's form state and per-instance role map
+              behind for whatever opened the dialog next. */}
+          <Button variant="subtle" color="gray" onClick={closeModal}>
+            {t('form.btn.cancel')}
+          </Button>
+          <Button onClick={handleSubmit}>
+            {editingUser ? t('form.btn.saveChanges') : t('users.submitCreate')}
+          </Button>
         </Group>
       </Modal>
 

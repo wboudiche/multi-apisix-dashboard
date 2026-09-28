@@ -268,7 +268,7 @@ const TeamsPage = () => {
               {t('teams.cancel')}
             </Button>
             <Button onClick={handleSubmit}>
-              {editingId ? t('teams.saveSubmit') : t('teams.createSubmit')}
+              {editingId ? t('form.btn.saveChanges') : t('teams.createSubmit')}
             </Button>
           </Group>
         </Stack>
