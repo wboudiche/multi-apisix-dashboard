@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/probe"
 )
 
 const (
@@ -47,12 +49,17 @@ type WsdlHandler struct {
 
 // guardedClient dials only IPs that pass resolveAllowedIP, re-checking on every
 // connection (including redirects), which also defeats DNS rebinding.
+// guardedDial opens a connection within the dashboard's ceiling.
+var guardedDial = probe.Guard((&net.Dialer{Timeout: 5 * time.Second}).DialContext)
+
 func guardedClient() *http.Client {
-	dialer := &net.Dialer{Timeout: 5 * time.Second}
 	return &http.Client{
 		Timeout: wsdlHTTPTimeout,
 		Transport: &http.Transport{
 			TLSHandshakeTimeout: 5 * time.Second,
+			// A slot is held while the connection is open (probe.Guard), so an
+			// idle one in the pool would hold one for nothing.
+			DisableKeepAlives: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
@@ -65,12 +72,9 @@ func guardedClient() *http.Client {
 				// Through the dashboard's ceiling on outbound connections: a
 				// WSDL graph is followed one document at a time, but twenty
 				// imports across the requests in flight still add up (#310).
-				release, err := acquireProbeSlot(ctx)
-				if err != nil {
-					return nil, err
-				}
-				defer release()
-				return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+				// Guarded so the slot is held while the connection is open, not
+				// only while it is being opened (#330).
+				return guardedDial(ctx, network, net.JoinHostPort(ip.String(), port))
 			},
 		},
 	}

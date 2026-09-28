@@ -19,15 +19,26 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/probe"
 )
 
+// instanceLister is the part of *InstanceService the overview reads. A test
+// stands in for it rather than standing up etcd, as middleware.InstanceReader
+// already does for the permission check.
+type instanceLister interface {
+	ListInstances(ctx context.Context) ([]*models.Instance, error)
+}
+
 type OverviewService struct {
-	instanceService  *InstanceService
+	instanceService  instanceLister
 	ownershipService *OwnershipService
 	client           *http.Client
 	cache            map[string]models.InstanceHealth
@@ -35,6 +46,8 @@ type OverviewService struct {
 	cachedUncounted  int
 	cacheExpiry      time.Time
 	mu               sync.RWMutex
+	// refreshing collapses the concurrent reads of every instance into one.
+	refreshing singleflight.Group
 }
 
 func NewOverviewService(instanceService *InstanceService, ownershipService *OwnershipService) *OverviewService {
@@ -43,6 +56,16 @@ func NewOverviewService(instanceService *InstanceService, ownershipService *Owne
 		ownershipService: ownershipService,
 		client: &http.Client{
 			Timeout: 5 * time.Second,
+			// Through the dashboard's ceiling on outbound connections: this
+			// endpoint starts one goroutine per registered instance and three
+			// Admin API calls each, on a page any authenticated account can
+			// ask for, and it was outside that accounting (#330).
+			Transport: &http.Transport{
+				DialContext: probe.Guard((&net.Dialer{Timeout: 5 * time.Second}).DialContext),
+				// A slot is held while the connection is open, so an idle one
+				// in the pool would hold one for nothing.
+				DisableKeepAlives: true,
+			},
 		},
 		cache: make(map[string]models.InstanceHealth),
 	}
@@ -60,7 +83,23 @@ func (s *OverviewService) GetOverview(ctx context.Context, userID string, global
 	return s.RefreshOverview(ctx, userID, globalRole, teamID)
 }
 
+// RefreshOverview reads every instance and rebuilds the cache.
+//
+// Callers share one read: the answer does not depend on who asked, and fifty
+// requests arriving on a cold cache used to start fifty fan-outs of one
+// goroutine per instance and three Admin API calls each (#330). singleflight
+// gives the ones that arrive while a read is in progress that read's result.
 func (s *OverviewService) RefreshOverview(ctx context.Context, userID string, globalRole string, teamID string) (*models.OverviewData, error) {
+	data, err, _ := s.refreshing.Do("overview", func() (any, error) {
+		return s.refreshOverview(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return data.(*models.OverviewData), nil
+}
+
+func (s *OverviewService) refreshOverview(ctx context.Context) (*models.OverviewData, error) {
 	instances, err := s.instanceService.ListInstances(ctx)
 	if err != nil {
 		return nil, err
