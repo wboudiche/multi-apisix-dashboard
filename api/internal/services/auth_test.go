@@ -16,6 +16,7 @@
 package services
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -30,28 +31,25 @@ func TestStampCreatedDatesTheRecord(t *testing.T) {
 
 	stampCreated(user, now)
 
-	if !user.CreatedAt.Equal(now) {
+	if user.CreatedAt == nil || !user.CreatedAt.Equal(now) {
 		t.Errorf("CreatedAt = %v, want %v", user.CreatedAt, now)
 	}
-	if !user.UpdatedAt.Equal(now) {
+	if user.UpdatedAt == nil || !user.UpdatedAt.Equal(now) {
 		t.Errorf("UpdatedAt = %v, want %v", user.UpdatedAt, now)
-	}
-	if user.CreatedAt.IsZero() {
-		t.Error("CreatedAt is the zero time, which the page shows as 01/01/1")
 	}
 }
 
 func TestStampUpdatedKeepsTheCreationDate(t *testing.T) {
 	created := time.Date(2026, 1, 2, 9, 0, 0, 0, time.UTC)
 	later := created.Add(48 * time.Hour)
-	user := &models.User{ID: "u1", CreatedAt: created, UpdatedAt: created}
+	user := &models.User{ID: "u1", CreatedAt: &created, UpdatedAt: &created}
 
 	stampUpdated(user, later)
 
-	if !user.CreatedAt.Equal(created) {
+	if user.CreatedAt == nil || !user.CreatedAt.Equal(created) {
 		t.Errorf("CreatedAt = %v, want it left at %v", user.CreatedAt, created)
 	}
-	if !user.UpdatedAt.Equal(later) {
+	if user.UpdatedAt == nil || !user.UpdatedAt.Equal(later) {
 		t.Errorf("UpdatedAt = %v, want %v", user.UpdatedAt, later)
 	}
 }
@@ -63,7 +61,90 @@ func TestStampUpdatedDoesNotInventAMissingCreationDate(t *testing.T) {
 
 	stampUpdated(user, time.Date(2026, 9, 27, 14, 5, 0, 0, time.UTC))
 
-	if !user.CreatedAt.IsZero() {
+	if user.CreatedAt != nil {
 		t.Errorf("CreatedAt = %v, want it left unset", user.CreatedAt)
+	}
+}
+
+// A record with no date is served as null. As a value it was
+// "0001-01-01T00:00:00Z", which every consumer that does not know the trap reads
+// as a date: a sort puts it first, an export writes it down, a page shows
+// 01/01/1 - which the Users page did (#300, #321).
+func TestUndatedRecordsAreServedAsNull(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		record any
+	}{
+		{"user", &models.User{ID: "u1", Username: "someone"}},
+		{"instance", &models.Instance{ID: "i1", Name: "local"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(tt.record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(body, &got); err != nil {
+				t.Fatal(err)
+			}
+			for _, field := range []string{"created_at", "updated_at"} {
+				value, present := got[field]
+				if !present {
+					t.Errorf("%s is missing: a consumer cannot tell it from a field it does not know", field)
+					continue
+				}
+				if value != nil {
+					t.Errorf("%s = %v, want null", field, value)
+				}
+			}
+		})
+	}
+}
+
+// And a dated one is served as the date it holds.
+func TestDatedRecordsKeepTheirDate(t *testing.T) {
+	now := time.Date(2026, 9, 28, 3, 30, 0, 0, time.UTC)
+	body, err := json.Marshal(&models.User{ID: "u1", CreatedAt: &now, UpdatedAt: &now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		CreatedAt *time.Time `json:"created_at"`
+		UpdatedAt *time.Time `json:"updated_at"`
+	}
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.CreatedAt == nil || !got.CreatedAt.Equal(now) {
+		t.Errorf("created_at = %v, want %v", got.CreatedAt, now)
+	}
+	if got.UpdatedAt == nil || !got.UpdatedAt.Equal(now) {
+		t.Errorf("updated_at = %v, want %v", got.UpdatedAt, now)
+	}
+}
+
+// An account stored before anything stamped it holds the zero time in etcd, and
+// reads back as undated rather than as the year 1.
+func TestAZeroTimeInEtcdReadsAsUndated(t *testing.T) {
+	stored := []byte(`{"id":"u1","username":"someone","created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z"}`)
+
+	var user models.User
+	if err := json.Unmarshal(stored, &user); err != nil {
+		t.Fatal(err)
+	}
+	// It decodes to a pointer at the zero time, which is not nil - so the
+	// API would serve it back as the year 1 unless it is read as undated.
+	if user.CreatedAt != nil && !user.CreatedAt.IsZero() {
+		t.Fatalf("CreatedAt = %v, want the zero time", user.CreatedAt)
+	}
+	if userAsRead(&user).CreatedAt != nil {
+		t.Error("the zero time did not read as no date at all")
+	}
+
+	// And a real date is left where it is.
+	now := time.Now()
+	dated := models.User{ID: "u1", CreatedAt: &now}
+	if got := userAsRead(&dated).CreatedAt; got == nil || !got.Equal(now) {
+		t.Errorf("CreatedAt = %v, want %v", got, now)
 	}
 }

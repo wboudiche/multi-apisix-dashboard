@@ -164,9 +164,18 @@ func (s *InstanceService) CreateInstance(ctx context.Context, instance *models.I
 
 	instance.Name = strings.TrimSpace(instance.Name)
 	instance.ID = uuid.New().String()
-	instance.CreatedAt = time.Now()
-	instance.UpdatedAt = time.Now()
+	now := time.Now()
+	instance.CreatedAt = &now
+	instance.UpdatedAt = &now
 	return s.etcd.PutJSON(ctx, models.KeyPrefixInstances+instance.ID, instance)
+}
+
+// instanceAsRead reads a stored instance: the zero time its dates may hold,
+// from when the fields were values, is no date at all (#321).
+func instanceAsRead(instance *models.Instance) *models.Instance {
+	instance.CreatedAt = models.NilIfZero(instance.CreatedAt)
+	instance.UpdatedAt = models.NilIfZero(instance.UpdatedAt)
+	return instance
 }
 
 func (s *InstanceService) GetInstance(ctx context.Context, id string) (*models.Instance, error) {
@@ -178,7 +187,7 @@ func (s *InstanceService) GetInstance(ctx context.Context, id string) (*models.I
 	if instance.ID == "" {
 		return nil, nil
 	}
-	return &instance, nil
+	return instanceAsRead(&instance), nil
 }
 
 func (s *InstanceService) ListInstances(ctx context.Context) ([]*models.Instance, error) {
@@ -193,7 +202,7 @@ func (s *InstanceService) ListInstances(ctx context.Context) ([]*models.Instance
 		if err := json.Unmarshal(data, &instance); err != nil {
 			continue
 		}
-		instances = append(instances, &instance)
+		instances = append(instances, instanceAsRead(&instance))
 	}
 
 	return instances, nil
@@ -223,7 +232,8 @@ func (s *InstanceService) UpdateInstance(ctx context.Context, instance *models.I
 	}
 
 	instance.Name = strings.TrimSpace(instance.Name)
-	instance.UpdatedAt = time.Now()
+	touched := time.Now()
+	instance.UpdatedAt = &touched
 	return s.etcd.PutJSON(ctx, models.KeyPrefixInstances+instance.ID, instance)
 }
 

@@ -35,8 +35,10 @@ export type Instance = {
    */
   control_api_url: string;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  // null for a record the backend has no date for: it stopped serving Go's
+  // zero time as though it were one (#321). recordDate reads both.
+  created_at: string | null;
+  updated_at: string | null;
   /**
    * Set by create/update when the instance was saved but its Admin API did not
    * answer. Never present on a listed instance.
