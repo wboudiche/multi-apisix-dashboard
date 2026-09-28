@@ -165,17 +165,9 @@ func (s *InstanceService) CreateInstance(ctx context.Context, instance *models.I
 	instance.Name = strings.TrimSpace(instance.Name)
 	instance.ID = uuid.New().String()
 	now := time.Now()
-	instance.CreatedAt = &now
-	instance.UpdatedAt = &now
+	instance.CreatedAt = models.NullTime(now)
+	instance.UpdatedAt = models.NullTime(now)
 	return s.etcd.PutJSON(ctx, models.KeyPrefixInstances+instance.ID, instance)
-}
-
-// instanceAsRead reads a stored instance: the zero time its dates may hold,
-// from when the fields were values, is no date at all (#321).
-func instanceAsRead(instance *models.Instance) *models.Instance {
-	instance.CreatedAt = models.NilIfZero(instance.CreatedAt)
-	instance.UpdatedAt = models.NilIfZero(instance.UpdatedAt)
-	return instance
 }
 
 func (s *InstanceService) GetInstance(ctx context.Context, id string) (*models.Instance, error) {
@@ -187,7 +179,7 @@ func (s *InstanceService) GetInstance(ctx context.Context, id string) (*models.I
 	if instance.ID == "" {
 		return nil, nil
 	}
-	return instanceAsRead(&instance), nil
+	return &instance, nil
 }
 
 func (s *InstanceService) ListInstances(ctx context.Context) ([]*models.Instance, error) {
@@ -202,7 +194,7 @@ func (s *InstanceService) ListInstances(ctx context.Context) ([]*models.Instance
 		if err := json.Unmarshal(data, &instance); err != nil {
 			continue
 		}
-		instances = append(instances, instanceAsRead(&instance))
+		instances = append(instances, &instance)
 	}
 
 	return instances, nil
@@ -232,8 +224,19 @@ func (s *InstanceService) UpdateInstance(ctx context.Context, instance *models.I
 	}
 
 	instance.Name = strings.TrimSpace(instance.Name)
-	touched := time.Now()
-	instance.UpdatedAt = &touched
+	// The creation date is the stored record's, as it is for a user: a caller
+	// that built this from a request body carries none, and writing that over a
+	// real date would erase it for good.
+	if instance.CreatedAt.IsZero() {
+		stored, err := s.GetInstance(ctx, instance.ID)
+		if err != nil {
+			return fmt.Errorf("instance %s not updated: its stored record could not be read: %w", instance.ID, err)
+		}
+		if stored != nil {
+			instance.CreatedAt = stored.CreatedAt
+		}
+	}
+	instance.UpdatedAt = models.NullTime(time.Now())
 	return s.etcd.PutJSON(ctx, models.KeyPrefixInstances+instance.ID, instance)
 }
 

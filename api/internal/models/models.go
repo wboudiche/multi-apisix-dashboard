@@ -16,6 +16,7 @@
 package models
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -34,29 +35,54 @@ type Instance struct {
 	// deliberate act. Health is read from it (#281), and a gateway without one
 	// is a gateway whose health this dashboard cannot know - which is a
 	// different thing from a gateway that is unwell.
-	ControlAPIURL string `json:"control_api_url"`
-	IsActive      bool   `json:"is_active"`
-	// Pointers, so a record carrying no date answers null rather than Go's zero
-	// time. Serialized as a value, "0001-01-01T00:00:00Z" reads as a date to
-	// every consumer that does not know the trap - a sort, an export, a script -
-	// and the Users page had to learn it the hard way (#300, #321).
-	CreatedAt *time.Time `json:"created_at"`
-	UpdatedAt *time.Time `json:"updated_at"`
+	ControlAPIURL string   `json:"control_api_url"`
+	IsActive      bool     `json:"is_active"`
+	CreatedAt     NullTime `json:"created_at"`
+	UpdatedAt     NullTime `json:"updated_at"`
 }
 
-// NilIfZero reads a stored timestamp as the date it is, or as no date at all.
+// NullTime is a timestamp a record may not have.
 //
-// A pointer field is enough for a record written from now on: nothing sets it,
-// so it serializes as null. The records already in etcd hold
-// "0001-01-01T00:00:00Z" from when the field was a value, and that decodes to a
-// pointer at the zero time - not nil - so the API would go on serving the year 1
-// for every one of them. Read through this, they answer null like the rest
-// (#300, #321).
-func NilIfZero(t *time.Time) *time.Time {
-	if t == nil || t.IsZero() {
+// The zero time is no date: it is what a record written before the dates existed
+// holds (#300), and what one written without a date holds now. It serializes as
+// null, so that no consumer can read it as a date - as "0001-01-01T00:00:00Z"
+// was read, leaving the trap for a sort, an export or a script to learn for
+// itself (#321).
+//
+// The rule lives on the type rather than at each read, so that neither a read
+// path that forgets a helper nor a write that hands over a zero can put the year
+// 1 back. A year of 1 or less counts as no date however it is written, which is
+// where src/utils/record-date.ts draws the same line: an offset can make a zero
+// time read as year 1 in one place and year 0 in another.
+type NullTime time.Time
+
+// IsZero reports that there is no date here.
+func (t NullTime) IsZero() bool {
+	when := time.Time(t)
+	return when.IsZero() || when.UTC().Year() <= 1
+}
+
+// Time is the date, which is only meaningful when IsZero is false.
+func (t NullTime) Time() time.Time { return time.Time(t) }
+
+func (t NullTime) MarshalJSON() ([]byte, error) {
+	if t.IsZero() {
+		return []byte("null"), nil
+	}
+	return json.Marshal(time.Time(t))
+}
+
+func (t *NullTime) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		*t = NullTime{}
 		return nil
 	}
-	return t
+	var parsed time.Time
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return err
+	}
+	*t = NullTime(parsed)
+	return nil
 }
 
 // User represents a dashboard user
@@ -70,12 +96,9 @@ type User struct {
 	// they can use the rest of the API; set on admin-created accounts,
 	// cleared by ChangePassword. Records written before this field existed
 	// unmarshal to false, so existing users are never forced.
-	MustChangePassword bool `json:"must_change_password"`
-	// Pointers, for the reason on Instance above: an undated record answers
-	// null. Accounts stored before anything stamped them decode to nil from
-	// the zero time they hold, which is what they mean.
-	CreatedAt *time.Time `json:"created_at"`
-	UpdatedAt *time.Time `json:"updated_at"`
+	MustChangePassword bool     `json:"must_change_password"`
+	CreatedAt          NullTime `json:"created_at"`
+	UpdatedAt          NullTime `json:"updated_at"`
 }
 
 // Team represents a group of users

@@ -17,8 +17,9 @@
 import { randomId } from '@e2e/utils/common';
 import { etcdDelete, etcdPut } from '@e2e/utils/etcd';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
-import { test } from '@e2e/utils/test';
-import { expect } from '@playwright/test';
+// The plain test, not @e2e/utils/test: this needs no browser, no SPA login and
+// no dev server, as the two maintenance specs that write to etcd do not.
+import { expect, test } from '@playwright/test';
 
 /**
  * What the API answers about a record it has no date for.
