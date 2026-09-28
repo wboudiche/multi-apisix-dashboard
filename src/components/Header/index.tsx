@@ -72,8 +72,9 @@ const HealthDot: FC<{ status?: 'Connected' | 'Disconnected' | 'Unknown'; error?:
   const { t } = useTranslation();
   const isConnected = status === 'Connected';
   const color = isConnected ? '#10b981' : status === 'Disconnected' ? '#ef4444' : '#6b7280';
-  // Unknown and absent read the same here: grey, and the reason if there is
-  // one. Neither is a gateway this dashboard found unwell.
+  // Grey covers two states the dashboard tells apart in words: a gateway whose
+  // status came back Unknown, with the reason if there is one, and one absent
+  // from the map, which is still being checked and has no reason to give.
   const label = isConnected
     ? t('header.healthConnected')
     : status === 'Disconnected'
@@ -154,7 +155,7 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   }
 
   // developer / viewer — read-only badge showing their team
-  const currentTeam = teams.find((t) => t.id === currentTeamId);
+  const currentTeam = teams.find((team) => team.id === currentTeamId);
   if (!currentTeam) return null;
 
   return (
@@ -296,7 +297,7 @@ export const Header: FC<HeaderProps> = (props) => {
   });
 
   const activeUserInstance = userInstances.find(ui => ui.instance_id === currentInstanceId);
-  const currentTeam = teams.find(t => t.id === activeUserInstance?.team_id);
+  const currentTeam = teams.find((team) => team.id === activeUserInstance?.team_id);
 
   const handleLogout = () => {
     logout();
