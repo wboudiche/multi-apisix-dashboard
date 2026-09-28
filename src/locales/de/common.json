@@ -137,7 +137,8 @@
       "edit": "Bearbeiten",
       "save": "Speichern",
       "upload": "Hochladen",
-      "view": "Anzeigen"
+      "view": "Anzeigen",
+      "saveChanges": "Änderungen speichern"
     },
     "consumers": {
       "groupId": "Gruppen ID",
@@ -644,7 +645,6 @@
     "dialogAddTitle": "Neuen Benutzer hinzufügen",
     "dialogEditTitle": "Benutzer & Berechtigungen bearbeiten",
     "submitCreate": "Benutzer erstellen",
-    "submitSave": "Änderungen speichern",
     "fieldUsername": "Benutzername",
     "fieldEmail": "E-Mail",
     "fieldPassword": "Passwort",
@@ -655,7 +655,21 @@
     "fieldInstanceRolePlaceholder": "Kein Zugriff",
     "fieldTeam": "Team",
     "fieldTeamPlaceholder": "Kein Team",
-    "noEmail": "Keine E-Mail angegeben"
+    "noEmail": "Keine E-Mail angegeben",
+    "errorTitle": "Fehler",
+    "successTitle": "Erfolg",
+    "loadFailed": "Die Benutzerverwaltungsdaten konnten nicht geladen werden",
+    "teamRequired": "Für die Rollen Entwickler und Betrachter ist ein Team erforderlich",
+    "createFailed": "Der Benutzer konnte nicht erstellt werden",
+    "updateFailed": "Der Benutzer konnte nicht aktualisiert werden",
+    "roleRemoveFailed": "Die Rolle konnte für eine der Instanzen nicht entfernt werden",
+    "roleAssignFailed": "Die Rolle konnte für eine der Instanzen nicht zugewiesen werden",
+    "permissionsUpdated": "Berechtigungen aktualisiert",
+    "createdWithPermissions": "Benutzer und Berechtigungen erstellt",
+    "permissionsFailed": "Die Berechtigungen konnten nicht aktualisiert werden",
+    "deleted": "Benutzer gelöscht",
+    "deleteFailed": "Der Benutzer konnte nicht gelöscht werden",
+    "deleteConfirm": "Möchten Sie diesen Benutzer wirklich löschen?"
   },
   "listWarning": {
     "detailsUnresolved": "Einige Details konnten nicht ermittelt werden",

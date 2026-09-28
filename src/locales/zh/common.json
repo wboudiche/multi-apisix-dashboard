@@ -137,7 +137,8 @@
       "edit": "编辑",
       "save": "保存",
       "upload": "上传",
-      "view": "查看"
+      "view": "查看",
+      "saveChanges": "保存更改"
     },
     "consumers": {
       "groupId": "分组 ID",
@@ -644,7 +645,6 @@
     "dialogAddTitle": "新增用户",
     "dialogEditTitle": "编辑用户与权限",
     "submitCreate": "创建用户",
-    "submitSave": "保存更改",
     "fieldUsername": "用户名",
     "fieldEmail": "邮箱",
     "fieldPassword": "密码",
@@ -655,7 +655,21 @@
     "fieldInstanceRolePlaceholder": "无访问权限",
     "fieldTeam": "团队",
     "fieldTeamPlaceholder": "无团队",
-    "noEmail": "未提供邮箱"
+    "noEmail": "未提供邮箱",
+    "errorTitle": "错误",
+    "successTitle": "成功",
+    "loadFailed": "无法加载用户管理数据",
+    "teamRequired": "开发者和查看者角色需要指定团队",
+    "createFailed": "创建用户失败",
+    "updateFailed": "更新用户失败",
+    "roleRemoveFailed": "移除其中一个实例上的角色失败",
+    "roleAssignFailed": "分配其中一个实例上的角色失败",
+    "permissionsUpdated": "权限已更新",
+    "createdWithPermissions": "用户及其权限已创建",
+    "permissionsFailed": "更新权限失败",
+    "deleted": "用户已删除",
+    "deleteFailed": "删除用户失败",
+    "deleteConfirm": "确定要删除该用户吗？"
   },
   "listWarning": {
     "detailsUnresolved": "部分详情无法获取",
