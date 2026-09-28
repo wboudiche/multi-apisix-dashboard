@@ -43,7 +43,8 @@ export type User = {
   email: string;
   role: string;
   must_change_password?: boolean;
-  created_at: string;
+  // null for a record the backend has no date for (#321).
+  created_at: string | null;
 };
 
 // Unauthenticated client for login/refresh/logout.

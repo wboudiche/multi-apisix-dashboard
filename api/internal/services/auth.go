@@ -237,13 +237,35 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*To
 
 func (s *AuthService) CreateUser(ctx context.Context, user *models.User) error {
 	// Check if user exists
-	existing, _ := s.GetUserByUsername(ctx, user.Username)
+	// An id is the key this writes, and a record without one would be written at
+	// the collection key itself - where the prefix scan that lists users finds
+	// it, and where no delete can reach it.
+	if user.ID == "" {
+		return fmt.Errorf("user not created: no id")
+	}
+	existing, err := s.GetUserByUsername(ctx, user.Username)
+	if err != nil && !errors.Is(err, ErrUserNotFound) {
+		// A name that could not be checked is not a name that is free. Read
+		// past, this wrote a second account under a name that already had one,
+		// and which of the two answers a login is then the order of a map.
+		return fmt.Errorf("user %s not created: the name could not be checked: %w", user.Username, err)
+	}
 	if existing != nil {
 		return ErrUserExists
 	}
 
 	stampCreated(user, time.Now())
-	return s.etcd.PutJSON(ctx, models.KeyPrefixUsers+user.ID, user)
+	// Written only if the id is free, in one operation: the check-then-write it
+	// replaces let two creates carrying the same supplied id - an import, a
+	// restore - both find it free, and the second date the first as new (#321).
+	written, err := s.etcd.PutJSONIfAbsent(ctx, models.KeyPrefixUsers+user.ID, user)
+	if err != nil {
+		return err
+	}
+	if !written {
+		return ErrUserExists
+	}
+	return nil
 }
 
 // stampCreated dates a record being written for the first time.
@@ -253,8 +275,8 @@ func (s *AuthService) CreateUser(ctx context.Context, user *models.User) error {
 // neither set the dates, so every account was stored carrying Go's zero time.
 // The Users page read it back as a real date and showed 01/01/1 (#300).
 func stampCreated(user *models.User, now time.Time) {
-	user.CreatedAt = now
-	user.UpdatedAt = now
+	user.CreatedAt = models.NullTime(now)
+	user.UpdatedAt = models.NullTime(now)
 }
 
 // stampUpdated moves UpdatedAt and leaves CreatedAt where it is.
@@ -265,7 +287,7 @@ func stampCreated(user *models.User, now time.Time) {
 // zero CreatedAt: their real date is gone, and inventing one here would hand
 // the page a date nobody set, presented as if someone had.
 func stampUpdated(user *models.User, now time.Time) {
-	user.UpdatedAt = now
+	user.UpdatedAt = models.NullTime(now)
 }
 
 func (s *AuthService) ListUsers(ctx context.Context) ([]*models.User, error) {
@@ -293,9 +315,11 @@ func (s *AuthService) UpdateUser(ctx context.Context, user *models.User) error {
 	// real date for good, the record is read back for it, and a read that
 	// fails stops the write instead of dating the account with nothing.
 	if user.CreatedAt.IsZero() {
+		// One read, on a record that has no date to hand back or a caller that
+		// did not hand one: the price of not writing a zero over a real date.
 		existing, err := s.GetUser(ctx, user.ID)
 		if err != nil {
-			return fmt.Errorf("user %s not updated: its stored record could not be read for its creation date: %w", user.ID, err)
+			return fmt.Errorf("user %s not updated: its stored record could not be read: %w", user.ID, err)
 		}
 		user.CreatedAt = existing.CreatedAt
 	}

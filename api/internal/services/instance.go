@@ -164,8 +164,9 @@ func (s *InstanceService) CreateInstance(ctx context.Context, instance *models.I
 
 	instance.Name = strings.TrimSpace(instance.Name)
 	instance.ID = uuid.New().String()
-	instance.CreatedAt = time.Now()
-	instance.UpdatedAt = time.Now()
+	now := time.Now()
+	instance.CreatedAt = models.NullTime(now)
+	instance.UpdatedAt = models.NullTime(now)
 	return s.etcd.PutJSON(ctx, models.KeyPrefixInstances+instance.ID, instance)
 }
 
@@ -223,7 +224,19 @@ func (s *InstanceService) UpdateInstance(ctx context.Context, instance *models.I
 	}
 
 	instance.Name = strings.TrimSpace(instance.Name)
-	instance.UpdatedAt = time.Now()
+	// The creation date is the stored record's, as it is for a user: a caller
+	// that built this from a request body carries none, and writing that over a
+	// real date would erase it for good.
+	if instance.CreatedAt.IsZero() {
+		stored, err := s.GetInstance(ctx, instance.ID)
+		if err != nil {
+			return fmt.Errorf("instance %s not updated: its stored record could not be read: %w", instance.ID, err)
+		}
+		if stored != nil {
+			instance.CreatedAt = stored.CreatedAt
+		}
+	}
+	instance.UpdatedAt = models.NullTime(time.Now())
 	return s.etcd.PutJSON(ctx, models.KeyPrefixInstances+instance.ID, instance)
 }
 

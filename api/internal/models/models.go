@@ -16,6 +16,7 @@
 package models
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -34,10 +35,54 @@ type Instance struct {
 	// deliberate act. Health is read from it (#281), and a gateway without one
 	// is a gateway whose health this dashboard cannot know - which is a
 	// different thing from a gateway that is unwell.
-	ControlAPIURL string    `json:"control_api_url"`
-	IsActive      bool      `json:"is_active"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ControlAPIURL string   `json:"control_api_url"`
+	IsActive      bool     `json:"is_active"`
+	CreatedAt     NullTime `json:"created_at"`
+	UpdatedAt     NullTime `json:"updated_at"`
+}
+
+// NullTime is a timestamp a record may not have.
+//
+// The zero time is no date: it is what a record written before the dates existed
+// holds (#300), and what one written without a date holds now. It serializes as
+// null, so that no consumer can read it as a date - as "0001-01-01T00:00:00Z"
+// was read, leaving the trap for a sort, an export or a script to learn for
+// itself (#321).
+//
+// The rule lives on the type rather than at each read, so that neither a read
+// path that forgets a helper nor a write that hands over a zero can put the year
+// 1 back. A year of 1 or less counts as no date however it is written, which is
+// where src/utils/record-date.ts draws the same line: an offset can make a zero
+// time read as year 1 in one place and year 0 in another.
+type NullTime time.Time
+
+// IsZero reports that there is no date here.
+func (t NullTime) IsZero() bool {
+	when := time.Time(t)
+	return when.IsZero() || when.UTC().Year() <= 1
+}
+
+// Time is the date, which is only meaningful when IsZero is false.
+func (t NullTime) Time() time.Time { return time.Time(t) }
+
+func (t NullTime) MarshalJSON() ([]byte, error) {
+	if t.IsZero() {
+		return []byte("null"), nil
+	}
+	return json.Marshal(time.Time(t))
+}
+
+func (t *NullTime) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		*t = NullTime{}
+		return nil
+	}
+	var parsed time.Time
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return err
+	}
+	*t = NullTime(parsed)
+	return nil
 }
 
 // User represents a dashboard user
@@ -51,9 +96,9 @@ type User struct {
 	// they can use the rest of the API; set on admin-created accounts,
 	// cleared by ChangePassword. Records written before this field existed
 	// unmarshal to false, so existing users are never forced.
-	MustChangePassword bool      `json:"must_change_password"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	MustChangePassword bool     `json:"must_change_password"`
+	CreatedAt          NullTime `json:"created_at"`
+	UpdatedAt          NullTime `json:"updated_at"`
 }
 
 // Team represents a group of users
