@@ -74,6 +74,9 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   const [upstreamId, setUpstreamId] = useState('');
   const [parseResult, setParseResult] = useState<WsdlParseResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  /** True while the URL is being fetched: the button says so and refuses a
+      second click, which used to start a second fetch of the same graph. */
+  const [fetching, setFetching] = useState(false);
   const [sourceWarnings, setSourceWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
@@ -138,6 +141,11 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
   };
 
   const handleFetchUrl = useCallback(async () => {
+    // A graph of imports can take minutes - twenty documents at ten seconds
+    // apiece - and nothing said one was under way, so an operator clicked again
+    // and the second call wiped what the first had built (#336).
+    if (fetching) return;
+    setFetching(true);
     clearDerived();
     setBundle(null);
     try {
@@ -154,8 +162,10 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
           ? t(limited)
           : (e?.response?.data?.error ?? e?.message ?? t('form.importWsdl.fetchError'))
       );
+    } finally {
+      setFetching(false);
     }
-  }, [urlValue, t]);
+  }, [fetching, urlValue, t]);
 
   const effectiveBundle = (): Bundle | null => {
     if (bundle) return bundle;
@@ -312,7 +322,11 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
                 value={urlValue}
                 onChange={(e) => setUrlValue(e.target.value)}
               />
-              <Button onClick={handleFetchUrl} disabled={!urlValue.trim()}>
+              <Button
+                onClick={handleFetchUrl}
+                loading={fetching}
+                disabled={!urlValue.trim() || fetching}
+              >
                 {t('form.importWsdl.fetch')}
               </Button>
             </Group>

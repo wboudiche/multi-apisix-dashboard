@@ -240,3 +240,44 @@ test('expands a multi-file WSDL ZIP and follows wsdl:import', async ({ page }, t
   // service's two operations.
   await expect(page.getByText('1 service(s), 2 operation(s)')).toBeVisible();
 });
+
+test('the URL fetch says it is running, and takes no second click', async ({
+  page,
+}) => {
+  // A graph of imports can take minutes, and nothing said one was under way:
+  // the operator clicked again, and the second call wiped what the first had
+  // built (#336).
+  await openImporter(page);
+
+  const release = { go: () => {} };
+  const held = new Promise<void>((resolve) => {
+    release.go = resolve;
+  });
+  await page.route('**/api/v1/wsdl/fetch**', async (route) => {
+    await held;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      json: { entry: 'main', docs: { main: wsdl }, warnings: [] },
+    });
+  });
+
+  await page.getByRole('tab', { name: 'From URL' }).click();
+  await page.getByPlaceholder('http://host/service?wsdl').fill('http://wsdl.example/svc?wsdl');
+
+  const fetchButton = page.getByRole('button', { name: 'Fetch' });
+  await fetchButton.click();
+
+  // While it runs: the button says so and refuses the second click.
+  await expect(fetchButton).toBeDisabled();
+
+  release.go();
+
+  // And it comes back, with what it fetched: the source box says which URL and
+  // how many documents came with it.
+  await expect(fetchButton).toBeEnabled({ timeout: 15000 });
+  await page.getByRole('tab', { name: 'Upload / Paste' }).click();
+  await expect(page.getByPlaceholder('Paste WSDL XML here…')).toHaveValue(
+    /\[URL\] http:\/\/wsdl\.example\/svc\?wsdl — 1 document\(s\)/
+  );
+});
