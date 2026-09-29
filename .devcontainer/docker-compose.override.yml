@@ -1,10 +1,14 @@
+# Compose concatenates `ports` rather than replacing them, so a literal here
+# republishes the port the base file already made movable - and a host that
+# already uses it still fails to start the container (#344). Same variables,
+# same defaults.
 services:
   apisix:
     ports:
-      - '9180:9180/tcp'
-      - '9080:9080/tcp'
-      - '9091:9091/tcp'
-      - '9443:9443/tcp'
+      - '${E2E_ADMIN_PORT:-9180}:9180/tcp'
+      - '${E2E_GATEWAY_PORT:-9080}:9080/tcp'
+      - '${E2E_PROMETHEUS_PORT:-9091}:9091/tcp'
+      - '${E2E_HTTPS_PORT:-9443}:9443/tcp'
   etcd:
     ports:
-      - '2379:2379/tcp'
+      - '${E2E_ETCD_PORT:-2379}:2379/tcp'

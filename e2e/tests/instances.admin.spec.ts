@@ -20,6 +20,7 @@ import { adminPom } from '@e2e/pom/admin';
 import { adminToken, deleteInstancesByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { ensureInstance } from '@e2e/utils/seed-client';
+import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
@@ -30,8 +31,7 @@ const PREFIX = randomId('adm-inst');
 // (and its admin key) with the first gateway, only the etcd prefix differs.
 // Read from the same env var global-setup uses: hardcoding it would silently
 // decouple this spec from the instance the fixture actually registered.
-const STAGING_ADMIN_URL =
-  process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.0.0.1:9181';
+const STAGING_ADMIN_URL = stack.stagingAdminApi;
 const STAGING_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
 
 /** Talks to the staging gateway's Admin API directly, to seed resources on it. */

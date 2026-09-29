@@ -18,6 +18,7 @@ import { adminPom } from '@e2e/pom/admin';
 import { adminToken, deleteInstancesByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { ensureInstance } from '@e2e/utils/seed-client';
+import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
@@ -25,8 +26,7 @@ const PREFIX = randomId('one-read');
 // The same env var global-setup reads, composed the same way as
 // instances.admin.spec: hardcoding it would silently decouple this spec from
 // the gateway the fixtures actually registered.
-const STAGING_APISIX_URL =
-  process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.0.0.1:9181';
+const STAGING_APISIX_URL = stack.stagingAdminApi;
 const STAGING_ADMIN_KEY = process.env['E2E_STAGING_ADMIN_KEY'] ?? 'edd1c9f034335f136f87ad84b625c8f1';
 
 test.afterAll(async () => {
