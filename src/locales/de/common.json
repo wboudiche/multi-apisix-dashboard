@@ -239,7 +239,13 @@
       "update_time": "Geändert am"
     },
     "json": {
-      "parseError": "JSON Format ist ungültig"
+      "parseError": "JSON Format ist ungültig",
+      "duplicate": "Duplizieren",
+      "editRaw": "JSON bearbeiten",
+      "exportOpenAPI": "OpenAPI exportieren",
+      "saveSuccess": "JSON erfolgreich gespeichert",
+      "selectedCount": "{{count}} ausgewählt",
+      "viewRaw": "JSON ansehen"
     },
     "plugins": {
       "addPlugin": "Plugin hinzufügen",
@@ -522,7 +528,14 @@
       "otherTeam": "Diese Route gehört einem anderen Team.",
       "noSuchRoute": "Diese Route existiert auf dieser Instanz nicht mehr.",
       "pathNotMatched": "Dieser Pfad passt nicht zu dieser Route.",
-      "unverified": "Das Dashboard konnte nicht prüfen, wem diese Route gehört, und hat die Anfrage daher nicht gesendet."
+      "unverified": "Das Dashboard konnte nicht prüfen, wem diese Route gehört, und hat die Anfrage daher nicht gesendet.",
+      "title": "Route testen"
+    },
+    "import": {
+      "title": "Routen importieren"
+    },
+    "importWsdl": {
+      "title": "Aus WSDL importieren"
     }
   },
   "globalRules": {
@@ -618,7 +631,15 @@
       "upstreamNone": "—",
       "filterTeam": "Team",
       "filterTeamPlaceholder": "Beliebiges Team",
-      "filterTeamUnassigned": "Nicht zugewiesen"
+      "filterTeamUnassigned": "Nicht zugewiesen",
+      "headerId": "ID",
+      "selectAll": "Alle auswählen",
+      "selectRow": "Zeile auswählen",
+      "duplicateFailed": "Duplizieren fehlgeschlagen",
+      "updateFailed": "Aktualisierung fehlgeschlagen",
+      "columnsFixed": "Fest",
+      "columnsNameAlwaysShown": "Immer sichtbar, damit jede Zeile erkennbar bleibt",
+      "emptyOwnershipHint": "Routen, die einem anderen Team gehören oder noch keinem Team zugewiesen sind, werden hier nicht angezeigt. Falls Sie eine Route erwartet haben, bitten Sie die Administration, sie Ihrem Team zuzuweisen."
     }
   },
   "seconds": "Sekunden",
@@ -669,7 +690,8 @@
     "ssls": "SSLs",
     "streamRoutes": "Stream Routen",
     "upstreams": "Upstreams",
-    "instances": "Instanzen"
+    "instances": "Instanzen",
+    "teams": "Teams"
   },
   "ssls": {
     "expired": "Abgelaufen",

@@ -32,6 +32,7 @@ export const ATTRIBUTES_GUARDED = [
   'src/routes/instances/**/*.tsx',
   'src/routes/users/**/*.tsx',
   'src/routes/settings/**/*.tsx',
+  'src/routes/routes/**/*.tsx',
 ];
 
 /**
@@ -48,4 +49,5 @@ export const FULLY_TRANSLATED_SCREENS = [
   'src/components/Header/index.tsx',
   'src/routes/instances/index.tsx',
   'src/routes/settings/index.tsx',
+  'src/routes/routes/index.tsx',
 ];

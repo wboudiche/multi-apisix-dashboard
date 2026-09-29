@@ -111,11 +111,12 @@ const e2eRules = tseslint.config(
  * title alone - which is how thirteen strings came to be written in English on
  * the Users page (#320) and how the next label would be (#328).
  *
- * A list that grows: turning it on everywhere reports 59 occurrences today, so
+ * A list that grows: turning it on everywhere reports 28 occurrences today, so
  * each screen joins this once its own strings have keys, and cannot slip back.
  * The count is worth re-measuring rather than trusting - 97 when #328 was
- * written, 69 with the header and instances done - and every screen that joins
- * takes its own share out of it. The list itself lives beside the one the
+ * written, 69 with the header and instances done, 59 with settings - and every
+ * screen that joins takes its own share out of it, as does every exclusion that
+ * teaches the rule what is not prose. The list itself lives beside the one the
  * translation check reads, in src/config/translated-screens.ts.
  *
  * It holds attributes, not the whole screen: a string in a `notifications.show`
@@ -156,6 +157,20 @@ const attributeRuleOptions = {
   // `style`, through which the language menu spreads a CSS variable; and
   // SCREAMING_CASE, which is a constant rather than a sentence.
   'object-properties': { exclude: ['[A-Z_-]+', 'style', 'value'] },
+  // Predicates the list screens ask about a column or a resource type:
+  // `{isVisible('update_time') && <Table.Th>...}` puts an identifier in the
+  // JSX, where the rule reads it as a sentence. Excluding a callee hides every
+  // argument it is given, which is safe here and only here - these two take an
+  // identifier and nothing else. A helper that also takes a label, like the
+  // settings page's `num(key, label)`, cannot be excluded this way without
+  // hiding the label with it.
+  callees: {
+    exclude: [
+      ...i18nextDefaults.callees.exclude,
+      'isVisible',
+      'canWriteResource',
+    ],
+  },
 };
 
 const attributesTranslated = tseslint.config({

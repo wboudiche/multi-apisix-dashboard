@@ -239,7 +239,13 @@
       "update_time": "Actualizado en"
     },
     "json": {
-      "parseError": "El formato JSON no es válido"
+      "parseError": "El formato JSON no es válido",
+      "duplicate": "Duplicar",
+      "editRaw": "Editar JSON",
+      "exportOpenAPI": "Exportar OpenAPI",
+      "saveSuccess": "JSON guardado correctamente",
+      "selectedCount": "{{count}} seleccionados",
+      "viewRaw": "Ver JSON"
     },
     "plugins": {
       "addPlugin": "Añadir Plugin",
@@ -522,7 +528,14 @@
       "otherTeam": "Esta ruta pertenece a otro equipo.",
       "noSuchRoute": "Esta ruta ya no existe en esta instancia.",
       "pathNotMatched": "Esa ruta de acceso no coincide con esta ruta.",
-      "unverified": "El panel no pudo comprobar de quién es esta ruta, así que no envió la solicitud."
+      "unverified": "El panel no pudo comprobar de quién es esta ruta, así que no envió la solicitud.",
+      "title": "Probar ruta"
+    },
+    "import": {
+      "title": "Importar rutas"
+    },
+    "importWsdl": {
+      "title": "Importar desde WSDL"
     }
   },
   "globalRules": {
@@ -618,7 +631,15 @@
       "upstreamNone": "—",
       "filterTeam": "Equipo",
       "filterTeamPlaceholder": "Cualquier equipo",
-      "filterTeamUnassigned": "Sin asignar"
+      "filterTeamUnassigned": "Sin asignar",
+      "headerId": "ID",
+      "selectAll": "Seleccionar todo",
+      "selectRow": "Seleccionar fila",
+      "duplicateFailed": "No se ha podido duplicar",
+      "updateFailed": "No se ha podido actualizar",
+      "columnsFixed": "Fijo",
+      "columnsNameAlwaysShown": "Siempre visible, para que cada fila pueda identificarse",
+      "emptyOwnershipHint": "Las rutas que pertenecen a otro equipo, o que aún no están asignadas a ninguno, no se muestran aquí. Si esperabas ver una ruta, pide a un administrador que la asigne a tu equipo."
     }
   },
   "seconds": "Segundos",
@@ -669,7 +690,8 @@
     "ssls": "SSLs",
     "streamRoutes": "Rutas de Stream",
     "upstreams": "Upstreams",
-    "instances": "Instancias"
+    "instances": "Instancias",
+    "teams": "Equipos"
   },
   "ssls": {
     "expired": "Caducado",
