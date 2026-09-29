@@ -144,7 +144,14 @@
     "dependencyCheckFailed": "Bu örneğe neyin bağlı olduğu denetlenemedi",
     "unreadableTitle": "Örnek listesi kullanılamıyor",
     "unreadableBody": "Örnekler okunamadı, bu yüzden burada hiçbiri listelenemiyor. Bu, kayıtlı örnek olmamasıyla aynı şey değil — kayıtlar yerinde, bu sayfa şu anda onlara ulaşamıyor.",
-    "unreadableCta": "Yeniden dene"
+    "unreadableCta": "Yeniden dene",
+    "resourceRoutes": "Route'lar",
+    "resourceServices": "Service'ler",
+    "resourceUpstreams": "Upstream'ler",
+    "resourceConsumers": "Consumer'lar",
+    "resourceStreamRoutes": "Stream Route'lar",
+    "resourceUserAssignments": "Kullanıcı rol atamaları",
+    "resourceOwnershipRecords": "Ekip sahiplik kayıtları"
   },
   "login": {
     "adminNote": "Hesaplar yöneticiniz tarafından oluşturulur.",
@@ -239,7 +246,13 @@
       "update_time": "Güncellenme"
     },
     "json": {
-      "parseError": "JSON formatı geçerli değil"
+      "parseError": "JSON formatı geçerli değil",
+      "duplicate": "Çoğalt",
+      "editRaw": "JSON'u düzenle",
+      "exportOpenAPI": "OpenAPI'yi dışa aktar",
+      "saveSuccess": "JSON başarıyla kaydedildi",
+      "selectedCount": "{{count}} seçili",
+      "viewRaw": "JSON'u görüntüle"
     },
     "plugins": {
       "addPlugin": "Plugin Ekle",
@@ -522,7 +535,14 @@
       "otherTeam": "Bu rota başka bir takıma ait.",
       "noSuchRoute": "Bu rota artık bu örnekte yok.",
       "pathNotMatched": "Bu yol, bu rotanın eşleştiği yollardan biri değil.",
-      "unverified": "Panel bu rotanın kime ait olduğunu doğrulayamadı, bu yüzden isteği göndermedi."
+      "unverified": "Panel bu rotanın kime ait olduğunu doğrulayamadı, bu yüzden isteği göndermedi.",
+      "title": "Rotayı test et"
+    },
+    "import": {
+      "title": "Rotaları içe aktar"
+    },
+    "importWsdl": {
+      "title": "WSDL'den içe aktar"
     }
   },
   "globalRules": {
@@ -545,6 +565,12 @@
     "edit": {
       "success": "{{name}} başarıyla güncellendi",
       "title": "{{name}} Düzenle"
+    },
+    "publish": {
+      "success": "{{name}} başarıyla yayımlandı"
+    },
+    "unpublish": {
+      "success": "{{name}} başarıyla çevrimdışı alındı"
     }
   },
   "mark": {
@@ -618,7 +644,16 @@
       "upstreamNone": "—",
       "filterTeam": "Takım",
       "filterTeamPlaceholder": "Herhangi bir takım",
-      "filterTeamUnassigned": "Atanmamış"
+      "filterTeamUnassigned": "Atanmamış",
+      "headerId": "ID",
+      "selectAll": "Tümünü seç",
+      "selectRow": "Satırı seç",
+      "duplicateFailed": "Çoğaltılamadı",
+      "updateFailed": "Güncellenemedi",
+      "columnsFixed": "Sabit",
+      "columnsNameAlwaysShown": "Her satır tanınabilsin diye her zaman gösterilir",
+      "emptyOwnershipHint": "Başka bir ekibe ait olan ya da henüz hiçbir ekibe atanmamış rotalar burada gösterilmez. Bir rotayı görmeyi bekliyorduysanız, bir yöneticiden onu ekibinize atamasını isteyin.",
+      "headerTeam": "Ekip"
     }
   },
   "seconds": "Saniye",
@@ -669,7 +704,8 @@
     "ssls": "SSL'ler",
     "streamRoutes": "Stream Route'lar",
     "upstreams": "Upstream'ler",
-    "instances": "Örnekler"
+    "instances": "Örnekler",
+    "teams": "Ekipler"
   },
   "ssls": {
     "expired": "Süresi doldu",

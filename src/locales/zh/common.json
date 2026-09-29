@@ -144,7 +144,14 @@
     "dependencyCheckFailed": "无法检查有哪些内容依赖此实例",
     "unreadableTitle": "实例列表不可用",
     "unreadableBody": "无法读取实例，因此这里无法列出任何实例。这与没有注册任何实例不同——记录仍然存在，只是此页面目前无法读取它们。",
-    "unreadableCta": "重试"
+    "unreadableCta": "重试",
+    "resourceRoutes": "路由",
+    "resourceServices": "服务",
+    "resourceUpstreams": "上游",
+    "resourceConsumers": "消费者",
+    "resourceStreamRoutes": "流路由",
+    "resourceUserAssignments": "用户角色分配",
+    "resourceOwnershipRecords": "团队归属记录"
   },
   "login": {
     "adminNote": "账户由您的管理员创建。",
@@ -239,7 +246,13 @@
       "update_time": "更新时间"
     },
     "json": {
-      "parseError": "JSON格式无效"
+      "parseError": "JSON格式无效",
+      "duplicate": "复制",
+      "editRaw": "编辑 JSON",
+      "exportOpenAPI": "导出 OpenAPI",
+      "saveSuccess": "JSON 保存成功",
+      "selectedCount": "已选择 {{count}} 项",
+      "viewRaw": "查看 JSON"
     },
     "plugins": {
       "addPlugin": "添加插件",
@@ -522,7 +535,14 @@
       "otherTeam": "该路由属于其他团队。",
       "noSuchRoute": "该路由在此实例上已不存在。",
       "pathNotMatched": "该路径与此路由不匹配。",
-      "unverified": "仪表板无法确认该路由的归属，因此未发送请求。"
+      "unverified": "仪表板无法确认该路由的归属，因此未发送请求。",
+      "title": "测试路由"
+    },
+    "import": {
+      "title": "导入路由"
+    },
+    "importWsdl": {
+      "title": "从 WSDL 导入"
     }
   },
   "globalRules": {
@@ -545,6 +565,12 @@
     "edit": {
       "success": "编辑 {{name}} 成功",
       "title": "编辑 {{name}}"
+    },
+    "publish": {
+      "success": "{{name}}发布成功"
+    },
+    "unpublish": {
+      "success": "{{name}}已下线"
     }
   },
   "mark": {
@@ -618,7 +644,16 @@
       "upstreamNone": "—",
       "filterTeam": "团队",
       "filterTeamPlaceholder": "任意团队",
-      "filterTeamUnassigned": "未分配"
+      "filterTeamUnassigned": "未分配",
+      "headerId": "ID",
+      "selectAll": "全选",
+      "selectRow": "选择该行",
+      "duplicateFailed": "复制失败",
+      "updateFailed": "更新失败",
+      "columnsFixed": "固定",
+      "columnsNameAlwaysShown": "始终显示，以便识别每一行",
+      "emptyOwnershipHint": "属于其他团队、或尚未分配给任何团队的路由不会显示在这里。如果你期望看到某条路由，请让管理员把它分配给你的团队。",
+      "headerTeam": "团队"
     }
   },
   "seconds": "秒",
@@ -669,7 +704,8 @@
     "ssls": "SSLs",
     "streamRoutes": "流路由",
     "upstreams": "上游",
-    "instances": "实例"
+    "instances": "实例",
+    "teams": "团队"
   },
   "ssls": {
     "expired": "已过期",

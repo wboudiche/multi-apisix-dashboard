@@ -811,7 +811,13 @@
       "filterMultiHint": "(multi-select)",
       "columnUpstream": "Upstream",
       "upstreamInline": "inline",
-      "upstreamNone": "—"
+      "upstreamNone": "—",
+      "headerId": "ID",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "duplicateFailed": "Failed to duplicate",
+      "updateFailed": "Failed to update",
+      "headerTeam": "Team"
     }
   },
   "seconds": "Seconds",

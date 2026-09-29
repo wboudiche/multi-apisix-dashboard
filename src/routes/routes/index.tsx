@@ -239,11 +239,14 @@ export const RouteList = (props: RouteListProps) => {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
       notifications.show({
-        message: e?.response?.data?.error_msg || e?.message || 'Failed to duplicate',
+        // The sentence first, the reason under it: axios fills `message` on
+        // every network failure, so a fallback behind it was never read.
+        title: t('routes.list.duplicateFailed'),
+        message: e?.response?.data?.error_msg || e?.message,
         color: 'red',
       });
     }
-  }, [navigate]);
+  }, [navigate, t]);
 
   /**
    * Publishes a route, or takes it offline.
@@ -277,7 +280,11 @@ export const RouteList = (props: RouteListProps) => {
         // said. Only what it cannot show is worth a second line.
         const e = err as { response?: unknown; message?: string };
         if (!e?.response) {
-          notifications.show({ message: e?.message || 'Failed to update', color: 'red' });
+          notifications.show({
+            title: t('routes.list.updateFailed'),
+            message: e?.message,
+            color: 'red',
+          });
         }
       }
     },
@@ -321,9 +328,9 @@ export const RouteList = (props: RouteListProps) => {
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: 40 }}><Checkbox aria-label="Select all" checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll} /></Table.Th>
+            <Table.Th style={{ width: 40 }}><Checkbox aria-label={t('routes.list.selectAll')} checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll} /></Table.Th>
             {isVisible('name') && <Table.Th>{t('form.basic.name')}</Table.Th>}
-            {isVisible('id') && <Table.Th>ID</Table.Th>}
+            {isVisible('id') && <Table.Th>{t('routes.list.headerId')}</Table.Th>}
             {isVisible('host') && <Table.Th>{t('routes.list.headerHost')}</Table.Th>}
             {isVisible('path') && <Table.Th>{t('routes.list.headerPath')}</Table.Th>}
             {isVisible('upstream') && (
@@ -337,7 +344,7 @@ export const RouteList = (props: RouteListProps) => {
             {isVisible('status') && <Table.Th>{t('routes.list.headerStatus')}</Table.Th>}
             {isVisible('update_time') && <Table.Th>{t('routes.list.headerUpdateTime')}</Table.Th>}
             {isVisible('plugin') && <Table.Th>{t('routes.list.headerPlugin')}</Table.Th>}
-            {isVisible('team') && <Table.Th>{t('sources.teams')}</Table.Th>}
+            {isVisible('team') && <Table.Th>{t('routes.list.headerTeam')}</Table.Th>}
             {isVisible('operation') && <Table.Th style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
           </Table.Tr>
         </Table.Thead>
@@ -346,7 +353,16 @@ export const RouteList = (props: RouteListProps) => {
           {data?.list.map((record: any, index: number) => (
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
-                <Checkbox aria-label="Select row" checked={selectedIds.has(record.value.id)} onChange={() => toggleSelect(record.value.id)} />
+                <Checkbox
+                  // The same name on every row, which is worse for a screen
+                  // reader and the only thing the suite can address: naming the
+                  // route here puts it in the row's accessible name, and five
+                  // specs match a cell or a checkbox by a name that then
+                  // resolves to two elements (#348).
+                  aria-label={t('routes.list.selectRow')}
+                  checked={selectedIds.has(record.value.id)}
+                  onChange={() => toggleSelect(record.value.id)}
+                />
               </Table.Td>
               {isVisible('name') && (
                 <Table.Td>
@@ -724,18 +740,22 @@ function RouteComponent() {
   // action buttons — rows with no way to tell which route each one was. Keeping
   // the identifying column out of the toggleable set makes that unreachable by
   // construction, rather than relying on a "keep at least one" check.
+  // The same keys the table headers read, so that a column is called the same
+  // thing in the picker as above the column it switches on. Nothing enforces
+  // that: an array built here has no JSX ancestor, so the rule that holds this
+  // screen's attributes to i18n cannot see these labels at all.
   const ALL_COLUMNS = [
-    { label: 'ID', value: 'id' },
-    { label: 'Host', value: 'host' },
-    { label: 'Path', value: 'path' },
-    { label: 'Upstream', value: 'upstream' },
-    { label: 'Description', value: 'desc' },
-    { label: 'Labels', value: 'label' },
-    { label: 'Version', value: 'version' },
-    { label: 'Status', value: 'status' },
-    { label: 'Update Time', value: 'update_time' },
-    { label: 'Plugin', value: 'plugin' },
-    { label: 'Team', value: 'team' },
+    { label: t('routes.list.headerId'), value: 'id' },
+    { label: t('routes.list.headerHost'), value: 'host' },
+    { label: t('routes.list.headerPath'), value: 'path' },
+    { label: t('routes.list.columnUpstream'), value: 'upstream' },
+    { label: t('routes.list.headerDescription'), value: 'desc' },
+    { label: t('routes.list.headerLabels'), value: 'label' },
+    { label: t('routes.list.headerVersion'), value: 'version' },
+    { label: t('routes.list.headerStatus'), value: 'status' },
+    { label: t('routes.list.headerUpdateTime'), value: 'update_time' },
+    { label: t('routes.list.headerPlugin'), value: 'plugin' },
+    { label: t('routes.list.headerTeam'), value: 'team' },
   ];
 
   const DEFAULT_COLUMNS = ['name', 'path', 'upstream', 'label', 'status', 'update_time', 'plugin', 'team', 'operation'];
@@ -832,7 +852,7 @@ function RouteComponent() {
                 <Text size="xs" c="dimmed" mb={4}>{t('routes.list.columnsFixedRight')}</Text>
                 <Checkbox
                   size="xs"
-                  label="Operation"
+                  label={t('routes.list.headerOperation')}
                   checked={visibleColumns.includes('operation')}
                   onChange={(event) => {
                     const checked = event.currentTarget.checked;

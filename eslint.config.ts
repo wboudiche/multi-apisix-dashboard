@@ -111,11 +111,12 @@ const e2eRules = tseslint.config(
  * title alone - which is how thirteen strings came to be written in English on
  * the Users page (#320) and how the next label would be (#328).
  *
- * A list that grows: turning it on everywhere reports 59 occurrences today, so
+ * A list that grows: turning it on everywhere reports 28 occurrences today, so
  * each screen joins this once its own strings have keys, and cannot slip back.
  * The count is worth re-measuring rather than trusting - 97 when #328 was
- * written, 69 with the header and instances done - and every screen that joins
- * takes its own share out of it. The list itself lives beside the one the
+ * written, 69 with the header and instances done, 59 with settings - and every
+ * screen that joins takes its own share out of it, as does every exclusion that
+ * teaches the rule what is not prose. The list itself lives beside the one the
  * translation check reads, in src/config/translated-screens.ts.
  *
  * It holds attributes, not the whole screen: a string in a `notifications.show`
@@ -182,6 +183,39 @@ const attributesTranslated = tseslint.config({
  * them - and a copy of them here would stop being the plugin's on its next
  * release.
  */
+/**
+ * One screen, two predicates: the routes list asks whether a column is shown
+ * and whether the account may write the resource.
+ *
+ * `{isVisible('update_time') && <Table.Th>...}` puts an identifier in the JSX,
+ * where the rule reads it as a sentence. Excluding a callee hides every
+ * argument it is given, which is why this is safe for these two and not in
+ * general: they take an identifier and nothing else, while the settings page's
+ * `num(key, label)` carries a label that has to stay checked.
+ *
+ * Kept to the screen that has them, like the exclusion below, so that a helper
+ * of the same name written on another screen does not inherit the exemption.
+ */
+const listPredicatesAreNotProse = tseslint.config({
+  files: ['src/routes/routes/index.tsx'],
+  plugins: { i18next },
+  rules: {
+    'i18next/no-literal-string': [
+      'error',
+      {
+        ...attributeRuleOptions,
+        callees: {
+          exclude: [
+            ...i18nextDefaults.callees.exclude,
+            'isVisible',
+            'canWriteResource',
+          ],
+        },
+      },
+    ],
+  },
+});
+
 const fieldKeysAreNotProse = tseslint.config({
   files: ['src/routes/settings/**/*.tsx'],
   plugins: { i18next },
@@ -291,6 +325,7 @@ export default tseslint.config(
   e2eRules,
   i18nRules,
   attributesTranslated,
+  listPredicatesAreNotProse,
   fieldKeysAreNotProse,
   srcRules
 );

@@ -144,7 +144,14 @@
     "dependencyCheckFailed": "Es konnte nicht geprüft werden, was von dieser Instanz abhängt",
     "unreadableTitle": "Instanzliste nicht verfügbar",
     "unreadableBody": "Die Instanzen konnten nicht gelesen werden, daher lässt sich hier keine auflisten. Das ist nicht dasselbe, wie keine registriert zu haben — die Einträge sind weiterhin vorhanden, diese Seite erreicht sie im Moment nur nicht.",
-    "unreadableCta": "Erneut versuchen"
+    "unreadableCta": "Erneut versuchen",
+    "resourceRoutes": "Routen",
+    "resourceServices": "Services",
+    "resourceUpstreams": "Upstreams",
+    "resourceConsumers": "Konsumenten",
+    "resourceStreamRoutes": "Stream Routen",
+    "resourceUserAssignments": "Rollenzuweisungen von Benutzern",
+    "resourceOwnershipRecords": "Einträge zur Team-Zugehörigkeit"
   },
   "login": {
     "adminNote": "Konten werden von Ihrem Administrator angelegt.",
@@ -239,7 +246,13 @@
       "update_time": "Geändert am"
     },
     "json": {
-      "parseError": "JSON Format ist ungültig"
+      "parseError": "JSON Format ist ungültig",
+      "duplicate": "Duplizieren",
+      "editRaw": "JSON bearbeiten",
+      "exportOpenAPI": "OpenAPI exportieren",
+      "saveSuccess": "JSON erfolgreich gespeichert",
+      "selectedCount": "{{count}} ausgewählt",
+      "viewRaw": "JSON ansehen"
     },
     "plugins": {
       "addPlugin": "Plugin hinzufügen",
@@ -522,7 +535,14 @@
       "otherTeam": "Diese Route gehört einem anderen Team.",
       "noSuchRoute": "Diese Route existiert auf dieser Instanz nicht mehr.",
       "pathNotMatched": "Dieser Pfad passt nicht zu dieser Route.",
-      "unverified": "Das Dashboard konnte nicht prüfen, wem diese Route gehört, und hat die Anfrage daher nicht gesendet."
+      "unverified": "Das Dashboard konnte nicht prüfen, wem diese Route gehört, und hat die Anfrage daher nicht gesendet.",
+      "title": "Route testen"
+    },
+    "import": {
+      "title": "Routen importieren"
+    },
+    "importWsdl": {
+      "title": "Aus WSDL importieren"
     }
   },
   "globalRules": {
@@ -545,6 +565,12 @@
     "edit": {
       "success": "{{name}} erfolgreich bearbeitet",
       "title": "{{name}} bearbeiten"
+    },
+    "publish": {
+      "success": "{{name}} erfolgreich veröffentlicht"
+    },
+    "unpublish": {
+      "success": "{{name}} erfolgreich offline genommen"
     }
   },
   "mark": {
@@ -618,7 +644,16 @@
       "upstreamNone": "—",
       "filterTeam": "Team",
       "filterTeamPlaceholder": "Beliebiges Team",
-      "filterTeamUnassigned": "Nicht zugewiesen"
+      "filterTeamUnassigned": "Nicht zugewiesen",
+      "headerId": "ID",
+      "selectAll": "Alle auswählen",
+      "selectRow": "Zeile auswählen",
+      "duplicateFailed": "Duplizieren fehlgeschlagen",
+      "updateFailed": "Aktualisierung fehlgeschlagen",
+      "columnsFixed": "Fest",
+      "columnsNameAlwaysShown": "Immer sichtbar, damit jede Zeile erkennbar bleibt",
+      "emptyOwnershipHint": "Routen, die einem anderen Team gehören oder noch keinem Team zugewiesen sind, werden hier nicht angezeigt. Falls Sie eine Route erwartet haben, bitten Sie Ihren Administrator, sie Ihrem Team zuzuweisen.",
+      "headerTeam": "Team"
     }
   },
   "seconds": "Sekunden",
@@ -669,7 +704,8 @@
     "ssls": "SSLs",
     "streamRoutes": "Stream Routen",
     "upstreams": "Upstreams",
-    "instances": "Instanzen"
+    "instances": "Instanzen",
+    "teams": "Teams"
   },
   "ssls": {
     "expired": "Abgelaufen",
