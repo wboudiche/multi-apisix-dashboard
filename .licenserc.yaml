@@ -17,6 +17,9 @@ header:
     # The config already excluded *.yaml; *.yml was an oversight, and the two
     # APISIX configs under e2e/server are the only files it left uncovered.
     - '**/*.yml'
+    # A patch is a diff: a header inserted at the top of one stops it applying,
+    # and the patched file carries the upstream project's own licence anyway.
+    - 'patches/**'
     - 'src/assets/**'
     - '.actions/**'
     - '.devcontainer/**'

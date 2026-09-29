@@ -33,7 +33,10 @@ WORKDIR /app
 # "spawn git ENOENT", and without .git in the context every field is null and
 # the page reports an unknown build (#237).
 RUN apk add --no-cache git && corepack enable pnpm
+# patches/ too: package.json points at it through pnpm.patchedDependencies, and
+# without it `pnpm install --frozen-lockfile` fails before anything is built.
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY . .
 ENV NODE_OPTIONS=--max-old-space-size=4096
