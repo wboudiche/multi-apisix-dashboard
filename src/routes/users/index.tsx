@@ -602,6 +602,7 @@ const UsersPage = () => {
                 // This and the e-mail below stay as they are: they are
                 // examples, not sentences, and a translator cannot improve
                 // "johndoe" without inventing a different person.
+                /* eslint-disable-next-line i18next/no-literal-string */
                 placeholder="johndoe"
                 required
                 value={formData.username}
@@ -611,6 +612,7 @@ const UsersPage = () => {
               />
               <TextInput
                 label={t('users.fieldEmail')}
+                /* eslint-disable-next-line i18next/no-literal-string */
                 placeholder="john@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}

@@ -141,9 +141,11 @@ describe.each(LANGUAGES)('%s', (lang) => {
  * source rather than enumerated: a list of keys goes stale, and the first
  * attempt at this test listed 11 of the 48 these two files read.
  *
- * Only the two screens the three renames touched, for now - the rest of the
- * dashboard is translated as far as it is translated, which is what
- * vite-plugin-i18n-progress reports on.
+ * A screen joins as it is finished - the rest of the dashboard is translated as
+ * far as it is translated, which is what vite-plugin-i18n-progress reports on.
+ * Joining is the second half of the work #328 asks for: the eslint rule keeps
+ * English out of the source, and this keeps the other four languages level with
+ * it.
  *
  * It stops at the file boundary: what a screen composes - BuildIdentity,
  * TeamSwitcher, the Users page's modals - is not walked, so a key of theirs can
@@ -153,6 +155,7 @@ describe.each(LANGUAGES)('%s', (lang) => {
 const FULLY_TRANSLATED_SCREENS = [
   'src/routes/users/index.tsx',
   'src/components/Header/index.tsx',
+  'src/routes/instances/index.tsx',
 ];
 
 const sourceOf = (file: string) =>

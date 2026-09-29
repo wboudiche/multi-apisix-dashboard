@@ -327,10 +327,10 @@ const InstancesPage = () => {
         });
       } else {
         notifications.show({
-          title: 'Success',
+          title: t('instances.successTitle'),
           message: editingInstance
-            ? 'Instance updated successfully'
-            : 'Instance created successfully',
+            ? t('instances.updated')
+            : t('instances.created'),
           color: 'green',
         });
       }
@@ -351,7 +351,7 @@ const InstancesPage = () => {
       }
 
       notifications.show({
-        title: 'Error',
+        title: t('instances.errorTitle'),
         message: describeError(error, t('instances.saveFailed')),
         color: 'red',
       });
@@ -383,7 +383,7 @@ const InstancesPage = () => {
       if (deleteRequestRef.current !== requestId) return;
       setPendingDelete(null);
       notifications.show({
-        title: 'Error',
+        title: t('instances.errorTitle'),
         message: describeError(error, t('instances.dependencyCheckFailed')),
         color: 'red',
       });
@@ -401,8 +401,8 @@ const InstancesPage = () => {
     try {
       await instanceApi.delete(id, true);
       notifications.show({
-        title: 'Success',
-        message: 'Instance deleted successfully',
+        title: t('instances.successTitle'),
+        message: t('instances.deleted'),
         color: 'green',
       });
       if (currentInstanceId === id) {
@@ -413,7 +413,7 @@ const InstancesPage = () => {
       loadHealth();
     } catch (error) {
       notifications.show({
-        title: 'Error',
+        title: t('instances.errorTitle'),
         message: describeError(error, t('instances.deleteFailed')),
         color: 'red',
       });
@@ -427,15 +427,15 @@ const InstancesPage = () => {
     try {
       await instanceApi.testConnection(id);
       notifications.show({
-        title: 'Connection Successful',
-        message: 'Successfully connected to APISIX instance',
+        title: t('instances.testSuccessTitle'),
+        message: t('instances.testSuccess'),
         color: 'green',
         icon: <IconCheck width="18" height="18" />,
       });
     } catch {
       notifications.show({
-        title: 'Connection Failed',
-        message: 'Could not connect to the APISIX Admin API',
+        title: t('instances.testFailedTitle'),
+        message: t('instances.testFailed'),
         color: 'red',
       });
     } finally {
@@ -448,8 +448,14 @@ const InstancesPage = () => {
   const handleSetActive = async (instance: Instance) => {
     setCurrentInstanceId(instance.id);
     notifications.show({
-      title: 'Instance Selected',
-      message: `Now managing ${instance.name}`,
+      title: t('instances.selectedTitle'),
+      // The name is what the operator typed, so it reaches the notification as
+      // written: i18next escapes interpolations for markup a notification does
+      // not render, and a gateway called "A&B" would arrive as "A&amp;B" (#341).
+      message: t('instances.selected', {
+        name: instance.name,
+        interpolation: { escapeValue: false },
+      }),
       color: 'blue',
     });
   };
@@ -553,7 +559,7 @@ const InstancesPage = () => {
                           {instance.name}
                         </Text>
                         <Text size="xs" c="dimmed" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {instance.description || 'No description'}
+                          {instance.description || t('instances.noDescription')}
                         </Text>
                       </Box>
                     </Group>
@@ -588,24 +594,24 @@ const InstancesPage = () => {
                   </Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Group gap="xs" justify="flex-end">
-                      <Tooltip label="Test Connection">
+                      <Tooltip label={t('instances.actionTest')}>
                         <ActionIcon
                           variant="light"
                           color="blue"
-                          aria-label="Test Connection"
+                          aria-label={t('instances.actionTest')}
                           onClick={() => handleTestConnection(instance.id)}
                           loading={testingId === instance.id}
                         >
                           <IconPlugConnected width="18" height="18" />
                         </ActionIcon>
                       </Tooltip>
-                      <Tooltip label="Edit">
-                        <ActionIcon variant="light" color="yellow" aria-label="Edit" onClick={() => openEditModal(instance)}>
+                      <Tooltip label={t('instances.actionEdit')}>
+                        <ActionIcon variant="light" color="yellow" aria-label={t('instances.actionEdit')} onClick={() => openEditModal(instance)}>
                           <IconEdit width="18" height="18" />
                         </ActionIcon>
                       </Tooltip>
-                      <Tooltip label="Delete">
-                        <ActionIcon variant="light" color="red" aria-label="Delete" onClick={() => openDeleteModal(instance)}>
+                      <Tooltip label={t('instances.actionDelete')}>
+                        <ActionIcon variant="light" color="red" aria-label={t('instances.actionDelete')} onClick={() => openDeleteModal(instance)}>
                           <IconDelete width="18" height="18" />
                         </ActionIcon>
                       </Tooltip>
@@ -677,7 +683,7 @@ const InstancesPage = () => {
       <Modal
         opened={modalOpen}
         onClose={() => { setModalOpen(false); resetForm(); }}
-        title={editingInstance ? 'Edit Instance' : 'Add New Instance'}
+        title={editingInstance ? t('instances.editTitle') : t('instances.addTitle')}
         size="lg"
         scrollAreaComponent={ScrollArea.Autosize}
         overlayProps={{
@@ -687,9 +693,9 @@ const InstancesPage = () => {
       >
         <Stack gap="md" mt="md">
           <TextInput
-            label="Name"
-            description="A recognizable name for this gateway"
-            placeholder="e.g., Production Cluster"
+            label={t('instances.fieldName')}
+            description={t('instances.fieldNameHint')}
+            placeholder={t('instances.fieldNamePlaceholder')}
             required
             value={formData.name}
             error={nameError}
@@ -700,32 +706,42 @@ const InstancesPage = () => {
             data-autofocus
           />
           <Textarea
-            label="Description"
-            placeholder="e.g., Main production API gateway handling all external traffic"
+            label={t('instances.fieldDescription')}
+            placeholder={t('instances.fieldDescriptionPlaceholder')}
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
           />
           <TextInput
-            label="Admin API URL"
-            description="The URL where the APISIX Admin API is accessible"
+            label={t('instances.fieldAdminUrl')}
+            description={t('instances.fieldAdminUrlHint')}
+            // An address, not a sentence: the three placeholders on this form
+            // show APISIX's own default ports, and a translator cannot improve
+            // one without pointing the operator somewhere else (the Users page
+            // keeps "johndoe" for the same reason).
+            /* eslint-disable-next-line i18next/no-literal-string */
             placeholder="http://localhost:9180"
             required
             value={formData.admin_api_url}
             onChange={(e) => setFormData({ ...formData, admin_api_url: e.target.value })}
           />
           <TextInput
-            label="Admin Key"
-            description={editingInstance ? 'Leave empty to keep existing key' : 'The X-API-Key required for authentication'}
-            placeholder="Enter admin key"
+            label={t('instances.fieldAdminKey')}
+            description={
+              editingInstance
+                ? t('instances.fieldAdminKeyHintEdit')
+                : t('instances.fieldAdminKeyHintNew')
+            }
+            placeholder={t('instances.fieldAdminKeyPlaceholder')}
             required={!editingInstance}
             type="password"
             value={formData.admin_key}
             onChange={(e) => setFormData({ ...formData, admin_key: e.target.value })}
           />
           <TextInput
-            label="Gateway URL"
-            description="The URL where the APISIX gateway is accessible (for route testing)"
+            label={t('instances.fieldGatewayUrl')}
+            description={t('instances.fieldGatewayUrlHint')}
+            /* eslint-disable-next-line i18next/no-literal-string */
             placeholder="http://localhost:9080"
             value={formData.gateway_url}
             onChange={(e) => setFormData({ ...formData, gateway_url: e.target.value })}
@@ -735,8 +751,9 @@ const InstancesPage = () => {
               carries no authentication of its own. Left empty, upstream health
               is simply not known here rather than reported as bad (#281). */}
           <TextInput
-            label="Control API URL"
-            description="Where this gateway serves APISIX's Control API, if it exposes one. Used to read upstream health. APISIX binds it to loopback by default and it carries no authentication, so exposing it is a deliberate choice. Leave empty if it does not."
+            label={t('instances.fieldControlUrl')}
+            description={t('instances.fieldControlUrlHint')}
+            /* eslint-disable-next-line i18next/no-literal-string */
             placeholder="http://localhost:9090"
             value={formData.control_api_url}
             onChange={(e) => setFormData({ ...formData, control_api_url: e.target.value })}

@@ -105,11 +105,22 @@ const e2eRules = tseslint.config(
  * title alone - which is how thirteen strings came to be written in English on
  * the Users page (#320) and how the next label would be (#328).
  *
- * A list that grows: turning it on everywhere reports 97 occurrences, so each
- * screen joins this once its own strings have keys, and cannot slip back.
+ * A list that grows: turning it on everywhere reports 69 occurrences today, so
+ * each screen joins this once its own strings have keys, and cannot slip back.
+ * The count is worth re-measuring rather than trusting - it was 97 when #328
+ * was written, and every screen that joins takes its own share out of it.
+ *
+ * It holds attributes, not the whole screen: a string in a `notifications.show`
+ * object has no JSX ancestor, so this mode never sees it (thirteen of them sat
+ * on the instances page). A screen is done when its keys exist, not when this
+ * rule is quiet.
  */
 const attributesTranslated = tseslint.config({
-  files: ['src/components/Header/**/*.tsx'],
+  files: [
+    'src/components/Header/**/*.tsx',
+    'src/routes/instances/**/*.tsx',
+    'src/routes/users/**/*.tsx',
+  ],
   plugins: { i18next },
   rules: {
     'i18next/no-literal-string': [
@@ -129,6 +140,11 @@ const attributesTranslated = tseslint.config({
             'description',
             'title',
             'aria-label',
+            // Mantine renders `error` under the field it belongs to and
+            // `nothingFoundMessage` inside an empty select: both are sentences
+            // an operator reads at the moment something has gone wrong.
+            'error',
+            'nothingFoundMessage',
             'data',
             'renderOption',
             'leftSection',
