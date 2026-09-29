@@ -647,7 +647,7 @@
       "filterTeamUnassigned": "未分配",
       "headerId": "ID",
       "selectAll": "全选",
-      "selectRow": "选择 {{name}} 所在行",
+      "selectRow": "选择该行",
       "duplicateFailed": "复制失败",
       "updateFailed": "更新失败",
       "columnsFixed": "固定",

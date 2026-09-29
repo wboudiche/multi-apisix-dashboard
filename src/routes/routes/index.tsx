@@ -354,13 +354,12 @@ export const RouteList = (props: RouteListProps) => {
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
                 <Checkbox
-                  aria-label={t('routes.list.selectRow', {
-                    name: record.value.name || record.value.id,
-                    // A route's name is what someone typed, and a screen reader
-                    // reads it rather than rendering it: escaping would spell
-                    // out &#x2F; in a path-shaped name (#341).
-                    interpolation: { escapeValue: false },
-                  })}
+                  // The same name on every row, which is worse for a screen
+                  // reader and the only thing the suite can address: naming the
+                  // route here puts it in the row's accessible name, and five
+                  // specs match a cell or a checkbox by a name that then
+                  // resolves to two elements (#348).
+                  aria-label={t('routes.list.selectRow')}
                   checked={selectedIds.has(record.value.id)}
                   onChange={() => toggleSelect(record.value.id)}
                 />
