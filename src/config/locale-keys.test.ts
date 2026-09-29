@@ -71,8 +71,17 @@ describe.each(LANGUAGES)('%s', (lang) => {
 
   // The retired-key check. A translation on a key `en` does not have is a
   // translation nothing can resolve - which is what a rename leaves behind.
+  //
+  // A plural form is not that: i18next resolves `x_one` and `x_other` from a
+  // call on `x`, and a language needs the forms its own grammar has rather than
+  // the ones English happens to need. Spanish says "1 seleccionado" where
+  // English says "1 selected" for any count.
   it('holds no key en does not have', () => {
-    const stranded = [...translated.keys()].filter((key) => !en.has(key));
+    const base = (key: string) =>
+      key.replace(/_(zero|one|two|few|many|other)$/, '');
+    const stranded = [...translated.keys()].filter(
+      (key) => !en.has(key) && !en.has(base(key))
+    );
     expect(stranded).toEqual([]);
   });
 
@@ -149,20 +158,32 @@ describe.each(LANGUAGES)('%s', (lang) => {
 const sourceOf = (file: string) =>
   readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 
-/** The keys a file asks for by name. A key built from a variable is invisible
- *  here, which is the price of not keeping a list. */
+/**
+ * The keys a file asks for: every dotted name it spells out, kept if `en` holds
+ * one by that name.
+ *
+ * Matching `t('...` instead would read the first argument of a call and stop
+ * there, which missed `t(published ? 'info.publish.success' : 'info.unpublish.success')`
+ * on the routes list - two keys, in no language but English, on a screen the
+ * list below called translated.
+ *
+ * A dotted string that names nothing is dropped rather than reported: eslint's
+ * i18n/no-unknown-key already fails on a key `en` lacks, at the call site.
+ */
 const keysRead = (file: string) =>
-  [...sourceOf(file).matchAll(/\bt\('([^']+)'/g)].map((m) => m[1]);
+  [...sourceOf(file).matchAll(/'([a-zA-Z][\w]*(?:\.[\w]+)+)'/g)]
+    .map((m) => m[1])
+    .filter((key) => en.has(key));
 
 describe.each(FULLY_TRANSLATED_SCREENS)('%s', (file) => {
   const keys = [...new Set(keysRead(file))].sort();
 
-  it('is read by a pattern that matches every call in it', () => {
-    // Guards the regex above rather than a hand-picked floor: a file whose
-    // keys stopped being found would make every language below pass on an
-    // empty list, and a count of 11 would break on the next refactor.
-    const calls = sourceOf(file).match(/\bt\('/g) ?? [];
-    expect(keysRead(file)).toHaveLength(calls.length);
+  it('spells out every key it reads', () => {
+    // What the harvest above cannot see: a key held in a variable or built from
+    // one. The check below would pass on the keys it does see and say nothing
+    // about that one, so the file is held to writing them out.
+    const built = sourceOf(file).match(/\bt\(\s*(?:[A-Za-z_$][\w$]*\s*[,)]|`)/g) ?? [];
+    expect(built).toEqual([]);
   });
 
   it('reads only keys en holds', () => {

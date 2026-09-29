@@ -239,10 +239,10 @@ export const RouteList = (props: RouteListProps) => {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
       notifications.show({
-        message:
-          e?.response?.data?.error_msg ||
-          e?.message ||
-          t('routes.list.duplicateFailed'),
+        // The sentence first, the reason under it: axios fills `message` on
+        // every network failure, so a fallback behind it was never read.
+        title: t('routes.list.duplicateFailed'),
+        message: e?.response?.data?.error_msg || e?.message,
         color: 'red',
       });
     }
@@ -281,7 +281,8 @@ export const RouteList = (props: RouteListProps) => {
         const e = err as { response?: unknown; message?: string };
         if (!e?.response) {
           notifications.show({
-            message: e?.message || t('routes.list.updateFailed'),
+            title: t('routes.list.updateFailed'),
+            message: e?.message,
             color: 'red',
           });
         }
@@ -343,7 +344,7 @@ export const RouteList = (props: RouteListProps) => {
             {isVisible('status') && <Table.Th>{t('routes.list.headerStatus')}</Table.Th>}
             {isVisible('update_time') && <Table.Th>{t('routes.list.headerUpdateTime')}</Table.Th>}
             {isVisible('plugin') && <Table.Th>{t('routes.list.headerPlugin')}</Table.Th>}
-            {isVisible('team') && <Table.Th>{t('sources.teams')}</Table.Th>}
+            {isVisible('team') && <Table.Th>{t('routes.list.headerTeam')}</Table.Th>}
             {isVisible('operation') && <Table.Th style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
           </Table.Tr>
         </Table.Thead>
@@ -352,7 +353,17 @@ export const RouteList = (props: RouteListProps) => {
           {data?.list.map((record: any, index: number) => (
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
-                <Checkbox aria-label={t('routes.list.selectRow')} checked={selectedIds.has(record.value.id)} onChange={() => toggleSelect(record.value.id)} />
+                <Checkbox
+                  aria-label={t('routes.list.selectRow', {
+                    name: record.value.name || record.value.id,
+                    // A route's name is what someone typed, and a screen reader
+                    // reads it rather than rendering it: escaping would spell
+                    // out &#x2F; in a path-shaped name (#341).
+                    interpolation: { escapeValue: false },
+                  })}
+                  checked={selectedIds.has(record.value.id)}
+                  onChange={() => toggleSelect(record.value.id)}
+                />
               </Table.Td>
               {isVisible('name') && (
                 <Table.Td>
@@ -730,8 +741,10 @@ function RouteComponent() {
   // action buttons — rows with no way to tell which route each one was. Keeping
   // the identifying column out of the toggleable set makes that unreachable by
   // construction, rather than relying on a "keep at least one" check.
-  // The same keys the table headers read, so a column cannot be called one
-  // thing in the picker and another above the column it switches on.
+  // The same keys the table headers read, so that a column is called the same
+  // thing in the picker as above the column it switches on. Nothing enforces
+  // that: an array built here has no JSX ancestor, so the rule that holds this
+  // screen's attributes to i18n cannot see these labels at all.
   const ALL_COLUMNS = [
     { label: t('routes.list.headerId'), value: 'id' },
     { label: t('routes.list.headerHost'), value: 'host' },
@@ -743,7 +756,7 @@ function RouteComponent() {
     { label: t('routes.list.headerStatus'), value: 'status' },
     { label: t('routes.list.headerUpdateTime'), value: 'update_time' },
     { label: t('routes.list.headerPlugin'), value: 'plugin' },
-    { label: t('sources.teams'), value: 'team' },
+    { label: t('routes.list.headerTeam'), value: 'team' },
   ];
 
   const DEFAULT_COLUMNS = ['name', 'path', 'upstream', 'label', 'status', 'update_time', 'plugin', 'team', 'operation'];

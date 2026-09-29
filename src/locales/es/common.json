@@ -144,7 +144,14 @@
     "dependencyCheckFailed": "No se ha podido comprobar qué depende de esta instancia",
     "unreadableTitle": "Lista de instancias no disponible",
     "unreadableBody": "No se han podido leer las instancias, así que no puede listarse ninguna aquí. No es lo mismo que no tener ninguna registrada: los registros siguen ahí y esta página no puede alcanzarlos ahora mismo.",
-    "unreadableCta": "Reintentar"
+    "unreadableCta": "Reintentar",
+    "resourceRoutes": "Rutas",
+    "resourceServices": "Servicios",
+    "resourceUpstreams": "Upstreams",
+    "resourceConsumers": "Consumidores",
+    "resourceStreamRoutes": "Rutas de Stream",
+    "resourceUserAssignments": "Asignaciones de rol de usuario",
+    "resourceOwnershipRecords": "Registros de propiedad de equipo"
   },
   "login": {
     "adminNote": "Las cuentas las crea tu administrador.",
@@ -245,7 +252,9 @@
       "exportOpenAPI": "Exportar OpenAPI",
       "saveSuccess": "JSON guardado correctamente",
       "selectedCount": "{{count}} seleccionados",
-      "viewRaw": "Ver JSON"
+      "viewRaw": "Ver JSON",
+      "selectedCount_one": "{{count}} seleccionado",
+      "selectedCount_other": "{{count}} seleccionados"
     },
     "plugins": {
       "addPlugin": "Añadir Plugin",
@@ -558,6 +567,12 @@
     "edit": {
       "success": "Editado {{name}} con éxito",
       "title": "Editar {{name}}"
+    },
+    "publish": {
+      "success": "{{name}} se ha publicado correctamente"
+    },
+    "unpublish": {
+      "success": "{{name}} se ha retirado correctamente"
     }
   },
   "mark": {
@@ -634,12 +649,13 @@
       "filterTeamUnassigned": "Sin asignar",
       "headerId": "ID",
       "selectAll": "Seleccionar todo",
-      "selectRow": "Seleccionar fila",
+      "selectRow": "Seleccionar la fila {{name}}",
       "duplicateFailed": "No se ha podido duplicar",
       "updateFailed": "No se ha podido actualizar",
       "columnsFixed": "Fijo",
       "columnsNameAlwaysShown": "Siempre visible, para que cada fila pueda identificarse",
-      "emptyOwnershipHint": "Las rutas que pertenecen a otro equipo, o que aún no están asignadas a ninguno, no se muestran aquí. Si esperabas ver una ruta, pide a un administrador que la asigne a tu equipo."
+      "emptyOwnershipHint": "Las rutas que pertenecen a otro equipo, o que aún no están asignadas a ninguno, no se muestran aquí. Si esperabas ver una ruta, pide a un administrador que la asigne a tu equipo.",
+      "headerTeam": "Equipo"
     }
   },
   "seconds": "Segundos",

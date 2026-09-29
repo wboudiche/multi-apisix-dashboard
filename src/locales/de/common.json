@@ -144,7 +144,14 @@
     "dependencyCheckFailed": "Es konnte nicht geprüft werden, was von dieser Instanz abhängt",
     "unreadableTitle": "Instanzliste nicht verfügbar",
     "unreadableBody": "Die Instanzen konnten nicht gelesen werden, daher lässt sich hier keine auflisten. Das ist nicht dasselbe, wie keine registriert zu haben — die Einträge sind weiterhin vorhanden, diese Seite erreicht sie im Moment nur nicht.",
-    "unreadableCta": "Erneut versuchen"
+    "unreadableCta": "Erneut versuchen",
+    "resourceRoutes": "Routen",
+    "resourceServices": "Services",
+    "resourceUpstreams": "Upstreams",
+    "resourceConsumers": "Konsumenten",
+    "resourceStreamRoutes": "Stream Routen",
+    "resourceUserAssignments": "Rollenzuweisungen von Benutzern",
+    "resourceOwnershipRecords": "Einträge zur Team-Zugehörigkeit"
   },
   "login": {
     "adminNote": "Konten werden von Ihrem Administrator angelegt.",
@@ -558,6 +565,12 @@
     "edit": {
       "success": "{{name}} erfolgreich bearbeitet",
       "title": "{{name}} bearbeiten"
+    },
+    "publish": {
+      "success": "{{name}} erfolgreich veröffentlicht"
+    },
+    "unpublish": {
+      "success": "{{name}} erfolgreich offline genommen"
     }
   },
   "mark": {
@@ -634,12 +647,13 @@
       "filterTeamUnassigned": "Nicht zugewiesen",
       "headerId": "ID",
       "selectAll": "Alle auswählen",
-      "selectRow": "Zeile auswählen",
+      "selectRow": "Zeile {{name}} auswählen",
       "duplicateFailed": "Duplizieren fehlgeschlagen",
       "updateFailed": "Aktualisierung fehlgeschlagen",
       "columnsFixed": "Fest",
       "columnsNameAlwaysShown": "Immer sichtbar, damit jede Zeile erkennbar bleibt",
-      "emptyOwnershipHint": "Routen, die einem anderen Team gehören oder noch keinem Team zugewiesen sind, werden hier nicht angezeigt. Falls Sie eine Route erwartet haben, bitten Sie die Administration, sie Ihrem Team zuzuweisen."
+      "emptyOwnershipHint": "Routen, die einem anderen Team gehören oder noch keinem Team zugewiesen sind, werden hier nicht angezeigt. Falls Sie eine Route erwartet haben, bitten Sie Ihren Administrator, sie Ihrem Team zuzuweisen.",
+      "headerTeam": "Team"
     }
   },
   "seconds": "Sekunden",

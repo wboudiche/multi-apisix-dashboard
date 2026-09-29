@@ -814,9 +814,10 @@
       "upstreamNone": "—",
       "headerId": "ID",
       "selectAll": "Select all",
-      "selectRow": "Select row",
+      "selectRow": "Select row {{name}}",
       "duplicateFailed": "Failed to duplicate",
-      "updateFailed": "Failed to update"
+      "updateFailed": "Failed to update",
+      "headerTeam": "Team"
     }
   },
   "seconds": "Seconds",

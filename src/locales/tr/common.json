@@ -144,7 +144,14 @@
     "dependencyCheckFailed": "Bu örneğe neyin bağlı olduğu denetlenemedi",
     "unreadableTitle": "Örnek listesi kullanılamıyor",
     "unreadableBody": "Örnekler okunamadı, bu yüzden burada hiçbiri listelenemiyor. Bu, kayıtlı örnek olmamasıyla aynı şey değil — kayıtlar yerinde, bu sayfa şu anda onlara ulaşamıyor.",
-    "unreadableCta": "Yeniden dene"
+    "unreadableCta": "Yeniden dene",
+    "resourceRoutes": "Route'lar",
+    "resourceServices": "Service'ler",
+    "resourceUpstreams": "Upstream'ler",
+    "resourceConsumers": "Consumer'lar",
+    "resourceStreamRoutes": "Stream Route'lar",
+    "resourceUserAssignments": "Kullanıcı rol atamaları",
+    "resourceOwnershipRecords": "Ekip sahiplik kayıtları"
   },
   "login": {
     "adminNote": "Hesaplar yöneticiniz tarafından oluşturulur.",
@@ -558,6 +565,12 @@
     "edit": {
       "success": "{{name}} başarıyla güncellendi",
       "title": "{{name}} Düzenle"
+    },
+    "publish": {
+      "success": "{{name}} başarıyla yayımlandı"
+    },
+    "unpublish": {
+      "success": "{{name}} başarıyla çevrimdışı alındı"
     }
   },
   "mark": {
@@ -634,12 +647,13 @@
       "filterTeamUnassigned": "Atanmamış",
       "headerId": "ID",
       "selectAll": "Tümünü seç",
-      "selectRow": "Satırı seç",
+      "selectRow": "{{name}} satırını seç",
       "duplicateFailed": "Çoğaltılamadı",
       "updateFailed": "Güncellenemedi",
       "columnsFixed": "Sabit",
       "columnsNameAlwaysShown": "Her satır tanınabilsin diye her zaman gösterilir",
-      "emptyOwnershipHint": "Başka bir ekibe ait olan ya da henüz hiçbir ekibe atanmamış rotalar burada gösterilmez. Bir rotayı görmeyi bekliyorduysanız, bir yöneticiden onu ekibinize atamasını isteyin."
+      "emptyOwnershipHint": "Başka bir ekibe ait olan ya da henüz hiçbir ekibe atanmamış rotalar burada gösterilmez. Bir rotayı görmeyi bekliyorduysanız, bir yöneticiden onu ekibinize atamasını isteyin.",
+      "headerTeam": "Ekip"
     }
   },
   "seconds": "Saniye",

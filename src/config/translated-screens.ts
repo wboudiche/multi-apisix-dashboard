@@ -32,7 +32,11 @@ export const ATTRIBUTES_GUARDED = [
   'src/routes/instances/**/*.tsx',
   'src/routes/users/**/*.tsx',
   'src/routes/settings/**/*.tsx',
-  'src/routes/routes/**/*.tsx',
+  // This one names a file rather than its directory: `add.tsx` and
+  // `detail.$id.tsx` beside it are not done - between them they read seventeen
+  // keys no language but English has - and a directory that looks guarded is
+  // how a screen ends up half-guarded.
+  'src/routes/routes/index.tsx',
 ];
 
 /**

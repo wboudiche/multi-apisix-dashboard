@@ -157,20 +157,6 @@ const attributeRuleOptions = {
   // `style`, through which the language menu spreads a CSS variable; and
   // SCREAMING_CASE, which is a constant rather than a sentence.
   'object-properties': { exclude: ['[A-Z_-]+', 'style', 'value'] },
-  // Predicates the list screens ask about a column or a resource type:
-  // `{isVisible('update_time') && <Table.Th>...}` puts an identifier in the
-  // JSX, where the rule reads it as a sentence. Excluding a callee hides every
-  // argument it is given, which is safe here and only here - these two take an
-  // identifier and nothing else. A helper that also takes a label, like the
-  // settings page's `num(key, label)`, cannot be excluded this way without
-  // hiding the label with it.
-  callees: {
-    exclude: [
-      ...i18nextDefaults.callees.exclude,
-      'isVisible',
-      'canWriteResource',
-    ],
-  },
 };
 
 const attributesTranslated = tseslint.config({
@@ -197,6 +183,39 @@ const attributesTranslated = tseslint.config({
  * them - and a copy of them here would stop being the plugin's on its next
  * release.
  */
+/**
+ * One screen, two predicates: the routes list asks whether a column is shown
+ * and whether the account may write the resource.
+ *
+ * `{isVisible('update_time') && <Table.Th>...}` puts an identifier in the JSX,
+ * where the rule reads it as a sentence. Excluding a callee hides every
+ * argument it is given, which is why this is safe for these two and not in
+ * general: they take an identifier and nothing else, while the settings page's
+ * `num(key, label)` carries a label that has to stay checked.
+ *
+ * Kept to the screen that has them, like the exclusion below, so that a helper
+ * of the same name written on another screen does not inherit the exemption.
+ */
+const listPredicatesAreNotProse = tseslint.config({
+  files: ['src/routes/routes/index.tsx'],
+  plugins: { i18next },
+  rules: {
+    'i18next/no-literal-string': [
+      'error',
+      {
+        ...attributeRuleOptions,
+        callees: {
+          exclude: [
+            ...i18nextDefaults.callees.exclude,
+            'isVisible',
+            'canWriteResource',
+          ],
+        },
+      },
+    ],
+  },
+});
+
 const fieldKeysAreNotProse = tseslint.config({
   files: ['src/routes/settings/**/*.tsx'],
   plugins: { i18next },
@@ -306,6 +325,7 @@ export default tseslint.config(
   e2eRules,
   i18nRules,
   attributesTranslated,
+  listPredicatesAreNotProse,
   fieldKeysAreNotProse,
   srcRules
 );
