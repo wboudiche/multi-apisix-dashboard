@@ -327,10 +327,10 @@ const InstancesPage = () => {
         });
       } else {
         notifications.show({
-          title: 'Success',
+          title: t('instances.successTitle'),
           message: editingInstance
-            ? 'Instance updated successfully'
-            : 'Instance created successfully',
+            ? t('instances.updated')
+            : t('instances.created'),
           color: 'green',
         });
       }
@@ -351,7 +351,7 @@ const InstancesPage = () => {
       }
 
       notifications.show({
-        title: 'Error',
+        title: t('instances.errorTitle'),
         message: describeError(error, t('instances.saveFailed')),
         color: 'red',
       });
@@ -383,7 +383,7 @@ const InstancesPage = () => {
       if (deleteRequestRef.current !== requestId) return;
       setPendingDelete(null);
       notifications.show({
-        title: 'Error',
+        title: t('instances.errorTitle'),
         message: describeError(error, t('instances.dependencyCheckFailed')),
         color: 'red',
       });
@@ -401,8 +401,8 @@ const InstancesPage = () => {
     try {
       await instanceApi.delete(id, true);
       notifications.show({
-        title: 'Success',
-        message: 'Instance deleted successfully',
+        title: t('instances.successTitle'),
+        message: t('instances.deleted'),
         color: 'green',
       });
       if (currentInstanceId === id) {
@@ -413,7 +413,7 @@ const InstancesPage = () => {
       loadHealth();
     } catch (error) {
       notifications.show({
-        title: 'Error',
+        title: t('instances.errorTitle'),
         message: describeError(error, t('instances.deleteFailed')),
         color: 'red',
       });
@@ -427,15 +427,15 @@ const InstancesPage = () => {
     try {
       await instanceApi.testConnection(id);
       notifications.show({
-        title: 'Connection Successful',
-        message: 'Successfully connected to APISIX instance',
+        title: t('instances.testSuccessTitle'),
+        message: t('instances.testSuccess'),
         color: 'green',
         icon: <IconCheck width="18" height="18" />,
       });
     } catch {
       notifications.show({
-        title: 'Connection Failed',
-        message: 'Could not connect to the APISIX Admin API',
+        title: t('instances.testFailedTitle'),
+        message: t('instances.testFailed'),
         color: 'red',
       });
     } finally {
@@ -448,8 +448,14 @@ const InstancesPage = () => {
   const handleSetActive = async (instance: Instance) => {
     setCurrentInstanceId(instance.id);
     notifications.show({
-      title: 'Instance Selected',
-      message: `Now managing ${instance.name}`,
+      title: t('instances.selectedTitle'),
+      // The name is what the operator typed, so it reaches the notification as
+      // written: i18next escapes interpolations for markup a notification does
+      // not render, and a gateway called "A&B" would arrive as "A&amp;B" (#341).
+      message: t('instances.selected', {
+        name: instance.name,
+        interpolation: { escapeValue: false },
+      }),
       color: 'blue',
     });
   };

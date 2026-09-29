@@ -99,7 +99,18 @@
     "fieldGatewayUrl": "Gateway URL",
     "fieldGatewayUrlHint": "The URL where the APISIX gateway is accessible (for route testing)",
     "fieldControlUrl": "Control API URL",
-    "fieldControlUrlHint": "Where this gateway serves APISIX's Control API, if it exposes one. Used to read upstream health. APISIX binds it to loopback by default and it carries no authentication, so exposing it is a deliberate choice. Leave empty if it does not."
+    "fieldControlUrlHint": "Where this gateway serves APISIX's Control API, if it exposes one. Used to read upstream health. APISIX binds it to loopback by default and it carries no authentication, so exposing it is a deliberate choice. Leave empty if it does not.",
+    "successTitle": "Success",
+    "errorTitle": "Error",
+    "created": "Instance created successfully",
+    "updated": "Instance updated successfully",
+    "deleted": "Instance deleted successfully",
+    "testSuccessTitle": "Connection Successful",
+    "testSuccess": "Successfully connected to APISIX instance",
+    "testFailedTitle": "Connection Failed",
+    "testFailed": "Could not connect to the APISIX Admin API",
+    "selectedTitle": "Instance Selected",
+    "selected": "Now managing {{name}}"
   },
   "proxyError": {
     "title": "Cannot reach {{name}}",
