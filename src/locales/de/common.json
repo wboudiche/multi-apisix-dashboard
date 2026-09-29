@@ -705,5 +705,28 @@
   "error": {
     "probeBusy": "Das Dashboard führt bereits so viele ausgehende Tests aus, wie es gleichzeitig zulässt. Versuchen Sie es in einem Moment erneut.",
     "probeBusyCaller": "Sie haben bereits so viele ausgehende Tests laufen, wie ein Konto haben darf. Warten Sie, bis einer fertig ist."
+  },
+  "instances": {
+    "noDescription": "Keine Beschreibung",
+    "actionTest": "Verbindung testen",
+    "actionEdit": "Bearbeiten",
+    "actionDelete": "Löschen",
+    "editTitle": "Instanz bearbeiten",
+    "addTitle": "Neue Instanz hinzufügen",
+    "fieldName": "Name",
+    "fieldNameHint": "Ein wiedererkennbarer Name für dieses Gateway",
+    "fieldNamePlaceholder": "z. B. Produktionscluster",
+    "fieldDescription": "Beschreibung",
+    "fieldDescriptionPlaceholder": "z. B. Haupt-API-Gateway der Produktion für den gesamten externen Verkehr",
+    "fieldAdminUrl": "Admin-API-URL",
+    "fieldAdminUrlHint": "Die URL, unter der die APISIX-Admin-API erreichbar ist",
+    "fieldAdminKey": "Admin-Schlüssel",
+    "fieldAdminKeyHintEdit": "Leer lassen, um den vorhandenen Schlüssel zu behalten",
+    "fieldAdminKeyHintNew": "Der für die Authentifizierung erforderliche X-API-Key",
+    "fieldAdminKeyPlaceholder": "Admin-Schlüssel eingeben",
+    "fieldGatewayUrl": "Gateway-URL",
+    "fieldGatewayUrlHint": "Die URL, unter der das APISIX-Gateway erreichbar ist (für Routentests)",
+    "fieldControlUrl": "Control-API-URL",
+    "fieldControlUrlHint": "Wo dieses Gateway die Control-API von APISIX bereitstellt, sofern es eine anbietet. Wird gelesen, um den Zustand der Upstreams zu ermitteln. APISIX bindet sie standardmäßig an die Loopback-Adresse und sie trägt keine eigene Authentifizierung, ihre Freigabe ist also eine bewusste Entscheidung. Leer lassen, wenn es keine gibt."
   }
 }

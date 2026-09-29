@@ -705,5 +705,28 @@
   "error": {
     "probeBusy": "Panel şu anda aynı anda izin verdiği kadar giden test çalıştırıyor. Birazdan yeniden deneyin.",
     "probeBusyCaller": "Bir hesabın çalıştırabileceği kadar giden testi hâlihazırda çalıştırıyorsunuz. Birinin bitmesini bekleyin."
+  },
+  "instances": {
+    "noDescription": "Açıklama yok",
+    "actionTest": "Bağlantıyı test et",
+    "actionEdit": "Düzenle",
+    "actionDelete": "Sil",
+    "editTitle": "Örneği düzenle",
+    "addTitle": "Yeni örnek ekle",
+    "fieldName": "Ad",
+    "fieldNameHint": "Bu ağ geçidi için tanınabilir bir ad",
+    "fieldNamePlaceholder": "örn. Üretim Kümesi",
+    "fieldDescription": "Açıklama",
+    "fieldDescriptionPlaceholder": "örn. Tüm dış trafiği karşılayan ana üretim API ağ geçidi",
+    "fieldAdminUrl": "Yönetim API'si URL'si",
+    "fieldAdminUrlHint": "APISIX Yönetim API'sinin erişilebilir olduğu URL",
+    "fieldAdminKey": "Yönetim anahtarı",
+    "fieldAdminKeyHintEdit": "Mevcut anahtarı korumak için boş bırakın",
+    "fieldAdminKeyHintNew": "Kimlik doğrulama için gereken X-API-Key",
+    "fieldAdminKeyPlaceholder": "Yönetim anahtarını girin",
+    "fieldGatewayUrl": "Ağ geçidi URL'si",
+    "fieldGatewayUrlHint": "APISIX ağ geçidinin erişilebilir olduğu URL (rota testi için)",
+    "fieldControlUrl": "Kontrol API'si URL'si",
+    "fieldControlUrlHint": "Bu ağ geçidi APISIX Kontrol API'sini sunuyorsa nerede sunduğu. Upstream sağlığını okumak için kullanılır. APISIX bunu varsayılan olarak yerel geri döngü adresine bağlar ve kendi kimlik doğrulaması yoktur; dışarı açmak bilinçli bir tercihtir. Sunulmuyorsa boş bırakın."
   }
 }

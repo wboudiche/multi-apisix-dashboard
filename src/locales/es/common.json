@@ -705,5 +705,28 @@
   "error": {
     "probeBusy": "El panel ya está ejecutando tantas pruebas salientes como permite a la vez. Vuelve a intentarlo en un momento.",
     "probeBusyCaller": "Ya tienes en marcha tantas pruebas salientes como permite una cuenta. Espera a que termine una."
+  },
+  "instances": {
+    "noDescription": "Sin descripción",
+    "actionTest": "Probar conexión",
+    "actionEdit": "Editar",
+    "actionDelete": "Eliminar",
+    "editTitle": "Editar instancia",
+    "addTitle": "Añadir nueva instancia",
+    "fieldName": "Nombre",
+    "fieldNameHint": "Un nombre reconocible para esta pasarela",
+    "fieldNamePlaceholder": "p. ej., Clúster de producción",
+    "fieldDescription": "Descripción",
+    "fieldDescriptionPlaceholder": "p. ej., Pasarela API principal de producción para todo el tráfico externo",
+    "fieldAdminUrl": "URL de la API de administración",
+    "fieldAdminUrlHint": "La URL donde está accesible la API de administración de APISIX",
+    "fieldAdminKey": "Clave de administración",
+    "fieldAdminKeyHintEdit": "Déjalo vacío para conservar la clave actual",
+    "fieldAdminKeyHintNew": "La X-API-Key necesaria para la autenticación",
+    "fieldAdminKeyPlaceholder": "Introduce la clave de administración",
+    "fieldGatewayUrl": "URL de la pasarela",
+    "fieldGatewayUrlHint": "La URL donde está accesible la pasarela APISIX (para probar rutas)",
+    "fieldControlUrl": "URL de la API de control",
+    "fieldControlUrlHint": "Dónde sirve esta pasarela la API de control de APISIX, si expone una. Se usa para leer el estado de los upstreams. APISIX la enlaza a la interfaz local de forma predeterminada y no lleva autenticación propia, así que exponerla es una decisión deliberada. Déjalo vacío si no la expone."
   }
 }

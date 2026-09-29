@@ -705,5 +705,28 @@
   "error": {
     "probeBusy": "仪表板已在同时运行其允许的最大数量的外部测试。请稍后重试。",
     "probeBusyCaller": "您已有一个账号允许的最大数量的外部测试在运行。请等待其中一个完成。"
+  },
+  "instances": {
+    "noDescription": "无描述",
+    "actionTest": "测试连接",
+    "actionEdit": "编辑",
+    "actionDelete": "删除",
+    "editTitle": "编辑实例",
+    "addTitle": "添加新实例",
+    "fieldName": "名称",
+    "fieldNameHint": "便于识别此网关的名称",
+    "fieldNamePlaceholder": "例如：生产集群",
+    "fieldDescription": "描述",
+    "fieldDescriptionPlaceholder": "例如：处理所有外部流量的生产主 API 网关",
+    "fieldAdminUrl": "Admin API 地址",
+    "fieldAdminUrlHint": "APISIX Admin API 的访问地址",
+    "fieldAdminKey": "Admin 密钥",
+    "fieldAdminKeyHintEdit": "留空则保留现有密钥",
+    "fieldAdminKeyHintNew": "认证所需的 X-API-Key",
+    "fieldAdminKeyPlaceholder": "输入 Admin 密钥",
+    "fieldGatewayUrl": "网关地址",
+    "fieldGatewayUrlHint": "APISIX 网关的访问地址（用于路由测试）",
+    "fieldControlUrl": "Control API 地址",
+    "fieldControlUrlHint": "此网关提供 APISIX Control API 的地址（如果开放）。用于读取上游健康状态。APISIX 默认将其绑定到本地回环且不带任何认证，因此对外开放是一个需要慎重的选择。若未开放请留空。"
   }
 }

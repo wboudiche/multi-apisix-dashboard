@@ -109,7 +109,7 @@ const e2eRules = tseslint.config(
  * screen joins this once its own strings have keys, and cannot slip back.
  */
 const attributesTranslated = tseslint.config({
-  files: ['src/components/Header/**/*.tsx'],
+  files: ['src/components/Header/**/*.tsx', 'src/routes/instances/**/*.tsx'],
   plugins: { i18next },
   rules: {
     'i18next/no-literal-string': [
