@@ -50,6 +50,15 @@ i18n.use(initReactI18next).init({
   defaultNS,
   resources,
   fallbackLng: 'en',
+  // React escapes what it renders, so i18next escaping it again turns every
+  // slash into &#x2F;. It reached the screen three times before this was set
+  // here - a branch name (#237), a request path (#320), a gateway's admin URL
+  // (#338) - each fixed at the call site that hit it, with nothing to stop the
+  // fourth. This is the value react-i18next documents for React, and it is safe
+  // only for as long as no translation is rendered as HTML: nothing in src/
+  // passes one to dangerouslySetInnerHTML, and <Trans> builds elements from the
+  // components it is given rather than from the string (#341).
+  interpolation: { escapeValue: false },
 });
 
 export default i18n;

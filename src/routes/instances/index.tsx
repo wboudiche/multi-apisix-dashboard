@@ -449,13 +449,7 @@ const InstancesPage = () => {
     setCurrentInstanceId(instance.id);
     notifications.show({
       title: t('instances.selectedTitle'),
-      // The name is what the operator typed, so it reaches the notification as
-      // written: i18next escapes interpolations for markup a notification does
-      // not render, and a gateway called "A&B" would arrive as "A&amp;B" (#341).
-      message: t('instances.selected', {
-        name: instance.name,
-        interpolation: { escapeValue: false },
-      }),
+      message: t('instances.selected', { name: instance.name }),
       color: 'blue',
     });
   };

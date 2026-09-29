@@ -148,11 +148,6 @@ const UsersPage = () => {
           message: t('users.assignmentsUnreadableBody', {
             count: failed,
             reason: Object.values(unreadable)[0],
-            // The reason is a backend message, and these carry the request
-            // path. i18next escapes interpolations by default, for markup
-            // this notification never renders - "/api/v1/..." would reach the
-            // operator as "&#x2F;api&#x2F;v1&#x2F;...".
-            interpolation: { escapeValue: false },
           }),
           color: 'red',
         });

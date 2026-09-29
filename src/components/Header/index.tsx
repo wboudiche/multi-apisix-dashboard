@@ -79,21 +79,11 @@ const HealthDot: FC<{ status?: 'Connected' | 'Disconnected' | 'Unknown'; error?:
     ? t('header.healthConnected')
     : status === 'Disconnected'
       ? error
-        ? t('header.healthDisconnectedWhy', {
-            reason: error,
-            // The reason is a backend message naming the admin URL it could
-            // not reach. i18next escapes interpolations for markup, and this
-            // tooltip renders none: unescaped, or https://gw:9180 reaches the
-            // eye as https:&#x2F;&#x2F;gw:9180.
-            interpolation: { escapeValue: false },
-          })
+        ? t('header.healthDisconnectedWhy', { reason: error })
         : t('header.healthDisconnected')
       : status === 'Unknown'
         ? error
-          ? t('header.healthUnknownWhy', {
-              reason: error,
-              interpolation: { escapeValue: false },
-            })
+          ? t('header.healthUnknownWhy', { reason: error })
           : t('header.healthUnknown')
         : t('header.healthChecking');
 

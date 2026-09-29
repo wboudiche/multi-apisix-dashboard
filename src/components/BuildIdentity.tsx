@@ -59,10 +59,6 @@ export const BuildIdentity = () => {
         sha: abbreviatedSha,
         branch,
         date,
-        // i18next escapes interpolations for markup by default, and that
-        // includes the slash: a branch called fix/237-x reached the screen as
-        // fix&#x2F;237-x, which is not something anyone can paste back.
-        interpolation: { escapeValue: false },
       })}
     </Text>
   );

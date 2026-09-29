@@ -194,6 +194,15 @@ Languages: `en` (source of truth), `de`, `es`, `tr`, `zh`. Files under `src/loca
 
 ESLint enforces no-literal-string, no-unknown-key (keys must exist in `en/common.json`), no-text-as-children/attribute. **Don't hardcode user-visible strings.** A custom Vite plugin (`vite-plugin-i18n-progress.ts`) reports translation coverage during dev/build.
 
+Attributes are only checked on the screens listed in `src/config/translated-screens.ts`, which also names the screens whose every key must exist in all five languages (`locale-keys.test.ts`). A screen joins both lists at once — one guards the source, the other the translations (#328).
+
+Interpolations are **not** escaped: `escapeValue: false` is set once in `src/config/i18n.ts`, because React escapes what it renders and the two together turned every slash into `&#x2F;` (#341). Don't re-add it per call.
+
+Two authoring quirks worth knowing:
+
+- **Write keys out at the call site.** `t(cond ? 'a.b' : 'c.d')` is fine; `t(someVariable)` is not — the translation check reads keys out of the source, and a key it cannot see is one no language is held to.
+- **No spread in `t()` options.** `t('k', { name, ...opts })` crashes `i18n/no-unknown-key` (`Cannot read properties of undefined`), taking the whole lint run with it (#343).
+
 ### E2E (Playwright)
 
 Specs in `e2e/tests/*.spec.ts`. POM pattern: each resource has `e2e/pom/<resource>.ts` with `locator` / `assert` / `goto` helpers. Worker-scoped auth fixture in `e2e/utils/test.ts` logs in once per worker.
