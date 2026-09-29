@@ -42,13 +42,22 @@ services:
       - /bin/sh
       - -c
       - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
+    # Every published port can be moved, because a host that already runs
+    # something on one of these would otherwise fail to start the container at
+    # all - and a gateway that never starts takes its Admin API with it, so the
+    # whole stack reads as down (#344). Each variable pairs with the URL the
+    # tests and the backend reach that port by; move one, pass both:
+    #
+    #   E2E_GATEWAY_PORT  <-> E2E_LOCAL_GATEWAY_URL
+    #   E2E_ADMIN_PORT    <-> E2E_LOCAL_APISIX_URL
+    #   E2E_CONTROL_PORT  <-> E2E_LOCAL_CONTROL_URL
+    #   E2E_ADMIN2_PORT   <-> E2E_STAGING_APISIX_URL
+    #   E2E_ETCD_PORT     <-> E2E_ETCD_URL, and the backend's ETCD_ENDPOINTS
     ports:
       # The gateway, not only the Admin API: a route test sends a request
-      # through it, and the backend reaches it from the host. Set
-      # E2E_GATEWAY_PORT where another stack already holds 9080, and point
-      # E2E_LOCAL_GATEWAY_URL at the same port (#152).
+      # through it, and the backend reaches it from the host (#152).
       - '${E2E_GATEWAY_PORT:-9080}:9080'
-      - '9180:9180'
+      - '${E2E_ADMIN_PORT:-9180}:9180'
       # The Control API, which reports what the health checkers have seen
       # (#281). Only this stack's first gateway publishes it: the second one
       # exists to prove the dashboard keeps two apart, and keeps APISIX's
@@ -58,7 +67,7 @@ services:
       # Bound to the host's loopback rather than every interface: this API is
       # not read-only - it reloads plugins and triggers dumps - and everything
       # that reads it here runs on the host.
-      - '127.0.0.1:9090:9090'
+      - '127.0.0.1:${E2E_CONTROL_PORT:-9090}:9090'
     depends_on:
       - etcd
     networks:
@@ -92,7 +101,7 @@ services:
       - -c
       - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
     ports:
-      - '9181:9180'
+      - '${E2E_ADMIN2_PORT:-9181}:9180'
     depends_on:
       - etcd
     networks:
@@ -109,7 +118,7 @@ services:
       ETCD_ADVERTISE_CLIENT_URLS: 'http://etcd:2379'
       ETCD_LISTEN_CLIENT_URLS: 'http://0.0.0.0:2379'
     ports:
-      - '2379:2379'
+      - '${E2E_ETCD_PORT:-2379}:2379'
     networks:
       - apisix
 

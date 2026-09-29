@@ -56,6 +56,16 @@ Open <http://localhost:5173/ui>, log in with `admin / admin`.
 
 The e2e compose publishes its etcd on the host at `:2379` (container `server-etcd-1`), and that is the etcd the locally-run backend uses. The `deploy/` compose is a separate, self-contained stack that consumes the published image; its etcd is not published.
 
+Every port the e2e stack publishes can be moved when the host already uses one — a busy port stops the whole container, so a Prometheus on `:9090` takes the gateway's Admin API down with its Control API. Each variable pairs with the URL that has to follow it (#344):
+
+| port | default | URL to move with it |
+|---|---|---|
+| `E2E_GATEWAY_PORT` | 9080 | `E2E_LOCAL_GATEWAY_URL` |
+| `E2E_ADMIN_PORT` | 9180 | `E2E_LOCAL_APISIX_URL` |
+| `E2E_CONTROL_PORT` | 9090 | `E2E_LOCAL_CONTROL_URL` |
+| `E2E_ADMIN2_PORT` | 9181 | `E2E_STAGING_APISIX_URL` |
+| `E2E_ETCD_PORT` | 2379 | `E2E_ETCD_URL`, and the backend's `ETCD_ENDPOINTS` |
+
 ## Architecture
 
 ### Request flow
