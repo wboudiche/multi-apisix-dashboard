@@ -18,6 +18,10 @@ import js from '@eslint/js'
 import i18n from '@m6web/eslint-plugin-i18n';
 import headers from 'eslint-plugin-headers';
 import i18next from 'eslint-plugin-i18next';
+// The plugin's own defaults, imported rather than copied: naming an option
+// replaces its default wholesale, and a hand-copied list stops being the
+// plugin's the moment the plugin changes it.
+import i18nextDefaults from 'eslint-plugin-i18next/lib/options/defaults';
 import * as importPlugin from 'eslint-plugin-import';
 import playwright from 'eslint-plugin-playwright'
 import react from 'eslint-plugin-react'
@@ -27,6 +31,8 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort'
 import unusedImports from 'eslint-plugin-unused-imports'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
+
+import { ATTRIBUTES_GUARDED } from './src/config/translated-screens';
 
 const importRules = tseslint.config({
   plugins: {
@@ -105,76 +111,88 @@ const e2eRules = tseslint.config(
  * title alone - which is how thirteen strings came to be written in English on
  * the Users page (#320) and how the next label would be (#328).
  *
- * A list that grows: turning it on everywhere reports 69 occurrences today, so
+ * A list that grows: turning it on everywhere reports 59 occurrences today, so
  * each screen joins this once its own strings have keys, and cannot slip back.
- * The count is worth re-measuring rather than trusting - it was 97 when #328
- * was written, and every screen that joins takes its own share out of it.
+ * The count is worth re-measuring rather than trusting - 97 when #328 was
+ * written, 69 with the header and instances done - and every screen that joins
+ * takes its own share out of it. The list itself lives beside the one the
+ * translation check reads, in src/config/translated-screens.ts.
  *
  * It holds attributes, not the whole screen: a string in a `notifications.show`
  * object has no JSX ancestor, so this mode never sees it (thirteen of them sat
  * on the instances page). A screen is done when its keys exist, not when this
  * rule is quiet.
  */
+const attributeRuleOptions = {
+  mode: 'jsx-only',
+  // The attributes whose contents are read: a literal in one is prose,
+  // and - since naming an attribute is also what makes the rule walk
+  // inside it - a literal anywhere under one is too. That second half is
+  // why the render props are here: `renderOption={() => <span>Draft</span>}`
+  // is text on the screen, and an attribute left off this list hides what
+  // it holds rather than merely being unchecked itself.
+  'jsx-attributes': {
+    include: [
+      'label',
+      'placeholder',
+      'description',
+      'title',
+      'aria-label',
+      // Mantine renders `error` under the field it belongs to and
+      // `nothingFoundMessage` inside an empty select: both are sentences
+      // an operator reads at the moment something has gone wrong.
+      'error',
+      'nothingFoundMessage',
+      'data',
+      'renderOption',
+      'leftSection',
+      'rightSection',
+    ],
+  },
+  // Named the other way round: an option's fields are prose unless said
+  // otherwise, so a grouped `data` - Mantine's `{ group, items: [...] }` -
+  // is walked to the labels inside it, which an include list could not
+  // reach past `group`. Out: `value`, which is the id a select matches on;
+  // `style`, through which the language menu spreads a CSS variable; and
+  // SCREAMING_CASE, which is a constant rather than a sentence.
+  'object-properties': { exclude: ['[A-Z_-]+', 'style', 'value'] },
+};
+
 const attributesTranslated = tseslint.config({
-  files: [
-    'src/components/Header/**/*.tsx',
-    'src/routes/instances/**/*.tsx',
-    'src/routes/users/**/*.tsx',
-    'src/routes/settings/**/*.tsx',
-  ],
+  files: ATTRIBUTES_GUARDED,
+  plugins: { i18next },
+  rules: {
+    'i18next/no-literal-string': ['error', attributeRuleOptions],
+  },
+});
+
+/**
+ * One screen, one more exclusion: the password policy's field names.
+ *
+ * `{num('min_length', t('settings.minLength'))}` puts `min_length` in the JSX,
+ * beside the label that names it, and the rule reads it as a sentence. `words`
+ * already excludes `[A-Z_-]+` - a constant rather than prose - and this is its
+ * lowercase twin; the plugin anchors both ends, so it matches a token that is a
+ * field key rather than a phrase that contains one.
+ *
+ * Kept to the one screen that needs it rather than added to the block above: a
+ * word-shape exclusion applies to every literal the rule sees, and a label is
+ * only safe from it while nobody writes one in snake_case. The plugin's own
+ * defaults are spread rather than re-listed, because naming the option replaces
+ * them - and a copy of them here would stop being the plugin's on its next
+ * release.
+ */
+const fieldKeysAreNotProse = tseslint.config({
+  files: ['src/routes/settings/**/*.tsx'],
   plugins: { i18next },
   rules: {
     'i18next/no-literal-string': [
       'error',
       {
-        mode: 'jsx-only',
-        // The attributes whose contents are read: a literal in one is prose,
-        // and - since naming an attribute is also what makes the rule walk
-        // inside it - a literal anywhere under one is too. That second half is
-        // why the render props are here: `renderOption={() => <span>Draft</span>}`
-        // is text on the screen, and an attribute left off this list hides what
-        // it holds rather than merely being unchecked itself.
-        'jsx-attributes': {
-          include: [
-            'label',
-            'placeholder',
-            'description',
-            'title',
-            'aria-label',
-            // Mantine renders `error` under the field it belongs to and
-            // `nothingFoundMessage` inside an empty select: both are sentences
-            // an operator reads at the moment something has gone wrong.
-            'error',
-            'nothingFoundMessage',
-            'data',
-            'renderOption',
-            'leftSection',
-            'rightSection',
-          ],
-        },
-        // Named the other way round: an option's fields are prose unless said
-        // otherwise, so a grouped `data` - Mantine's `{ group, items: [...] }` -
-        // is walked to the labels inside it, which an include list could not
-        // reach past `group`. Out: `value`, which is the id a select matches on;
-        // `style`, through which the language menu spreads a CSS variable; and
-        // SCREAMING_CASE, which is a constant rather than a sentence.
-        'object-properties': { exclude: ['[A-Z_-]+', 'style', 'value'] },
-        // Naming an option replaces the plugin's default for it rather than
-        // adding to it, so these four are the default list plus the last one.
-        // That last one is the lowercase twin of `[A-Z_-]+`: `min_length` and
-        // `require_uppercase` are the fields of a password policy, handed to a
-        // helper beside the label that names them, and a field key is no more a
-        // sentence than a constant is. Anchored at both ends by the plugin, so
-        // it cannot swallow a phrase that merely contains one.
+        ...attributeRuleOptions,
         words: {
           exclude: [
-            '[0-9!-/:-@[-`{-~]+',
-            '[A-Z_-]+',
-            // The default this stands in for is the list of HTML entity
-            // characters, which is how an em dash on the Users page goes
-            // unreported. A run of punctuation or symbols says the same thing
-            // and says it for the ones the list does not hold.
-            /^[\p{P}\p{S}\s]+$/u,
+            ...i18nextDefaults.words.exclude,
             '[a-z][a-z0-9]*(_[a-z0-9]+)+',
           ],
         },
@@ -273,5 +291,6 @@ export default tseslint.config(
   e2eRules,
   i18nRules,
   attributesTranslated,
+  fieldKeysAreNotProse,
   srcRules
 );
