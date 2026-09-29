@@ -120,6 +120,7 @@ const attributesTranslated = tseslint.config({
     'src/components/Header/**/*.tsx',
     'src/routes/instances/**/*.tsx',
     'src/routes/users/**/*.tsx',
+    'src/routes/settings/**/*.tsx',
   ],
   plugins: { i18next },
   rules: {
@@ -158,6 +159,25 @@ const attributesTranslated = tseslint.config({
         // `style`, through which the language menu spreads a CSS variable; and
         // SCREAMING_CASE, which is a constant rather than a sentence.
         'object-properties': { exclude: ['[A-Z_-]+', 'style', 'value'] },
+        // Naming an option replaces the plugin's default for it rather than
+        // adding to it, so these four are the default list plus the last one.
+        // That last one is the lowercase twin of `[A-Z_-]+`: `min_length` and
+        // `require_uppercase` are the fields of a password policy, handed to a
+        // helper beside the label that names them, and a field key is no more a
+        // sentence than a constant is. Anchored at both ends by the plugin, so
+        // it cannot swallow a phrase that merely contains one.
+        words: {
+          exclude: [
+            '[0-9!-/:-@[-`{-~]+',
+            '[A-Z_-]+',
+            // The default this stands in for is the list of HTML entity
+            // characters, which is how an em dash on the Users page goes
+            // unreported. A run of punctuation or symbols says the same thing
+            // and says it for the ones the list does not hold.
+            /^[\p{P}\p{S}\s]+$/u,
+            '[a-z][a-z0-9]*(_[a-z0-9]+)+',
+          ],
+        },
       },
     ],
   },

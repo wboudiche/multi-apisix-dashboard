@@ -156,6 +156,7 @@ const FULLY_TRANSLATED_SCREENS = [
   'src/routes/users/index.tsx',
   'src/components/Header/index.tsx',
   'src/routes/instances/index.tsx',
+  'src/routes/settings/index.tsx',
 ];
 
 const sourceOf = (file: string) =>
