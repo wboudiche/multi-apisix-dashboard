@@ -9,6 +9,11 @@ overrides:
   minimatch: '>=3.0.5'
   '@swc/core': 1.10.0
 
+patchedDependencies:
+  '@m6web/eslint-plugin-i18n':
+    hash: cb3c6eaf1c51e0ce8e1b505fd90c7f702e952fd8202053c73214099849a1c5da
+    path: patches/@m6web__eslint-plugin-i18n.patch
+
 importers:
 
   .:
@@ -139,7 +144,7 @@ importers:
         version: 1.2.91
       '@m6web/eslint-plugin-i18n':
         specifier: ^2.0.4
-        version: 2.0.4(eslint@9.39.5(jiti@2.7.0))
+        version: 2.0.4(patch_hash=cb3c6eaf1c51e0ce8e1b505fd90c7f702e952fd8202053c73214099849a1c5da)(eslint@9.39.5(jiti@2.7.0))
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.63.0
@@ -5287,7 +5292,7 @@ snapshots:
 
   '@kwsites/promise-deferred@1.1.1': {}
 
-  '@m6web/eslint-plugin-i18n@2.0.4(eslint@9.39.5(jiti@2.7.0))':
+  '@m6web/eslint-plugin-i18n@2.0.4(patch_hash=cb3c6eaf1c51e0ce8e1b505fd90c7f702e952fd8202053c73214099849a1c5da)(eslint@9.39.5(jiti@2.7.0))':
     dependencies:
       eslint: 9.39.5(jiti@2.7.0)
       lodash: 4.17.21

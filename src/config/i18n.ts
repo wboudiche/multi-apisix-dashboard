@@ -44,12 +44,35 @@ export const resources = {
 export type Resources = typeof resources;
 export const defaultNS: keyof Resources['en'] = 'common';
 
-i18n.use(initReactI18next).init({
+/**
+ * What every i18next instance in this app is initialised with.
+ *
+ * Exported because the option that matters here is easy to lose: an instance
+ * created elsewhere - a test, a prerender - with its own literal options goes
+ * back to escaping, and does it silently.
+ */
+export const i18nOptions = {
   lng: 'en',
   ns: ['common'],
   defaultNS,
   resources,
   fallbackLng: 'en',
-});
+  // React escapes what it renders, so i18next escaping it again turns every
+  // slash into &#x2F;. It reached the screen three times before this was set
+  // here - a branch name (#237), a request path (#320), a gateway's admin URL
+  // (#338) - each fixed at the call site that hit it, five copies of the line
+  // in all, with nothing to stop the sixth (#341).
+  //
+  // This is the value react-i18next documents for React, and it holds only
+  // while no translation is rendered as HTML. react/no-danger keeps
+  // dangerouslySetInnerHTML out of src/, which is the half that matters: a
+  // translation reaches the screen through React, which escapes it. <Trans> is
+  // the exception worth knowing - it renders <br>, <strong>, <i> and <p> out of
+  // the string itself - but it parses the string before interpolating, so a
+  // value put into one still cannot become markup.
+  interpolation: { escapeValue: false },
+};
+
+i18n.use(initReactI18next).init(i18nOptions);
 
 export default i18n;

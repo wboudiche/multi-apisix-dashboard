@@ -52,9 +52,11 @@ test('the users table says an assignment could not be read, not that there is no
   await expect(page.getByText('Could not be read').first()).toBeVisible({
     timeout: 20000,
   });
-  // The body too, and the endpoint in it: this is the one report that passes
-  // the backend's reason through an i18next interpolation, which escapes for
-  // markup by default - a path would arrive as "&#x2F;api&#x2F;v1&#x2F;...".
+  // The body too, and the endpoint in it: a report that passes the backend's
+  // reason through an i18next interpolation, which escapes for
+  // markup unless told otherwise - a path arrived as "&#x2F;api&#x2F;v1&#x2F;"
+  // until escapeValue: false was set once in src/config/i18n.ts (#341). This
+  // asserts the setting is still there, from the outside.
   const report = page
     .locator('.mantine-Notification-root')
     .filter({ hasText: 'Assignments unavailable' });

@@ -45,7 +45,12 @@ export const BuildIdentity = () => {
   // worktree's .git file pointing somewhere the build cannot see. Left to
   // interpolation that reads "Build  (), 2026-09-18", which looks like an
   // answer. Say it plainly instead.
-  if (!abbreviatedSha) {
+  //
+  // The branch is checked too, and not only because it can be empty: the
+  // release image is built from a vX.Y.Z tag, where `git rev-parse --abbrev-ref
+  // HEAD` answers the word HEAD. "Build abc1234 (HEAD)" is the same kind of
+  // half-answer, and it is what every published image would have said.
+  if (!abbreviatedSha || !branch || branch === 'HEAD') {
     return (
       <Text size="xs" c="dimmed">
         {t('header.buildUnknown', { date })}
@@ -59,10 +64,6 @@ export const BuildIdentity = () => {
         sha: abbreviatedSha,
         branch,
         date,
-        // i18next escapes interpolations for markup by default, and that
-        // includes the slash: a branch called fix/237-x reached the screen as
-        // fix&#x2F;237-x, which is not something anyone can paste back.
-        interpolation: { escapeValue: false },
       })}
     </Text>
   );

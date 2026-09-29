@@ -17,7 +17,7 @@
 import i18next from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { defaultNS, resources } from './i18n';
+import { i18nOptions } from './i18n';
 import { globalRoleLabel, INSTANCE_ROLES, roleColor, roleLabel } from './role-labels';
 
 /**
@@ -28,7 +28,7 @@ import { globalRoleLabel, INSTANCE_ROLES, roleColor, roleLabel } from './role-la
  * what eslint cannot check for a key passed as a variable.
  */
 const i18n = i18next.createInstance();
-void i18n.init({ lng: 'en', defaultNS, resources });
+void i18n.init(i18nOptions);
 const t = i18n.t;
 
 describe('roleLabel', () => {
