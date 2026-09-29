@@ -150,9 +150,11 @@ jobs:
       - name: Start Go backend
         env:
           PORT: "8086"
-          ETCD_ENDPOINTS: "http://127.0.0.1:${E2E_ETCD_PORT:-2379}"
           ADMIN_PASSWORD: "admin"
         run: |
+          # In the shell, not in `env:`: Actions does not expand ${VAR:-default}
+          # there, and the backend was handed that string to dial.
+          export ETCD_ENDPOINTS="http://127.0.0.1:${E2E_ETCD_PORT:-2379}"
           JWT_SECRET=$(openssl rand -hex 32)
           export JWT_SECRET
           # Log to a file so the failure step can capture it
