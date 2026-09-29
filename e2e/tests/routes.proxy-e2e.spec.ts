@@ -17,11 +17,12 @@
 /* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-conditional-expect */
 import { env } from '@e2e/utils/env';
 import { getFixtures } from '@e2e/utils/fixtures';
+import { stack } from '@e2e/utils/stack';
 import { expect, test } from '@playwright/test';
 
 const BASE_URL = env.E2E_TARGET_URL.replace(/\/$/, '');
 // Staging APISIX (stable instance) - gateway on 9181, no direct gateway port exposed
-const APISIX_ADMIN = 'http://127.0.0.1:9181';
+const APISIX_ADMIN = stack.stagingAdminApi;
 const ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
 
 test.setTimeout(120000);

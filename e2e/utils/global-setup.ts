@@ -41,24 +41,20 @@ import {
   ensureUserInstanceRole,
   loginAdmin,
 } from './seed-client';
+import { APISIX_ADMIN_KEY, stack } from './stack';
 
-// Admin key shared by both test APISIX instances in the E2E docker-compose stack.
-const APISIX_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
-
-// Local APISIX URL: override via E2E_LOCAL_APISIX_URL for docker-network runs.
-const LOCAL_APISIX_URL = process.env['E2E_LOCAL_APISIX_URL'] ?? 'http://127.0.0.1:9180';
-// Staging APISIX URL: override via E2E_STAGING_APISIX_URL for docker-network runs.
-const STAGING_APISIX_URL = process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.0.0.1:9181';
+// Where the stack answers, and the key both its gateways share: e2e/utils/stack.ts.
+const LOCAL_APISIX_URL = stack.adminApi;
+const STAGING_APISIX_URL = stack.stagingAdminApi;
 // The local gateway, which a route test sends its request through. The staging
 // container publishes only its Admin API, so that instance is left without one
 // and a route test against it is refused, as it should be (#152).
-const LOCAL_GATEWAY_URL = process.env['E2E_LOCAL_GATEWAY_URL'] ?? 'http://127.0.0.1:9080';
+const LOCAL_GATEWAY_URL = stack.gateway;
 // The local gateway's Control API, which the stack publishes (#281). The
 // staging container does not, and that instance is deliberately left without
 // one: a gateway whose health cannot be read is the ordinary case, and the
 // dashboard has to say so rather than report it as unwell.
-const LOCAL_CONTROL_URL =
-  process.env['E2E_LOCAL_CONTROL_URL'] ?? 'http://127.0.0.1:9090';
+const LOCAL_CONTROL_URL = stack.controlApi;
 
 export default async function globalSetup(): Promise<void> {
   const token = await loginAdmin();

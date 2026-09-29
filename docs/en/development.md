@@ -138,7 +138,25 @@ go build -C api -o ../bin/api ./cmd          # build
 
 ## Troubleshooting
 
-**Backend won't start, "failed to connect to etcd"** — etcd isn't reachable from where the backend is running. From the host, `curl http://localhost:2379/version` should return JSON. If port `2379` is in use by another stack, stop that container or change `ETCD_ENDPOINTS` for the backend.
+**Backend won't start, "failed to connect to etcd"** — etcd isn't reachable from where the backend is running. From the host, `curl http://localhost:2379/version` should return JSON. If port `2379` is already in use, see the next entry: changing `ETCD_ENDPOINTS` alone won't help, because the etcd container will not have started at all.
+
+**A container won't start: "port is already allocated"** — a busy host port doesn't cost you one service, it stops the whole container: something else on `:9090` takes the gateway's Admin API down with its Control API, and every instance registered against it then reads as Disconnected. Move the port instead:
+
+```sh
+E2E_CONTROL_PORT=19090 docker compose -f e2e/server/docker-compose.yml up -d
+```
+
+| variable | default | what it publishes |
+|---|---|---|
+| `E2E_GATEWAY_PORT` | 9080 | the gateway itself |
+| `E2E_ADMIN_PORT` | 9180 | its Admin API |
+| `E2E_CONTROL_PORT` | 9090 | its Control API (loopback only) |
+| `E2E_ADMIN2_PORT` | 9181 | the second gateway's Admin API |
+| `E2E_ETCD_PORT` | 2379 | etcd |
+
+The suite builds its own addresses from these (`e2e/utils/stack.ts`), so setting the port is enough — pass the same variable to `pnpm e2e` and to `docker compose`. The `E2E_*_URL` variables still override, for a run whose stack is not on this host. The backend needs `ETCD_ENDPOINTS` pointed at the etcd port you chose.
+
+The `deploy/` stack has the same three: `DASHBOARD_PORT` (8080), `GATEWAY_PORT` (9080), `GATEWAY2_PORT` (9081).
 
 **Frontend hits 401 in a loop** — the access token is missing/invalid and the refresh token is also rejected. The interceptor will redirect to `/ui/login`. Check that the Go backend is up on `:8086` and that `JWT_SECRET` hasn't changed since the token was issued (changing the secret invalidates all tokens).
 

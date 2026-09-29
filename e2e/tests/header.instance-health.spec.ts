@@ -19,6 +19,7 @@ import { deleteInstancesByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { env } from '@e2e/utils/env';
 import { getFixtures } from '@e2e/utils/fixtures';
+import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { expect, type Page, test as base } from '@playwright/test';
 
@@ -39,8 +40,7 @@ const POLL_INTERVAL_MS = 30_000;
 
 // Real second APISIX from e2e/server/docker-compose.yml; it shares apisix_conf.yml
 // (and its admin key) with the first gateway, only the etcd prefix differs.
-const STAGING_ADMIN_URL =
-  process.env['E2E_STAGING_APISIX_URL'] ?? 'http://127.0.0.1:9181';
+const STAGING_ADMIN_URL = stack.stagingAdminApi;
 const STAGING_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';
 // HealthDot's colour for an instance absent from the map — its "Checking…" state.
 const UNKNOWN_DOT_COLOUR = 'rgb(107, 114, 128)';

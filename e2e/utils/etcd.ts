@@ -19,7 +19,9 @@
  * data the backend's API can no longer produce - the leftovers of an older
  * version, as the maintenance sweep finds them.
  */
-const ETCD = process.env['E2E_ETCD_URL'] ?? 'http://127.0.0.1:2379';
+import { stack } from './stack';
+
+const ETCD = stack.etcd;
 const ROOT = '/apisix-dashboard';
 
 const b64 = (s: string) => Buffer.from(s).toString('base64');

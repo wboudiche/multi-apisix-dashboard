@@ -18,6 +18,7 @@ import { adminPom } from '@e2e/pom/admin';
 import { adminToken, deleteInstancesByPrefix, listInstances } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { ensureInstance } from '@e2e/utils/seed-client';
+import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 
@@ -32,7 +33,7 @@ import { expect } from '@playwright/test';
  * to be as easy to take away as it is to set.
  */
 const PREFIX = randomId('ctrl-url');
-const CONTROL_URL = 'http://127.0.0.1:9090';
+const CONTROL_URL = stack.controlApi;
 // Nothing listens on either; this spec is about the record, not about reaching
 // it. One per test, so that the second instance does not trip the
 // duplicate-Admin-API-URL confirmation the first one's address would raise.

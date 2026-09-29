@@ -35,8 +35,11 @@ services:
       ETCD_ENDPOINTS: http://etcd:2379
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -hex 32)}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+    # Movable for the same reason the e2e stack's ports are: a busy port stops
+    # the container, not just that one service (#344). The README says these
+    # three must be free; set the variable instead.
     ports:
-      - '8080:8080'
+      - '${DASHBOARD_PORT:-8080}:8080'
     depends_on:
       etcd:
         condition: service_healthy
@@ -74,7 +77,7 @@ services:
       - -c
       - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
     ports:
-      - '9080:9080'
+      - '${GATEWAY_PORT:-9080}:9080'
     depends_on:
       etcd:
         condition: service_healthy
@@ -95,7 +98,7 @@ services:
       - -c
       - rm -f /usr/local/apisix/logs/*.sock; exec /docker-entrypoint.sh docker-start
     ports:
-      - '9081:9080'
+      - '${GATEWAY2_PORT:-9081}:9080'
     depends_on:
       etcd:
         condition: service_healthy
