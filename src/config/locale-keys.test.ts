@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 import { defaultNS, resources } from './i18n';
 import { roleLabelKeys } from './role-labels';
+import { FULLY_TRANSLATED_SCREENS } from './translated-screens';
 
 /**
  * What a rename leaves behind, and what a screen needs in every language.
@@ -137,26 +138,13 @@ describe.each(LANGUAGES)('%s', (lang) => {
 });
 
 /**
- * The screens whose every key must exist in every language. Read out of the
- * source rather than enumerated: a list of keys goes stale, and the first
- * attempt at this test listed 11 of the 48 these two files read.
+ * The screens whose every key must exist in every language, and the list the
+ * eslint guard reads beside it: see src/config/translated-screens.ts, where the
+ * two halves of a finished screen are kept together.
  *
- * A screen joins as it is finished - the rest of the dashboard is translated as
- * far as it is translated, which is what vite-plugin-i18n-progress reports on.
- * Joining is the second half of the work #328 asks for: the eslint rule keeps
- * English out of the source, and this keeps the other four languages level with
- * it.
- *
- * It stops at the file boundary: what a screen composes - BuildIdentity,
- * TeamSwitcher, the Users page's modals - is not walked, so a key of theirs can
- * still fall back to English. Walking the imports would cover them; naming the
- * boundary is what this check honestly does today.
+ * Read out of the source rather than enumerated: a list of keys goes stale, and
+ * the first attempt at this test listed 11 of the 48 these files read.
  */
-const FULLY_TRANSLATED_SCREENS = [
-  'src/routes/users/index.tsx',
-  'src/components/Header/index.tsx',
-  'src/routes/instances/index.tsx',
-];
 
 const sourceOf = (file: string) =>
   readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
