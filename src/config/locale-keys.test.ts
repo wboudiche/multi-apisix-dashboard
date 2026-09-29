@@ -167,13 +167,15 @@ const sourceOf = (file: string) =>
  * on the routes list - two keys, in no language but English, on a screen the
  * list below called translated.
  *
- * A dotted string that names nothing is dropped rather than reported: eslint's
- * i18n/no-unknown-key already fails on a key `en` lacks, at the call site.
+ * Nothing is dropped for not being a key: `reads only keys en holds` below is
+ * the check that a name here is one, and filtering first made it vacuous - a
+ * key mistyped inside a ternary is invisible to eslint's i18n/no-unknown-key,
+ * which does not descend into one, so this is the only thing that would say so.
+ * Every dotted string in these five files is a key today; one that is not would
+ * fail there, by name, and wants renaming or a key of its own.
  */
 const keysRead = (file: string) =>
-  [...sourceOf(file).matchAll(/'([a-zA-Z][\w]*(?:\.[\w]+)+)'/g)]
-    .map((m) => m[1])
-    .filter((key) => en.has(key));
+  [...sourceOf(file).matchAll(/'([a-zA-Z][\w]*(?:\.[\w]+)+)'/g)].map((m) => m[1]);
 
 describe.each(FULLY_TRANSLATED_SCREENS)('%s', (file) => {
   const keys = [...new Set(keysRead(file))].sort();

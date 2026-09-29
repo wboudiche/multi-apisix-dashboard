@@ -287,6 +287,26 @@ const srcRules = tseslint.config({
     ...react.configs.flat['jsx-runtime'].rules,
     ...reactHooks.configs.recommended.rules,
     'no-console': 'warn',
+    // Translations are interpolated unescaped (src/config/i18n.ts), which is
+    // safe exactly while every one of them reaches the screen through React.
+    // A gateway's error message, an operator's instance name and a backend's
+    // request path all pass through a translation now, so a single
+    // dangerouslySetInnerHTML would turn one of them into markup. The comment
+    // in i18n.ts says this rule is what holds it (#341).
+    'react/no-danger': 'error',
+    // i18n/no-unknown-key reads the options of a t() call by name, and a
+    // spread has none: before the patch in patches/ it crashed on one, taking
+    // the whole lint run with it (#343). Patched, it walks past instead - so
+    // the options inside a spread are simply never checked. Written out, they
+    // are.
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: "CallExpression[callee.name='t'] > ObjectExpression > SpreadElement",
+        message:
+          'i18n/no-unknown-key cannot see options behind a spread (#343) - write them out.',
+      },
+    ],
     'react-refresh/only-export-components': [
       'warn',
       { allowConstantExport: true },

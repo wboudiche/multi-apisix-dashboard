@@ -40,7 +40,8 @@ test('says which build the page is, in the account menu', async ({ page }) => {
 
   // And readable as written. i18next escapes interpolations for markup by
   // default, slashes included, so every branch named the way this repo names
-  // them - fix/237-x - reached the screen as fix&#x2F;237-x: a build line
+  // them - fix/237-x - reached the screen as fix&#x2F;237-x, which i18next did
+  // until escapeValue: false was set once in src/config/i18n.ts (#341): a build line
   // nobody can paste back into the report it exists for.
   await expect(build).not.toContainText('&#x');
 });

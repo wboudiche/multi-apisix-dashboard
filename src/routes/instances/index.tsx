@@ -445,7 +445,9 @@ const InstancesPage = () => {
     }
   };
 
-  const handleSetActive = async (instance: Instance) => {
+  // Not async: both statements are synchronous, and the promise an async
+  // arrow returns here is one no caller awaits.
+  const handleSetActive = (instance: Instance) => {
     setCurrentInstanceId(instance.id);
     notifications.show({
       title: t('instances.selectedTitle'),

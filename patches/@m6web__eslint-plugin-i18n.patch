@@ -1,0 +1,18 @@
+diff --git a/lib/utils/utils.js b/lib/utils/utils.js
+index c2ea16baa597594fbd6b813f3f395e7292c41310..7816c4998eb31356889546c243f5b9dd33deb2a7 100644
+--- a/lib/utils/utils.js
++++ b/lib/utils/utils.js
+@@ -69,6 +69,13 @@ exports.getTranslateParams = function (node) {
+   }
+ 
+   return node.properties.reduce(function (acc, property) {
++    // A SpreadElement has no key, and reading one crashed the rule - which
++    // takes the whole eslint run with it, since a rule that throws aborts the
++    // process rather than failing a file (wboudiche/multi-apisix-dashboard#343).
++    if (!property.key) {
++      return acc;
++    }
++
+     if (useTranslateParams.includes(property.key.name)) {
+       return Object.assign(acc, _defineProperty({}, property.key.name, property));
+     }

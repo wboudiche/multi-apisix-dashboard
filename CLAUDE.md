@@ -200,8 +200,8 @@ Interpolations are **not** escaped: `escapeValue: false` is set once in `src/con
 
 Two authoring quirks worth knowing:
 
-- **Write keys out at the call site.** `t(cond ? 'a.b' : 'c.d')` is fine; `t(someVariable)` is not — the translation check reads keys out of the source, and a key it cannot see is one no language is held to.
-- **No spread in `t()` options.** `t('k', { name, ...opts })` crashes `i18n/no-unknown-key` (`Cannot read properties of undefined`), taking the whole lint run with it (#343).
+- **Write keys out at the call site.** `t(cond ? 'a.b' : 'c.d')` is fine — eslint's `i18n/no-unknown-key` does not descend into a ternary, but `locale-keys.test.ts` reads every dotted name out of the source and fails on one `en` does not hold. `t(someVariable)` is not: neither can see it, and the same test refuses it outright on a screen in `translated-screens.ts`. Where a variable key is the design, as in `src/config/role-labels.ts`, the module exports the list of keys it can reach (`roleLabelKeys`) and the test consumes that instead.
+- **No spread in `t()` options.** `t('k', { name, ...opts })` used to crash `i18n/no-unknown-key` and the whole lint run with it; `patches/@m6web__eslint-plugin-i18n.patch` fixes the crash, and a `no-restricted-syntax` rule still refuses the spread, because the options inside one are never checked (#343).
 
 ### E2E (Playwright)
 

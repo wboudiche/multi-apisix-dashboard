@@ -112,6 +112,9 @@
     "onlyBuiltDependencies": [
       "@swc/core",
       "esbuild"
-    ]
+    ],
+    "patchedDependencies": {
+      "@m6web/eslint-plugin-i18n": "patches/@m6web__eslint-plugin-i18n.patch"
+    }
   }
 }
