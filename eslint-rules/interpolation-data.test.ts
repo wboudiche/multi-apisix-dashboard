@@ -36,6 +36,9 @@ const translation = {
   routes_other: '{{count}} routes on {{name}}',
   friend: 'Friend',
   friend_male: 'Mr {{name}}',
+  friend_female: 'Ms {{surname}}',
+  items_one: 'one item',
+  items_other: 'several items',
   place_ordinal_one: '{{count}}st, {{where}}',
   place_ordinal_other: '{{count}}th, {{where}}',
   nest: '$t(greeting)!',
@@ -89,6 +92,11 @@ new RuleTester({
     // A context or an ordinal picks a sibling at run time: all of them count -
     // the siblings, not the keys under a sibling object.
     { code: "t('friend', { context: 'male', name })", settings },
+    { code: "t('friend', { context: gender, name, surname })", settings },
+    // A context does not open the plural forms: `status_other` is not a sibling.
+    { code: "t('status', { context: 'x' })", settings },
+    // i18next's formatting and key-prefix options are instructions too.
+    { code: "t('formatted', { date, formatParams: { date: { year: 'numeric' } } })", settings },
     { code: "t('role', { context: 'admin', who })", settings },
     // A plural form is only resolved with a count: `status_other` is not one here.
     { code: "t('status')", settings },
@@ -104,6 +112,7 @@ new RuleTester({
     // What cannot be read is left alone.
     { code: 't(key, { name })', settings },
     { code: "t(x ? 'plain' : key, { name })", settings },
+    { code: "t(x ? 'greeting' : key, { name })", settings },
     { code: "t(x ? 'plain' : 'unknown.key', { name })", settings },
     { code: "t('greeting', opts)", settings },
     { code: "t('greeting', { ...opts })", settings },
@@ -120,6 +129,8 @@ new RuleTester({
     { code: "<Trans i18nKey='routes' tOptions={{ count, name }} />", settings },
     { code: "<Trans i18nKey='greeting'>Hello {{ name }}</Trans>", settings },
     { code: "<Trans i18nKey='greeting'>Hello <b>{{ name }}</b></Trans>", settings },
+    { code: "<Trans i18nKey='greeting'><>{{ name }}</></Trans>", settings },
+    { code: "<Trans i18nKey='greeting'>{cond ? <b>{{ name }}</b> : null}</Trans>", settings },
     { code: "<Trans i18nKey='role' context='admin' values={{ who }} />", settings },
     { code: "<Trans i18nKey='greeting' {...props} />", settings },
     { code: "<Trans i18nKey='plain' components={{ b: <b /> }} />", settings },
@@ -166,11 +177,27 @@ new RuleTester({
       settings,
       errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{name}}' } }],
     },
-    // A key that exists only as plural forms is missing its count.
+    // A key that exists only as plural forms is missing its count - whether
+    // or not a form spells {{count}}.
     {
       code: "t('routes', { name })",
       settings,
       errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{count}}' } }],
+    },
+    {
+      code: "t('items')",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'items', placeholder: '{{count}}' } }],
+    },
+    {
+      code: "t('friend', { context: gender, name })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'friend', placeholder: '{{surname}}' } }],
+    },
+    {
+      code: "t(x ? 'greeting' : key)",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
     },
     {
       code: "t('status', { count })",
@@ -243,6 +270,12 @@ new RuleTester({
       code: "<Trans i18nKey='role' context='admin' />",
       settings,
       errors: [{ messageId: 'missing', data: { key: 'role', placeholder: '{{who}}' } }],
+    },
+    // A catalogue that cannot be read is said, on the file, not thrown.
+    {
+      code: "t('greeting')",
+      settings: { i18n: { principalLangs: [{ name: 'en', translationPath: path.join(dir, 'missing.json') }] } },
+      errors: [{ messageId: 'unreadable' }],
     },
     {
       code: "<Trans i18nKey='routes' values={{ name }} />",
