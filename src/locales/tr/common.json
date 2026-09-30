@@ -30,7 +30,6 @@
   },
   "header": {
     "account": "Hesap",
-    "changePassword": "Parolayı değiştir",
     "logout": "Oturumu kapat",
     "accountRole": "Rol: {{role}}",
     "loadFailedTitle": "Örnekler kullanılamıyor",
@@ -211,10 +210,8 @@
       "desc": "Açıklama",
       "labels": {
         "errorFormat": "Label formatı hatalı, `key:value` şeklinde olmalıdır",
-        "key": "Key",
         "placeholder": "`key:value` formatında girin ve enter'a basın",
-        "title": "Label'lar",
-        "value": "Value"
+        "title": "Label'lar"
       },
       "name": "İsim",
       "status": "Durum",
@@ -226,7 +223,6 @@
     },
     "btn": {
       "add": "Ekle",
-      "addARow": "Satır ekle",
       "cancel": "İptal",
       "configure": "Yapılandır",
       "create": "Oluştur",
@@ -252,7 +248,6 @@
     "info": {
       "create_time": "Oluşturulma",
       "id": "ID",
-      "title": "Bilgi",
       "update_time": "Güncellenme"
     },
     "json": {
@@ -393,7 +388,6 @@
       },
       "manager": "Secret Manager",
       "managerConfig": "Manager Config",
-      "title": "Secret Yapılandırması",
       "vault": {
         "namespace": "Namespace",
         "prefix": "Prefix",
@@ -402,10 +396,7 @@
       }
     },
     "services": {
-      "enableWebsocket": "WebSocket Aktif",
       "hosts": "Host'lar",
-      "script": "Script",
-      "settings": "Service Ayarları",
       "hostsPlaceholder": "örn. api.example.com",
       "hostsDescription": "Bu servisin yanıt vereceği alan adları",
       "steps": {
@@ -483,9 +474,6 @@
       "duplicateConfirmBody": "Bu stream route'lar zaten aynı trafikle eşleşiyor. Yalnızca biri kazanabilir ve hangisinin kazanacağı sizin denetiminizde değildir.",
       "duplicateConfirmTitle": "Eşleşen bir stream route zaten var"
     },
-    "tagsInput": {
-      "placeholder": "Metin girin ve enter'a basın"
-    },
     "upload": {
       "fileOverSize": "Dosya boyutu çok büyük",
       "readError": "Dosya okuma hatası:"
@@ -542,11 +530,8 @@
       "discoveryType": {
         "title": "Discovery Type"
       },
-      "findUpstreamFrom": "Upstream'i Nereden Bul",
       "hashOn": "Hash On",
       "hashOnDesc": "`type` değeri `chash` olduğunda geçerlidir",
-      "identifier": "Upstream Identifier",
-      "inline": "Inline Upstream Config",
       "keepalivePool": {
         "idleTimeout": "Idle Timeout",
         "requests": "Request Sayısı",
@@ -560,20 +545,13 @@
       "keyDesc": "`type` değeri `chash` olduğunda geçerlidir",
       "loadBalancing": "Load Balancing",
       "nodes": {
-        "action": {
-          "title": "İşlem"
-        },
         "add": "Node Ekle",
         "host": {
           "title": "Host",
           "placeholder": "Ana bilgisayar adı veya IP"
         },
         "port": {
-          "title": "Port",
-          "desc": "Port numarası (1-65535). Şemanın varsayılanını kullanmak için boş bırakın; APISIX bunu http ve https için uygular."
-        },
-        "priority": {
-          "title": "Priority"
+          "title": "Port"
         },
         "remove": "Node'u kaldır",
         "title": "Node'lar",
@@ -593,10 +571,8 @@
       "retryTimeout": "Retry Timeout",
       "scheme": "Scheme",
       "serviceDiscovery": {
-        "serviceName": "Service Adı",
         "title": "Service Discovery"
       },
-      "serviceId": "Service ID",
       "serviceName": {
         "title": "Service Adı"
       },
@@ -634,7 +610,6 @@
       "updateTime": "Güncelleme Zamanı",
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "`pass_host` değeri `rewrite` olduğunda ayarlayın",
-      "upstreamId": "Upstream ID",
       "custom": "Özel",
       "advancedSettings": "Gelişmiş Ayarlar",
       "advancedSettingsDesc": "Retry, Timeout, Keepalive, TLS",
@@ -804,9 +779,7 @@
   "noData": "Veri Yok",
   "or": "VEYA",
   "passwordRules": {
-    "title": "Şifre şu şartları sağlamalı:",
     "min_length": "En az {{min}} karakter olmalı",
-    "max_length": "En fazla {{max}} karakter olmalı",
     "missing_uppercase": "Bir büyük harf içermeli",
     "missing_lowercase": "Bir küçük harf içermeli",
     "missing_digit": "Bir rakam içermeli",
@@ -882,7 +855,6 @@
       "headerTeam": "Ekip"
     }
   },
-  "seconds": "Saniye",
   "secrets": {
     "singular": "Secret"
   },
@@ -898,7 +870,6 @@
     "viewTable": "Tablo"
   },
   "settings": {
-    "title": "Ayarlar",
     "passwordPolicy": "Şifre politikası",
     "minLength": "Minimum uzunluk",
     "maxLength": "Maksimum uzunluk",
@@ -1079,7 +1050,6 @@
     "descriptionLabel": "Açıklama",
     "descriptionPlaceholder": "Bu takım neyi yönetiyor?",
     "createSubmit": "Takım Oluştur",
-    "membersHint": "Üyeler, Kullanıcılar ekranından örnek başına atanır.",
     "accessDenied": "Erişim reddedildi",
     "accessDeniedMessage": "Takımları yalnızca süper yöneticiler yönetebilir.",
     "confirmDelete": "Bu takımı silmek istediğinizden emin misiniz?",

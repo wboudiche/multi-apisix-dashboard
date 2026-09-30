@@ -200,7 +200,7 @@ ESLint enforces no-literal-string, no-unknown-key (keys must exist in `en/common
 
 Attributes (`label`, `placeholder`, `title`, `aria-label`, …) are checked on every screen, not only JSX text (#328). A literal there that is not a sentence — an example address, a value the gateway spells — gets an `eslint-disable-next-line i18next/no-literal-string` with the reason beside it. The rule only sees what sits in JSX: a label in an object built above the `return` is not reported, so it still has to go through `t()`.
 
-**Every key in `en` must exist in all five languages** — `locale-keys.test.ts` checks the bundles against each other, so a new key needs its four translations in the same change (#362). The same test reads every dotted string out of every file under `src/` and fails on one `en` does not hold; a file whose dotted strings are not keys (field paths like `tls.verify`) is named in `src/config/keys-not-readable.ts`, with the reason.
+**Every key in `en` must exist in all five languages** — `locale-keys.test.ts` checks the bundles against each other, so a new key needs its four translations in the same change (#362). The same test reads every string under one of `en`'s namespaces out of every file under `src/` and fails on one `en` does not hold, and fails on a key in `en` that no file reads (dead keys cost four translations each). A file that hands `t()` a key in a variable is named in `src/config/keys-not-readable.ts`, with the reason and the prefixes it can reach.
 
 Interpolations are **not** escaped: `escapeValue: false` is set once in `src/config/i18n.ts`, because React escapes what it renders and the two together turned every slash into `&#x2F;` (#341). Don't re-add it per call.
 

@@ -16,41 +16,44 @@
  */
 
 /**
- * The files locale-keys.test.ts cannot read a key out of.
+ * Where a translation key is built rather than spelled.
  *
  * Every key `en` has must exist in every language: that is one check over the
- * five bundles, and needs no list (#362). What still goes file by file is the
- * source: every dotted string a file spells is held to being a key `en` holds,
- * so that a key mistyped inside a ternary - which eslint's i18n/no-unknown-key
- * does not descend into - is reported by name, and a key held in a variable is
- * refused, since nothing could check it. Both began as a list of screens that
- * had been worked through (#328) and now cover all of src/, so this names what
- * they cannot read, with the reason, rather than what they do.
- *
- * Two shapes are here. A file that builds a key from a variable, where that is
- * the design: the keys it can reach are either enumerated for the test by the
- * module itself (role-labels.ts exports `roleLabelKeys`) or, for a plugin
- * category or a navigation label, are every key under a prefix, and held by
- * the bundle check like any other. And a file whose dotted strings are field
- * paths - `checks.active.timeout`, `tls.verify` - or protocol names, which
- * the check would read as keys `en` does not hold.
+ * five bundles in locale-keys.test.ts, and needs no list (#362). What goes
+ * file by file is the source: every dotted string a file spells is held to
+ * being a key `en` holds, so that a key mistyped inside a ternary - which
+ * eslint's i18n/no-unknown-key does not descend into - is reported by name;
+ * and a key handed to the translate function in a variable is refused, since nothing could read
+ * it. Both began as a list of screens that had been worked through (#328) and
+ * now cover all of src/, so this names the exceptions, with the reason.
  */
-export const KEYS_NOT_READABLE = [
-  // Keys built from a variable.
+
+/**
+ * The files that hand the translate function a key held in a variable, where that is the design.
+ * They are still held to spelling real keys everywhere else; only the refusal
+ * of a variable key is lifted.
+ */
+export const KEYS_BUILT_FROM_VARIABLES = [
   'src/components/Navbar.tsx', // `sources.${route.label}`
   'src/components/form-slice/FormItemPlugins/PluginCard.tsx', // `form.plugins.category.${category}`
   'src/components/form-slice/FormItemPlugins/PluginEditorDrawer.tsx',
   'src/components/form-slice/FormItemPlugins/SelectPluginsDrawer.tsx',
   'src/components/form-slice/FormPartBasic.tsx', // `form.basic.statusOption.${status}`
+  'src/components/form-slice/FormPartStreamRoute/index.tsx', // the key is in a variable, `confHelp.noteKey`
   'src/components/form-slice/FormPartUpstream/TestConnectionButton.tsx', // the key is in a variable, `limited`
   'src/components/page/ImportWsdlModal.tsx', // the key is in a variable, `limited`
+  'src/components/page/ListWarningBanner.tsx', // the key is looked up in a table, with a literal fallback
   'src/components/page/RouteTestDrawer.tsx', // the key is in a variable, `named`
   'src/config/role-labels.ts', // the key is a parameter; the keys it can be are `roleLabelKeys`, checked on their own
-  // Dotted strings that are not keys.
-  'src/components/form-slice/FormItemPlugins/pluginTemplates.ts', // example values: `helloworld.Greeter`
-  'src/components/form-slice/FormPartStreamRoute/index.tsx', // field paths: `protocol.conf`
-  'src/components/form-slice/FormPartUpstream/FormSectionChecks.tsx', // field paths: `checks.active.timeout`
-  'src/components/form-slice/FormPartUpstream/index.tsx', // field paths: `tls.verify`
-  'src/routes/services/add.tsx', // field paths: `upstream.nodes`
-  'src/types/schema/apisix/ssls.ts', // protocol names: `TLSv1.2`
+  'src/routes/instances/index.tsx', // the key is in a field of a table row, `entry.label`
+];
+
+/**
+ * The keys those files can reach, by prefix: everything under one is read
+ * through a variable, so a key there is not dead for being spelled by no file.
+ */
+export const KEY_PREFIXES_BUILT = [
+  'sources.',
+  'form.plugins.category.',
+  'form.basic.statusOption.',
 ];

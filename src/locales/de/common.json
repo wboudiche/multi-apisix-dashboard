@@ -30,7 +30,6 @@
   },
   "header": {
     "account": "Konto",
-    "changePassword": "Passwort ändern",
     "logout": "Abmelden",
     "accountRole": "Rolle: {{role}}",
     "loadFailedTitle": "Instanzen nicht verfügbar",
@@ -211,10 +210,8 @@
       "desc": "Beschreibung",
       "labels": {
         "errorFormat": "Das Format des Labels ist falsch, es sollte `key:value` sein",
-        "key": "Key",
         "placeholder": "Text wie `key:value` eingeben, dann mit Enter oder Fokus verlassen",
-        "title": "Labels",
-        "value": "Wert"
+        "title": "Labels"
       },
       "name": "Name",
       "status": "Status",
@@ -226,7 +223,6 @@
     },
     "btn": {
       "add": "Hinzufügen",
-      "addARow": "Zeile hinzufügen",
       "cancel": "Abbrechen",
       "configure": "Konfigurieren",
       "create": "Erstellen",
@@ -252,7 +248,6 @@
     "info": {
       "create_time": "Erstellt am",
       "id": "ID",
-      "title": "Information",
       "update_time": "Geändert am"
     },
     "json": {
@@ -393,7 +388,6 @@
       },
       "manager": "Secret Manager",
       "managerConfig": "Manager Konfiguration",
-      "title": "Secret Konfiguration",
       "vault": {
         "namespace": "Namespace",
         "prefix": "Präfix",
@@ -402,10 +396,7 @@
       }
     },
     "services": {
-      "enableWebsocket": "WebSocket aktivieren",
       "hosts": "Hosts",
-      "script": "Skript",
-      "settings": "Service Einstellungen",
       "hostsPlaceholder": "z. B. api.example.com",
       "hostsDescription": "Domainnamen, die dieser Service bedient",
       "steps": {
@@ -483,9 +474,6 @@
       "duplicateConfirmBody": "Diese Stream-Routen greifen bereits für denselben Verkehr. Nur eine von ihnen kann gewinnen, und welche, haben Sie nicht in der Hand.",
       "duplicateConfirmTitle": "Eine passende Stream-Route existiert bereits"
     },
-    "tagsInput": {
-      "placeholder": "Text eingeben, dann mit Enter oder Fokus verlassen"
-    },
     "upload": {
       "fileOverSize": "Dateigrösse ist zu gross",
       "readError": "Dateilesefehler:"
@@ -542,11 +530,8 @@
       "discoveryType": {
         "title": "Discovery Typ"
       },
-      "findUpstreamFrom": "Upstream finden von",
       "hashOn": "Hash auf",
       "hashOnDesc": "Gültig, wenn Typ den Wert `chash` hat",
-      "identifier": "Upstream Identifikator",
-      "inline": "Inline Upstream Konfiguration",
       "keepalivePool": {
         "idleTimeout": "IDLE Timeout",
         "requests": "Requests",
@@ -560,20 +545,13 @@
       "keyDesc": "Gültig, wenn Typ den Wert `chash` hat",
       "loadBalancing": "Load Balancing",
       "nodes": {
-        "action": {
-          "title": "Aktion"
-        },
         "add": "Node hinzufügen",
         "host": {
           "title": "Host",
           "placeholder": "Hostname oder IP"
         },
         "port": {
-          "title": "Port",
-          "desc": "Portnummer (1-65535). Leer lassen, um den Standard des Schemas zu verwenden, den APISIX für http und https einsetzt."
-        },
-        "priority": {
-          "title": "Priorität"
+          "title": "Port"
         },
         "remove": "Node entfernen",
         "title": "Nodes",
@@ -593,10 +571,8 @@
       "retryTimeout": "Retry Timeout",
       "scheme": "Schema",
       "serviceDiscovery": {
-        "serviceName": "Service Name",
         "title": "Service Discovery"
       },
-      "serviceId": "Service ID",
       "serviceName": {
         "title": "Service Name"
       },
@@ -634,7 +610,6 @@
       "updateTime": "Aktualisierungszeit",
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "Setzen Sie dies, wenn `pass_host` den Wert `rewrite` hat",
-      "upstreamId": "Upstream ID",
       "custom": "Benutzerdefiniert",
       "advancedSettings": "Erweiterte Einstellungen",
       "advancedSettingsDesc": "Retry, Timeout, Keepalive, TLS",
@@ -804,9 +779,7 @@
   "noData": "Keine Daten",
   "or": "ODER",
   "passwordRules": {
-    "title": "Das Passwort muss:",
     "min_length": "Mindestens {{min}} Zeichen lang sein",
-    "max_length": "Höchstens {{max}} Zeichen lang sein",
     "missing_uppercase": "Einen Großbuchstaben enthalten",
     "missing_lowercase": "Einen Kleinbuchstaben enthalten",
     "missing_digit": "Eine Ziffer enthalten",
@@ -882,7 +855,6 @@
       "headerTeam": "Team"
     }
   },
-  "seconds": "Sekunden",
   "secrets": {
     "singular": "Secret"
   },
@@ -898,7 +870,6 @@
     "viewTable": "Tabelle"
   },
   "settings": {
-    "title": "Einstellungen",
     "passwordPolicy": "Passwortrichtlinie",
     "minLength": "Mindestlänge",
     "maxLength": "Maximallänge",
@@ -1079,7 +1050,6 @@
     "descriptionLabel": "Beschreibung",
     "descriptionPlaceholder": "Was verwaltet dieses Team?",
     "createSubmit": "Team anlegen",
-    "membersHint": "Mitglieder werden pro Instanz auf der Seite Benutzer zugewiesen.",
     "accessDenied": "Zugriff verweigert",
     "accessDeniedMessage": "Nur Super-Admins können Teams verwalten.",
     "confirmDelete": "Möchten Sie dieses Team wirklich löschen?",

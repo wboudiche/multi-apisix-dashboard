@@ -30,7 +30,6 @@
   },
   "header": {
     "account": "账户",
-    "changePassword": "修改密码",
     "logout": "退出登录",
     "accountRole": "角色：{{role}}",
     "loadFailedTitle": "实例不可用",
@@ -211,10 +210,8 @@
       "desc": "描述",
       "labels": {
         "errorFormat": "标签格式错误，应为 `key:value`",
-        "key": "Key",
         "placeholder": "输入类似 `key:value` 的文本，然后回车或失去焦点",
-        "title": "标签",
-        "value": "值"
+        "title": "标签"
       },
       "name": "名字",
       "status": "状态",
@@ -226,7 +223,6 @@
     },
     "btn": {
       "add": "新增",
-      "addARow": "新增一行",
       "cancel": "取消",
       "configure": "配置",
       "create": "创建",
@@ -252,7 +248,6 @@
     "info": {
       "create_time": "创建时间",
       "id": "ID",
-      "title": "信息",
       "update_time": "更新时间"
     },
     "json": {
@@ -393,7 +388,6 @@
       },
       "manager": "密钥管理器",
       "managerConfig": "管理器配置",
-      "title": "密钥配置",
       "vault": {
         "namespace": "命名空间",
         "prefix": "前缀",
@@ -402,10 +396,7 @@
       }
     },
     "services": {
-      "enableWebsocket": "启用WebSocket",
       "hosts": "主机列表",
-      "script": "脚本",
-      "settings": "服务设置",
       "hostsPlaceholder": "例如 api.example.com",
       "hostsDescription": "此服务处理的域名",
       "steps": {
@@ -483,9 +474,6 @@
       "duplicateConfirmBody": "这些 stream route 已经匹配相同的流量。只有一条会生效，而哪一条生效并不由您控制。",
       "duplicateConfirmTitle": "已存在匹配的 stream route"
     },
-    "tagsInput": {
-      "placeholder": "输入文本，然后回车或失去焦点"
-    },
     "upload": {
       "fileOverSize": "文件尺寸太大",
       "readError": "文件读取错误："
@@ -542,11 +530,8 @@
       "discoveryType": {
         "title": "发现类型"
       },
-      "findUpstreamFrom": "从以下来源查找上游",
       "hashOn": "哈希依据",
       "hashOnDesc": "`type` 为 `chash` 时生效",
-      "identifier": "上游标识符",
-      "inline": "内联上游配置",
       "keepalivePool": {
         "idleTimeout": "空闲超时时间",
         "requests": "请求数",
@@ -560,20 +545,13 @@
       "keyDesc": "`type` 为 `chash` 时生效",
       "loadBalancing": "负载均衡",
       "nodes": {
-        "action": {
-          "title": "操作"
-        },
         "add": "添加节点",
         "host": {
           "title": "主机",
           "placeholder": "主机名或 IP"
         },
         "port": {
-          "title": "端口",
-          "desc": "端口号（1-65535）。留空则使用协议默认端口，APISIX 会为 http 和 https 填充。"
-        },
-        "priority": {
-          "title": "优先级"
+          "title": "端口"
         },
         "remove": "移除节点",
         "title": "节点",
@@ -593,10 +571,8 @@
       "retryTimeout": "重试超时时间",
       "scheme": "协议",
       "serviceDiscovery": {
-        "serviceName": "服务名称",
         "title": "服务发现"
       },
-      "serviceId": "服务ID",
       "serviceName": {
         "title": "服务名称"
       },
@@ -634,7 +610,6 @@
       "updateTime": "更新时间",
       "upstreamHost": "上游主机名",
       "upstreamHostDesc": "`pass_host` 为 `rewrite` 时设置",
-      "upstreamId": "上游ID",
       "custom": "自定义",
       "advancedSettings": "高级设置",
       "advancedSettingsDesc": "重试、超时、Keepalive、TLS",
@@ -804,9 +779,7 @@
   "noData": "无数据",
   "or": "OR",
   "passwordRules": {
-    "title": "密码必须:",
     "min_length": "至少 {{min}} 个字符",
-    "max_length": "最多 {{max}} 个字符",
     "missing_uppercase": "包含一个大写字母",
     "missing_lowercase": "包含一个小写字母",
     "missing_digit": "包含一个数字",
@@ -882,7 +855,6 @@
       "headerTeam": "团队"
     }
   },
-  "seconds": "秒",
   "secrets": {
     "singular": "Secret"
   },
@@ -898,7 +870,6 @@
     "viewTable": "表格"
   },
   "settings": {
-    "title": "设置",
     "passwordPolicy": "密码策略",
     "minLength": "最小长度",
     "maxLength": "最大长度",
@@ -1079,7 +1050,6 @@
     "descriptionLabel": "描述",
     "descriptionPlaceholder": "这个团队负责管理什么？",
     "createSubmit": "创建团队",
-    "membersHint": "成员在“用户”页面中按实例分配。",
     "accessDenied": "拒绝访问",
     "accessDeniedMessage": "只有超级管理员可以管理团队。",
     "confirmDelete": "确定要删除此团队吗？",
