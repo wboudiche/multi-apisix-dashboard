@@ -21,6 +21,7 @@ import { env } from '@e2e/utils/env';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
+import { i18n } from '@e2e/utils/ui/i18n';
 import { expect, type Page, test as base } from '@playwright/test';
 
 /**
@@ -149,6 +150,40 @@ test('gives the reason for being disconnected as the gateway wrote it', async ({
   const tooltip = page.getByRole('tooltip');
   await expect(tooltip).toContainText(reason, { timeout: 20000 });
   await expect(tooltip).not.toContainText('&#x');
+});
+
+test('words the reason from its code for everyone but a super admin', async ({
+  page,
+}) => {
+  const fx = getFixtures();
+
+  // What a developer or a viewer is sent: a code and no error, since the
+  // probe's error quotes the Admin API address (#309). The reason used to be an
+  // English sentence written in Go, and so English in every language (#340).
+  await page.route(HEALTH, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          instance_id: fx.localInstanceId,
+          name: 'Local APISIX',
+          status: 'Disconnected',
+          last_check: new Date().toISOString(),
+          code: 'unreachable',
+        },
+      ]),
+    })
+  );
+
+  await page.goto('/ui/routes');
+  await healthDot(page).hover();
+  await expect(page.getByRole('tooltip')).toHaveText(
+    i18n.t('header.healthDisconnectedWhy', {
+      reason: i18n.t('instances.healthReason.unreachable'),
+    }),
+    { timeout: 20000 }
+  );
 });
 
 test('loads the instance list once rather than on every render', async ({

@@ -151,7 +151,12 @@
     "resourceConsumers": "消费者",
     "resourceStreamRoutes": "流路由",
     "resourceUserAssignments": "用户角色分配",
-    "resourceOwnershipRecords": "团队归属记录"
+    "resourceOwnershipRecords": "团队归属记录",
+    "healthReason": {
+      "unreachable": "控制台无法连接到此网关的 Admin API",
+      "notRead": "未读取：本次刷新时控制台已超时",
+      "unreadable": "无法读取 Admin API"
+    }
   },
   "login": {
     "adminNote": "账户由您的管理员创建。",
@@ -687,7 +692,13 @@
     "save": "保存策略",
     "saved": "密码策略已保存",
     "saveError": "保存策略失败",
-    "accessDenied": "只有超级管理员可以编辑设置。"
+    "accessDenied": "只有超级管理员可以编辑设置。",
+    "invalid": {
+      "minLengthTooLow": "最小长度必须至少为 {{limit}}。",
+      "maxLengthTooHigh": "最大长度最多为 {{limit}}：bcrypt 会忽略超出的部分。",
+      "maxLengthBelowMin": "最大长度不能小于最小长度。",
+      "negativeValue": "计数和时长不能为负数。"
+    }
   },
   "sources": {
     "consumerGroups": "消费者组",

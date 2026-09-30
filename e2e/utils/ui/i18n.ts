@@ -24,9 +24,9 @@ import i18next from 'i18next';
  * English text fails the day the wording improves, with a timeout that says
  * nothing about why (#319, #342).
  *
- * The real i18next does the interpolating, including the escaping it applies to
- * an interpolated value, so these are the strings the page renders rather than
- * an approximation of them.
+ * The real i18next does the interpolating, with the app's own setting for
+ * escaping it, so these are the strings the page renders rather than an
+ * approximation of them.
  */
 // Read rather than imported: this runs in node, where a JSON import needs an
 // attribute the rest of the suite does not use, and the whole run fails to load
@@ -43,4 +43,8 @@ void i18n.init({
   lng: 'en',
   defaultNS: 'common',
   resources: { en: { common: en } },
+  // As src/config/i18n.ts has it since #341. Left at i18next's default, an
+  // apostrophe in an interpolated value came out as &#39; here and as itself on
+  // the page, and the spec comparing the two failed on a page that was right.
+  interpolation: { escapeValue: false },
 });

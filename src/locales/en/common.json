@@ -110,7 +110,12 @@
     "testFailedTitle": "Connection Failed",
     "testFailed": "Could not connect to the APISIX Admin API",
     "selectedTitle": "Instance Selected",
-    "selected": "Now managing {{name}}"
+    "selected": "Now managing {{name}}",
+    "healthReason": {
+      "unreachable": "The dashboard could not reach this gateway's Admin API",
+      "notRead": "Not read: the dashboard ran out of time for this refresh",
+      "unreadable": "Could not read the Admin API"
+    }
   },
   "proxyError": {
     "title": "Cannot reach {{name}}",
@@ -851,7 +856,13 @@
     "save": "Save policy",
     "saved": "Password policy saved",
     "saveError": "Failed to save policy",
-    "accessDenied": "Only Super Admins can edit settings."
+    "accessDenied": "Only Super Admins can edit settings.",
+    "invalid": {
+      "minLengthTooLow": "The minimum length must be at least {{limit}}.",
+      "maxLengthTooHigh": "The maximum length can be at most {{limit}}: bcrypt ignores anything longer.",
+      "maxLengthBelowMin": "The maximum length cannot be less than the minimum length.",
+      "negativeValue": "Counts and durations cannot be negative."
+    }
   },
   "sources": {
     "consumerGroups": "Consumer Groups",

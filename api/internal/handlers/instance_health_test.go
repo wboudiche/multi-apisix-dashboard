@@ -88,16 +88,11 @@ func TestHealthErrorDetail(t *testing.T) {
 		}
 	})
 
-	t.Run("everyone else gets no address", func(t *testing.T) {
-		got := healthErrorDetail(probe, false)
-
-		for _, leak := range []string{"10.0.3.14", "9180", "http://", "/apisix/admin"} {
-			if strings.Contains(got, leak) {
-				t.Errorf("healthErrorDetail(err, false) = %q, want it to not contain %q", got, leak)
-			}
-		}
-		if got == "" {
-			t.Error("healthErrorDetail(err, false) = \"\", want a non-empty reason")
+	// Nothing at all, rather than an English sentence in its place: the health's
+	// Code carries the reason, in a form the frontend can translate (#340).
+	t.Run("everyone else gets no detail", func(t *testing.T) {
+		if got := healthErrorDetail(probe, false); got != "" {
+			t.Errorf("healthErrorDetail(err, false) = %q, want %q", got, "")
 		}
 	})
 

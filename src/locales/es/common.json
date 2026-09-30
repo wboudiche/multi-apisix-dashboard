@@ -151,7 +151,12 @@
     "resourceConsumers": "Consumidores",
     "resourceStreamRoutes": "Rutas de Stream",
     "resourceUserAssignments": "Asignaciones de rol de usuario",
-    "resourceOwnershipRecords": "Registros de propiedad de equipo"
+    "resourceOwnershipRecords": "Registros de propiedad de equipo",
+    "healthReason": {
+      "unreachable": "El panel no pudo conectar con la Admin API de este gateway",
+      "notRead": "No leído: el panel se quedó sin tiempo en esta actualización",
+      "unreadable": "No se pudo leer la Admin API"
+    }
   },
   "login": {
     "adminNote": "Las cuentas las crea tu administrador.",
@@ -689,7 +694,13 @@
     "save": "Guardar política",
     "saved": "Política de contraseñas guardada",
     "saveError": "Error al guardar la política",
-    "accessDenied": "Solo los Super Administradores pueden editar la configuración."
+    "accessDenied": "Solo los Super Administradores pueden editar la configuración.",
+    "invalid": {
+      "minLengthTooLow": "La longitud mínima debe ser de al menos {{limit}}.",
+      "maxLengthTooHigh": "La longitud máxima puede ser como mucho {{limit}}: bcrypt ignora lo que exceda.",
+      "maxLengthBelowMin": "La longitud máxima no puede ser menor que la longitud mínima.",
+      "negativeValue": "Los recuentos y las duraciones no pueden ser negativos."
+    }
   },
   "sources": {
     "consumerGroups": "Grupos de Consumidores",

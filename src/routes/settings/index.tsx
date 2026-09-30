@@ -19,11 +19,37 @@ import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import axios from 'axios';
+import type { TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type PasswordPolicy, policyApi } from '@/apis/policy';
 import { usePermission } from '@/hooks/usePermission';
+
+type PolicyRefusal = { error?: string; code?: string; limit?: number };
+
+/**
+ * Which bound a refused policy crossed, in the reader's language.
+ *
+ * The backend names it with a code as well as an English sentence, and the
+ * sentence was all this screen showed: the most common error on it was English
+ * in every language (#340). A code this build does not know falls back on the
+ * sentence, which still says what is wrong.
+ */
+const refusalMessage = (t: TFunction, body?: PolicyRefusal): string | undefined => {
+  switch (body?.code) {
+    case 'min_length_too_low':
+      return t('settings.invalid.minLengthTooLow', { limit: body.limit });
+    case 'max_length_too_high':
+      return t('settings.invalid.maxLengthTooHigh', { limit: body.limit });
+    case 'max_length_below_min':
+      return t('settings.invalid.maxLengthBelowMin');
+    case 'negative_value':
+      return t('settings.invalid.negativeValue');
+    default:
+      return body?.error;
+  }
+};
 
 const Settings = () => {
   const { t } = useTranslation();
@@ -47,12 +73,15 @@ const Settings = () => {
       notifications.show({ message: t('settings.saved'), color: 'green' });
     },
     onError: (error) => {
-      // Surface the server's specific reason (e.g. "min_length must be >= 8")
-      // instead of a generic failure message.
-      const serverMsg = axios.isAxiosError(error)
-        ? (error.response?.data as { error?: string } | undefined)?.error
+      // Surface the specific reason the server refused the policy instead of
+      // a generic failure message.
+      const body = axios.isAxiosError(error)
+        ? (error.response?.data as PolicyRefusal | undefined)
         : undefined;
-      notifications.show({ message: serverMsg ?? t('settings.saveError'), color: 'red' });
+      notifications.show({
+        message: refusalMessage(t, body) ?? t('settings.saveError'),
+        color: 'red',
+      });
     },
   });
 

@@ -151,7 +151,12 @@
     "resourceConsumers": "Consumer'lar",
     "resourceStreamRoutes": "Stream Route'lar",
     "resourceUserAssignments": "Kullanıcı rol atamaları",
-    "resourceOwnershipRecords": "Ekip sahiplik kayıtları"
+    "resourceOwnershipRecords": "Ekip sahiplik kayıtları",
+    "healthReason": {
+      "unreachable": "Pano bu ağ geçidinin Admin API'sine ulaşamadı",
+      "notRead": "Okunmadı: pano bu yenileme için zamanı tüketti",
+      "unreadable": "Admin API'si okunamadı"
+    }
   },
   "login": {
     "adminNote": "Hesaplar yöneticiniz tarafından oluşturulur.",
@@ -687,7 +692,13 @@
     "save": "Politikayı kaydet",
     "saved": "Şifre politikası kaydedildi",
     "saveError": "Politika kaydedilemedi",
-    "accessDenied": "Ayarları yalnızca Süper Adminler düzenleyebilir."
+    "accessDenied": "Ayarları yalnızca Süper Adminler düzenleyebilir.",
+    "invalid": {
+      "minLengthTooLow": "En kısa uzunluk en az {{limit}} olmalıdır.",
+      "maxLengthTooHigh": "En uzun uzunluk en fazla {{limit}} olabilir: bcrypt daha uzununu yok sayar.",
+      "maxLengthBelowMin": "En uzun uzunluk en kısa uzunluktan küçük olamaz.",
+      "negativeValue": "Sayılar ve süreler negatif olamaz."
+    }
   },
   "sources": {
     "consumerGroups": "Consumer Grupları",

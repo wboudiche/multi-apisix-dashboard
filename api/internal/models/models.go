@@ -225,13 +225,33 @@ type Label struct {
 	UpdatedAt   int64    `json:"updated_at"`
 }
 
+// Why a gateway is not Connected, as a code rather than a sentence: the
+// frontend puts it in the reader's language, which an English sentence written
+// here could not be (#340).
+const (
+	// HealthCodeUnreachable: the probe of the Admin API failed.
+	HealthCodeUnreachable = "unreachable"
+	// HealthCodeNotRead: the refresh ran out of time before this gateway's turn,
+	// so nothing is known about it (#330).
+	HealthCodeNotRead = "not_read"
+	// HealthCodeUnreadable: none of the Admin API reads could be used, which
+	// covers a gateway that answered with something the dashboard cannot read
+	// as well as one that did not answer (#286).
+	HealthCodeUnreadable = "unreadable"
+)
+
 // InstanceHealth represents the connectivity status of an instance
 type InstanceHealth struct {
 	InstanceID string    `json:"instance_id"`
 	Name       string    `json:"name"`
-	Status     string    `json:"status"` // Connected, Disconnected
+	Status     string    `json:"status"` // Connected, Disconnected, Unknown
 	LastCheck  time.Time `json:"last_check"`
-	Error      string    `json:"error,omitempty"`
+	// Code is set whenever Status is not Connected: one of the HealthCode*
+	// constants.
+	Code string `json:"code,omitempty"`
+	// Error is the probe's own error, for a super_admin only: it quotes the
+	// Admin API address (#309). Everyone else reads Code.
+	Error string `json:"error,omitempty"`
 }
 
 // InstanceDependencies describes everything that still references an instance.
