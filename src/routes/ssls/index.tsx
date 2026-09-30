@@ -148,20 +148,18 @@ function RouteComponent() {
           if (!expiry) return '-';
 
           const { days, state } = expiry;
+          // Intl rather than a translated "in {{days}} days": it gets the
+          // plural rules of each language right on its own.
+          const inDays = new Intl.RelativeTimeFormat(i18n.language, {
+            numeric: 'auto',
+          }).format(days, 'day');
           return (
             <Badge
               color={state === 'expired' ? 'red' : state === 'soon' ? 'orange' : 'green'}
               variant="light"
               size="sm"
             >
-              {state === 'expired'
-                ? t('ssls.expired')
-                : // Intl rather than a translated "in {{days}} days": it gets
-                  // the plural rules of each language right on its own.
-                  new Intl.RelativeTimeFormat(i18n.language, { numeric: 'auto' }).format(
-                    days,
-                    'day'
-                  )}
+              {state === 'expired' ? t('ssls.expired') : inDays}
             </Badge>
           );
         },

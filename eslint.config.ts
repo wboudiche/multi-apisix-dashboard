@@ -32,8 +32,6 @@ import unusedImports from 'eslint-plugin-unused-imports'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
-import { ATTRIBUTES_GUARDED } from './src/config/translated-screens';
-
 const importRules = tseslint.config({
   plugins: {
     'unused-imports': unusedImports,
@@ -104,25 +102,25 @@ const e2eRules = tseslint.config(
 );
 
 /**
- * The screens whose attributes are held to i18n as well as their text.
+ * Attributes are held to i18n as well as text, on every screen.
  *
- * i18next/no-literal-string runs in its jsx-text-only mode everywhere, which
- * never looks at an attribute, and i18n/no-text-as-attribute covers alt and
- * title alone - which is how thirteen strings came to be written in English on
- * the Users page (#320) and how the next label would be (#328).
+ * The plugin's recommended mode is jsx-text-only, which never looks at an
+ * attribute, and i18n/no-text-as-attribute covers alt and title alone - which
+ * is how thirteen strings came to be written in English on the Users page
+ * (#320). This ran screen by screen while the 97 occurrences it reported were
+ * worked through (#328); there are none left, so it is no longer a list.
  *
- * A list that grows: turning it on everywhere reports 28 occurrences today, so
- * each screen joins this once its own strings have keys, and cannot slip back.
- * The count is worth re-measuring rather than trusting - 97 when #328 was
- * written, 69 with the header and instances done, 59 with settings - and every
- * screen that joins takes its own share out of it, as does every exclusion that
- * teaches the rule what is not prose. The list itself lives beside the one the
- * translation check reads, in src/config/translated-screens.ts.
+ * What it reports that is not a sentence - an example in a placeholder, a value
+ * the gateway spells - is disabled on its own line, with the reason beside it,
+ * rather than excluded here by shape: an exclusion applies to every literal the
+ * rule sees, and the two below are each kept to the one screen that needs it.
  *
- * It holds attributes, not the whole screen: a string in a `notifications.show`
- * object has no JSX ancestor, so this mode never sees it (thirteen of them sat
- * on the instances page). A screen is done when its keys exist, not when this
- * rule is quiet.
+ * It holds what sits in JSX, not the whole screen: a string in a
+ * `notifications.show` object, or in a table of labels built above the JSX, has
+ * no JSX ancestor, so this mode never sees it (thirteen of them sat on the
+ * instances page). A quiet rule does not make a screen translated - the keys a
+ * screen reads are held by src/config/locale-keys.test.ts, for the files
+ * src/config/translated-screens.ts names.
  */
 const attributeRuleOptions = {
   mode: 'jsx-only',
@@ -160,7 +158,7 @@ const attributeRuleOptions = {
 };
 
 const attributesTranslated = tseslint.config({
-  files: ATTRIBUTES_GUARDED,
+  files: ['src/**/*.tsx'],
   plugins: { i18next },
   rules: {
     'i18next/no-literal-string': ['error', attributeRuleOptions],

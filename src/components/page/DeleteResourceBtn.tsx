@@ -111,12 +111,8 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
   return (
     <Button
       onClick={openModal}
-      size="compact-xs"
-      variant="light"
-      {...(mode === 'detail' && {
-        size: 'compact-sm',
-        variant: 'filled',
-      })}
+      size={mode === 'detail' ? 'compact-sm' : 'compact-xs'}
+      variant={mode === 'detail' ? 'filled' : 'light'}
       color="red"
       {...btnProps}
     >

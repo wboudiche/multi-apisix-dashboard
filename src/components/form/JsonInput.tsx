@@ -73,6 +73,8 @@ export const FormItemJsonInput = <T extends FieldValues>(
       autosize
       resize="vertical"
       {...restField}
+      // The name of a prop to leave out, not text.
+      /* eslint-disable-next-line i18next/no-literal-string */
       {...omit(['objValue'], restProps)}
     />
   );

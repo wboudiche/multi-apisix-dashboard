@@ -619,7 +619,8 @@
         "desc": "Backend server targets that receive proxied traffic",
         "host": {
           "title": "Host",
-          "desc": "IP address or hostname of the upstream server"
+          "desc": "IP address or hostname of the upstream server",
+          "placeholder": "Hostname or IP"
         },
         "port": {
           "title": "Port",
@@ -637,6 +638,11 @@
       },
       "passHost": "Pass Host",
       "passHostDesc": "How the Host header is sent to upstream: pass (keep original), node (use target IP), rewrite (custom host)",
+      "passHostOptions": {
+        "pass": "Keep the same Host from client request",
+        "node": "Use the IP or hostname of the node",
+        "rewrite": "Rewrite Host"
+      },
       "retries": "Retries",
       "retriesDesc": "Number of retry attempts when a request to upstream fails",
       "retry": "Retry",

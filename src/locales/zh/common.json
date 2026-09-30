@@ -274,7 +274,8 @@
       "selectPlugins": {
         "title": "选择插件"
       },
-      "viewPlugin": "查看插件"
+      "viewPlugin": "查看插件",
+      "noConfigs": "此网关上还没有插件配置"
     },
     "protos": {
       "content": "内容",
@@ -293,7 +294,18 @@
       "service": "服务",
       "uri": "URI",
       "uris": "URI 列表",
-      "vars": "变量"
+      "vars": "变量",
+      "tooltip": {
+        "priority": "多条路由同时匹配时，优先级高的先匹配",
+        "methods": "此路由响应的 HTTP 方法。留空则匹配所有方法",
+        "enableWebsocket": "为此路由启用 WebSocket 协议升级",
+        "uri": "要匹配的请求路径。支持精确匹配和使用 * 的前缀匹配",
+        "host": "与 Host 请求头匹配的域名",
+        "remoteAddr": "匹配来自特定客户端 IP 或 CIDR 网段的请求",
+        "vars": "用于高级匹配条件的 Nginx 变量表达式",
+        "filterFunc": "用于高级请求过滤的自定义 Lua 函数"
+      },
+      "varsDescription": "按 [[\"var\", \"operator\", \"value\"]] 的格式填写变量。例如：[[\"arg_name\", \"==\", \"val\"]] 或 [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]"
     },
     "requestOverride": {
       "title": "请求覆盖",
@@ -368,7 +380,8 @@
       "sni": "SNI",
       "snis": "SNI 列表",
       "ssl_protocols": "SSL协议",
-      "type": "证书类型"
+      "type": "证书类型",
+      "certificate": "证书配置"
     },
     "streamRoutes": {
       "protocol": {
@@ -477,7 +490,8 @@
         },
         "add": "添加节点",
         "host": {
-          "title": "主机"
+          "title": "主机",
+          "placeholder": "主机名或 IP"
         },
         "port": {
           "title": "端口",
@@ -493,6 +507,11 @@
         }
       },
       "passHost": "传递 Host",
+      "passHostOptions": {
+        "pass": "保持与客户端请求相同的 Host",
+        "node": "使用节点的 IP 或主机名",
+        "rewrite": "重写 Host"
+      },
       "retries": "重试次数",
       "retry": "重试",
       "retryTimeout": "重试超时时间",
@@ -532,7 +551,8 @@
       "updateTime": "更新时间",
       "upstreamHost": "上游主机名",
       "upstreamHostDesc": "`pass_host` 为 `rewrite` 时设置",
-      "upstreamId": "上游ID"
+      "upstreamId": "上游ID",
+      "custom": "自定义"
     },
     "routeTest": {
       "requestFailed": "请求失败",

@@ -147,9 +147,9 @@ describe.each(LANGUAGES)('%s', (lang) => {
 });
 
 /**
- * The screens whose every key must exist in every language, and the list the
- * eslint guard reads beside it: see src/config/translated-screens.ts, where the
- * two halves of a finished screen are kept together.
+ * The files whose every key must exist in every language: see
+ * src/config/translated-screens.ts. The other half of a finished screen - its
+ * JSX attributes held to i18n - is eslint's, and covers every screen.
  *
  * Read out of the source rather than enumerated: a list of keys goes stale, and
  * the first attempt at this test listed 11 of the 48 these files read.

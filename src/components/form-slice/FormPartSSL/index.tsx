@@ -93,12 +93,15 @@ export const FormPartSSL = () => {
           control={control}
           label={t('form.ssls.sni')}
           name="sni"
+          // Example domains, here and below, not sentences.
+          /* eslint-disable-next-line i18next/no-literal-string */
           placeholder="domain1.com"
         />
         <FormItemTagsInput
           control={control}
           label={t('form.ssls.snis')}
           name="snis"
+          /* eslint-disable-next-line i18next/no-literal-string */
           placeholder="domain1.com, domain2.com"
         />
         <FormItemCertKeyList />

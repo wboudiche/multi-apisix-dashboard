@@ -58,7 +58,11 @@ export const FormSectionGeneralContent = (props: FormSectionGeneralProps) => {
     <>
       <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0 }}>
         {showID && <FormItemID />}
+        {/* Field names, which the rule reads as text because they sit in
+            JSX: nothing here is shown. */}
+        {/* eslint-disable-next-line i18next/no-literal-string */}
         <input type="hidden" {...register('create_time')} />
+        {/* eslint-disable-next-line i18next/no-literal-string */}
         <input type="hidden" {...register('update_time')} />
         {showDate && <DisplayDate />}
       </fieldset>

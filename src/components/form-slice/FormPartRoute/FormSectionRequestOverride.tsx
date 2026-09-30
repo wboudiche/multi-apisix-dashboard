@@ -255,6 +255,10 @@ export const FormSectionRequestOverride = () => {
       </Radio.Group>
       {state.uriMode === 'static' && (
         <TextInput
+          // The four placeholders of this section are examples of what the
+          // field takes - a path, a pattern, a template, a host - and not
+          // sentences: there is nothing in one for a translator to say.
+          /* eslint-disable-next-line i18next/no-literal-string */
           placeholder="/new/path"
           value={state.staticUri}
           onChange={(e) => update({ staticUri: e.currentTarget.value })}
@@ -265,6 +269,7 @@ export const FormSectionRequestOverride = () => {
         <Group grow>
           <TextInput
             label={t('form.requestOverride.regexPattern')}
+            /* eslint-disable-next-line i18next/no-literal-string */
             placeholder="^/old/(.*)"
             value={state.regexPattern}
             onChange={(e) => update({ regexPattern: e.currentTarget.value })}
@@ -272,6 +277,7 @@ export const FormSectionRequestOverride = () => {
           />
           <TextInput
             label={t('form.requestOverride.regexTemplate')}
+            /* eslint-disable-next-line i18next/no-literal-string */
             placeholder="/new/$1"
             value={state.regexTemplate}
             onChange={(e) => update({ regexTemplate: e.currentTarget.value })}
@@ -295,6 +301,7 @@ export const FormSectionRequestOverride = () => {
       </Radio.Group>
       {state.hostMode === 'override' && (
         <TextInput
+          /* eslint-disable-next-line i18next/no-literal-string */
           placeholder="new-host.example.com"
           value={state.host}
           onChange={(e) => update({ host: e.currentTarget.value })}

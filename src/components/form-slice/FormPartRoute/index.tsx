@@ -208,7 +208,7 @@ export const FormSectionUpstream = (
       <FormItemSelect
         control={control}
         name="upstream_id"
-        label="Upstream"
+        label={t('upstreams.singular')}
         data={upstreamOptions}
         searchable
         clearable
@@ -327,7 +327,7 @@ export const FormSectionService = () => {
       <FormItemSelect
         control={control}
         name="service_id"
-        label="Service"
+        label={t('services.singular')}
         data={serviceOptions}
         searchable
         clearable={!readOnlyFields.includes('service_id')}
