@@ -32,6 +32,8 @@ import unusedImports from 'eslint-plugin-unused-imports'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
+import interpolationData from './eslint-rules/interpolation-data';
+
 const importRules = tseslint.config({
   plugins: {
     'unused-imports': unusedImports,
@@ -238,16 +240,20 @@ const i18nRules = tseslint.config({
   plugins: {
     i18next: i18next,
     i18n: i18n,
+    local: { rules: { 'interpolation-data': interpolationData } },
   },
   rules: {
     ...i18next.configs['flat/recommended'].rules,
     'i18n/no-unknown-key': 'error',
     'i18n/no-text-as-children': ['error', { ignorePattern: '^\\s?[/.]\\s?$' }],
     'i18n/no-text-as-attribute': ['error', { attributes: ['alt', 'title'] }],
-    'i18n/interpolation-data': [
-      'error',
-      { interpolationPattern: '\\{\\.+\\}' },
-    ],
+    // Not the plugin's i18n/interpolation-data: that one reads the values
+    // under a `data` option, which i18next calls do not have, so it either
+    // saw nothing (its pattern matched nothing) or reported every call that
+    // did pass its values (#326). See eslint-rules/interpolation-data.ts; it
+    // reads the catalogue from the `settings.i18n` block below, like the
+    // plugin's own rules.
+    'local/interpolation-data': 'error',
   },
   settings: {
     i18n: {
@@ -264,7 +270,7 @@ const i18nRules = tseslint.config({
 
 const srcRules = tseslint.config({
   extends: [commonRules],
-  files: ['src/**/*.{ts,tsx}', 'eslint.config.ts'],
+  files: ['src/**/*.{ts,tsx}', 'eslint.config.ts', 'eslint-rules/**/*.ts'],
   languageOptions: {
     ecmaVersion: 2020,
     globals: globals.browser,

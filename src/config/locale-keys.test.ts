@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { defaultNS, resources } from './i18n';
+import { placeholdersIn } from './placeholders';
 import { roleLabelKeys } from './role-labels';
 import { FULLY_TRANSLATED_SCREENS } from './translated-screens';
 
@@ -60,8 +61,7 @@ const flatten = (node: unknown, prefix = ''): Map<string, string> => {
   return out;
 };
 
-const placeholders = (value: string) =>
-  [...value.matchAll(/\{\{-?\s*([^}\s]+)\s*\}\}/g)].map((m) => m[1]).sort();
+const placeholders = (value: string) => placeholdersIn(value).sort();
 
 const en = flatten(bundle(BASE));
 const translations = new Map(LANGUAGES.map((lang) => [lang, flatten(bundle(lang))]));
@@ -86,8 +86,9 @@ describe.each(LANGUAGES)('%s', (lang) => {
   });
 
   // The other half of a rename: the words must still say the same thing about
-  // their arguments. eslint's i18n/interpolation-data only lints en, so a
-  // translation that dropped {{role}} lints clean and renders a blank role.
+  // their arguments. eslint's local/interpolation-data holds the call sites to
+  // en's placeholders and reads no other language, so a translation that
+  // dropped {{role}} lints clean and renders a blank role.
   it('keeps the placeholders en uses', () => {
     const changed = [...translated.entries()]
       .filter(([key]) => en.has(key))

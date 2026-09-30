@@ -15,18 +15,19 @@
  * limitations under the License.
  */
 
-import path from 'node:path';
-import { defineConfig } from 'vitest/config';
+/**
+ * What a translation interpolates, read the one way.
+ *
+ * Two checks read placeholders out of a text: eslint's local/interpolation-data
+ * holds the call sites to `en`'s, and locale-keys.test.ts holds the other
+ * languages to them. Each with a grammar of its own, a `{{date, datetime}}`
+ * that one reads and the other does not is a placeholder a translator can drop
+ * with nothing to say so.
+ */
 
-export default defineConfig({
-  resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') },
-  },
-  test: {
-    environment: 'node',
-    // e2e/utils too: its helpers are plain modules, and the one that rewrites
-    // the gateway config is worth testing without standing a gateway up
-    // (#290). The specs themselves stay with Playwright.
-    include: ['src/**/*.test.ts', 'e2e/utils/**/*.test.ts', 'eslint-rules/**/*.test.ts'],
-  },
-});
+/** `{{name}}`, `{{- name}}` (unescaped), `{{name, format}}` and `{{user.name}}`. */
+const PLACEHOLDER = /\{\{-?\s*([^},\s]+)\s*(?:,[^}]*)?\}\}/g;
+
+/** The placeholders of a text, in order, as written: `user.name` whole. */
+export const placeholdersIn = (text: string) =>
+  [...text.matchAll(PLACEHOLDER)].map((match) => match[1]);
