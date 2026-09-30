@@ -151,7 +151,12 @@
     "resourceConsumers": "Konsumenten",
     "resourceStreamRoutes": "Stream Routen",
     "resourceUserAssignments": "Rollenzuweisungen von Benutzern",
-    "resourceOwnershipRecords": "Einträge zur Team-Zugehörigkeit"
+    "resourceOwnershipRecords": "Einträge zur Team-Zugehörigkeit",
+    "healthReason": {
+      "unreachable": "Das Dashboard konnte die Admin-API dieses Gateways nicht erreichen",
+      "notRead": "Nicht gelesen: Dem Dashboard ist für diese Aktualisierung die Zeit ausgegangen",
+      "unreadable": "Die Admin-API konnte nicht gelesen werden"
+    }
   },
   "login": {
     "adminNote": "Konten werden von Ihrem Administrator angelegt.",
@@ -687,7 +692,13 @@
     "save": "Richtlinie speichern",
     "saved": "Passwortrichtlinie gespeichert",
     "saveError": "Richtlinie konnte nicht gespeichert werden",
-    "accessDenied": "Nur Super-Admins können Einstellungen bearbeiten."
+    "accessDenied": "Nur Super-Admins können Einstellungen bearbeiten.",
+    "invalid": {
+      "minLengthTooLow": "Die Mindestlänge muss mindestens {{limit}} betragen.",
+      "maxLengthTooHigh": "Die Höchstlänge darf höchstens {{limit}} betragen: bcrypt ignoriert alles Längere.",
+      "maxLengthBelowMin": "Die Höchstlänge darf nicht kleiner als die Mindestlänge sein.",
+      "negativeValue": "Anzahlen und Zeiträume dürfen nicht negativ sein."
+    }
   },
   "sources": {
     "consumerGroups": "Konsumenten-Gruppen",

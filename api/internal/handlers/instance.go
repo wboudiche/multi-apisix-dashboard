@@ -667,14 +667,13 @@ func filterAllowedInstances(instances []*models.Instance, allowed map[string]boo
 // The probe error quotes the URL it dialled, so handing it to everyone would
 // publish each gateway's internal Admin API address. Only a super_admin — who
 // can read the address off the instance record anyway — gets the full reason.
+// Everyone else gets nothing here and reads the health's Code, which the
+// frontend puts in their language (#340).
 func healthErrorDetail(probeErr error, isSuperAdmin bool) string {
-	if probeErr == nil {
+	if probeErr == nil || !isSuperAdmin {
 		return ""
 	}
-	if isSuperAdmin {
-		return probeErr.Error()
-	}
-	return "The dashboard could not reach this gateway's Admin API"
+	return probeErr.Error()
 }
 
 // ListInstancesHealth returns the connectivity status of the instances the
@@ -717,6 +716,7 @@ func (h *InstanceHandler) ListInstancesHealth(c *gin.Context) {
 
 		if err := h.instanceService.TestConnection(c.Request.Context(), inst); err != nil {
 			health.Status = "Disconnected"
+			health.Code = models.HealthCodeUnreachable
 			health.Error = healthErrorDetail(err, isSuperAdmin)
 		} else {
 			health.Status = "Connected"

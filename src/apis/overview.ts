@@ -71,6 +71,7 @@ const isInstanceHealth = (value: unknown): value is InstanceHealth =>
   typeof value.name === 'string' &&
   typeof value.status === 'string' &&
   typeof value.last_check === 'string' &&
+  (value.code === undefined || typeof value.code === 'string') &&
   (value.error === undefined || typeof value.error === 'string');
 
 /**

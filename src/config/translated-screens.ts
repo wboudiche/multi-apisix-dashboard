@@ -44,9 +44,8 @@ export const ATTRIBUTES_GUARDED = [
  *
  * It stops at the file boundary: what a screen composes - BuildIdentity,
  * TeamSwitcher, the Users page's modals - is not walked, so a key of theirs can
- * still fall back to English. It also cannot see a sentence the Go backend
- * wrote: the settings page shows the server's own reason for refusing a
- * password policy, and that reason is English for everyone (#340).
+ * still fall back to English. The same goes for a helper a screen calls:
+ * `healthReason`'s keys are checked by its own test instead.
  */
 export const FULLY_TRANSLATED_SCREENS = [
   'src/routes/users/index.tsx',

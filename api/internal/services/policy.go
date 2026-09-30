@@ -77,6 +77,35 @@ func ValidatePassword(policy models.PasswordPolicy, pw string, history []string)
 // ErrInvalidPolicy is returned when a proposed policy config is out of bounds.
 var ErrInvalidPolicy = fmt.Errorf("invalid password policy")
 
+// Which bound a refused policy crossed. The settings screen says it in the
+// reader's language from the code, which it could not do from the sentence
+// (#340).
+const (
+	PolicyCodeMinLengthTooLow  = "min_length_too_low"
+	PolicyCodeMaxLengthTooHigh = "max_length_too_high"
+	PolicyCodeMaxBelowMin      = "max_length_below_min"
+	PolicyCodeNegative         = "negative_value"
+)
+
+// Bounds a policy must stay within.
+const (
+	policyMinLengthFloor = 8
+	// bcrypt hashes the first 72 bytes and ignores the rest.
+	policyMaxLengthCap = 72
+)
+
+// PolicyError is an ErrInvalidPolicy that names the bound it crossed, and the
+// limit when there is one.
+type PolicyError struct {
+	Code  string
+	Limit int
+	msg   string
+}
+
+func (e *PolicyError) Error() string { return ErrInvalidPolicy.Error() + ": " + e.msg }
+
+func (e *PolicyError) Unwrap() error { return ErrInvalidPolicy }
+
 // PolicyService owns the password policy config in etcd.
 type PolicyService struct {
 	etcd *EtcdClient
@@ -114,14 +143,16 @@ func (s *PolicyService) Validate(ctx context.Context, pw string, history []strin
 
 func (s *PolicyService) validateConfig(p models.PasswordPolicy) error {
 	switch {
-	case p.MinLength < 8:
-		return fmt.Errorf("%w: min_length must be >= 8", ErrInvalidPolicy)
-	case p.MaxLength > 72:
-		return fmt.Errorf("%w: max_length must be <= 72 (bcrypt limit)", ErrInvalidPolicy)
+	case p.MinLength < policyMinLengthFloor:
+		return &PolicyError{Code: PolicyCodeMinLengthTooLow, Limit: policyMinLengthFloor,
+			msg: fmt.Sprintf("min_length must be >= %d", policyMinLengthFloor)}
+	case p.MaxLength > policyMaxLengthCap:
+		return &PolicyError{Code: PolicyCodeMaxLengthTooHigh, Limit: policyMaxLengthCap,
+			msg: fmt.Sprintf("max_length must be <= %d (bcrypt limit)", policyMaxLengthCap)}
 	case p.MaxLength < p.MinLength:
-		return fmt.Errorf("%w: max_length must be >= min_length", ErrInvalidPolicy)
+		return &PolicyError{Code: PolicyCodeMaxBelowMin, msg: "max_length must be >= min_length"}
 	case p.HistoryDepth < 0 || p.ExpiryDays < 0 || p.LockoutThreshold < 0 || p.LockoutWindowMinutes < 0:
-		return fmt.Errorf("%w: numeric fields must be non-negative", ErrInvalidPolicy)
+		return &PolicyError{Code: PolicyCodeNegative, msg: "numeric fields must be non-negative"}
 	}
 	return nil
 }

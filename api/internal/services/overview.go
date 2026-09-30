@@ -158,7 +158,7 @@ func (s *OverviewService) refreshOverview(ctx context.Context) (*models.Overview
 				// unreachable it would say this dashboard had tried and
 				// failed, which is the line #286 drew.
 				health.Status = "Unknown"
-				health.Error = "Not read: the dashboard ran out of time for this refresh"
+				health.Code = models.HealthCodeNotRead
 				mu.Lock()
 				newCache[instance.ID] = health
 				uncounted++
@@ -177,7 +177,7 @@ func (s *OverviewService) refreshOverview(ctx context.Context) (*models.Overview
 				// Not "failed to reach": a gateway that answers something this
 				// dashboard cannot read arrives here too, and it was reached
 				// perfectly well (#286).
-				health.Error = "Could not read the Admin API"
+				health.Code = models.HealthCodeUnreadable
 			}
 
 			mu.Lock()

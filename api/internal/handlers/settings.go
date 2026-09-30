@@ -56,6 +56,17 @@ func (h *SettingsHandler) UpdatePasswordPolicy(c *gin.Context) {
 		return
 	}
 	if err := h.policyService.SavePolicy(c.Request.Context(), p); err != nil {
+		// The code lets the screen say which bound in the reader's language;
+		// the sentence stays for anything else reading this API (#340).
+		var policyErr *services.PolicyError
+		if errors.As(err, &policyErr) {
+			body := gin.H{"error": err.Error(), "code": policyErr.Code}
+			if policyErr.Limit != 0 {
+				body["limit"] = policyErr.Limit
+			}
+			c.JSON(http.StatusUnprocessableEntity, body)
+			return
+		}
 		if errors.Is(err, services.ErrInvalidPolicy) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 			return

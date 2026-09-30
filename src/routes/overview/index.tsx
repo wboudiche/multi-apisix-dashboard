@@ -36,10 +36,12 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { type FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import type { InstanceHealth } from '@/apis/instances';
 import { overviewApi,type OverviewData } from '@/apis/overview';
+import { healthReason } from '@/config/health-reason';
 import { describeError } from '@/utils/api-error';
 import IconActivity from '~icons/material-symbols/activity-zone-outline';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
@@ -50,6 +52,23 @@ import IconRefresh from '~icons/material-symbols/refresh';
 import IconRoute from '~icons/material-symbols/route-outline';
 import IconService from '~icons/material-symbols/settings-suggest-outline';
 import IconWarning from '~icons/material-symbols/warning-outline';
+
+/**
+ * Whether a gateway's last refresh left anything to report, and what: in the
+ * reader's language, from the code the backend sends rather than a sentence of
+ * its own (#340).
+ */
+const RefreshBadge: FC<{ health: InstanceHealth }> = ({ health }) => {
+  const { t } = useTranslation();
+  const reason = healthReason(t, health);
+  return reason ? (
+    <Tooltip label={reason}>
+      <Badge color="red" variant="dot" size="sm">{t('overview.logError')}</Badge>
+    </Tooltip>
+  ) : (
+    <Badge color="green" variant="dot" size="sm">{t('overview.stable')}</Badge>
+  );
+};
 
 const Overview = () => {
   const { t } = useTranslation();
@@ -271,13 +290,7 @@ const Overview = () => {
                       </Text>
                     </Table.Td>
                     <Table.Td style={{ textAlign: 'right' }}>
-                      {inst.error ? (
-                        <Tooltip label={inst.error}>
-                          <Badge color="red" variant="dot" size="sm">{t('overview.logError')}</Badge>
-                        </Tooltip>
-                      ) : (
-                        <Badge color="green" variant="dot" size="sm">{t('overview.stable')}</Badge>
-                      )}
+                      <RefreshBadge health={inst} />
                     </Table.Td>
                   </Table.Tr>
                 ))}

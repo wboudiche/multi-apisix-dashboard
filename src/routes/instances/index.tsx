@@ -55,6 +55,7 @@ import {
   type InstanceHealth,
 } from '@/apis/instances';
 import { instancesQueryOptions } from '@/apis/queries';
+import { healthReason } from '@/config/health-reason';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
@@ -104,8 +105,9 @@ const ConnectivityBadge = ({
   }
 
   const connected = health.status === 'Connected';
+  const reason = healthReason(t, health);
   return (
-    <Tooltip label={health.error} disabled={!health.error}>
+    <Tooltip label={reason} disabled={!reason}>
       <Badge color={connected ? 'green' : 'red'} variant="light">
         {connected ? t('instances.connected') : t('instances.unreachable')}
       </Badge>

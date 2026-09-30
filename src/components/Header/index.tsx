@@ -46,6 +46,7 @@ import { type Team } from '@/apis/teams';
 import apisixLogo from '@/assets/apisix-logo.svg';
 import { BuildIdentity } from '@/components/BuildIdentity';
 import { queryClient } from '@/config/global';
+import { healthReason } from '@/config/health-reason';
 import { roleLabel } from '@/config/role-labels';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
@@ -68,8 +69,10 @@ const Logo = () => {
 };
 
 /** Small pulsing health dot */
-const HealthDot: FC<{ status?: 'Connected' | 'Disconnected' | 'Unknown'; error?: string }> = ({ status, error }) => {
+const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
   const { t } = useTranslation();
+  const status = health?.status;
+  const reason = healthReason(t, health);
   const isConnected = status === 'Connected';
   const color = isConnected ? '#10b981' : status === 'Disconnected' ? '#ef4444' : '#6b7280';
   // Grey covers two states the dashboard tells apart in words: a gateway whose
@@ -78,12 +81,12 @@ const HealthDot: FC<{ status?: 'Connected' | 'Disconnected' | 'Unknown'; error?:
   const label = isConnected
     ? t('header.healthConnected')
     : status === 'Disconnected'
-      ? error
-        ? t('header.healthDisconnectedWhy', { reason: error })
+      ? reason
+        ? t('header.healthDisconnectedWhy', { reason })
         : t('header.healthDisconnected')
       : status === 'Unknown'
-        ? error
-          ? t('header.healthUnknownWhy', { reason: error })
+        ? reason
+          ? t('header.healthUnknownWhy', { reason })
           : t('header.healthUnknown')
         : t('header.healthChecking');
 
@@ -309,7 +312,7 @@ export const Header: FC<HeaderProps> = (props) => {
     const health = healthMap[option.value];
     return (
       <Group gap={8} wrap="nowrap">
-        <HealthDot status={health?.status} error={health?.error} />
+        <HealthDot health={health} />
         <Text size="sm" truncate>{option.label}</Text>
       </Group>
     );
@@ -344,7 +347,7 @@ export const Header: FC<HeaderProps> = (props) => {
           {/* Instance Selector with Health Dots */}
           {instances.length > 0 && (
             <Group gap={6} wrap="nowrap">
-              <HealthDot status={currentHealth?.status} error={currentHealth?.error} />
+              <HealthDot health={currentHealth} />
               <Select
                 data-testid="instance-switcher"
                 placeholder={t('header.selectInstance')}

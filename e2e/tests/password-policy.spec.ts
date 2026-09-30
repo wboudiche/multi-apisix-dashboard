@@ -18,6 +18,7 @@ import { adminPom } from '@e2e/pom/admin';
 import { adminToken } from '@e2e/utils/admin-api';
 import { test } from '@e2e/utils/test';
 import { uiGoto, uiHasToastMsg } from '@e2e/utils/ui';
+import { i18n } from '@e2e/utils/ui/i18n';
 import { expect } from '@playwright/test';
 
 import type { PasswordPolicy } from '@/apis/policy';
@@ -175,4 +176,25 @@ test('a saved policy persists across a Settings page reload', async ({ page }) =
   await expect(
     page.getByLabel('Minimum length', { exact: true })
   ).toHaveValue('15');
+});
+
+test('a refused policy is explained in the reader’s language, and not saved', async ({
+  page,
+}) => {
+  const before = await getPolicy(await adminToken());
+
+  await uiGoto(page, '/settings');
+  await expect(
+    page.getByRole('heading', { name: 'Password policy' })
+  ).toBeVisible();
+
+  // Below the floor of 8. The backend's answer used to reach the toast as its
+  // own English sentence, "min_length must be >= 8", in every language (#340).
+  await page.getByLabel('Minimum length', { exact: true }).fill('4');
+  await page.getByRole('button', { name: 'Save policy' }).click();
+  await uiHasToastMsg(page, {
+    hasText: i18n.t('settings.invalid.minLengthTooLow', { limit: 8 }),
+  });
+
+  expect(await getPolicy(await adminToken())).toEqual(before);
 });

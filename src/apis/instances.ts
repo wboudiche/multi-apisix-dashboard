@@ -96,6 +96,11 @@ export type InstanceHealth = {
   // reached and unwell (#330).
   status: 'Connected' | 'Disconnected' | 'Unknown';
   last_check: string;
+  // Why it is not Connected: 'unreachable', 'not_read' or 'unreadable'. A
+  // string rather than that union, so a newer backend's code is not a type
+  // lie; `healthReason` turns it into words (#340).
+  code?: string;
+  // The probe's own error, sent to a super_admin only.
   error?: string;
 };
 

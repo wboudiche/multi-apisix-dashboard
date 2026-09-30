@@ -16,6 +16,7 @@
 package services
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
@@ -78,15 +79,31 @@ func TestValidatePasswordDisabledClasses(t *testing.T) {
 
 func TestSavePolicyRejectsInsane(t *testing.T) {
 	s := &PolicyService{} // etcd not needed; validation happens before any write
-	bad := []models.PasswordPolicy{
-		{MinLength: 4, MaxLength: 72},   // below floor 8
-		{MinLength: 12, MaxLength: 100}, // above bcrypt cap 72
-		{MinLength: 40, MaxLength: 20},  // max < min
-		{MinLength: 12, MaxLength: 72, HistoryDepth: -1},
+	bad := []struct {
+		policy    models.PasswordPolicy
+		wantCode  string
+		wantLimit int
+	}{
+		{models.PasswordPolicy{MinLength: 4, MaxLength: 72}, PolicyCodeMinLengthTooLow, 8},
+		{models.PasswordPolicy{MinLength: 12, MaxLength: 100}, PolicyCodeMaxLengthTooHigh, 72},
+		{models.PasswordPolicy{MinLength: 40, MaxLength: 20}, PolicyCodeMaxBelowMin, 0},
+		{models.PasswordPolicy{MinLength: 12, MaxLength: 72, HistoryDepth: -1}, PolicyCodeNegative, 0},
 	}
-	for i, p := range bad {
-		if err := s.validateConfig(p); err == nil {
-			t.Errorf("case %d: expected error for insane policy %+v", i, p)
+	for i, tc := range bad {
+		err := s.validateConfig(tc.policy)
+		if !errors.Is(err, ErrInvalidPolicy) {
+			t.Errorf("case %d: err = %v, want an ErrInvalidPolicy", i, err)
+			continue
+		}
+		// The code, not the sentence, is what the settings screen translates
+		// (#340).
+		var pe *PolicyError
+		if !errors.As(err, &pe) {
+			t.Errorf("case %d: err = %v, want a *PolicyError", i, err)
+			continue
+		}
+		if pe.Code != tc.wantCode || pe.Limit != tc.wantLimit {
+			t.Errorf("case %d: code, limit = %q, %d, want %q, %d", i, pe.Code, pe.Limit, tc.wantCode, tc.wantLimit)
 		}
 	}
 	if err := s.validateConfig(models.DefaultPasswordPolicy()); err != nil {
