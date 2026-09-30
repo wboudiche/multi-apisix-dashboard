@@ -91,18 +91,42 @@ const flatten = (node: unknown, prefix = '', out: Catalogue = new Map()) => {
   return out;
 };
 
-const catalogues = new Map<string, { modified: number; catalogue: Catalogue }>();
+/** A plural suffix, cardinal or ordinal, at the end of a key. */
+const PLURAL_SUFFIX = new RegExp(`_(?:ordinal_)?(?:${PLURAL_FORMS.join('|')})$`);
+
+/**
+ * The context siblings of each key: `key_<context>`, one more segment that is
+ * not a plural form of the key - or of the sibling - and not a key under a
+ * `key_…` object. Indexed once per catalogue rather than scanned per call.
+ */
+const siblingsOf = (catalogue: Catalogue) => {
+  const siblings = new Map<string, string[]>();
+  for (const k of catalogue.keys()) {
+    const base = k.replace(PLURAL_SUFFIX, '');
+    const dot = base.lastIndexOf('.');
+    for (let at = base.indexOf('_', dot + 1); at !== -1; at = base.indexOf('_', at + 1)) {
+      const prefix = base.slice(0, at);
+      if (!siblings.get(prefix)?.includes(base)) siblings.set(prefix, [...(siblings.get(prefix) ?? []), base]);
+    }
+  }
+  return siblings;
+};
+
+type Loaded = { catalogue: Catalogue; siblings: Map<string, string[]> };
+
+const catalogues = new Map<string, { modified: number } & Loaded>();
 
 /** The catalogue in a file, re-read when the file changes under an editor's lint server. */
-const catalogueAt = (file: string) => {
-  const resolved = path.resolve(process.cwd(), file);
+const catalogueAt = (cwd: string, file: string): Loaded => {
+  const resolved = path.resolve(cwd, file);
   const modified = statSync(resolved).mtimeMs;
   let entry = catalogues.get(resolved);
   if (!entry || entry.modified !== modified) {
-    entry = { modified, catalogue: flatten(JSON.parse(readFileSync(resolved, 'utf8'))) };
+    const catalogue = flatten(JSON.parse(readFileSync(resolved, 'utf8')));
+    entry = { modified, catalogue, siblings: siblingsOf(catalogue) };
     catalogues.set(resolved, entry);
   }
-  return entry.catalogue;
+  return entry;
 };
 
 /**
@@ -117,26 +141,18 @@ type Selectors = { count: boolean; ordinal: boolean; context: string | true | un
  * shape the catalogue spells them: `key`, `key_<context>`, and the plural forms
  * `…_one` / `…_ordinal_one` of each when a count is there.
  */
-const formsOf = (catalogue: Catalogue, key: string, { count, ordinal, context }: Selectors) => {
+const formsOf = ({ catalogue, siblings }: Loaded, key: string, { count, ordinal, context }: Selectors) => {
   const bases = [key];
-  if (context === true) {
-    // The sibling i18next picks is only known at run time: any `key_<x>` that
-    // is not itself a plural form, and not a key under a `key_…` object.
-    for (const k of catalogue.keys()) {
-      const suffix = k.startsWith(`${key}_`) ? k.slice(key.length + 1) : undefined;
-      if (suffix && !suffix.includes('.') && !PLURAL_FORMS.includes(suffix.replace(/^ordinal_/, ''))) {
-        bases.push(k);
-      }
-    }
-  } else if (context) {
-    bases.push(`${key}_${context}`);
-  }
+  // The sibling i18next picks is only known at run time when the context is.
+  if (context === true) bases.push(...(siblings.get(key) ?? []));
+  else if (context) bases.push(`${key}_${context}`);
   // An ordinal falls back to the cardinal forms when it has none of its own.
   const plural = (base: string) =>
     PLURAL_FORMS.flatMap((form) => (ordinal ? [`${base}_ordinal_${form}`, `${base}_${form}`] : [`${base}_${form}`]));
   // A key that exists as plural forms only resolves to one of them with the
   // count the call does not pass: those forms, and that count.
-  const pluralOnly = !count && !bases.some((b) => catalogue.has(b)) && plural(key).some((k) => catalogue.has(k));
+  const pluralOnly =
+    !count && !bases.some((b) => catalogue.has(b)) && bases.flatMap(plural).some((k) => catalogue.has(k));
   return {
     pluralOnly,
     forms: count || pluralOnly ? bases.flatMap((base) => [base, ...plural(base)]) : bases,
@@ -146,26 +162,26 @@ const formsOf = (catalogue: Catalogue, key: string, { count, ordinal, context }:
 /**
  * The placeholders a key interpolates, by the first segment of their path
  * (`{{user.name}}` is walked from the `user` the call passes), or undefined
- * for a key the catalogue does not have. A key that exists as plural forms
- * only needs the `count` that picks one. A `$t(other)` nested in a text
- * brings the other key's placeholders with it.
+ * for a key the catalogue does not have. A `$t(other)` nested in a text brings
+ * the other key's placeholders with it.
  */
 const placeholdersOf = (
-  catalogue: Catalogue,
+  loaded: Loaded,
   key: string,
   selectors: Selectors,
   seen = new Set<string>()
 ): Set<string> | undefined => {
-  const { forms, pluralOnly } = formsOf(catalogue, key, selectors);
+  const { catalogue } = loaded;
+  const { forms } = formsOf(loaded, key, selectors);
   const texts = forms.map((k) => catalogue.get(k)).filter((t): t is string => t !== undefined);
   if (texts.length === 0) return undefined;
-  const names = new Set<string>(pluralOnly ? ['count'] : []);
+  const names = new Set<string>();
   for (const text of texts) {
     for (const placeholder of placeholdersIn(text)) names.add(placeholder.split('.')[0]);
     for (const [, nested, ownValues] of text.matchAll(NESTED)) {
       if (ownValues || seen.has(nested)) continue;
       seen.add(nested);
-      for (const name of placeholdersOf(catalogue, nested, selectors, seen) ?? []) names.add(name);
+      for (const name of placeholdersOf(loaded, nested, selectors, seen) ?? []) names.add(name);
     }
   }
   return names;
@@ -219,14 +235,11 @@ const passedBy = (node: Node | undefined, into: Passed = new Map()): Passed | un
 };
 
 /**
- * The values the text is filled from: what `replace` holds when it is an
- * object - i18next then reads nothing beside it - and the options themselves
- * otherwise.
+ * The values the text is filled from: what `replace` holds when it is there -
+ * i18next then reads nothing beside it, the count included - and the options
+ * themselves otherwise. A `replace` held in a variable cannot be read.
  */
-const valuesOf = (passed: Passed) => {
-  const replace = passed.get('replace');
-  return replace?.type === 'ObjectExpression' ? passedBy(replace) : passed;
-};
+const valuesOf = (passed: Passed) => (passed.has('replace') ? passedBy(passed.get('replace')) : passed);
 
 /** `defaultValue`, and the `defaultValue_one` / `defaultValue_<context>` i18next reads beside it. */
 const isOption = (name: string) => OPTIONS.has(name) || name.startsWith('defaultValue_');
@@ -264,9 +277,9 @@ const rule: Rule.RuleModule = {
     if (!principal) return {};
     const functionName = i18n?.functionName ?? 't';
 
-    let catalogue: Catalogue;
+    let loaded: Loaded;
     try {
-      catalogue = catalogueAt(principal.translationPath);
+      loaded = catalogueAt(context.cwd, principal.translationPath);
     } catch (error) {
       // Said on each file rather than thrown: a rule that throws takes the
       // whole run down with a stack trace, in place of a message that names
@@ -288,17 +301,22 @@ const rule: Rule.RuleModule = {
         ordinal: passed.has('ordinal'),
         context: contextOf(passed.get('context')),
       };
-      const known = keys.map((key) => ({ key, placeholders: placeholdersOf(catalogue, key, selectors) }));
+      const known = keys.map((key) => ({ key, placeholders: placeholdersOf(loaded, key, selectors) }));
 
       // Every key the call can pick must have what it interpolates - said once
-      // per key and placeholder, whatever the shape of the ternary.
+      // per key and placeholder, whatever the shape of the ternary. A key that
+      // exists as plural forms only needs the `count` that picks one, passed
+      // beside the values: inside `replace` it fills {{count}} and picks nothing.
       const reported = new Set<string>();
+      const report = (key: string, placeholder: string) => {
+        if (reported.has(`${key} ${placeholder}`)) return;
+        reported.add(`${key} ${placeholder}`);
+        context.report({ node, messageId: 'missing', data: { key, placeholder: `{{${placeholder}}}` } });
+      };
       for (const { key, placeholders } of known) {
+        if (placeholders && formsOf(loaded, key, selectors).pluralOnly) report(key, 'count');
         for (const placeholder of placeholders ?? []) {
-          const filled = values.has(placeholder) || (placeholder === 'count' && passed.has('count'));
-          if (filled || reported.has(`${key} ${placeholder}`)) continue;
-          reported.add(`${key} ${placeholder}`);
-          context.report({ node, messageId: 'missing', data: { key, placeholder: `{{${placeholder}}}` } });
+          if (!values.has(placeholder)) report(key, placeholder);
         }
       }
 

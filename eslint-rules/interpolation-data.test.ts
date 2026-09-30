@@ -37,6 +37,10 @@ const translation = {
   friend: 'Friend',
   friend_male: 'Mr {{name}}',
   friend_female: 'Ms {{surname}}',
+  friend_male_one: 'one {{x}}',
+  friend_male_other: 'many {{x}}',
+  guest_male_one: 'one guest',
+  guest_male_other: 'guests',
   items_one: 'one item',
   items_other: 'several items',
   place_ordinal_one: '{{count}}st, {{where}}',
@@ -80,7 +84,8 @@ new RuleTester({
     { code: "t('greeting', { name: user.name })", settings },
     { code: "t('greeting', { 'name': x })", settings },
     { code: "t('greeting', { replace: { name } })", settings },
-    { code: "t('routes', { count, replace: { name } })", settings },
+    { code: "t('routes', { count, replace: { count, name } })", settings },
+    { code: "t('greeting', { replace: opts })", settings },
     { code: "t('greeting', { name, defaultValue_one: 'x', defaultValue_other: 'y' })", settings },
     { code: "t('path', { uri, name })", settings },
     { code: "t('formatted', { date })", settings },
@@ -96,6 +101,7 @@ new RuleTester({
     // A context or an ordinal picks a sibling at run time: all of them count -
     // the siblings, not the keys under a sibling object.
     { code: "t('friend', { context: 'male', name })", settings },
+    // (`friend_male_one` is a plural form of a sibling, not a sibling: {{x}} is not asked for.)
     { code: "t('friend', { context: gender, name, surname })", settings },
     // A context does not open the plural forms: `status_other` is not a sibling.
     { code: "t('status', { context: 'x' })", settings },
@@ -163,11 +169,28 @@ new RuleTester({
       settings,
       errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
     },
-    // With a `replace` object, i18next reads nothing beside it.
+    // With a `replace` object, i18next reads nothing beside it - the count
+    // included, which still picks the plural form from outside it.
     {
       code: "t('path', { replace: { uri }, name })",
       settings,
       errors: [{ messageId: 'missing', data: { key: 'path', placeholder: '{{name}}' } }],
+    },
+    {
+      code: "t('routes', { count, replace: { name } })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{count}}' } }],
+    },
+    {
+      code: "t('routes', { replace: { count, name } })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{count}}' } }],
+    },
+    // A context sibling that exists as plural forms only is missing its count too.
+    {
+      code: "t('guest', { context: 'male' })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'guest', placeholder: '{{count}}' } }],
     },
     {
       code: "t('rank', { count, ordinal: true })",
