@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
+
 import type { Rule } from 'eslint';
 
 /**
@@ -35,6 +38,9 @@ import type { Rule } from 'eslint';
  *
  * What it cannot see, it leaves alone: a key held in a variable, options
  * spread from one, a key `en` does not have (i18n/no-unknown-key reports that).
+ *
+ * The catalogue is the plugin's own setting, `settings.i18n.principalLangs`,
+ * so the file is named once for both.
  */
 
 /** i18next options that are instructions to it, not values for the text. */
@@ -63,31 +69,66 @@ const PLURAL_FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
 /** `{{name}}`, `{{- name}}` (unescaped) and `{{name, format}}`. */
 const PLACEHOLDER = /\{\{-?\s*([^},\s]+)\s*(?:,[^}]*)?\}\}/g;
 
-type Translation = { [key: string]: string | Translation };
+/** `$t(other.key)` and `$t(other.key, {...})`: the other key's placeholders count too. */
+const NESTED = /\$t\(\s*([^,)\s]+)/g;
 
-const flatten = (node: Translation, prefix = '', out = new Map<string, string>()) => {
-  for (const [key, value] of Object.entries(node)) {
-    const path = prefix ? `${prefix}.${key}` : key;
-    if (typeof value === 'string') out.set(path, value);
-    else flatten(value, path, out);
+type Catalogue = Map<string, string>;
+
+/** Every string leaf, as the dotted key i18next resolves. Anything else has no text. */
+const flatten = (node: unknown, prefix = '', out: Catalogue = new Map()) => {
+  if (typeof node === 'string') {
+    out.set(prefix, node);
+  } else if (node && typeof node === 'object' && !Array.isArray(node)) {
+    for (const [key, value] of Object.entries(node)) {
+      flatten(value, prefix ? `${prefix}.${key}` : key, out);
+    }
   }
   return out;
 };
 
-const flattened = new WeakMap<Translation, Map<string, string>>();
+const catalogues = new Map<string, { modified: number; catalogue: Catalogue }>();
+
+/** The catalogue in a file, re-read when the file changes under an editor's lint server. */
+const catalogueAt = (file: string) => {
+  const resolved = path.resolve(process.cwd(), file);
+  const modified = statSync(resolved).mtimeMs;
+  let entry = catalogues.get(resolved);
+  if (!entry || entry.modified !== modified) {
+    entry = { modified, catalogue: flatten(JSON.parse(readFileSync(resolved, 'utf8'))) };
+    catalogues.set(resolved, entry);
+  }
+  return entry.catalogue;
+};
 
 /**
- * The placeholders a key interpolates, across its plural forms, or undefined
- * for a key the translation does not have.
+ * The placeholders a key interpolates, or undefined for a key the catalogue
+ * does not have.
+ *
+ * Read across the forms i18next may resolve the key to: its plural forms
+ * always, and - when the call passes a `context` or asks for `ordinal` - every
+ * `key_…` sibling, since which one is chosen is only known at run time. A
+ * `$t(other)` nested in a text brings the other key's placeholders with it.
  */
-const placeholdersOf = (flat: Map<string, string>, key: string) => {
-  const texts = [key, ...PLURAL_FORMS.map((form) => `${key}_${form}`)]
-    .map((k) => flat.get(k))
-    .filter((text): text is string => text !== undefined);
+const placeholdersOf = (
+  catalogue: Catalogue,
+  key: string,
+  variants: boolean,
+  seen = new Set<string>()
+): Set<string> | undefined => {
+  const forms = variants
+    ? [...catalogue.keys()].filter((k) => k === key || k.startsWith(`${key}_`))
+    : [key, ...PLURAL_FORMS.map((form) => `${key}_${form}`)];
+  const texts = forms.map((k) => catalogue.get(k)).filter((t): t is string => t !== undefined);
   if (texts.length === 0) return undefined;
   const names = new Set<string>();
   for (const text of texts) {
     for (const match of text.matchAll(PLACEHOLDER)) names.add(match[1]);
+    for (const match of text.matchAll(NESTED)) {
+      const nested = match[1];
+      if (seen.has(nested)) continue;
+      seen.add(nested);
+      for (const name of placeholdersOf(catalogue, nested, variants, seen) ?? []) names.add(name);
+    }
   }
   return names;
 };
@@ -96,36 +137,45 @@ const placeholdersOf = (flat: Map<string, string>, key: string) => {
 // anyway, so a node is read by its `type` and whatever fields that type has.
 type Node = { type: string; [field: string]: unknown };
 
-/** The keys a first argument can name: a literal, or the literals of a ternary. */
-const keysOf = (node: Node | undefined): string[] => {
-  if (!node) return [];
-  if (node.type === 'Literal' && typeof node.value === 'string') return [node.value];
+const literalOf = (node: Node | undefined) => {
+  if (!node) return undefined;
+  if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
   if (node.type === 'TemplateLiteral' && (node.expressions as unknown[]).length === 0) {
-    return [(node.quasis as { value: { cooked: string } }[])[0].value.cooked];
+    return (node.quasis as { value: { cooked: string } }[])[0].value.cooked;
   }
-  if (node.type === 'ConditionalExpression') {
-    return [...keysOf(node.consequent as Node), ...keysOf(node.alternate as Node)];
-  }
-  return [];
+  return undefined;
 };
 
 /**
- * The names an options object passes, or undefined when they cannot be read:
- * a variable, or a spread. A missing second argument, or a default text in
- * its place, passes none.
+ * The keys a first argument can name - a literal, or the literals of a ternary
+ * - or undefined when any of them cannot be read.
  */
-const namesOf = (node: Node | undefined): Set<string> | undefined => {
-  if (!node || (node.type === 'Literal' && typeof node.value === 'string')) return new Set();
+const keysOf = (node: Node | undefined): string[] | undefined => {
+  if (node?.type === 'ConditionalExpression') {
+    const branches = [keysOf(node.consequent as Node), keysOf(node.alternate as Node)];
+    return branches.every((b) => b !== undefined) ? branches.flat() as string[] : undefined;
+  }
+  const key = literalOf(node);
+  return key === undefined ? undefined : [key];
+};
+
+/**
+ * The names an options object passes - what i18next's `replace` holds
+ * included - or undefined when they cannot be read: a variable, a spread, a
+ * computed name. No object passes none.
+ */
+const namesOf = (node: Node | undefined, into = new Set<string>()): Set<string> | undefined => {
+  if (!node) return into;
   if (node.type !== 'ObjectExpression') return undefined;
-  const names = new Set<string>();
   for (const property of node.properties as Node[]) {
     if (property.type !== 'Property' || property.computed) return undefined;
     const key = property.key as Node;
-    if (key.type === 'Identifier') names.add(key.name as string);
-    else if (key.type === 'Literal') names.add(String(key.value));
-    else return undefined;
+    const name = key.type === 'Identifier' ? (key.name as string) : key.type === 'Literal' ? String(key.value) : undefined;
+    if (name === undefined) return undefined;
+    into.add(name);
+    if (name === 'replace' && !namesOf(property.value as Node, into)) return undefined;
   }
-  return names;
+  return into;
 };
 
 const rule: Rule.RuleModule = {
@@ -134,14 +184,7 @@ const rule: Rule.RuleModule = {
     docs: {
       description: 'a t() call passes what its translation interpolates, and nothing else',
     },
-    schema: [
-      {
-        type: 'object',
-        properties: { translation: { type: 'object' } },
-        required: ['translation'],
-        additionalProperties: false,
-      },
-    ],
+    schema: [],
     messages: {
       missing: "'{{key}}' interpolates {{placeholder}}, which this call does not pass.",
       unused: "'{{key}}' has no {{name}} to interpolate.",
@@ -149,49 +192,44 @@ const rule: Rule.RuleModule = {
   },
 
   create(context) {
-    const translation = context.options[0].translation as Translation;
-    let flat = flattened.get(translation);
-    if (!flat) {
-      flat = flatten(translation);
-      flattened.set(translation, flat);
-    }
+    const i18n = context.settings.i18n as { principalLangs?: { translationPath: string }[] } | undefined;
+    const [principal] = i18n?.principalLangs ?? [];
+    if (!principal) return {};
+    const catalogue = catalogueAt(principal.translationPath);
 
-    const check = (node: Rule.Node, keyNode: Node | undefined, optionsNode: Node | undefined) => {
-      const names = namesOf(optionsNode);
-      if (!names) return;
-      const keys = keysOf(keyNode)
-        .map((key) => ({ key, placeholders: placeholdersOf(flat!, key) }))
-        .filter((k): k is { key: string; placeholders: Set<string> } => k.placeholders !== undefined);
-      if (keys.length === 0) return;
+    const check = (node: Rule.Node, keyNode: Node | undefined, names: Set<string> | undefined) => {
+      const keys = keysOf(keyNode);
+      if (!keys || !names) return;
+      const variants = names.has('context') || names.has('ordinal');
+      const known = keys.map((key) => ({ key, placeholders: placeholdersOf(catalogue, key, variants) }));
 
       // Every key the call can pick must have what it interpolates.
-      for (const { key, placeholders } of keys) {
-        for (const placeholder of placeholders) {
+      for (const { key, placeholders } of known) {
+        for (const placeholder of placeholders ?? []) {
           if (!names.has(placeholder)) {
-            context.report({
-              node,
-              messageId: 'missing',
-              data: { key, placeholder: `{{${placeholder}}}` },
-            });
+            context.report({ node, messageId: 'missing', data: { key, placeholder: `{{${placeholder}}}` } });
           }
         }
       }
 
       // A value is unused only when no key the call can pick interpolates it:
-      // a ternary between keys that need different things passes their union.
-      const interpolated = new Set(keys.flatMap(({ placeholders }) => [...placeholders]));
+      // a ternary between keys that need different things passes their union
+      // - which is not known while one of its keys is not in the catalogue.
+      if (known.some(({ placeholders }) => placeholders === undefined)) return;
+      const interpolated = new Set(known.flatMap(({ placeholders }) => [...placeholders!]));
       for (const name of names) {
         if (!interpolated.has(name) && !OPTIONS.has(name)) {
           context.report({
             node,
             messageId: 'unused',
-            data: { key: keys.map(({ key }) => key).join("' / '"), name: `{{${name}}}` },
+            data: { key: keys.join("' / '"), name: `{{${name}}}` },
           });
         }
       }
     };
 
     return {
+      // t(key, options) and t(key, 'default text', options)
       CallExpression(node) {
         const callee = node.callee as unknown as Node;
         const called =
@@ -201,28 +239,40 @@ const rule: Rule.RuleModule = {
               ? (callee.property as Node).name
               : undefined;
         if (called !== 't') return;
-        const [keyNode, optionsNode] = node.arguments as unknown as Node[];
-        check(node, keyNode, optionsNode);
+        const [keyNode, second, third] = node.arguments as unknown as Node[];
+        check(node, keyNode, namesOf(literalOf(second) === undefined ? second : third));
       },
 
-      // <Trans i18nKey="…" values={{ … }} />
-      JSXOpeningElement(node: Rule.Node) {
+      // <Trans i18nKey="…" values={{ … }} count={n} tOptions={{ … }}>…{{ name }}…</Trans>
+      JSXElement(node: Rule.Node) {
         const element = node as unknown as Node;
-        if ((element.name as Node).name !== 'Trans') return;
-        let keyNode: Node | undefined;
-        let optionsNode: Node | undefined;
-        for (const attribute of element.attributes as Node[]) {
-          if (attribute.type !== 'JSXAttribute') continue;
-          const name = (attribute.name as Node).name;
+        const opening = element.openingElement as Node;
+        if ((opening.name as Node).name !== 'Trans') return;
+        const expressionOf = (attribute: Node) => {
           const value = attribute.value as Node | null;
-          if (name === 'i18nKey') {
-            keyNode =
-              value?.type === 'JSXExpressionContainer' ? (value.expression as Node) : (value ?? undefined);
-          } else if (name === 'values') {
-            optionsNode = value?.type === 'JSXExpressionContainer' ? (value.expression as Node) : undefined;
+          return value?.type === 'JSXExpressionContainer' ? (value.expression as Node) : (value ?? undefined);
+        };
+        const key = (opening.attributes as Node[]).find(
+          (a) => a.type === 'JSXAttribute' && (a.name as Node).name === 'i18nKey'
+        );
+        const names = (): Set<string> | undefined => {
+          const into = new Set<string>();
+          for (const attribute of opening.attributes as Node[]) {
+            if (attribute.type !== 'JSXAttribute') return undefined; // {...props}
+            const name = (attribute.name as Node).name;
+            if (name === 'count') into.add('count');
+            else if ((name === 'values' || name === 'tOptions') && !namesOf(expressionOf(attribute), into)) {
+              return undefined;
+            }
           }
-        }
-        check(node, keyNode, optionsNode);
+          // Children interpolate too: <Trans i18nKey="k">Hello {{ name }}</Trans>.
+          for (const child of element.children as Node[]) {
+            const expression = child.type === 'JSXExpressionContainer' ? (child.expression as Node) : undefined;
+            if (expression?.type === 'ObjectExpression' && !namesOf(expression, into)) return undefined;
+          }
+          return into;
+        };
+        check(node, key && expressionOf(key), names());
       },
     };
   },

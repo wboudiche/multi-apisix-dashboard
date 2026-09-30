@@ -33,7 +33,6 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 import interpolationData from './eslint-rules/interpolation-data';
-import en from './src/locales/en/common.json';
 
 const importRules = tseslint.config({
   plugins: {
@@ -251,8 +250,10 @@ const i18nRules = tseslint.config({
     // Not the plugin's i18n/interpolation-data: that one reads the values
     // under a `data` option, which i18next calls do not have, so it either
     // saw nothing (its pattern matched nothing) or reported every call that
-    // did pass its values (#326). See eslint-rules/interpolation-data.ts.
-    'local/interpolation-data': ['error', { translation: en }],
+    // did pass its values (#326). See eslint-rules/interpolation-data.ts; it
+    // reads the catalogue from the `settings.i18n` block below, like the
+    // plugin's own rules.
+    'local/interpolation-data': 'error',
   },
   settings: {
     i18n: {

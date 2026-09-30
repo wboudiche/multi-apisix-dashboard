@@ -14,6 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
 import { RuleTester } from 'eslint';
 import { describe, it } from 'vitest';
 
@@ -30,10 +34,21 @@ const translation = {
   formatted: 'Since {{date, datetime}}',
   routes_one: '{{count}} route on {{name}}',
   routes_other: '{{count}} routes on {{name}}',
-  nested: { hint: 'Reset {{username}}' },
+  friend: 'Friend',
+  friend_male: 'Mr {{name}}',
+  place_ordinal_one: '{{count}}st, {{where}}',
+  place_ordinal_other: '{{count}}th, {{where}}',
+  nest: '$t(greeting)!',
+  loop: '$t(loop) and {{once}}',
+  nested: { hint: 'Reset {{username}}', gone: null, list: ['{{item}}'] },
 };
 
-const options = [{ translation }];
+// The rule reads the catalogue from the file the plugin's setting names,
+// relative to the working directory, so the fixture is written to disk.
+const translationPath = path.join(mkdtempSync(path.join(tmpdir(), 'interpolation-')), 'en.json');
+writeFileSync(translationPath, JSON.stringify(translation));
+
+const settings = { i18n: { principalLangs: [{ name: 'en', translationPath }] } };
 
 new RuleTester({
   languageOptions: {
@@ -43,55 +58,73 @@ new RuleTester({
   },
 }).run('interpolation-data', rule, {
   valid: [
-    { code: "t('plain')", options },
-    { code: "t('plain', 'Default text')", options },
-    { code: "t('greeting', { name })", options },
-    { code: "t('greeting', { name: user.name })", options },
-    { code: "t('greeting', { 'name': x })", options },
-    { code: "t('path', { uri, name })", options },
-    { code: "t('formatted', { date })", options },
-    { code: "t('nested.hint', { username })", options },
-    { code: "i18n.t('greeting', { name })", options },
+    { code: "t('plain')", settings },
+    { code: "t('plain', 'Default text')", settings },
+    { code: "t('greeting', { name })", settings },
+    { code: "t('greeting', 'Hello', { name })", settings },
+    { code: "t('greeting', { name: user.name })", settings },
+    { code: "t('greeting', { 'name': x })", settings },
+    { code: "t('greeting', { replace: { name } })", settings },
+    { code: "t('path', { uri, name })", settings },
+    { code: "t('formatted', { date })", settings },
+    { code: "t('nested.hint', { username })", settings },
+    { code: "i18n.t('greeting', { name })", settings },
+    { code: 't(`greeting`, { name })', settings },
     // Plural forms: the placeholders of every form, and count is always allowed.
-    { code: "t('routes', { count, name })", options },
-    { code: "t('plain', { count: 3 })", options },
+    { code: "t('routes', { count, name })", settings },
+    { code: "t('plain', { count: 3 })", settings },
     // i18next's own options are not values for the text.
-    { code: "t('greeting', { name, context: 'male', defaultValue: 'Hi' })", options },
-    { code: "t('plain', { interpolation: { escapeValue: false } })", options },
+    { code: "t('greeting', { name, context: 'x', defaultValue: 'Hi' })", settings },
+    { code: "t('plain', { interpolation: { escapeValue: false } })", settings },
+    // A context or an ordinal picks a sibling at run time: all of them count.
+    { code: "t('friend', { context: 'male', name })", settings },
+    { code: "t('place', { count, ordinal: true, where })", settings },
+    // A nested $t() brings the other key's placeholders; a cycle ends.
+    { code: "t('nest', { name })", settings },
+    { code: "t('loop', { once })", settings },
     // A ternary passes the union of what its keys need.
-    { code: "t(both ? 'path' : 'greeting', { uri, name })", options },
+    { code: "t(both ? 'path' : 'greeting', { uri, name })", settings },
     // What cannot be read is left alone.
-    { code: 't(key, { name })', options },
-    { code: "t('greeting', opts)", options },
-    { code: "t('greeting', { ...opts })", options },
-    { code: "t('greeting', { [field]: x })", options },
-    { code: "t('unknown.key', { name })", options },
-    { code: 't(`greeting`, { name })', options },
+    { code: 't(key, { name })', settings },
+    { code: "t(x ? 'plain' : key, { name })", settings },
+    { code: "t(x ? 'plain' : 'unknown.key', { name })", settings },
+    { code: "t('greeting', opts)", settings },
+    { code: "t('greeting', { ...opts })", settings },
+    { code: "t('greeting', { [field]: x })", settings },
+    { code: "t('unknown.key', { name })", settings },
+    { code: "t('nested.gone', { name })", settings },
+    { code: "t('nested.list', { item })", settings },
     // Not a translate call.
-    { code: "other('greeting')", options },
-    { code: "<Trans i18nKey='greeting' values={{ name }} />", options },
-    { code: "<Trans i18nKey='plain' components={{ b: <b /> }} />", options },
+    { code: "other('greeting')", settings },
+    { code: "<Trans i18nKey='greeting' values={{ name }} />", settings },
+    { code: "<Trans i18nKey='routes' count={n} values={{ name }} />", settings },
+    { code: "<Trans i18nKey='routes' tOptions={{ count, name }} />", settings },
+    { code: "<Trans i18nKey='greeting'>Hello {{ name }}</Trans>", settings },
+    { code: "<Trans i18nKey='greeting' {...props} />", settings },
+    { code: "<Trans i18nKey='plain' components={{ b: <b /> }} />", settings },
+    // No catalogue configured: nothing to hold the call to.
+    { code: "t('greeting')", settings: {} },
   ],
   invalid: [
     {
       code: "t('greeting')",
-      options,
+      settings,
       errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
     },
     {
       code: "t('greeting', 'Hello')",
-      options,
+      settings,
       errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
     },
     {
       code: "t('greeting', {})",
-      options,
+      settings,
       errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
     },
     // The renamed placeholder: the JSON says username, the call still says name.
     {
       code: "t('nested.hint', { name })",
-      options,
+      settings,
       errors: [
         { messageId: 'missing', data: { key: 'nested.hint', placeholder: '{{username}}' } },
         { messageId: 'unused', data: { key: 'nested.hint', name: '{{name}}' } },
@@ -99,43 +132,74 @@ new RuleTester({
     },
     {
       code: "t('plain', { name })",
-      options,
+      settings,
       errors: [{ messageId: 'unused', data: { key: 'plain', name: '{{name}}' } }],
     },
     {
       code: "t('path', { name })",
-      options,
+      settings,
       errors: [{ messageId: 'missing', data: { key: 'path', placeholder: '{{uri}}' } }],
     },
     {
       code: "t('routes', { count })",
-      options,
+      settings,
       errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{name}}' } }],
     },
     {
+      code: "t('friend', { context: 'male' })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'friend', placeholder: '{{name}}' } }],
+    },
+    {
+      code: "t('place', { count, ordinal: true })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'place', placeholder: '{{where}}' } }],
+    },
+    {
+      code: "t('nest')",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'nest', placeholder: '{{name}}' } }],
+    },
+    {
+      code: "t('greeting', 'Hello', { user })",
+      settings,
+      errors: [{ messageId: 'missing' }, { messageId: 'unused' }],
+    },
+    {
       code: "t(both ? 'path' : 'greeting', { name })",
-      options,
+      settings,
       errors: [{ messageId: 'missing', data: { key: 'path', placeholder: '{{uri}}' } }],
     },
     {
       code: "t(both ? 'path' : 'greeting', { uri, name, extra })",
-      options,
+      settings,
       errors: [{ messageId: 'unused', data: { key: "path' / 'greeting", name: '{{extra}}' } }],
+    },
+    // A branch that cannot be read still leaves the readable one held to what it needs.
+    {
+      code: "t(x ? 'greeting' : 'unknown.key', {})",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
     },
     {
       code: "i18n.t('greeting')",
-      options,
+      settings,
       errors: [{ messageId: 'missing' }],
     },
     {
       code: "<Trans i18nKey='greeting' />",
-      options,
+      settings,
       errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
     },
     {
       code: "<Trans i18nKey={'greeting'} values={{ user }} />",
-      options,
+      settings,
       errors: [{ messageId: 'missing' }, { messageId: 'unused' }],
+    },
+    {
+      code: "<Trans i18nKey='routes' values={{ name }} />",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{count}}' } }],
     },
   ],
 });
