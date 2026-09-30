@@ -66,11 +66,19 @@ const OPTIONS = new Set([
 
 const PLURAL_FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
 
-/** `{{name}}`, `{{- name}}` (unescaped) and `{{name, format}}`. */
-const PLACEHOLDER = /\{\{-?\s*([^},\s]+)\s*(?:,[^}]*)?\}\}/g;
+/**
+ * `{{name}}`, `{{- name}}` (unescaped) and `{{name, format}}`. A dotted path,
+ * `{{user.name}}`, is walked from the value the call passes, so its first
+ * segment is the name.
+ */
+const PLACEHOLDER = /\{\{-?\s*([^},\s.]+)[^},\s]*\s*(?:,[^}]*)?\}\}/g;
 
-/** `$t(other.key)` and `$t(other.key, {...})`: the other key's placeholders count too. */
-const NESTED = /\$t\(\s*([^,)\s]+)/g;
+/**
+ * `$t(other.key)`: the other key's placeholders count too - unless the nested
+ * call carries values of its own, `$t(other.key, {"name": "x"})`, which is
+ * then what fills them.
+ */
+const NESTED = /\$t\(\s*([^,)\s]+)\s*(,)?/g;
 
 type Catalogue = Map<string, string>;
 
@@ -100,34 +108,45 @@ const catalogueAt = (file: string) => {
   return entry.catalogue;
 };
 
+/** What the call passes that decides which form of a key i18next resolves. */
+type Selectors = { count: boolean; context: boolean; ordinal: boolean };
+
 /**
  * The placeholders a key interpolates, or undefined for a key the catalogue
  * does not have.
  *
- * Read across the forms i18next may resolve the key to: its plural forms
- * always, and - when the call passes a `context` or asks for `ordinal` - every
- * `key_…` sibling, since which one is chosen is only known at run time. A
- * `$t(other)` nested in a text brings the other key's placeholders with it.
+ * Read across the forms i18next may resolve the key to: its plural forms when
+ * the call passes a `count` (or when the key exists only as plural forms, so
+ * that the count it lacks is reported), and every `key_…` sibling when it
+ * passes a `context` or asks for `ordinal`, since which one is chosen is only
+ * known at run time. A `$t(other)` nested in a text brings the other key's
+ * placeholders with it.
  */
 const placeholdersOf = (
   catalogue: Catalogue,
   key: string,
-  variants: boolean,
+  selectors: Selectors,
   seen = new Set<string>()
 ): Set<string> | undefined => {
-  const forms = variants
-    ? [...catalogue.keys()].filter((k) => k === key || k.startsWith(`${key}_`))
-    : [key, ...PLURAL_FORMS.map((form) => `${key}_${form}`)];
-  const texts = forms.map((k) => catalogue.get(k)).filter((t): t is string => t !== undefined);
+  const plurals = PLURAL_FORMS.map((form) => `${key}_${form}`);
+  const forms = new Set([key]);
+  if (selectors.count || !catalogue.has(key)) plurals.forEach((k) => forms.add(k));
+  if (selectors.context || selectors.ordinal) {
+    // A sibling is `key_<form>`: one more segment, not a key under a
+    // `key_…` object.
+    for (const k of catalogue.keys()) {
+      if (k.startsWith(`${key}_`) && !k.slice(key.length + 1).includes('.')) forms.add(k);
+    }
+  }
+  const texts = [...forms].map((k) => catalogue.get(k)).filter((t): t is string => t !== undefined);
   if (texts.length === 0) return undefined;
   const names = new Set<string>();
   for (const text of texts) {
     for (const match of text.matchAll(PLACEHOLDER)) names.add(match[1]);
-    for (const match of text.matchAll(NESTED)) {
-      const nested = match[1];
-      if (seen.has(nested)) continue;
+    for (const [, nested, ownValues] of text.matchAll(NESTED)) {
+      if (ownValues || seen.has(nested)) continue;
       seen.add(nested);
-      for (const name of placeholdersOf(catalogue, nested, variants, seen) ?? []) names.add(name);
+      for (const name of placeholdersOf(catalogue, nested, selectors, seen) ?? []) names.add(name);
     }
   }
   return names;
@@ -192,23 +211,28 @@ const rule: Rule.RuleModule = {
   },
 
   create(context) {
-    const i18n = context.settings.i18n as { principalLangs?: { translationPath: string }[] } | undefined;
+    const i18n = context.settings.i18n as
+      | { principalLangs?: { translationPath: string }[]; functionName?: string }
+      | undefined;
     const [principal] = i18n?.principalLangs ?? [];
     if (!principal) return {};
     const catalogue = catalogueAt(principal.translationPath);
+    const functionName = i18n?.functionName ?? 't';
 
     const check = (node: Rule.Node, keyNode: Node | undefined, names: Set<string> | undefined) => {
       const keys = keysOf(keyNode);
       if (!keys || !names) return;
-      const variants = names.has('context') || names.has('ordinal');
-      const known = keys.map((key) => ({ key, placeholders: placeholdersOf(catalogue, key, variants) }));
+      const selectors = { count: names.has('count'), context: names.has('context'), ordinal: names.has('ordinal') };
+      const known = keys.map((key) => ({ key, placeholders: placeholdersOf(catalogue, key, selectors) }));
 
-      // Every key the call can pick must have what it interpolates.
+      // Every key the call can pick must have what it interpolates - said once
+      // per key and placeholder, whatever the shape of the ternary.
+      const reported = new Set<string>();
       for (const { key, placeholders } of known) {
         for (const placeholder of placeholders ?? []) {
-          if (!names.has(placeholder)) {
-            context.report({ node, messageId: 'missing', data: { key, placeholder: `{{${placeholder}}}` } });
-          }
+          if (names.has(placeholder) || reported.has(`${key} ${placeholder}`)) continue;
+          reported.add(`${key} ${placeholder}`);
+          context.report({ node, messageId: 'missing', data: { key, placeholder: `{{${placeholder}}}` } });
         }
       }
 
@@ -235,15 +259,15 @@ const rule: Rule.RuleModule = {
         const called =
           callee.type === 'Identifier'
             ? callee.name
-            : callee.type === 'MemberExpression'
+            : callee.type === 'MemberExpression' && !callee.computed
               ? (callee.property as Node).name
               : undefined;
-        if (called !== 't') return;
+        if (called !== functionName) return;
         const [keyNode, second, third] = node.arguments as unknown as Node[];
         check(node, keyNode, namesOf(literalOf(second) === undefined ? second : third));
       },
 
-      // <Trans i18nKey="…" values={{ … }} count={n} tOptions={{ … }}>…{{ name }}…</Trans>
+      // <Trans i18nKey="…" values={{ … }} count={n} context="…" tOptions={{ … }}>…{{ name }}…</Trans>
       JSXElement(node: Rule.Node) {
         const element = node as unknown as Node;
         const opening = element.openingElement as Node;
@@ -259,18 +283,20 @@ const rule: Rule.RuleModule = {
           const into = new Set<string>();
           for (const attribute of opening.attributes as Node[]) {
             if (attribute.type !== 'JSXAttribute') return undefined; // {...props}
-            const name = (attribute.name as Node).name;
-            if (name === 'count') into.add('count');
+            const name = (attribute.name as Node).name as string;
+            if (name === 'count' || name === 'context') into.add(name);
             else if ((name === 'values' || name === 'tOptions') && !namesOf(expressionOf(attribute), into)) {
               return undefined;
             }
           }
-          // Children interpolate too: <Trans i18nKey="k">Hello {{ name }}</Trans>.
-          for (const child of element.children as Node[]) {
-            const expression = child.type === 'JSXExpressionContainer' ? (child.expression as Node) : undefined;
-            if (expression?.type === 'ObjectExpression' && !namesOf(expression, into)) return undefined;
-          }
-          return into;
+          // Children interpolate too, at any depth: <Trans i18nKey="k">Hello <b>{{ name }}</b></Trans>.
+          const fromChildren = (children: Node[]): boolean =>
+            children.every((child) => {
+              if (child.type === 'JSXElement') return fromChildren(child.children as Node[]);
+              const expression = child.type === 'JSXExpressionContainer' ? (child.expression as Node) : undefined;
+              return expression?.type !== 'ObjectExpression' || namesOf(expression, into) !== undefined;
+            });
+          return fromChildren(element.children as Node[]) ? into : undefined;
         };
         check(node, key && expressionOf(key), names());
       },

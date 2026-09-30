@@ -14,12 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { RuleTester } from 'eslint';
-import { describe, it } from 'vitest';
+import { afterAll, describe, it } from 'vitest';
 
 import rule from './interpolation-data';
 
@@ -39,16 +39,26 @@ const translation = {
   place_ordinal_one: '{{count}}st, {{where}}',
   place_ordinal_other: '{{count}}th, {{where}}',
   nest: '$t(greeting)!',
+  filled: '$t(greeting, {"name": "x"})!',
   loop: '$t(loop) and {{once}}',
+  status: 'Status',
+  status_other: 'Another status: {{x}}',
+  role: 'Role',
+  role_admin: 'Admin {{who}}',
+  role_settings: { title: '{{n}}' },
+  user: 'Hi {{user.name}}',
   nested: { hint: 'Reset {{username}}', gone: null, list: ['{{item}}'] },
 };
 
 // The rule reads the catalogue from the file the plugin's setting names,
 // relative to the working directory, so the fixture is written to disk.
-const translationPath = path.join(mkdtempSync(path.join(tmpdir(), 'interpolation-')), 'en.json');
+const dir = mkdtempSync(path.join(tmpdir(), 'interpolation-'));
+const translationPath = path.join(dir, 'en.json');
 writeFileSync(translationPath, JSON.stringify(translation));
+afterAll(() => rmSync(dir, { recursive: true }));
 
 const settings = { i18n: { principalLangs: [{ name: 'en', translationPath }] } };
+const renamed = { i18n: { ...settings.i18n, functionName: 'translate' } };
 
 new RuleTester({
   languageOptions: {
@@ -76,11 +86,18 @@ new RuleTester({
     // i18next's own options are not values for the text.
     { code: "t('greeting', { name, context: 'x', defaultValue: 'Hi' })", settings },
     { code: "t('plain', { interpolation: { escapeValue: false } })", settings },
-    // A context or an ordinal picks a sibling at run time: all of them count.
+    // A context or an ordinal picks a sibling at run time: all of them count -
+    // the siblings, not the keys under a sibling object.
     { code: "t('friend', { context: 'male', name })", settings },
+    { code: "t('role', { context: 'admin', who })", settings },
+    // A plural form is only resolved with a count: `status_other` is not one here.
+    { code: "t('status')", settings },
+    // A dotted placeholder is walked from the value passed.
+    { code: "t('user', { user })", settings },
     { code: "t('place', { count, ordinal: true, where })", settings },
     // A nested $t() brings the other key's placeholders; a cycle ends.
     { code: "t('nest', { name })", settings },
+    { code: "t('filled')", settings },
     { code: "t('loop', { once })", settings },
     // A ternary passes the union of what its keys need.
     { code: "t(both ? 'path' : 'greeting', { uri, name })", settings },
@@ -96,10 +113,14 @@ new RuleTester({
     { code: "t('nested.list', { item })", settings },
     // Not a translate call.
     { code: "other('greeting')", settings },
+    { code: "handlers[t]('greeting')", settings },
+    { code: "t('greeting')", settings: renamed },
     { code: "<Trans i18nKey='greeting' values={{ name }} />", settings },
     { code: "<Trans i18nKey='routes' count={n} values={{ name }} />", settings },
     { code: "<Trans i18nKey='routes' tOptions={{ count, name }} />", settings },
     { code: "<Trans i18nKey='greeting'>Hello {{ name }}</Trans>", settings },
+    { code: "<Trans i18nKey='greeting'>Hello <b>{{ name }}</b></Trans>", settings },
+    { code: "<Trans i18nKey='role' context='admin' values={{ who }} />", settings },
     { code: "<Trans i18nKey='greeting' {...props} />", settings },
     { code: "<Trans i18nKey='plain' components={{ b: <b /> }} />", settings },
     // No catalogue configured: nothing to hold the call to.
@@ -144,6 +165,28 @@ new RuleTester({
       code: "t('routes', { count })",
       settings,
       errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{name}}' } }],
+    },
+    // A key that exists only as plural forms is missing its count.
+    {
+      code: "t('routes', { name })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{count}}' } }],
+    },
+    {
+      code: "t('status', { count })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'status', placeholder: '{{x}}' } }],
+    },
+    // Said once, whatever the ternary repeats.
+    {
+      code: "t(a ? 'greeting' : 'greeting')",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
+    },
+    {
+      code: "translate('greeting')",
+      settings: renamed,
+      errors: [{ messageId: 'missing' }],
     },
     {
       code: "t('friend', { context: 'male' })",
@@ -195,6 +238,11 @@ new RuleTester({
       code: "<Trans i18nKey={'greeting'} values={{ user }} />",
       settings,
       errors: [{ messageId: 'missing' }, { messageId: 'unused' }],
+    },
+    {
+      code: "<Trans i18nKey='role' context='admin' />",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'role', placeholder: '{{who}}' } }],
     },
     {
       code: "<Trans i18nKey='routes' values={{ name }} />",
