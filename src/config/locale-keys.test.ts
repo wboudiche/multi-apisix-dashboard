@@ -171,7 +171,7 @@ const sourceOf = (file: string) =>
  * the check that a name here is one, and filtering first made it vacuous - a
  * key mistyped inside a ternary is invisible to eslint's i18n/no-unknown-key,
  * which does not descend into one, so this is the only thing that would say so.
- * Every dotted string in these five files is a key today; one that is not would
+ * Every dotted string in these files is a key today; one that is not would
  * fail there, by name, and wants renaming or a key of its own.
  */
 const keysRead = (file: string) =>
