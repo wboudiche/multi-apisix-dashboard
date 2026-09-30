@@ -134,6 +134,7 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
 
     return (
       <Select
+        data-testid="team-switcher"
         placeholder={t('header.allTeams')}
         data={teamData}
         value={currentTeamId}
@@ -345,6 +346,7 @@ export const Header: FC<HeaderProps> = (props) => {
             <Group gap={6} wrap="nowrap">
               <HealthDot status={currentHealth?.status} error={currentHealth?.error} />
               <Select
+                data-testid="instance-switcher"
                 placeholder={t('header.selectInstance')}
                 data={instanceData}
                 value={currentInstanceId}

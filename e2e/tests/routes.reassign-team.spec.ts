@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 /* eslint-disable playwright/no-wait-for-timeout, playwright/no-conditional-in-test, playwright/no-skipped-test */
+import { headerSelect } from '@e2e/pom/permission';
 import { env } from '@e2e/utils/env';
 import { expect, test } from '@playwright/test';
 
@@ -35,7 +36,7 @@ async function login(page: import('@playwright/test').Page) {
 }
 
 async function selectLocalInstance(page: import('@playwright/test').Page) {
-  const instanceInput = page.locator('input[placeholder="Select instance"]');
+  const instanceInput = headerSelect(page);
   await instanceInput.click();
   await page.waitForTimeout(500);
   await page.locator('[role="option"]:has-text("Local")').click();

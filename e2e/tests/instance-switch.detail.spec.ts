@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { permission } from '@e2e/pom/permission';
+import { headerSelect, permission } from '@e2e/pom/permission';
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { e2eReq } from '@e2e/utils/req';
@@ -148,7 +148,7 @@ const openOnStaging = async (page: Page, path: string, name: string) => {
  * whose reload remounts everything and hides exactly this.
  */
 const switchInHeader = async (page: Page, instance: string) => {
-  const switcher = page.locator('header input[placeholder="Select instance"]');
+  const switcher = headerSelect(page);
   await switcher.click();
   await page.getByRole('option', { name: instance }).click();
   await expect(switcher).toHaveValue(instance);
@@ -249,7 +249,7 @@ test('a page that suspends on its record reports it too, inside the app', async 
     await expect(page.getByTestId('detail-not-found')).toBeVisible();
     await expect(nameField(page)).toHaveCount(0);
     await expect(
-      page.locator('header input[placeholder="Select instance"]')
+      headerSelect(page)
     ).toHaveValue('Local APISIX');
   } finally {
     await context.close();

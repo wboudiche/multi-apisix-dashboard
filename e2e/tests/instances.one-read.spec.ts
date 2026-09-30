@@ -63,7 +63,7 @@ test('is read once for a page that guards on it and shows it in the header', asy
     timeout: 20000,
   });
   // The header has its list too - the selector is filled from it.
-  await expect(page.locator('header input[placeholder="Select instance"]')).toBeVisible();
+  await expect(adminPom.headerInstanceSelect(page)).toBeVisible();
 
   expect(reads).toEqual(['GET']);
 });
@@ -83,7 +83,7 @@ test('and once more for the page that used to read it a third time', async ({ pa
   reads.length = 0;
   await page.reload();
   await adminPom.isInstancesPage(page);
-  await expect(page.locator('header input[placeholder="Select instance"]')).toBeVisible();
+  await expect(adminPom.headerInstanceSelect(page)).toBeVisible();
 
   expect(reads).toEqual(['GET']);
 });

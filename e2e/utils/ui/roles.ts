@@ -14,9 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { readFileSync } from 'node:fs';
-
-import i18next from 'i18next';
+import { i18n } from '@e2e/utils/ui/i18n';
 
 import { globalRoleLabel, type KnownRole, roleLabel } from '@/config/role-labels';
 
@@ -30,27 +28,7 @@ import { globalRoleLabel, type KnownRole, roleLabel } from '@/config/role-labels
  * them at once (#319). Derived, they follow a change of wording instead of
  * pinning the old one - and `KnownRole` makes a role this build does not know a
  * compile error, rather than a locator the page can never match (#324).
- *
- * The real i18next does the interpolating, including the escaping it applies to
- * an interpolated value, so these are the strings the page renders rather than
- * an approximation of them.
  */
-// Read rather than imported: this runs in node, where a JSON import needs an
-// attribute the rest of the suite does not use, and the whole run fails to load
-// the module without it.
-const en = JSON.parse(
-  readFileSync(
-    new URL('../../../src/locales/en/common.json', import.meta.url),
-    'utf8'
-  )
-) as Record<string, unknown>;
-
-const i18n = i18next.createInstance();
-void i18n.init({
-  lng: 'en',
-  defaultNS: 'common',
-  resources: { en: { common: en } },
-});
 
 /** What the header shows under the username for `role`. */
 export const roleText = (role: KnownRole) => roleLabel(i18n.t, role);

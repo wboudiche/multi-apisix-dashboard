@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { permission } from '@e2e/pom/permission';
+import { headerSelect, permission } from '@e2e/pom/permission';
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
@@ -113,7 +113,7 @@ test('offers the catalogue of the instance selected, after a switch', async ({ p
   const token = await loginAdmin();
   const localKey = labelKey('e2e_local');
   const stagingKey = labelKey('e2e_staging');
-  const switcher = page.locator('header input[placeholder="Select instance"]');
+  const switcher = headerSelect(page);
   // In the header, as a person would: no reload.
   const switchTo = async (name: string) => {
     await switcher.click();
