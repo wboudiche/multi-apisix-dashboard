@@ -41,6 +41,8 @@ const translation = {
   items_other: 'several items',
   place_ordinal_one: '{{count}}st, {{where}}',
   place_ordinal_other: '{{count}}th, {{where}}',
+  rank_one: '{{count}}, {{where}}',
+  rank_other: '{{count}}, {{where}}',
   nest: '$t(greeting)!',
   filled: '$t(greeting, {"name": "x"})!',
   loop: '$t(loop) and {{once}}',
@@ -78,6 +80,8 @@ new RuleTester({
     { code: "t('greeting', { name: user.name })", settings },
     { code: "t('greeting', { 'name': x })", settings },
     { code: "t('greeting', { replace: { name } })", settings },
+    { code: "t('routes', { count, replace: { name } })", settings },
+    { code: "t('greeting', { name, defaultValue_one: 'x', defaultValue_other: 'y' })", settings },
     { code: "t('path', { uri, name })", settings },
     { code: "t('formatted', { date })", settings },
     { code: "t('nested.hint', { username })", settings },
@@ -103,6 +107,11 @@ new RuleTester({
     // A dotted placeholder is walked from the value passed.
     { code: "t('user', { user })", settings },
     { code: "t('place', { count, ordinal: true, where })", settings },
+    // An ordinal without ordinal forms falls back to the cardinal ones.
+    { code: "t('rank', { count, ordinal: true, where })", settings },
+    // A context i18next does not apply: nothing, an empty string.
+    { code: "t('friend', { context: undefined })", settings },
+    { code: "t('friend', { context: '' })", settings },
     // A nested $t() brings the other key's placeholders; a cycle ends.
     { code: "t('nest', { name })", settings },
     { code: "t('filled')", settings },
@@ -130,6 +139,7 @@ new RuleTester({
     { code: "<Trans i18nKey='greeting'>Hello {{ name }}</Trans>", settings },
     { code: "<Trans i18nKey='greeting'>Hello <b>{{ name }}</b></Trans>", settings },
     { code: "<Trans i18nKey='greeting'><>{{ name }}</></Trans>", settings },
+    { code: "<Trans i18nKey='greeting'>{<b>{{ name }}</b>}</Trans>", settings },
     { code: "<Trans i18nKey='greeting'>{cond ? <b>{{ name }}</b> : null}</Trans>", settings },
     { code: "<Trans i18nKey='role' context='admin' values={{ who }} />", settings },
     { code: "<Trans i18nKey='greeting' {...props} />", settings },
@@ -152,6 +162,17 @@ new RuleTester({
       code: "t('greeting', {})",
       settings,
       errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
+    },
+    // With a `replace` object, i18next reads nothing beside it.
+    {
+      code: "t('path', { replace: { uri }, name })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'path', placeholder: '{{name}}' } }],
+    },
+    {
+      code: "t('rank', { count, ordinal: true })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'rank', placeholder: '{{where}}' } }],
     },
     // The renamed placeholder: the JSON says username, the call still says name.
     {

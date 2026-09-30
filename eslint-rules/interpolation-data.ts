@@ -131,8 +131,9 @@ const formsOf = (catalogue: Catalogue, key: string, { count, ordinal, context }:
   } else if (context) {
     bases.push(`${key}_${context}`);
   }
+  // An ordinal falls back to the cardinal forms when it has none of its own.
   const plural = (base: string) =>
-    PLURAL_FORMS.map((form) => (ordinal ? `${base}_ordinal_${form}` : `${base}_${form}`));
+    PLURAL_FORMS.flatMap((form) => (ordinal ? [`${base}_ordinal_${form}`, `${base}_${form}`] : [`${base}_${form}`]));
   // A key that exists as plural forms only resolves to one of them with the
   // count the call does not pass: those forms, and that count.
   const pluralOnly = !count && !bases.some((b) => catalogue.has(b)) && plural(key).some((k) => catalogue.has(k));
@@ -201,9 +202,8 @@ const keysOf = (node: Node | undefined): { keys: string[]; partial: boolean } =>
 type Passed = Map<string, Node | undefined>;
 
 /**
- * The names an options object passes - what i18next's `replace` holds
- * included - or undefined when they cannot be read: a variable, a spread, a
- * computed name. No object passes none.
+ * The names an options object passes, or undefined when they cannot be read:
+ * a variable, a spread, a computed name. No object passes none.
  */
 const passedBy = (node: Node | undefined, into: Passed = new Map()): Passed | undefined => {
   if (!node) return into;
@@ -214,9 +214,32 @@ const passedBy = (node: Node | undefined, into: Passed = new Map()): Passed | un
     const name = key.type === 'Identifier' ? (key.name as string) : key.type === 'Literal' ? String(key.value) : undefined;
     if (name === undefined) return undefined;
     into.set(name, property.value as Node);
-    if (name === 'replace' && !passedBy(property.value as Node, into)) return undefined;
   }
   return into;
+};
+
+/**
+ * The values the text is filled from: what `replace` holds when it is an
+ * object - i18next then reads nothing beside it - and the options themselves
+ * otherwise.
+ */
+const valuesOf = (passed: Passed) => {
+  const replace = passed.get('replace');
+  return replace?.type === 'ObjectExpression' ? passedBy(replace) : passed;
+};
+
+/** `defaultValue`, and the `defaultValue_one` / `defaultValue_<context>` i18next reads beside it. */
+const isOption = (name: string) => OPTIONS.has(name) || name.startsWith('defaultValue_');
+
+/** A context i18next applies: a non-empty string or a number, or one only known at run time. */
+const contextOf = (node: Node | undefined): string | true | undefined => {
+  if (!node) return undefined;
+  if (node.type === 'Identifier' && node.name === 'undefined') return undefined;
+  if (node.type === 'Literal') {
+    const { value } = node;
+    return typeof value === 'number' || (typeof value === 'string' && value !== '') ? String(value) : undefined;
+  }
+  return literalOf(node) ?? true;
 };
 
 const rule: Rule.RuleModule = {
@@ -258,11 +281,12 @@ const rule: Rule.RuleModule = {
 
     const check = (node: Rule.Node, keyNode: Node | undefined, passed: Passed | undefined) => {
       const { keys, partial } = keysOf(keyNode);
-      if (!passed || keys.length === 0) return;
+      const values = passed && valuesOf(passed);
+      if (!passed || !values || keys.length === 0) return;
       const selectors: Selectors = {
         count: passed.has('count'),
         ordinal: passed.has('ordinal'),
-        context: passed.has('context') ? (literalOf(passed.get('context')) ?? true) : undefined,
+        context: contextOf(passed.get('context')),
       };
       const known = keys.map((key) => ({ key, placeholders: placeholdersOf(catalogue, key, selectors) }));
 
@@ -271,7 +295,8 @@ const rule: Rule.RuleModule = {
       const reported = new Set<string>();
       for (const { key, placeholders } of known) {
         for (const placeholder of placeholders ?? []) {
-          if (passed.has(placeholder) || reported.has(`${key} ${placeholder}`)) continue;
+          const filled = values.has(placeholder) || (placeholder === 'count' && passed.has('count'));
+          if (filled || reported.has(`${key} ${placeholder}`)) continue;
           reported.add(`${key} ${placeholder}`);
           context.report({ node, messageId: 'missing', data: { key, placeholder: `{{${placeholder}}}` } });
         }
@@ -283,8 +308,8 @@ const rule: Rule.RuleModule = {
       // in the catalogue.
       if (partial || known.some(({ placeholders }) => placeholders === undefined)) return;
       const interpolated = new Set(known.flatMap(({ placeholders }) => [...placeholders!]));
-      for (const name of passed.keys()) {
-        if (!interpolated.has(name) && !OPTIONS.has(name)) {
+      for (const name of values.keys()) {
+        if (!interpolated.has(name) && !isOption(name)) {
           context.report({
             node,
             messageId: 'unused',
@@ -341,6 +366,7 @@ const rule: Rule.RuleModule = {
               if (child.type !== 'JSXExpressionContainer') return true;
               const expression = child.expression as Node;
               if (expression.type === 'ObjectExpression') return passedBy(expression, into) !== undefined;
+              if (expression.type === 'JSXElement' || expression.type === 'JSXFragment') return fromChildren([expression]);
               return !['ConditionalExpression', 'LogicalExpression'].includes(expression.type);
             });
           return fromChildren(element.children as Node[]) ? into : undefined;
