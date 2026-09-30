@@ -122,7 +122,7 @@ export const FormItemNodes = <T extends FieldValues>(
             <FormItemTextInput
               control={control as Control<T>}
               name={fieldName(index, 'host')}
-              placeholder="Hostname or IP"
+              placeholder={t('form.upstreams.nodes.host.placeholder')}
               disabled={disabled}
               style={{ flex: 2, minWidth: 150 }}
             />
@@ -133,7 +133,7 @@ export const FormItemNodes = <T extends FieldValues>(
             <FormItemNumberInput
               control={control as Control<T>}
               name={fieldName(index, 'port')}
-              placeholder="Port"
+              placeholder={t('form.upstreams.nodes.port.title')}
               disabled={disabled}
               min={1}
               max={65535}

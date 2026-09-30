@@ -311,6 +311,9 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
   const { canEdit, isAdmin, canWriteResource } = usePermission();
+  // The backend keeps the route test for those who can write routes on the
+  // instance: it sends a request of any method through the gateway (#307).
+  const canTest = canWriteResource('routes');
   const [jsonDrawerOpen, setJsonDrawerOpen] = useBoolean(false);
   const [testDrawerOpen, setTestDrawerOpen] = useBoolean(false);
   const [reassignOpen, setReassignOpen] = useBoolean(false);
@@ -351,10 +354,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
           title: t('info.detail.title', { name: t('routes.singular') }),
           extra: (
             <Group>
-              {/* The backend keeps the route test for those who can write
-                  routes on the instance: it sends a request of any method
-                  through the gateway (#307). */}
-              {canWriteResource('routes') && (
+              {canTest && (
                 <Button
                   onClick={() => setTestDrawerOpen(true)}
                   size="compact-sm"

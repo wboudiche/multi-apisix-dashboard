@@ -274,7 +274,8 @@
       "selectPlugins": {
         "title": "Plugin Seç"
       },
-      "viewPlugin": "Plugin'i Görüntüle"
+      "viewPlugin": "Plugin'i Görüntüle",
+      "noConfigs": "Bu ağ geçidinde henüz eklenti yapılandırması yok"
     },
     "protos": {
       "content": "İçerik",
@@ -293,7 +294,18 @@
       "service": "Service",
       "uri": "URI",
       "uris": "URI'ler",
-      "vars": "Değişkenler"
+      "vars": "Değişkenler",
+      "tooltip": {
+        "priority": "Birden fazla rota eşleştiğinde önceliği yüksek olan önce seçilir",
+        "methods": "Bu rotanın yanıt vereceği HTTP yöntemleri. Tümünü eşleştirmek için boş bırakın",
+        "enableWebsocket": "Bu rota için WebSocket protokolüne yükseltmeyi etkinleştirir",
+        "uri": "Eşleşecek istek yolu. Tam eşleşmeyi ve * ile önek eşleşmesini destekler",
+        "host": "Host başlığıyla karşılaştırılacak alan adı",
+        "remoteAddr": "Belirli bir istemci IP adresinden veya CIDR aralığından gelen istekleri eşleştirir",
+        "vars": "Gelişmiş eşleştirme koşulları için Nginx değişken ifadeleri",
+        "filterFunc": "İstekleri gelişmiş biçimde süzmek için özel Lua işlevi"
+      },
+      "varsDescription": "Değişkenleri [[\"var\", \"operator\", \"value\"]] biçiminde girin. Örnek: [[\"arg_name\", \"==\", \"val\"]] veya [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]"
     },
     "requestOverride": {
       "title": "İstek Geçersiz Kılma",
@@ -368,7 +380,8 @@
       "sni": "SNI",
       "snis": "SNI'ler",
       "ssl_protocols": "SSL Protocol'leri",
-      "type": "Certificate Tipi"
+      "type": "Certificate Tipi",
+      "certificate": "Sertifika Yapılandırması"
     },
     "streamRoutes": {
       "protocol": {
@@ -477,7 +490,8 @@
         },
         "add": "Node Ekle",
         "host": {
-          "title": "Host"
+          "title": "Host",
+          "placeholder": "Ana bilgisayar adı veya IP"
         },
         "port": {
           "title": "Port",
@@ -493,6 +507,11 @@
         }
       },
       "passHost": "Pass Host",
+      "passHostOptions": {
+        "pass": "İstemci isteğindeki Host değerini koru",
+        "node": "Node'un IP adresini veya ana bilgisayar adını kullan",
+        "rewrite": "Host değerini yeniden yaz"
+      },
       "retries": "Retry Sayısı",
       "retry": "Retry",
       "retryTimeout": "Retry Timeout",
@@ -532,7 +551,8 @@
       "updateTime": "Güncelleme Zamanı",
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "`pass_host` değeri `rewrite` olduğunda ayarlayın",
-      "upstreamId": "Upstream ID"
+      "upstreamId": "Upstream ID",
+      "custom": "Özel"
     },
     "routeTest": {
       "requestFailed": "İstek başarısız oldu",

@@ -107,7 +107,12 @@ export const ServicePreviewSummary = ({ data }: Props) => {
             {fetchedUpstream?.name && (
               <Text size="sm" fw={600}>{fetchedUpstream.name}</Text>
             )}
+            {/* Not sentences: the scheme and the balancer APISIX assumes when
+                the upstream names none, spelled as the gateway spells them -
+                and as the value beside them is when it does name one. */}
+            {/* eslint-disable-next-line i18next/no-literal-string */}
             <Badge color="blue" variant="light" size="sm">{upstreamData?.scheme || 'http'}</Badge>
+            {/* eslint-disable-next-line i18next/no-literal-string */}
             <Badge color="gray" variant="outline" size="sm">{upstreamData?.type || 'roundrobin'}</Badge>
           </Group>
           {nodes.length > 0 && (

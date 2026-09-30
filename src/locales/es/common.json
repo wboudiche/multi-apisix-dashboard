@@ -276,7 +276,8 @@
       "selectPlugins": {
         "title": "Seleccionar Plugins"
       },
-      "viewPlugin": "Ver Plugin"
+      "viewPlugin": "Ver Plugin",
+      "noConfigs": "Esta pasarela aún no tiene configuraciones de plugins"
     },
     "protos": {
       "content": "Contenido",
@@ -295,7 +296,18 @@
       "service": "Servicio",
       "uri": "URI",
       "uris": "URIs",
-      "vars": "Variables"
+      "vars": "Variables",
+      "tooltip": {
+        "priority": "Cuando coinciden varias rutas, se elige primero la de mayor prioridad",
+        "methods": "Métodos HTTP a los que responde esta ruta. Déjalo vacío para aceptar todos",
+        "enableWebsocket": "Permite el cambio al protocolo WebSocket en esta ruta",
+        "uri": "La ruta de la petición que debe coincidir. Admite coincidencia exacta y por prefijo con *",
+        "host": "El nombre de dominio que se compara con la cabecera Host",
+        "remoteAddr": "Solo peticiones de una IP de cliente o de un rango CIDR concretos",
+        "vars": "Expresiones sobre variables de Nginx para condiciones avanzadas",
+        "filterFunc": "Función Lua propia para filtrar las peticiones de forma avanzada"
+      },
+      "varsDescription": "Introduce las variables con el formato [[\"var\", \"operator\", \"value\"]]. Ejemplo: [[\"arg_name\", \"==\", \"val\"]] o [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]"
     },
     "requestOverride": {
       "title": "Reescritura de Solicitud",
@@ -370,7 +382,8 @@
       "sni": "SNI",
       "snis": "SNIs",
       "ssl_protocols": "Protocolos SSL",
-      "type": "Tipo de Certificado"
+      "type": "Tipo de Certificado",
+      "certificate": "Configuración del certificado"
     },
     "streamRoutes": {
       "protocol": {
@@ -479,7 +492,8 @@
         },
         "add": "Añadir Nodo",
         "host": {
-          "title": "Host"
+          "title": "Host",
+          "placeholder": "Nombre de host o IP"
         },
         "port": {
           "title": "Puerto",
@@ -495,6 +509,11 @@
         }
       },
       "passHost": "Pasar Host",
+      "passHostOptions": {
+        "pass": "Conservar el Host de la petición del cliente",
+        "node": "Usar la IP o el nombre de host del nodo",
+        "rewrite": "Reescribir el Host"
+      },
       "retries": "Reintentos",
       "retry": "Reintentar",
       "retryTimeout": "Tiempo de espera de reintento",
@@ -534,7 +553,8 @@
       "updateTime": "Hora de Actualización",
       "upstreamHost": "Host de Upstream",
       "upstreamHostDesc": "Configura esto cuando `pass_host` sea `rewrite`",
-      "upstreamId": "ID de Upstream"
+      "upstreamId": "ID de Upstream",
+      "custom": "Personalizado"
     },
     "routeTest": {
       "requestFailed": "La solicitud falló",

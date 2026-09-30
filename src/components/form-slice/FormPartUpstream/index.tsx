@@ -88,10 +88,13 @@ export const FormItemScheme = () => {
       defaultValue={APISIX.UpstreamSchemeL7.options[0].value}
       data={[
         {
+          // The OSI layers, named the same in every language.
+          // eslint-disable-next-line i18next/no-literal-string
           group: 'L7',
           items: APISIX.UpstreamSchemeL7.options.map((v) => v.value),
         },
         {
+          // eslint-disable-next-line i18next/no-literal-string
           group: 'L4',
           items: APISIX.UpstreamSchemeL4.options.map((v) => v.value),
         },
@@ -369,7 +372,12 @@ export const FormPartUpstreamFlat = () => {
         defaultValue={APISIX.UpstreamPassHost.options[0].value}
         data={APISIX.UpstreamPassHost.options.map((v) => ({
           value: v.value,
-          label: v.value === 'pass' ? 'Keep the same Host from client request' : v.value === 'node' ? 'Use the IP or hostname of the node' : 'Rewrite Host'
+          label:
+            v.value === 'pass'
+              ? t('form.upstreams.passHostOptions.pass')
+              : v.value === 'node'
+                ? t('form.upstreams.passHostOptions.node')
+                : t('form.upstreams.passHostOptions.rewrite'),
         }))}
       />
       {passHost === 'rewrite' && (

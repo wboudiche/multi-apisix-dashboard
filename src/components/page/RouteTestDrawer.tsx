@@ -238,6 +238,9 @@ export const RouteTestDrawer = ({
               value={path}
               onChange={(e) => setPath(e.target.value)}
               label={t('form.routes.uri')}
+              // An example of a path, as the body's placeholder below is
+              // an example of a body: not sentences.
+              /* eslint-disable-next-line i18next/no-literal-string */
               placeholder="/api/v1/resource"
               style={{ flex: 1 }}
               size="sm"
@@ -337,6 +340,7 @@ export const RouteTestDrawer = ({
             {showBody && (
               <Tabs.Panel value="body" pt="xs">
                 <Textarea
+                  /* eslint-disable-next-line i18next/no-literal-string */
                   placeholder='{"key": "value"}'
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
