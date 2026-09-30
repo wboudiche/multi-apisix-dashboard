@@ -187,7 +187,8 @@
     "username": "Kullanıcı adı",
     "usernamePlaceholder": "Kullanıcı adınızı girin",
     "welcome": "Hoş geldiniz, {{username}}!",
-    "welcomeBack": "Tekrar hoş geldiniz"
+    "welcomeBack": "Tekrar hoş geldiniz",
+    "sessionEnded": "Oturumunuz sona erdi ve çıkış yapıldı. Devam eden işlemler tamamlanmamış olabilir."
   },
   "proxyError": {
     "title": "{{name}} erişilemiyor",
@@ -234,7 +235,11 @@
       "save": "Kaydet",
       "upload": "Yükle",
       "view": "Görüntüle",
-      "saveChanges": "Değişiklikleri kaydet"
+      "saveChanges": "Değişiklikleri kaydet",
+      "back": "Geri",
+      "backToList": "Listeye Dön",
+      "next": "İleri",
+      "submit": "Gönder"
     },
     "consumers": {
       "groupId": "Grup ID",
@@ -257,7 +262,11 @@
       "exportOpenAPI": "OpenAPI'yi dışa aktar",
       "saveSuccess": "JSON başarıyla kaydedildi",
       "selectedCount": "{{count}} seçili",
-      "viewRaw": "JSON'u görüntüle"
+      "viewRaw": "JSON'u görüntüle",
+      "unsaved": "Kaydedilmedi",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "format": "Biçimlendir"
     },
     "plugins": {
       "addPlugin": "Plugin Ekle",
@@ -275,7 +284,25 @@
         "title": "Plugin Seç"
       },
       "viewPlugin": "Plugin'i Görüntüle",
-      "noConfigs": "Bu ağ geçidinde henüz eklenti yapılandırması yok"
+      "noConfigs": "Bu ağ geçidinde henüz eklenti yapılandırması yok",
+      "exampleConfig": "Örnek Yapılandırma",
+      "requiredFields": "Zorunlu Alanlar",
+      "category": {
+        "authentication": "Kimlik Doğrulama",
+        "traffic-control": "Trafik Denetimi",
+        "observability": "Gözlemlenebilirlik",
+        "transformation": "Dönüştürme",
+        "security": "Güvenlik",
+        "serverless": "Serverless",
+        "logging": "Günlükleme",
+        "protocol": "Protokol",
+        "ai": "Yapay Zekâ",
+        "other": "Diğer"
+      },
+      "editorMode": {
+        "form": "Form",
+        "json": "JSON"
+      }
     },
     "protos": {
       "content": "İçerik",
@@ -305,7 +332,24 @@
         "vars": "Gelişmiş eşleştirme koşulları için Nginx değişken ifadeleri",
         "filterFunc": "İstekleri gelişmiş biçimde süzmek için özel Lua işlevi"
       },
-      "varsDescription": "Değişkenleri [[\"var\", \"operator\", \"value\"]] biçiminde girin. Örnek: [[\"arg_name\", \"==\", \"val\"]] veya [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]"
+      "varsDescription": "Değişkenleri [[\"var\", \"operator\", \"value\"]] biçiminde girin. Örnek: [[\"arg_name\", \"==\", \"val\"]] veya [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]",
+      "preview": {
+        "allMethods": "TÜM YÖNTEMLER",
+        "matchPreviewLabel": "Rota Önizlemesi",
+        "apiInfo": "API Bilgileri",
+        "upstream": "Upstream Yapılandırması",
+        "plugins": "Plugin'ler",
+        "boundToService": "Servise Bağlı",
+        "noUpstream": "Upstream yapılandırılmadı",
+        "noPlugins": "Plugin yapılandırılmadı"
+      },
+      "duplicateWarning": "Aynı URI'ye sahip bir rota zaten var: \"{{name}}\" ({{- uri}})",
+      "duplicateConfirmTitle": "Bu rota bir kopya gibi görünüyor",
+      "duplicateConfirmBody": "APISIX aynı yolda birden fazla rotaya izin verir ve aralarında önceliğe göre seçim yapar; bu yüzden buna izin verilir — ama genellikle amaçlanan bu değildir. Şunlar zaten var:",
+      "duplicateReasonName": "\"{{- name}}\" aynı adı kullanıyor",
+      "duplicateReasonPath": "\"{{- name}}\" zaten {{- uri}} üzerinde yanıt veriyor",
+      "duplicateReasonBoth": "\"{{- name}}\" aynı adı kullanıyor ve zaten {{- uri}} üzerinde yanıt veriyor",
+      "duplicateConfirmAction": "Yine de oluştur"
     },
     "requestOverride": {
       "title": "İstek Geçersiz Kılma",
@@ -361,7 +405,31 @@
       "enableWebsocket": "WebSocket Aktif",
       "hosts": "Host'lar",
       "script": "Script",
-      "settings": "Service Ayarları"
+      "settings": "Service Ayarları",
+      "hostsPlaceholder": "örn. api.example.com",
+      "hostsDescription": "Bu servisin yanıt vereceği alan adları",
+      "steps": {
+        "basic": "Temel",
+        "basicDesc": "Ad ve host'lar",
+        "upstream": "Upstream",
+        "upstreamDesc": "Backend hedefleri",
+        "plugin": "Plugin'ler",
+        "pluginDesc": "Eklentiler",
+        "preview": "Önizleme",
+        "previewDesc": "Gözden geçir ve gönder"
+      },
+      "namePlaceholder": "örn. my-api-service",
+      "descPlaceholder": "Bu servisin isteğe bağlı açıklaması",
+      "tooltip": {
+        "name": "Bu servisi tanımlayan benzersiz, okunabilir bir ad",
+        "desc": "Bu servisin amacını belgelemeye yardımcı isteğe bağlı açıklama",
+        "hosts": "Bu servisin yanıt verdiği alan adları. Bu servise bağlı rotalar bu host'larla eşleşir"
+      },
+      "preview": {
+        "upstream": "Upstream Yapılandırması",
+        "plugins": "Plugin'ler",
+        "noPlugins": "Plugin yapılandırılmadı"
+      }
     },
     "ssls": {
       "cert": "Certificate",
@@ -409,7 +477,11 @@
       "serverHint": "Bağlantı filtreleri: bir stream route bunlara göre eşleşir. Taşıma protokolü (TCP, UDP, TLS) burada ayarlanmaz — listener’a aittir, APISIX’in config.yaml dosyasında stream_proxy altında.",
       "serverPort": "Server Port",
       "sni": "SNI",
-      "transportTip": "TCP, UDP veya TLS mi arıyorsunuz? Bunlar listener ayarlarıdır; APISIX’in config.yaml dosyasında stream_proxy altında tanımlanır ve o listener’daki tüm stream route’lara uygulanır."
+      "transportTip": "TCP, UDP veya TLS mi arıyorsunuz? Bunlar listener ayarlarıdır; APISIX’in config.yaml dosyasında stream_proxy altında tanımlanır ve o listener’daki tüm stream route’lara uygulanır.",
+      "duplicateAny": "tüm stream trafiğiyle eşleşiyor",
+      "duplicateConfirmAction": "Yine de oluştur",
+      "duplicateConfirmBody": "Bu stream route'lar zaten aynı trafikle eşleşiyor. Yalnızca biri kazanabilir ve hangisinin kazanacağı sizin denetiminizde değildir.",
+      "duplicateConfirmTitle": "Eşleşen bir stream route zaten var"
     },
     "tagsInput": {
       "placeholder": "Metin girin ve enter'a basın"
@@ -479,7 +551,10 @@
         "idleTimeout": "Idle Timeout",
         "requests": "Request Sayısı",
         "size": "Boyut",
-        "title": "Keepalive Pool"
+        "title": "Keepalive Pool",
+        "idleTimeoutDesc": "Bir bağlantı kapatılmadan önceki en uzun boşta kalma süresi (saniye)",
+        "requestsDesc": "Bir keepalive bağlantısı yenilenmeden önceki en fazla istek sayısı",
+        "sizeDesc": "Worker başına upstream'e açık tutulan en fazla boşta keepalive bağlantısı sayısı"
       },
       "key": "Key",
       "keyDesc": "`type` değeri `chash` olduğunda geçerlidir",
@@ -504,7 +579,8 @@
         "title": "Node'lar",
         "weight": {
           "title": "Weight"
-        }
+        },
+        "desc": "Yönlendirilen trafiği alan backend sunucuları"
       },
       "passHost": "Pass Host",
       "passHostOptions": {
@@ -536,7 +612,10 @@
         "connect": "Connect",
         "read": "Read",
         "send": "Send",
-        "title": "Timeout"
+        "title": "Timeout",
+        "connectDesc": "Upstream ile bağlantı kurmak için en uzun süre (saniye)",
+        "readDesc": "Upstream'den yanıt beklemek için en uzun süre (saniye)",
+        "sendDesc": "İsteği upstream'e iletmek için en uzun süre (saniye)"
       },
       "title": "Upstream",
       "tls": {
@@ -545,14 +624,46 @@
         "clientCertKeyPair": "Client Cert Key Pair",
         "clientKey": "Client Key",
         "title": "TLS",
-        "verify": "Verify"
+        "verify": "Verify",
+        "clientCertDesc": "Upstream ile mTLS için PEM biçiminde istemci sertifikası",
+        "clientCertIdDesc": "Satır içi sertifika/anahtar yerine mevcut bir SSL kaynağına başvuru",
+        "clientKeyDesc": "İstemci sertifikasıyla eşleşen PEM biçiminde özel anahtar",
+        "verifyDesc": "Upstream bağlantılarında TLS sertifika doğrulamasını etkinleştir"
       },
       "type": "Tip",
       "updateTime": "Güncelleme Zamanı",
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "`pass_host` değeri `rewrite` olduğunda ayarlayın",
       "upstreamId": "Upstream ID",
-      "custom": "Özel"
+      "custom": "Özel",
+      "advancedSettings": "Gelişmiş Ayarlar",
+      "advancedSettingsDesc": "Retry, Timeout, Keepalive, TLS",
+      "algorithm": "Algoritma",
+      "typeDesc": "Trafiği upstream node'larına dağıtmak için kullanılan algoritma",
+      "passHostDesc": "Host başlığının upstream'e nasıl gönderileceği: pass (özgün değeri koru), node (hedef IP'yi kullan), rewrite (özel host)",
+      "retriesDesc": "Upstream'e yapılan bir istek başarısız olduğunda yeniden deneme sayısı",
+      "retryTimeoutDesc": "Vazgeçmeden önce yeniden denemelere ayrılan en uzun süre (saniye)",
+      "schemeDesc": "Upstream sunucusuyla iletişimde kullanılan protokol",
+      "steps": {
+        "basic": "Temel",
+        "basicDesc": "Ad ve etiketler",
+        "nodes": "Node'lar",
+        "nodesDesc": "Backend hedefleri",
+        "connection": "Bağlantı",
+        "connectionDesc": "Protokol ve ayarlar",
+        "preview": "Önizleme",
+        "previewDesc": "Gözden geçir ve gönder"
+      },
+      "preview": {
+        "nodesTitle": "Backend Node'ları",
+        "noNodes": "Node yapılandırılmadı",
+        "connectionTitle": "Bağlantı Ayarları",
+        "keepaliveTitle": "Keepalive Pool",
+        "healthChecksTitle": "Health Check'ler",
+        "activeChecks": "Etkin Denetimler",
+        "passiveChecks": "Pasif Denetimler",
+        "healthCheckSummary": "Yol: {{path}}, Aralık: {{interval}}s"
+      }
     },
     "routeTest": {
       "requestFailed": "İstek başarısız oldu",
@@ -561,13 +672,102 @@
       "noSuchRoute": "Bu rota artık bu örnekte yok.",
       "pathNotMatched": "Bu yol, bu rotanın eşleştiği yollardan biri değil.",
       "unverified": "Panel bu rotanın kime ait olduğunu doğrulayamadı, bu yüzden isteği göndermedi.",
-      "title": "Rotayı test et"
+      "title": "Rotayı test et",
+      "send": "Gönder",
+      "headers": "Başlıklar",
+      "query": "Sorgu",
+      "body": "Gövde",
+      "addHeader": "Başlık Ekle",
+      "addParameter": "Parametre Ekle",
+      "response": "Yanıt",
+      "header": "Başlık",
+      "value": "Değer",
+      "emptyResponse": "Yanıtı görmek için bir istek gönderin"
     },
     "import": {
-      "title": "Rotaları içe aktar"
+      "title": "Rotaları içe aktar",
+      "description": "OpenAPI 3.x belirtimi veya APISIX rota JSON'u yapıştırın",
+      "placeholder": "OpenAPI belirtimini veya APISIX rota JSON'unu buraya yapıştırın...",
+      "parse": "Çözümle",
+      "noRoutes": "Verilen veride rota bulunamadı",
+      "routesFound": "{{count}} rota bulundu",
+      "importRoutes": "{{count}} rotayı içe aktar",
+      "successCount": "{{count}} rota başarıyla içe aktarıldı",
+      "failedCount": "{{count}} rota içe aktarılamadı",
+      "duplicateTitle": "Bunlardan {{count}} tanesi bu ağ geçidinde zaten var",
+      "duplicateItem": "\"{{- name}}\", {{- existing}} ile çakışıyor",
+      "duplicateHint": "APISIX aynı yolda birden fazla rotaya izin verir; yeniden içe aktarmak bir şeyi güncellemek yerine kopyalar ekler. Devam etmek için yeniden içe aktarın.",
+      "duplicateCheckFailed": "Mevcut rotalar denetlenemedi. Denetim olmadan devam etmek için yeniden içe aktarın."
     },
     "importWsdl": {
-      "title": "WSDL'den içe aktar"
+      "title": "WSDL'den içe aktar",
+      "description": "Bir WSDL/ZIP yükleyin, WSDL XML'i yapıştırın veya bir URL'den getirin",
+      "tabUpload": "Yükle / Yapıştır",
+      "tabUrl": "URL'den",
+      "urlPlaceholder": "http://host/service?wsdl",
+      "urlLabel": "WSDL URL'si",
+      "fetch": "Getir",
+      "fetching": "Getiriliyor…",
+      "placeholder": "WSDL XML'ini buraya yapıştırın…",
+      "mode": "Çıktı",
+      "modePerOperation": "Her işlem için bir rota",
+      "modePassthrough": "Tek bir geçiş rotası",
+      "upstream": "Backend",
+      "upstreamExisting": "Mevcut upstream ID'sini kullan",
+      "upstreamExistingPlaceholder": "upstream ID'si",
+      "upstreamAuto": "WSDL adresinden otomatik oluştur",
+      "parse": "Çözümle",
+      "noServices": "WSDL'de SOAP servisi bulunamadı",
+      "servicesFound": "{{services}} servis, {{operations}} işlem",
+      "warningsTitle": "Uyarılar",
+      "import": "{{count}} rota oluştur",
+      "successCount": "WSDL'den {{count}} rota oluşturuldu",
+      "failedCount": "{{count}} rota oluşturulamadı",
+      "readError": "Dosya okunamadı",
+      "fetchError": "WSDL getirilemedi",
+      "upstreamRequired": "Mevcut bir upstream ID'si girin veya WSDL adresinden otomatik oluşturmayı seçin",
+      "unknownError": "Bilinmeyen hata"
+    },
+    "loadingConfiguration": "Yapılandırma yükleniyor…",
+    "unsavedChanges": {
+      "title": "Kaydedilmemiş Değişiklikler",
+      "message": "Kaydedilmemiş değişiklikleriniz var; bu sayfadan ayrılırsanız kaybolacak.",
+      "leave": "Ayrıl",
+      "stay": "Kal"
+    },
+    "error": {
+      "submitFailed": "Gönderilemedi",
+      "tryAgain": "Lütfen yapılandırmanızı gözden geçirip tekrar deneyin"
+    },
+    "draft": {
+      "restored": "Önceki oturumdaki taslak geri yüklendi",
+      "discard": "Taslağı Sil"
+    },
+    "reassignTeam": {
+      "title": "Takımı Yeniden Ata",
+      "selectTeam": "Takım seçin",
+      "current": "Mevcut takım",
+      "confirm": "Yeniden ata",
+      "success": "Takım başarıyla yeniden atandı",
+      "error": "Takım yeniden atanamadı",
+      "noTeam": "Takım yok",
+      "unassignWarning": "Takımı kaldırmak bu rotayı takımsız bırakır. Bir yönetici yeniden atayana kadar yönetici olmayan hiçbir listede görünmez.",
+      "unassignConfirm": "Takımı kaldır",
+      "unassignSuccess": "Takım başarıyla kaldırıldı",
+      "unassignError": "Takım kaldırılamadı"
+    },
+    "upstreamMode": {
+      "title": "Upstream Kaynağı",
+      "service": "Servise Bağla",
+      "serviceDesc": "Mevcut bir servisin tanımladığı upstream'i kullan",
+      "existing": "Mevcut Upstream'i Kullan",
+      "existingDesc": "Önceden yapılandırılmış bir upstream seçin",
+      "custom": "Özel Upstream",
+      "customDesc": "Upstream node'larını ve ayarlarını burada tanımlayın",
+      "serviceProvides": "Upstream yapılandırmasını bu servis sağlıyor",
+      "serviceFixed": "Buraya eklenen rotalar bu servise aittir ve upstream'lerini bu servis sağlar",
+      "pluginsCount": "{{count}} plugin",
+      "scheme": "Şema"
     }
   },
   "globalRules": {
@@ -617,7 +817,8 @@
   },
   "pluginMetadata": {
     "search": "Plugin Metadata Ara",
-    "singular": "Plugin Metadata"
+    "singular": "Plugin Metadata",
+    "forbidden": "Bu örnekteki rolünüz plugin meta verilerini okuyamaz. Erişim gerekiyorsa bir yöneticiye başvurun."
   },
   "protos": {
     "singular": "Proto"
@@ -736,7 +937,9 @@
     "streamRoutes": "Stream Route'lar",
     "upstreams": "Upstream'ler",
     "instances": "Örnekler",
-    "teams": "Ekipler"
+    "teams": "Ekipler",
+    "overview": "Genel Bakış",
+    "users": "Kullanıcılar"
   },
   "ssls": {
     "expired": "Süresi doldu",
@@ -839,7 +1042,9 @@
     "title": "Eksik sonuçlar",
     "unknown": "Bazı sonuçlar eksik olabilir.",
     "upstream_dependants_unresolved": "Her upstream’e bağlı olanlar tam olarak sayılamadı. Tüm upstream’ler listeleniyor; onlara bağlı olanların bir kısmı gösterilmiyor olabilir.",
-    "upstream_health_unresolved": "Bu upstream’lerin durumu ağ geçidinden okunamadı. Tüm upstream’ler listeleniyor; denetimlerinin gördüğü bilgi gösterilmiyor."
+    "upstream_health_unresolved": "Bu upstream’lerin durumu ağ geçidinden okunamadı. Tüm upstream’ler listeleniyor; denetimlerinin gördüğü bilgi gösterilmiyor.",
+    "service_upstream_unresolved": "Servis listesi okunamadı; bu yüzden upstream'ine bir servis üzerinden ulaşan rotalar aşağıda upstream göstermiyor.",
+    "unresolvedTitle": "Upstream'ler çözümlenemedi"
   },
   "common": {
     "expand": "Genişlet",
@@ -847,6 +1052,89 @@
   },
   "error": {
     "probeBusy": "Panel şu anda aynı anda izin verdiği kadar giden test çalıştırıyor. Birazdan yeniden deneyin.",
-    "probeBusyCaller": "Bir hesabın çalıştırabileceği kadar giden testi hâlihazırda çalıştırıyorsunuz. Birinin bitmesini bekleyin."
+    "probeBusyCaller": "Bir hesabın çalıştırabileceği kadar giden testi hâlihazırda çalıştırıyorsunuz. Birinin bitmesini bekleyin.",
+    "forbidden": "Bu örnekte bunu yapma izniniz yok.",
+    "unauthorized": "Ağ geçidi bu isteği reddetti. Yönetim anahtarı yanlış olabilir.",
+    "notFound": "Bulunamadı.",
+    "generic": "İstek başarısız oldu ({{status}}).",
+    "malformedResponse": "Sunucu {{- url}} için veri döndürmedi. Panel yanlış yapılandırılmış bir proxy'nin arkasında olabilir.",
+    "refreshFailed": "Oturumunuz yenilenemedi: {{- reason}}. Oturum açmanız hâlâ geçerli — tekrar deneyin."
+  },
+  "teams": {
+    "title": "Takımlar",
+    "add": "Takım Ekle",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "cancel": "İptal",
+    "headerName": "Takım Adı",
+    "headerDescription": "Açıklama",
+    "headerActions": "İşlemler",
+    "noDescription": "Açıklama girilmedi",
+    "emptyTitle": "Takım bulunamadı",
+    "emptyMessage": "Kapsamlı kaynakları yönetmeye başlamak için ilk takımınızı tanımlayın.",
+    "addTitle": "Yeni Takım Ekle",
+    "editTitle": "Takımı Düzenle",
+    "nameLabel": "Takım Adı",
+    "namePlaceholder": "örn. Ödemeler Takımı",
+    "descriptionLabel": "Açıklama",
+    "descriptionPlaceholder": "Bu takım neyi yönetiyor?",
+    "createSubmit": "Takım Oluştur",
+    "membersHint": "Üyeler, Kullanıcılar ekranından örnek başına atanır.",
+    "accessDenied": "Erişim reddedildi",
+    "accessDeniedMessage": "Takımları yalnızca süper yöneticiler yönetebilir.",
+    "confirmDelete": "Bu takımı silmek istediğinizden emin misiniz?",
+    "errorTitle": "Hata",
+    "successTitle": "Başarılı",
+    "loadFailed": "Takımlar yüklenemedi",
+    "nameRequired": "Takım adı zorunludur",
+    "created": "Takım başarıyla oluşturuldu",
+    "createFailed": "Takım oluşturulamadı",
+    "updated": "Takım başarıyla güncellendi",
+    "updateFailed": "Takım güncellenemedi",
+    "deleted": "Takım başarıyla silindi",
+    "deleteFailed": "Takım silinemedi"
+  },
+  "labelFilter": {
+    "add": "Filtreye ekle",
+    "selectKey": "Anahtar seçin",
+    "selectValue": "Değer seçin",
+    "anyValue": "Herhangi bir değer",
+    "loading": "Etiketler yükleniyor…",
+    "loadFailed": "Etiket kataloğu yüklenemedi; bu yüzden etikete göre filtreleme kullanılamıyor.",
+    "noKeys": "Henüz tanımlı etiket anahtarı yok",
+    "noValues": "Bu anahtar için henüz tanımlı değer yok"
+  },
+  "pageError": {
+    "retry": "Yeniden dene",
+    "goHome": "Ana Sayfaya Git"
+  },
+  "overview": {
+    "title": "Dashboard Genel Bakış",
+    "subtitle": "Sistem sağlığı ve kaynak kullanımı özeti",
+    "refresh": "Verileri Yenile",
+    "gatewayHealth": "Ağ Geçidi Sağlığı",
+    "online": "Çevrimiçi",
+    "healthyGateways": "Sağlıklı Ağ Geçitleri",
+    "disconnectedGateways": "Bağlantısı Kopuk Ağ Geçitleri",
+    "operationalStatus": "Çalışma Durumu",
+    "allClear": "Her Şey Yolunda",
+    "issuesDetected": "Sorun Algılandı",
+    "resourceMatrix": "Genel Kaynak Matrisi",
+    "resourceMatrixDesc": "Erişilebilen tüm örneklerdeki kaynakların toplamı",
+    "totalRoutes": "Toplam Rota",
+    "totalServices": "Toplam Servis",
+    "totalUpstreams": "Toplam Upstream",
+    "systemConfig": "Sistem Yapılandırması",
+    "systemConfigDesc": "Tüm veriler etcd kümesinde kalıcı olarak saklanır",
+    "connectivity": "Örnek Bağlantısı",
+    "columnInstance": "Ağ Geçidi Örneği",
+    "columnConnectivity": "Bağlantı",
+    "columnLastCheck": "Son Denetim",
+    "columnDiagnostic": "Tanı",
+    "logError": "Hata",
+    "stable": "Kararlı",
+    "loadFailedTitle": "Hata",
+    "loadFailed": "Dashboard genel bakışı yüklenemedi",
+    "uncountedInstances": "Kaynakları tam sayılamayan ağ geçitleri; bu yüzden yukarıdaki toplamlardan en az biri eksik: {{count}}"
   }
 }

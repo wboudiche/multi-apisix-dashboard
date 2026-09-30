@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
 import { defaultNS, resources } from './i18n';
+import { KEYS_NOT_READABLE } from './keys-not-readable';
 import { placeholdersIn } from './placeholders';
 import { roleLabelKeys } from './role-labels';
-import { FULLY_TRANSLATED_SCREENS } from './translated-screens';
 
 /**
  * What a rename leaves behind, and what a screen needs in every language.
@@ -148,9 +148,38 @@ describe.each(LANGUAGES)('%s', (lang) => {
 });
 
 /**
- * The files whose every key must exist in every language: see
- * src/config/translated-screens.ts. The other half of a finished screen - its
- * JSX attributes held to i18n - is eslint's, and covers every screen.
+ * Every key `en` has, in every language.
+ *
+ * i18next answers a missing key with the English text and says nothing, which
+ * is how 272 keys came to be English in every language with nothing reporting
+ * it (#362). One check over the bundles holds all of them; no file needs to be
+ * named for its keys to count.
+ *
+ * A plural form counts by its base: `en` has `x_one` and `x_other`, and a
+ * language has whichever forms its grammar needs, so what it must hold is some
+ * form of `x`, not English's.
+ */
+const base = (key: string) => key.replace(/_(zero|one|two|few|many|other)$/, '');
+
+describe.each(LANGUAGES)('%s', (lang) => {
+  const translated = translations.get(lang)!;
+  const bases = new Set([...translated.keys()].map(base));
+
+  it('has every key en has', () => {
+    const missing = [...en.keys()].filter((key) => {
+      const value = translated.get(key);
+      if (typeof value === 'string' && value.trim() !== '') return false;
+      return key === base(key) || !bases.has(base(key));
+    });
+    expect(missing).toEqual([]);
+  });
+});
+
+/**
+ * What every file spells out is a key `en` holds, and every key it reads is
+ * spelled out. The keys themselves are held above; this holds the source that
+ * names them, for every file under src/ but the ones
+ * src/config/keys-not-readable.ts names, with the reason.
  *
  * Read out of the source rather than enumerated: a list of keys goes stale, and
  * the first attempt at this test listed 11 of the 48 these files read.
@@ -160,27 +189,44 @@ const sourceOf = (file: string) =>
   readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 
 /**
- * The keys a file asks for: every dotted name it spells out, kept if `en` holds
- * one by that name.
+ * Every source file, as a path from the repository root - the form the
+ * exclusion list spells - but the tests, the bundles and the generated route
+ * tree.
+ */
+const sourceFiles = (dir = 'src'): string[] =>
+  readdirSync(new URL(`../../${dir}`, import.meta.url), { withFileTypes: true }).flatMap((entry) => {
+    const path = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return entry.name === 'locales' ? [] : sourceFiles(path);
+    return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) && !entry.name.endsWith('.gen.ts')
+      ? [path]
+      : [];
+  });
+
+/**
+ * The keys a file asks for: every dotted name it spells out.
  *
  * Matching `t('...` instead would read the first argument of a call and stop
  * there, which missed `t(published ? 'info.publish.success' : 'info.unpublish.success')`
  * on the routes list - two keys, in no language but English, on a screen the
- * list below called translated.
+ * list of that time called translated.
  *
  * Nothing is dropped for not being a key: `reads only keys en holds` below is
  * the check that a name here is one, and filtering first made it vacuous - a
  * key mistyped inside a ternary is invisible to eslint's i18n/no-unknown-key,
  * which does not descend into one, so this is the only thing that would say so.
- * Every dotted string in these files is a key today; one that is not would
- * fail there, by name, and wants renaming or a key of its own.
+ * A dotted string that is not a key - a field path, a protocol name - puts its
+ * file on the exclusion list, with that reason.
  */
 const keysRead = (file: string) =>
   [...sourceOf(file).matchAll(/'([a-zA-Z][\w]*(?:\.[\w]+)+)'/g)].map((m) => m[1]);
 
-describe.each(FULLY_TRANSLATED_SCREENS)('%s', (file) => {
-  const keys = [...new Set(keysRead(file))].sort();
+const held = sourceFiles().filter((file) => !KEYS_NOT_READABLE.includes(file));
 
+it('excludes only files that exist', () => {
+  expect(KEYS_NOT_READABLE.filter((file) => !sourceFiles().includes(file))).toEqual([]);
+});
+
+describe.each(held)('%s', (file) => {
   it('spells out every key it reads', () => {
     // What the harvest above cannot see: a key held in a variable or built from
     // one. The check below would pass on the keys it does see and say nothing
@@ -190,17 +236,8 @@ describe.each(FULLY_TRANSLATED_SCREENS)('%s', (file) => {
   });
 
   it('reads only keys en holds', () => {
-    // A screen asking for a key no bundle has renders the key itself. Reported
-    // here rather than dropped from the list below.
+    // A screen asking for a key no bundle has renders the key itself.
+    const keys = [...new Set(keysRead(file))].sort();
     expect(keys.filter((key) => !en.has(key))).toEqual([]);
-  });
-
-  it.each(LANGUAGES)('is translated into %s', (lang) => {
-    const translated = translations.get(lang)!;
-    const missing = keys.filter((key) => {
-      const value = translated.get(key);
-      return typeof value !== 'string' || value.trim() === '';
-    });
-    expect(missing).toEqual([]);
   });
 });

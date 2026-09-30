@@ -187,7 +187,8 @@
     "username": "Nombre de usuario",
     "usernamePlaceholder": "Introduce tu nombre de usuario",
     "welcome": "¡Bienvenido, {{username}}!",
-    "welcomeBack": "Bienvenido de nuevo"
+    "welcomeBack": "Bienvenido de nuevo",
+    "sessionEnded": "Tu sesión ha terminado y se ha cerrado. Puede que algo en curso no haya llegado a completarse."
   },
   "proxyError": {
     "title": "No se puede contactar con {{name}}",
@@ -234,7 +235,11 @@
       "save": "Guardar",
       "upload": "Subir",
       "view": "Ver",
-      "saveChanges": "Guardar cambios"
+      "saveChanges": "Guardar cambios",
+      "back": "Atrás",
+      "backToList": "Volver a la lista",
+      "next": "Siguiente",
+      "submit": "Enviar"
     },
     "consumers": {
       "groupId": "ID de Grupo",
@@ -259,7 +264,11 @@
       "selectedCount": "{{count}} seleccionados",
       "viewRaw": "Ver JSON",
       "selectedCount_one": "{{count}} seleccionado",
-      "selectedCount_other": "{{count}} seleccionados"
+      "selectedCount_other": "{{count}} seleccionados",
+      "unsaved": "Sin guardar",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "format": "Formatear"
     },
     "plugins": {
       "addPlugin": "Añadir Plugin",
@@ -277,7 +286,25 @@
         "title": "Seleccionar Plugins"
       },
       "viewPlugin": "Ver Plugin",
-      "noConfigs": "Esta pasarela aún no tiene configuraciones de plugins"
+      "noConfigs": "Esta pasarela aún no tiene configuraciones de plugins",
+      "exampleConfig": "Configuración de ejemplo",
+      "requiredFields": "Campos obligatorios",
+      "category": {
+        "authentication": "Autenticación",
+        "traffic-control": "Control de tráfico",
+        "observability": "Observabilidad",
+        "transformation": "Transformación",
+        "security": "Seguridad",
+        "serverless": "Serverless",
+        "logging": "Registro",
+        "protocol": "Protocolo",
+        "ai": "IA",
+        "other": "Otros"
+      },
+      "editorMode": {
+        "form": "Formulario",
+        "json": "JSON"
+      }
     },
     "protos": {
       "content": "Contenido",
@@ -307,7 +334,24 @@
         "vars": "Expresiones sobre variables de Nginx para condiciones avanzadas",
         "filterFunc": "Función Lua propia para filtrar las peticiones de forma avanzada"
       },
-      "varsDescription": "Introduce las variables con el formato [[\"var\", \"operator\", \"value\"]]. Ejemplo: [[\"arg_name\", \"==\", \"val\"]] o [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]"
+      "varsDescription": "Introduce las variables con el formato [[\"var\", \"operator\", \"value\"]]. Ejemplo: [[\"arg_name\", \"==\", \"val\"]] o [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]",
+      "preview": {
+        "allMethods": "TODOS LOS MÉTODOS",
+        "matchPreviewLabel": "Vista previa de la ruta",
+        "apiInfo": "Información de la API",
+        "upstream": "Configuración del upstream",
+        "plugins": "Plugins",
+        "boundToService": "Vinculada a un servicio",
+        "noUpstream": "No hay ningún upstream configurado",
+        "noPlugins": "No hay ningún plugin configurado"
+      },
+      "duplicateWarning": "Ya existe una ruta con la misma URI: «{{name}}» ({{- uri}})",
+      "duplicateConfirmTitle": "Esta ruta parece un duplicado",
+      "duplicateConfirmBody": "APISIX permite varias rutas en el mismo path y elige entre ellas por prioridad, así que está permitido — pero normalmente no es lo que se pretendía. Ya existen las siguientes:",
+      "duplicateReasonName": "«{{- name}}» usa el mismo nombre",
+      "duplicateReasonPath": "«{{- name}}» ya responde en {{- uri}}",
+      "duplicateReasonBoth": "«{{- name}}» usa el mismo nombre y ya responde en {{- uri}}",
+      "duplicateConfirmAction": "Crear de todos modos"
     },
     "requestOverride": {
       "title": "Reescritura de Solicitud",
@@ -363,7 +407,31 @@
       "enableWebsocket": "Habilitar WebSocket",
       "hosts": "Hosts",
       "script": "Script",
-      "settings": "Configuración del Servicio"
+      "settings": "Configuración del Servicio",
+      "hostsPlaceholder": "p. ej. api.example.com",
+      "hostsDescription": "Nombres de dominio que atenderá este servicio",
+      "steps": {
+        "basic": "Básico",
+        "basicDesc": "Nombre y hosts",
+        "upstream": "Upstream",
+        "upstreamDesc": "Destinos del backend",
+        "plugin": "Plugins",
+        "pluginDesc": "Extensiones",
+        "preview": "Vista previa",
+        "previewDesc": "Revisar y enviar"
+      },
+      "namePlaceholder": "p. ej. my-api-service",
+      "descPlaceholder": "Descripción opcional de este servicio",
+      "tooltip": {
+        "name": "Un nombre único y legible que identifique este servicio",
+        "desc": "Descripción opcional para documentar el propósito de este servicio",
+        "hosts": "Nombres de dominio que atiende este servicio. Las rutas vinculadas a él coincidirán con estos hosts"
+      },
+      "preview": {
+        "upstream": "Configuración del upstream",
+        "plugins": "Plugins",
+        "noPlugins": "No hay ningún plugin configurado"
+      }
     },
     "ssls": {
       "cert": "Certificado",
@@ -411,7 +479,11 @@
       "serverHint": "Filtros de conexión: una stream route coincide según estos valores. El protocolo de transporte (TCP, UDP, TLS) no se configura aquí: pertenece al listener, en el config.yaml de APISIX bajo stream_proxy.",
       "serverPort": "Puerto del Servidor",
       "sni": "SNI",
-      "transportTip": "¿Busca TCP, UDP o TLS? Son ajustes del listener, declarados bajo stream_proxy en el config.yaml de APISIX, y se aplican a todas las stream routes de ese listener."
+      "transportTip": "¿Busca TCP, UDP o TLS? Son ajustes del listener, declarados bajo stream_proxy en el config.yaml de APISIX, y se aplican a todas las stream routes de ese listener.",
+      "duplicateAny": "coincide con todo el tráfico de stream",
+      "duplicateConfirmAction": "Crear de todos modos",
+      "duplicateConfirmBody": "Estas stream routes ya coinciden con el mismo tráfico. Solo una de ellas puede ganar, y cuál no es algo que controles.",
+      "duplicateConfirmTitle": "Ya existe una stream route que coincide"
     },
     "tagsInput": {
       "placeholder": "Introduce texto, luego presiona Enter o fuera de foco"
@@ -481,7 +553,10 @@
         "idleTimeout": "Tiempo de Inactividad",
         "requests": "Solicitudes",
         "size": "Tamaño",
-        "title": "Pool Keepalive"
+        "title": "Pool Keepalive",
+        "idleTimeoutDesc": "Tiempo máximo de inactividad (segundos) antes de cerrar una conexión",
+        "requestsDesc": "Número máximo de solicitudes por conexión keepalive antes de renovarla",
+        "sizeDesc": "Número máximo de conexiones keepalive inactivas hacia el upstream por worker"
       },
       "key": "Clave",
       "keyDesc": "Esto será válido cuando `type` sea `chash`",
@@ -506,7 +581,8 @@
         "title": "Nodos",
         "weight": {
           "title": "Peso"
-        }
+        },
+        "desc": "Servidores del backend que reciben el tráfico redirigido"
       },
       "passHost": "Pasar Host",
       "passHostOptions": {
@@ -538,7 +614,10 @@
         "connect": "Conectar",
         "read": "Leer",
         "send": "Enviar",
-        "title": "Tiempo de Espera"
+        "title": "Tiempo de Espera",
+        "connectDesc": "Tiempo máximo (segundos) para establecer una conexión con el upstream",
+        "readDesc": "Tiempo máximo (segundos) de espera de una respuesta del upstream",
+        "sendDesc": "Tiempo máximo (segundos) para transmitir la solicitud al upstream"
       },
       "title": "Upstream",
       "tls": {
@@ -547,14 +626,46 @@
         "clientCertKeyPair": "Par Certificado/Clave del Cliente",
         "clientKey": "Clave del Cliente",
         "title": "TLS",
-        "verify": "Verificar"
+        "verify": "Verificar",
+        "clientCertDesc": "Certificado de cliente en formato PEM para mTLS con el upstream",
+        "clientCertIdDesc": "Referencia a un recurso SSL existente en lugar de un certificado y una clave en línea",
+        "clientKeyDesc": "Clave privada en formato PEM correspondiente al certificado de cliente",
+        "verifyDesc": "Habilitar la verificación del certificado TLS en las conexiones al upstream"
       },
       "type": "Tipo",
       "updateTime": "Hora de Actualización",
       "upstreamHost": "Host de Upstream",
       "upstreamHostDesc": "Configura esto cuando `pass_host` sea `rewrite`",
       "upstreamId": "ID de Upstream",
-      "custom": "Personalizado"
+      "custom": "Personalizado",
+      "advancedSettings": "Ajustes avanzados",
+      "advancedSettingsDesc": "Reintentos, tiempos de espera, keepalive, TLS",
+      "algorithm": "Algoritmo",
+      "typeDesc": "Algoritmo con el que se reparte el tráfico entre los nodos del upstream",
+      "passHostDesc": "Cómo se envía la cabecera Host al upstream: pass (conservar la original), node (usar la IP del destino), rewrite (host personalizado)",
+      "retriesDesc": "Número de reintentos cuando falla una solicitud al upstream",
+      "retryTimeoutDesc": "Tiempo máximo (segundos) para los reintentos antes de desistir",
+      "schemeDesc": "Protocolo usado para comunicarse con el servidor upstream",
+      "steps": {
+        "basic": "Básico",
+        "basicDesc": "Nombre y etiquetas",
+        "nodes": "Nodos",
+        "nodesDesc": "Destinos del backend",
+        "connection": "Conexión",
+        "connectionDesc": "Protocolo y ajustes",
+        "preview": "Vista previa",
+        "previewDesc": "Revisar y enviar"
+      },
+      "preview": {
+        "nodesTitle": "Nodos del backend",
+        "noNodes": "No hay ningún nodo configurado",
+        "connectionTitle": "Ajustes de conexión",
+        "keepaliveTitle": "Pool Keepalive",
+        "healthChecksTitle": "Verificaciones de salud",
+        "activeChecks": "Verificaciones activas",
+        "passiveChecks": "Verificaciones pasivas",
+        "healthCheckSummary": "Path: {{path}}, intervalo: {{interval}}s"
+      }
     },
     "routeTest": {
       "requestFailed": "La solicitud falló",
@@ -563,13 +674,102 @@
       "noSuchRoute": "Esta ruta ya no existe en esta instancia.",
       "pathNotMatched": "Esa ruta de acceso no coincide con esta ruta.",
       "unverified": "El panel no pudo comprobar de quién es esta ruta, así que no envió la solicitud.",
-      "title": "Probar ruta"
+      "title": "Probar ruta",
+      "send": "Enviar",
+      "headers": "Cabeceras",
+      "query": "Query",
+      "body": "Cuerpo",
+      "addHeader": "Añadir cabecera",
+      "addParameter": "Añadir parámetro",
+      "response": "Respuesta",
+      "header": "Cabecera",
+      "value": "Valor",
+      "emptyResponse": "Envía una petición para ver la respuesta"
     },
     "import": {
-      "title": "Importar rutas"
+      "title": "Importar rutas",
+      "description": "Pega una especificación OpenAPI 3.x o el JSON de rutas de APISIX",
+      "placeholder": "Pega aquí la especificación OpenAPI o el JSON de rutas de APISIX...",
+      "parse": "Analizar",
+      "noRoutes": "No se ha encontrado ninguna ruta en los datos proporcionados",
+      "routesFound": "{{count}} ruta(s) encontrada(s)",
+      "importRoutes": "Importar {{count}} ruta(s)",
+      "successCount": "{{count}} ruta(s) importada(s) correctamente",
+      "failedCount": "{{count}} ruta(s) no se han podido importar",
+      "duplicateTitle": "{{count}} de ellas ya existen en esta pasarela",
+      "duplicateItem": "«{{- name}}» choca con {{- existing}}",
+      "duplicateHint": "APISIX permite varias rutas en el mismo path, así que importar de nuevo añadirá copias en lugar de actualizar nada. Importa de nuevo para continuar.",
+      "duplicateCheckFailed": "No se han podido comprobar las rutas existentes. Importa de nuevo para continuar sin esa comprobación."
     },
     "importWsdl": {
-      "title": "Importar desde WSDL"
+      "title": "Importar desde WSDL",
+      "description": "Sube un WSDL/ZIP, pega el XML del WSDL o descárgalo desde una URL",
+      "tabUpload": "Subir / Pegar",
+      "tabUrl": "Desde una URL",
+      "urlPlaceholder": "http://host/service?wsdl",
+      "urlLabel": "URL del WSDL",
+      "fetch": "Descargar",
+      "fetching": "Descargando…",
+      "placeholder": "Pega aquí el XML del WSDL…",
+      "mode": "Resultado",
+      "modePerOperation": "Una ruta por operación",
+      "modePassthrough": "Una sola ruta de paso",
+      "upstream": "Backend",
+      "upstreamExisting": "Usar el ID de un upstream existente",
+      "upstreamExistingPlaceholder": "ID del upstream",
+      "upstreamAuto": "Crear automáticamente a partir de la dirección del WSDL",
+      "parse": "Analizar",
+      "noServices": "No se ha encontrado ningún servicio SOAP en el WSDL",
+      "servicesFound": "{{services}} servicio(s), {{operations}} operación(es)",
+      "warningsTitle": "Avisos",
+      "import": "Crear {{count}} ruta(s)",
+      "successCount": "{{count}} ruta(s) creada(s) a partir del WSDL",
+      "failedCount": "{{count}} ruta(s) no se han podido crear",
+      "readError": "No se ha podido leer el archivo",
+      "fetchError": "No se ha podido descargar el WSDL",
+      "upstreamRequired": "Introduce el ID de un upstream existente o elige crearlo automáticamente a partir de la dirección del WSDL",
+      "unknownError": "Error desconocido"
+    },
+    "loadingConfiguration": "Cargando la configuración…",
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "message": "Tienes cambios sin guardar que se perderán si sales de esta página.",
+      "leave": "Salir",
+      "stay": "Quedarse"
+    },
+    "error": {
+      "submitFailed": "No se ha podido enviar",
+      "tryAgain": "Revisa la configuración e inténtalo de nuevo"
+    },
+    "draft": {
+      "restored": "Borrador restaurado de la sesión anterior",
+      "discard": "Descartar el borrador"
+    },
+    "reassignTeam": {
+      "title": "Reasignar equipo",
+      "selectTeam": "Selecciona un equipo",
+      "current": "Equipo actual",
+      "confirm": "Reasignar",
+      "success": "Equipo reasignado correctamente",
+      "error": "No se ha podido reasignar el equipo",
+      "noTeam": "Sin equipo",
+      "unassignWarning": "Al quitar el equipo, esta ruta deja de pertenecer a ninguno. Desaparece de todas las listas que no sean de administrador hasta que un administrador la vuelva a asignar.",
+      "unassignConfirm": "Quitar el equipo",
+      "unassignSuccess": "Equipo quitado correctamente",
+      "unassignError": "No se ha podido quitar el equipo"
+    },
+    "upstreamMode": {
+      "title": "Origen del upstream",
+      "service": "Vincular a un servicio",
+      "serviceDesc": "Usar el upstream definido por un servicio existente",
+      "existing": "Usar un upstream existente",
+      "existingDesc": "Seleccionar un upstream ya configurado",
+      "custom": "Upstream personalizado",
+      "customDesc": "Definir aquí mismo los nodos y ajustes del upstream",
+      "serviceProvides": "La configuración del upstream la proporciona este servicio",
+      "serviceFixed": "Las rutas añadidas aquí pertenecen a este servicio, que proporciona su upstream",
+      "pluginsCount": "{{count}} plugin(s)",
+      "scheme": "Esquema"
     }
   },
   "globalRules": {
@@ -619,7 +819,8 @@
   },
   "pluginMetadata": {
     "search": "Buscar Metadatos de Plugin",
-    "singular": "Metadatos de Plugin"
+    "singular": "Metadatos de Plugin",
+    "forbidden": "Tu rol en esta instancia no permite leer los metadatos de plugins. Pide acceso a un administrador si lo necesitas."
   },
   "protos": {
     "singular": "Proto"
@@ -738,7 +939,9 @@
     "streamRoutes": "Rutas de Stream",
     "upstreams": "Upstreams",
     "instances": "Instancias",
-    "teams": "Equipos"
+    "teams": "Equipos",
+    "overview": "Resumen",
+    "users": "Usuarios"
   },
   "ssls": {
     "expired": "Caducado",
@@ -841,7 +1044,9 @@
     "title": "Resultados incompletos",
     "unknown": "Es posible que falten algunos resultados.",
     "upstream_dependants_unresolved": "No se ha podido contar por completo lo que depende de cada upstream. Todos los upstreams aparecen en la lista; puede que no se muestre parte de lo que depende de ellos.",
-    "upstream_health_unresolved": "No se ha podido leer el estado de estos upstreams desde la pasarela. Todos aparecen en la lista; lo que han visto sus comprobaciones no se muestra."
+    "upstream_health_unresolved": "No se ha podido leer el estado de estos upstreams desde la pasarela. Todos aparecen en la lista; lo que han visto sus comprobaciones no se muestra.",
+    "service_upstream_unresolved": "No se ha podido leer la lista de servicios, así que las rutas que llegan a su upstream a través de un servicio no muestran ninguno abajo.",
+    "unresolvedTitle": "Upstreams sin resolver"
   },
   "common": {
     "expand": "Expandir",
@@ -849,6 +1054,89 @@
   },
   "error": {
     "probeBusy": "El panel ya está ejecutando tantas pruebas salientes como permite a la vez. Vuelve a intentarlo en un momento.",
-    "probeBusyCaller": "Ya tienes en marcha tantas pruebas salientes como permite una cuenta. Espera a que termine una."
+    "probeBusyCaller": "Ya tienes en marcha tantas pruebas salientes como permite una cuenta. Espera a que termine una.",
+    "forbidden": "No tienes permiso para hacer eso en esta instancia.",
+    "unauthorized": "La pasarela ha rechazado esta petición. Su clave de administración puede ser incorrecta.",
+    "notFound": "No encontrado.",
+    "generic": "La petición ha fallado ({{status}}).",
+    "malformedResponse": "El servidor no ha respondido con datos para {{- url}}. Puede que el panel esté detrás de un proxy mal configurado.",
+    "refreshFailed": "No se ha podido renovar tu sesión: {{- reason}}. Tu inicio de sesión sigue siendo válido — inténtalo de nuevo."
+  },
+  "teams": {
+    "title": "Equipos",
+    "add": "Añadir equipo",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "headerName": "Nombre del equipo",
+    "headerDescription": "Descripción",
+    "headerActions": "Acciones",
+    "noDescription": "Sin descripción",
+    "emptyTitle": "No se ha encontrado ningún equipo",
+    "emptyMessage": "Define tu primer equipo para empezar a gestionar recursos por ámbito.",
+    "addTitle": "Añadir nuevo equipo",
+    "editTitle": "Editar equipo",
+    "nameLabel": "Nombre del equipo",
+    "namePlaceholder": "p. ej. Equipo de Pagos",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "¿Qué gestiona este equipo?",
+    "createSubmit": "Crear equipo",
+    "membersHint": "Los miembros se asignan por instancia desde la pantalla Usuarios.",
+    "accessDenied": "Acceso denegado",
+    "accessDeniedMessage": "Solo los superadministradores pueden gestionar equipos.",
+    "confirmDelete": "¿Seguro que quieres eliminar este equipo?",
+    "errorTitle": "Error",
+    "successTitle": "Éxito",
+    "loadFailed": "No se han podido cargar los equipos",
+    "nameRequired": "El nombre del equipo es obligatorio",
+    "created": "Equipo creado correctamente",
+    "createFailed": "No se ha podido crear el equipo",
+    "updated": "Equipo actualizado correctamente",
+    "updateFailed": "No se ha podido actualizar el equipo",
+    "deleted": "Equipo eliminado correctamente",
+    "deleteFailed": "No se ha podido eliminar el equipo"
+  },
+  "labelFilter": {
+    "add": "Añadir al filtro",
+    "selectKey": "Selecciona una clave",
+    "selectValue": "Selecciona un valor",
+    "anyValue": "Cualquier valor",
+    "loading": "Cargando etiquetas…",
+    "loadFailed": "No se ha podido cargar el catálogo de etiquetas, así que el filtro por etiqueta no está disponible.",
+    "noKeys": "Aún no hay ninguna clave de etiqueta definida",
+    "noValues": "Esta clave aún no tiene valores definidos"
+  },
+  "pageError": {
+    "retry": "Reintentar",
+    "goHome": "Ir al inicio"
+  },
+  "overview": {
+    "title": "Resumen del panel",
+    "subtitle": "Resumen del estado del sistema y del uso de recursos",
+    "refresh": "Actualizar datos",
+    "gatewayHealth": "Estado de las pasarelas",
+    "online": "En línea",
+    "healthyGateways": "Pasarelas sanas",
+    "disconnectedGateways": "Pasarelas desconectadas",
+    "operationalStatus": "Estado operativo",
+    "allClear": "Todo en orden",
+    "issuesDetected": "Problemas detectados",
+    "resourceMatrix": "Matriz global de recursos",
+    "resourceMatrixDesc": "Recursos consolidados de todas las instancias accesibles",
+    "totalRoutes": "Rutas en total",
+    "totalServices": "Servicios en total",
+    "totalUpstreams": "Upstreams en total",
+    "systemConfig": "Configuración del sistema",
+    "systemConfigDesc": "Todos los datos persisten en el clúster etcd",
+    "connectivity": "Conectividad de las instancias",
+    "columnInstance": "Instancia de pasarela",
+    "columnConnectivity": "Conectividad",
+    "columnLastCheck": "Última comprobación",
+    "columnDiagnostic": "Diagnóstico",
+    "logError": "Error",
+    "stable": "Estable",
+    "loadFailedTitle": "Error",
+    "loadFailed": "No se ha podido cargar el resumen del panel",
+    "uncountedInstances": "Pasarelas cuyos recursos no se han podido contar por completo, así que al menos un total de arriba se queda corto: {{count}}"
   }
 }

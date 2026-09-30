@@ -141,7 +141,6 @@
     "loadingConfiguration": "Loading configuration…",
     "basic": {
       "desc": "Description",
-      "id": "ID",
       "labels": {
         "errorFormat": "The format of label is wrong, it should be `key:value`",
         "key": "Key",
@@ -197,7 +196,6 @@
       "copied": "Copied",
       "format": "Format",
       "duplicate": "Duplicate",
-      "duplicateSuccess": "Route duplicated successfully",
       "exportOpenAPI": "Export OpenAPI",
       "selectedCount": "{{count}} selected",
       "saveSuccess": "JSON saved successfully"
@@ -282,7 +280,6 @@
     "plugins": {
       "addPlugin": "Add Plugin",
       "configId": "Plugin Config ID",
-      "configuration": "Configuration",
       "editPlugin": "Edit Plugin",
       "exampleConfig": "Example Configuration",
       "label": "Plugins",
@@ -292,8 +289,6 @@
         "title": "Select Plugins"
       },
       "viewPlugin": "View Plugin",
-      "quickTemplates": "Quick Templates",
-      "quickTemplatesDesc": "Common plugin configurations",
       "category": {
         "authentication": "Authentication",
         "traffic-control": "Traffic Control",
@@ -306,8 +301,6 @@
         "ai": "AI",
         "other": "Other"
       },
-      "configSummary": "Config",
-      "noDescription": "No description available",
       "editorMode": {
         "form": "Form",
         "json": "JSON"
@@ -351,13 +344,10 @@
       },
       "preview": {
         "allMethods": "ALL METHODS",
-        "noUri": "No URI defined",
         "matchPreviewLabel": "Route Preview",
         "apiInfo": "API Information",
         "upstream": "Upstream Configuration",
         "plugins": "Plugins",
-        "customUpstream": "Custom Upstream",
-        "existingUpstream": "Existing Upstream",
         "boundToService": "Bound to Service",
         "noUpstream": "No upstream configured",
         "noPlugins": "No plugins configured"
@@ -488,7 +478,6 @@
       "duplicateConfirmAction": "Create anyway",
       "duplicateConfirmBody": "These stream routes already match the same traffic. Only one of them can win, and which one is not something you control.",
       "duplicateConfirmTitle": "A matching stream route already exists",
-      "duplicateEntry": "{{conditions}}",
       "protocol": {
         "conf": "Conf",
         "confExample": "Insert an example",
@@ -531,10 +520,8 @@
       "existingDesc": "Select a pre-configured upstream",
       "custom": "Custom Upstream",
       "customDesc": "Define upstream nodes and settings inline",
-      "required": "Select an upstream, bind a service, or configure a custom upstream with at least one node",
       "serviceProvides": "Upstream configuration is provided by this service",
       "serviceFixed": "Routes added here belong to this service, which provides their upstream",
-      "nodesCount": "{{count}} node(s)",
       "pluginsCount": "{{count}} plugin(s)",
       "scheme": "Scheme"
     },
@@ -619,7 +606,6 @@
         "desc": "Backend server targets that receive proxied traffic",
         "host": {
           "title": "Host",
-          "desc": "IP address or hostname of the upstream server",
           "placeholder": "Hostname or IP"
         },
         "port": {
@@ -631,8 +617,7 @@
         },
         "title": "Nodes",
         "weight": {
-          "title": "Weight",
-          "desc": "Load balancing weight — higher values receive more traffic"
+          "title": "Weight"
         },
         "remove": "Remove node"
       },
@@ -678,7 +663,6 @@
         "title": "Timeout"
       },
       "title": "Upstream",
-      "none": "None (Only available when binding the service)",
       "custom": "Custom",
       "testConnection": {
         "title": "Test Connection",
@@ -706,8 +690,6 @@
       "upstreamHostDesc": "Set this when `pass_host` is `rewrite`",
       "upstreamId": "Upstream ID",
       "preview": {
-        "node": "node",
-        "nodes": "nodes",
         "nodesTitle": "Backend Nodes",
         "noNodes": "No nodes configured",
         "connectionTitle": "Connection Settings",

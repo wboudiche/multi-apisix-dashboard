@@ -120,9 +120,8 @@ const e2eRules = tseslint.config(
  * It holds what sits in JSX, not the whole screen: a string in a
  * `notifications.show` object, or in a table of labels built above the JSX, has
  * no JSX ancestor, so this mode never sees it (thirteen of them sat on the
- * instances page). A quiet rule does not make a screen translated - the keys a
- * screen reads are held by src/config/locale-keys.test.ts, for the files
- * src/config/translated-screens.ts names.
+ * instances page). A quiet rule does not make a screen translated - that every
+ * key exists in every language is held by src/config/locale-keys.test.ts.
  */
 const attributeRuleOptions = {
   mode: 'jsx-only',
