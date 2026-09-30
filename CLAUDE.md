@@ -196,7 +196,7 @@ Zod schemas in `src/types/schema/apisix/` remain the source of truth for APISIX 
 
 Languages: `en` (source of truth), `de`, `es`, `tr`, `zh`. Files under `src/locales/<lang>/common.json`.
 
-ESLint enforces no-literal-string, no-unknown-key (keys must exist in `en/common.json`), no-text-as-children/attribute. **Don't hardcode user-visible strings.** A custom Vite plugin (`vite-plugin-i18n-progress.ts`) reports translation coverage during dev/build.
+ESLint enforces no-literal-string, no-unknown-key (keys must exist in `en/common.json`), no-text-as-children/attribute, and `local/interpolation-data` (`eslint-rules/interpolation-data.ts`: a `t()` call passes every `{{placeholder}}` of its `en` text, and nothing the text does not interpolate — the plugin's own rule of that name reads a `data` option i18next calls do not have, #326). **Don't hardcode user-visible strings.** A custom Vite plugin (`vite-plugin-i18n-progress.ts`) reports translation coverage during dev/build.
 
 Attributes (`label`, `placeholder`, `title`, `aria-label`, …) are checked on every screen, not only JSX text (#328). A literal there that is not a sentence — an example address, a value the gateway spells — gets an `eslint-disable-next-line i18next/no-literal-string` with the reason beside it. The rule only sees what sits in JSX: a label in an object built above the `return` is not reported, so it still has to go through `t()`.
 

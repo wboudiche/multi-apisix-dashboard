@@ -86,8 +86,9 @@ describe.each(LANGUAGES)('%s', (lang) => {
   });
 
   // The other half of a rename: the words must still say the same thing about
-  // their arguments. eslint's i18n/interpolation-data only lints en, so a
-  // translation that dropped {{role}} lints clean and renders a blank role.
+  // their arguments. eslint's local/interpolation-data holds the call sites to
+  // en's placeholders and reads no other language, so a translation that
+  // dropped {{role}} lints clean and renders a blank role.
   it('keeps the placeholders en uses', () => {
     const changed = [...translated.entries()]
       .filter(([key]) => en.has(key))
