@@ -250,7 +250,7 @@ test('gives a newly added gateway a health dot without waiting for the timer', a
 
     // The header selector now lists it. Its dot must resolve rather than rest
     // on the grey "Checking…" it shows for an instance absent from the map.
-    await page.locator('header input[placeholder="Select instance"]').click();
+    await adminPom.headerInstanceSelect(page).click();
     const dot = page
       .getByRole('option', { name })
       .locator('[style*="border-radius: 50%"]');

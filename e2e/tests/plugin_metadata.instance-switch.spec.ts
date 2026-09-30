@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { permission } from '@e2e/pom/permission';
+import { headerSelect, permission } from '@e2e/pom/permission';
 import { pluginConfigsPom } from '@e2e/pom/plugin_configs';
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
@@ -108,7 +108,7 @@ const openOnStaging = async (page: Page) => {
  * whose reload remounts everything and hides exactly this.
  */
 const switchInHeader = async (page: Page, instance: string) => {
-  const switcher = page.locator('header input[placeholder="Select instance"]');
+  const switcher = headerSelect(page);
   await switcher.click();
   await page.getByRole('option', { name: instance }).click();
   await expect(switcher).toHaveValue(instance);

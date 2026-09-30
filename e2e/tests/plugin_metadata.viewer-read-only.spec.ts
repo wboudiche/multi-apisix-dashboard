@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { permission } from '@e2e/pom/permission';
+import { headerSelect, permission } from '@e2e/pom/permission';
 import { adminToken, deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
@@ -176,7 +176,7 @@ const openAsViewerThenBecomeAdmin = async (page: Page, username: string) => {
 
   // In the header, the way a person would — not permission.switchInstance,
   // whose full reload also reloads the account's roles.
-  const switcher = page.locator('header input[placeholder="Select instance"]');
+  const switcher = headerSelect(page);
   await switcher.click();
   await page.getByRole('option', { name: 'Local APISIX' }).click();
   await expect(switcher).toHaveValue('Local APISIX');

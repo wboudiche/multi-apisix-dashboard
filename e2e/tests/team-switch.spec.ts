@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { consumerGroupsPom } from '@e2e/pom/consumer_groups';
-import { permission } from '@e2e/pom/permission';
+import { headerTeamSelect, permission } from '@e2e/pom/permission';
 import { adminToken, deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
@@ -26,6 +26,7 @@ import {
   loginAdmin,
 } from '@e2e/utils/seed-client';
 import { uiFillMonacoEditor, uiGetMonacoEditor } from '@e2e/utils/ui';
+import { i18n } from '@e2e/utils/ui/i18n';
 import { expect, type Page, test } from '@playwright/test';
 
 /**
@@ -81,8 +82,7 @@ test.afterAll(async () => {
 // in Playwright's 30s default.
 const TIMEOUT_MS = 120_000;
 
-const teamSwitcher = (page: Page) =>
-  page.locator('header input[placeholder="All Teams"]');
+const teamSwitcher = headerTeamSelect;
 
 const pickTeam = async (page: Page, team: string) => {
   await teamSwitcher(page).click();
@@ -209,7 +209,7 @@ test('a new session in the same tab starts with no team picked', async ({
     await permission.logout(page);
     await signInHere(page, fx().users.admin.username, fx().users.admin.password);
 
-    await expect(teamSwitcher(page)).toHaveValue('All Teams', { timeout: 30000 });
+    await expect(teamSwitcher(page)).toHaveValue(i18n.t('header.allTeams'), { timeout: 30000 });
   } finally {
     await context.close();
   }

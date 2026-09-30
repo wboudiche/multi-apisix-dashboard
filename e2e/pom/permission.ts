@@ -20,13 +20,17 @@ import { expect, type Page } from '@playwright/test';
 
 const dashboardBase = () => env.E2E_TARGET_URL.replace(/\/$/, '');
 
-/** The header's APISIX-instance Select (shared with adminPom). */
+/**
+ * The header's APISIX-instance Select (shared with adminPom). Addressed by test
+ * id rather than by its placeholder: that text belongs to i18n, and a spec that
+ * matches it breaks the day the language is persisted or the wording changes.
+ */
 export const headerSelect = (page: Page) =>
-  page
-    .locator('header')
-    .getByPlaceholder('Select instance')
-    .or(page.locator('header').getByRole('searchbox'))
-    .first();
+  page.locator('header').getByTestId('instance-switcher');
+
+/** The header's team Select, shown to admins only. Same reason as above. */
+export const headerTeamSelect = (page: Page) =>
+  page.locator('header').getByTestId('team-switcher');
 
 /** Map known instance names back to the IDs written by globalSetup. */
 const instanceIdByName = (name: string): string | undefined => {

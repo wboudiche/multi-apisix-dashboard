@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { permission } from '@e2e/pom/permission';
+import { headerSelect, permission } from '@e2e/pom/permission';
 import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
@@ -69,8 +69,7 @@ test.afterAll(async () => {
   }).catch(() => null);
 });
 
-const switcher = (page: Page) =>
-  page.locator('header input[placeholder="Select instance"]');
+const switcher = headerSelect;
 
 /**
  * In the header, the way a person would — not permission.switchInstance,
