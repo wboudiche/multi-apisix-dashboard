@@ -408,101 +408,69 @@ func (s *AuthService) ListUsersByTeam(ctx context.Context, teamID string) ([]*mo
 	return assignmentsOfTeam(resp, teamID), nil
 }
 
-// TeamAssignments sorts the assignments that name a team into the people it
-// cannot be deleted from under, by username, and the keys of the records the
-// team is simply taken out of: see teamAssignments.
-func (s *AuthService) TeamAssignments(ctx context.Context, teamID string) (holders, released []string, err error) {
+// TeamHolders returns, by username and sorted, the accounts a team cannot be
+// deleted from under: see teamHolders.
+func (s *AuthService) TeamHolders(ctx context.Context, teamID string) ([]string, error) {
 	assignments, err := s.etcd.List(ctx, models.KeyPrefixUserInstances)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	users, err := s.etcd.List(ctx, models.KeyPrefixUsers)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	instances, err := s.etcd.List(ctx, models.KeyPrefixInstances)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return teamAssignments(assignments, users, instances, teamID)
+	return teamHolders(assignments, users, instances, teamID)
 }
 
-// ReleaseTeam takes a team out of the assignments at `keys`, which
-// TeamAssignments found not to be anybody's to move. A record that has
-// stopped naming the team in the meantime is left as it is.
-func (s *AuthService) ReleaseTeam(ctx context.Context, teamID string, keys []string) error {
-	for _, key := range keys {
-		var ui models.UserInstance
-		if err := s.etcd.GetJSON(ctx, key, &ui); err != nil {
-			return err
-		}
-		if !ui.HasTeam(teamID) {
-			continue
-		}
-		ui.TeamIDs = withoutTeam(ui.TeamIDs, teamID)
-		if err := s.etcd.PutJSON(ctx, key, &ui); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func withoutTeam(ids []string, teamID string) []string {
-	kept := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if id != teamID {
-			kept = append(kept, id)
-		}
-	}
-	return kept
-}
-
-// teamAssignments sorts the assignments that name a team into two kinds.
+// teamHolders picks the accounts a team cannot be deleted from under: every
+// user that exists, with an assignment naming the team on an instance that
+// exists.
 //
-// The holders: the people the team cannot be deleted from under. A living
-// user, not a super admin, assigned on an instance that exists, in a record
-// the Users page lists - that is, one an operator can open and move to another
-// team, which is what the refusal asks for.
+// The rule is what the access layer could honour, read the way it reads: a
+// user id is matched with or without the quotes an old bug wrote around some
+// of them, as RBAC's fallbacks and the orphan scan match it. A super admin
+// counts too. Its assignments are not read while the role is global, and are
+// read again the day it is taken away - skipped, the delete left one naming a
+// team that was gone, for that day.
 //
-// And the rest, which nobody can be asked to move because no screen shows
-// them: an assignment left by a user since deleted, or on an instance since
-// removed; a super admin's, whose Instance Access the Users page disables; a
-// record under a key an old bug wrote in quotes, which the page does not read.
-// Counted as holders, each made a team undeletable for a reason nobody could
-// act on. Left alone, each went on naming the team once it was gone - and a
-// super admin demoted later, or a quoted record read as a fallback, brought
-// the dangling team back to life. So the team is taken out of them as part of
-// the delete: it owns nothing by then, and takes no access with it.
+// What cannot be honoured does not count: an assignment left by a user since
+// deleted, or on an instance since removed. Nobody can act through it, the
+// maintenance page purges the first kind, and counting either made a team
+// undeletable for a reason no screen shows.
+//
+// Nothing is rewritten. Taking the team out of the assignments instead of
+// refusing was tried, and every way of doing it left something worse than a
+// refusal: a developer or a viewer with no team, which the assignment API
+// itself refuses to create; a write racing the Users page; a team that kept
+// existing with fewer members after a delete that failed half-way.
 //
 // With no users read at all, nothing is judged - as for the orphan scan: that
 // read failed, and against it every assignment would look like nobody's.
-func teamAssignments(assignments, users, instances map[string][]byte, teamID string) (holders, released []string, err error) {
+func teamHolders(assignments, users, instances map[string][]byte, teamID string) ([]string, error) {
 	if len(users) == 0 {
-		return nil, nil, ErrNoUsersRead
+		return nil, ErrNoUsersRead
 	}
-	type account struct {
-		name       string
-		superAdmin bool
-	}
-	accounts := make(map[string]account, len(users))
+	// By id, as written in the key and in the record, quotes aside.
+	names := make(map[string]string, len(users))
 	for key, data := range users {
-		id := strings.TrimPrefix(key, models.KeyPrefixUsers)
-		// A record that no longer parses is still a user: known by its key,
-		// and by that name for want of another.
-		found := account{name: id}
 		var user models.User
-		if json.Unmarshal(data, &user) == nil {
-			if user.ID != "" {
-				id = user.ID
-			}
-			if user.Username != "" {
-				found.name = user.Username
-			} else {
-				found.name = id
-			}
-			found.superAdmin = user.Role == models.RoleSuperAdmin
+		if json.Unmarshal(data, &user) != nil {
+			// Not a holder anybody can be asked to move: the Users page does
+			// not list a record it cannot read, and the account cannot sign in.
+			continue
 		}
-		accounts[id] = found
+		name := user.Username
+		if name == "" {
+			name = unquoteID(user.ID)
+		}
+		names[unquoteID(strings.TrimPrefix(key, models.KeyPrefixUsers))] = name
+		if user.ID != "" {
+			names[unquoteID(user.ID)] = name
+		}
 	}
 	exists := make(map[string]bool, len(instances))
 	for key := range instances {
@@ -510,27 +478,23 @@ func teamAssignments(assignments, users, instances map[string][]byte, teamID str
 	}
 
 	held := map[string]bool{}
-	holders, released = []string{}, []string{}
+	holders := []string{}
 	for key, data := range assignments {
 		var ui models.UserInstance
 		if json.Unmarshal(data, &ui) != nil || !ui.HasTeam(teamID) {
 			continue
 		}
 		userSegment, instanceID, _ := strings.Cut(strings.TrimPrefix(key, models.KeyPrefixUserInstances), "/")
-		// The key as the Users page reads it: the user's id, unquoted.
-		holder, alive := accounts[userSegment]
-		if !alive || holder.superAdmin || !exists[instanceID] {
-			released = append(released, key)
+		userID := unquoteID(userSegment)
+		name, alive := names[userID]
+		if !alive || !exists[instanceID] || held[userID] {
 			continue
 		}
-		if !held[userSegment] {
-			held[userSegment] = true
-			holders = append(holders, holder.name)
-		}
+		held[userID] = true
+		holders = append(holders, name)
 	}
 	sort.Strings(holders)
-	sort.Strings(released)
-	return holders, released, nil
+	return holders, nil
 }
 
 // assignmentsOfTeam picks, out of the stored assignments, those that hold

@@ -136,30 +136,31 @@ test('a team an assignment names is not deleted, and the page says why', async (
   await expect(adminPom.rowByText(page, teamName)).toHaveCount(0);
 });
 
-test('an assignment nobody can be asked to move does not keep a team, nor go on naming it', async () => {
-  // A super admin's assignments are never read - the role is global - and the
-  // Users page does not offer them for editing. Counted, one made the team
-  // undeletable behind "move those users first"; skipped, it went on naming
-  // the team after it was gone, and came back to life the day the account was
-  // demoted. The delete takes the team out of it.
+test('a super admin’s assignment keeps a team too, until it stops naming it', async () => {
+  // A super admin's assignments are not read while the role is global - and
+  // are read again the day it is taken away. Skipped, the delete left one
+  // naming a team that was gone, for that day.
   const token = await adminToken();
-  const team = await ensureTeam(token, { name: `${PREFIX}-released` });
-  const kept = await ensureTeam(token, { name: `${PREFIX}-released-kept` });
+  const team = await ensureTeam(token, { name: `${PREFIX}-root-held` });
+  const username = `${PREFIX}-root`;
   const user = await ensureUser(token, {
-    username: `${PREFIX}-root`,
+    username,
     password: 'e2e-Team-r00t!pass',
     role: 'super_admin',
   });
-  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
-    role: 'developer',
-    team_ids: [team.id, kept.id],
+  const local = getFixtures().localInstanceId;
+  await ensureUserInstanceRole(token, user.id, local, { role: 'developer', team_ids: [team.id] });
+
+  let refused: HttpError | undefined;
+  await apiFetch(`/api/v1/teams/${team.id}`, token, { method: 'DELETE' }).catch((err) => {
+    refused = err as HttpError;
   });
+  expect(refused?.status).toBe(409);
+  expect(refused?.message).toContain(`"users":["${username}"]`);
 
+  // The assignment gone, so is what held the team.
+  await apiFetch(`/api/v1/user-access/${user.id}/instances/${local}/role`, token, {
+    method: 'DELETE',
+  });
   await apiFetch(`/api/v1/teams/${team.id}`, token, { method: 'DELETE' });
-
-  const assignments = (await apiFetch(`/api/v1/user-access/${user.id}/instances`, token)) as {
-    team_ids: string[];
-  }[];
-  expect(assignments).toHaveLength(1);
-  expect(assignments[0].team_ids).toEqual([kept.id]);
 });
