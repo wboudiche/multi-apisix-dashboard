@@ -179,14 +179,7 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 	if len(users) == 0 {
 		return nil, ErrNoUsersRead
 	}
-	known := make(map[string]bool, len(users))
-	for key, value := range users {
-		known[unquoteID(strings.TrimPrefix(key, models.KeyPrefixUsers))] = true
-		var user models.User
-		if json.Unmarshal(value, &user) == nil && user.ID != "" {
-			known[unquoteID(user.ID)] = true
-		}
-	}
+	known := livingUsers(users)
 
 	orphans := []OrphanedAssignment{}
 	for key, value := range assignments {
@@ -195,7 +188,7 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 		if !ok || userSegment == "" {
 			continue
 		}
-		if known[unquoteID(userSegment)] {
+		if _, alive := known[unquoteID(userSegment)]; alive {
 			continue
 		}
 		orphan := OrphanedAssignment{Key: key, UserID: userSegment, InstanceID: instanceID}
@@ -211,6 +204,51 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 	}
 	sort.Slice(orphans, func(i, j int) bool { return orphans[i].Key < orphans[j].Key })
 	return orphans, nil
+}
+
+// livingUsers reads the users that exist out of their stored records: every id
+// one answers to, quotes aside, with the name to call it by.
+//
+// A user answers to the id in its key and to the id in its record - an old bug
+// wrote some of either in quotes - and a record that no longer parses is still
+// a user, known by its key: it may be repaired, and a token it was issued
+// keeps working until it expires. One reading for everything that asks "does
+// this user exist": the orphan scan, which must not purge the assignments of
+// a user that does, and a team delete, which must not go through from under
+// one (#375). Two readings had already come apart on the record that does not
+// parse.
+//
+// The name is the username, or the id for want of one. Where two records
+// answer to the same id, the one whose key sorts first names it, so that the
+// same question gets the same answer twice.
+func livingUsers(users map[string][]byte) map[string]string {
+	keys := make([]string, 0, len(users))
+	for key := range users {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	names := make(map[string]string, len(users))
+	for _, key := range keys {
+		keyID := unquoteID(strings.TrimPrefix(key, models.KeyPrefixUsers))
+		ids := []string{keyID}
+		name := keyID
+		var user models.User
+		if json.Unmarshal(users[key], &user) == nil {
+			if recordID := unquoteID(user.ID); recordID != "" && recordID != keyID {
+				ids = append(ids, recordID)
+			}
+			if user.Username != "" {
+				name = user.Username
+			}
+		}
+		for _, id := range ids {
+			if _, taken := names[id]; !taken {
+				names[id] = name
+			}
+		}
+	}
+	return names
 }
 
 func unquoteID(id string) string {

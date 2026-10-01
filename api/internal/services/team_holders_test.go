@@ -34,8 +34,11 @@ func TestTeamHolders(t *testing.T) {
 		"/users/u-twin": []byte(`{"id":"u-twin","username":"alice","role":""}`),
 		// An id an old bug wrote in quotes, in the record: the same user.
 		"/users/u-erin": []byte(`{"id":"\"u-erin\"","username":"erin","role":""}`),
-		// A record that does not parse cannot sign in, and no screen lists it.
+		// A record that no longer parses is still a user, known by its key: it
+		// may be repaired, and a token it was issued still works.
 		"/users/u-dave": []byte(`not json`),
+		// One that parses and says nothing is named by its key, not by a blank.
+		"/users/u-anon": []byte(`{}`),
 	}
 	instances := map[string][]byte{"/instances/i1": []byte(`{}`), "/instances/i2": []byte(`{}`)}
 	assignments := map[string][]byte{
@@ -52,11 +55,12 @@ func TestTeamHolders(t *testing.T) {
 		// Under a quoted key, which RBAC still reads as bob's.
 		`/user_instances/"u-bob"/i2`: []byte(`{"user_id":"\"u-bob\"","instance_id":"i2","team_ids":["t3"],"role":"viewer"}`),
 
-		// Nobody can act through these: the user is gone, the instance is
-		// gone, the user's record cannot be read.
+		"/user_instances/u-dave/i1": []byte(`{"user_id":"u-dave","instance_id":"i1","team_ids":["t5"],"role":"viewer"}`),
+		"/user_instances/u-anon/i1": []byte(`{"user_id":"u-anon","instance_id":"i1","team_ids":["t5"],"role":"viewer"}`),
+
+		// Nobody can act through these: the user is gone, the instance is gone.
 		"/user_instances/u-gone/i1": []byte(`{"user_id":"u-gone","instance_id":"i1","team_ids":["t4"],"role":"developer"}`),
 		"/user_instances/u-bob/i9":  []byte(`{"user_id":"u-bob","instance_id":"i9","team_ids":["t4"],"role":"viewer"}`),
-		"/user_instances/u-dave/i1": []byte(`{"user_id":"u-dave","instance_id":"i1","team_ids":["t4"],"role":"viewer"}`),
 		// And one that does not parse names no team anybody can read.
 		"/user_instances/u-bob/bad": []byte(`not json`),
 	}
@@ -66,6 +70,7 @@ func TestTeamHolders(t *testing.T) {
 		"t2": {"bob"},
 		"t3": {"bob"},
 		"t4": {},
+		"t5": {"u-anon", "u-dave"},
 		"t9": {},
 	}
 	for team, want := range cases {
@@ -89,5 +94,30 @@ func TestTeamHoldersRefusesWithNoUsers(t *testing.T) {
 	_, err := teamHolders(assignments, map[string][]byte{}, map[string][]byte{"/instances/i1": nil}, "t1")
 	if !errors.Is(err, ErrNoUsersRead) {
 		t.Fatalf("got %v, want ErrNoUsersRead", err)
+	}
+}
+
+// Where two records answer to one id, the same one names it every time: read
+// in map order, the refusal named one account on one call and another on the
+// next.
+func TestLivingUsersNamesAnIdTheSameWayTwice(t *testing.T) {
+	users := map[string][]byte{
+		"/users/u-bob":    []byte(`{"id":"u-bob","username":"bob"}`),
+		`/users/"u-bob"`:  []byte(`{"id":"\"u-bob\"","username":"bob-old"}`),
+		"/users/legacy":   []byte(`{"id":"u-carol","username":"carol"}`),
+		"/users/u-carol":  []byte(`{"id":"u-carol","username":"carol-new"}`),
+		"/users/u-broken": []byte(`not json`),
+	}
+	want := map[string]string{
+		// `/users/"u-bob"` sorts before `/users/u-bob`.
+		"u-bob":    "bob-old",
+		"legacy":   "carol",
+		"u-carol":  "carol",
+		"u-broken": "u-broken",
+	}
+	for i := 0; i < 20; i++ {
+		if got := livingUsers(users); !reflect.DeepEqual(got, want) {
+			t.Fatalf("run %d: got %v, want %v", i, got, want)
+		}
 	}
 }

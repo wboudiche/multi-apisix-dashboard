@@ -440,7 +440,8 @@ func (s *AuthService) TeamHolders(ctx context.Context, teamID string) ([]string,
 // What cannot be honoured does not count: an assignment left by a user since
 // deleted, or on an instance since removed. Nobody can act through it, the
 // maintenance page purges the first kind, and counting either made a team
-// undeletable for a reason no screen shows.
+// undeletable for a reason no screen shows. A user whose record no longer
+// parses is not that: it exists (see livingUsers), and counts, by its id.
 //
 // Nothing is rewritten. Taking the team out of the assignments instead of
 // refusing was tried, and every way of doing it left something worse than a
@@ -454,24 +455,8 @@ func teamHolders(assignments, users, instances map[string][]byte, teamID string)
 	if len(users) == 0 {
 		return nil, ErrNoUsersRead
 	}
-	// By id, as written in the key and in the record, quotes aside.
-	names := make(map[string]string, len(users))
-	for key, data := range users {
-		var user models.User
-		if json.Unmarshal(data, &user) != nil {
-			// Not a holder anybody can be asked to move: the Users page does
-			// not list a record it cannot read, and the account cannot sign in.
-			continue
-		}
-		name := user.Username
-		if name == "" {
-			name = unquoteID(user.ID)
-		}
-		names[unquoteID(strings.TrimPrefix(key, models.KeyPrefixUsers))] = name
-		if user.ID != "" {
-			names[unquoteID(user.ID)] = name
-		}
-	}
+	// Who exists, as the orphan scan reads it.
+	names := livingUsers(users)
 	exists := make(map[string]bool, len(instances))
 	for key := range instances {
 		exists[strings.TrimPrefix(key, models.KeyPrefixInstances)] = true
