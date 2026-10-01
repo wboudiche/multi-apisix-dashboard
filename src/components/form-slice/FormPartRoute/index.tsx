@@ -24,6 +24,7 @@ import {
   getPluginConfigListQueryOptions,
   getServiceListQueryOptions,
   getUpstreamListQueryOptions,
+  useListTeamId,
 } from '@/apis/hooks';
 import { FormItemEditor } from '@/components/form/Editor';
 import { LabelWithTooltip } from '@/components/form/LabelWithTooltip';
@@ -177,7 +178,7 @@ export const FormSectionUpstream = (
   const { t } = useTranslation();
   const { control } = useFormContext<RoutePostType>();
   const { data: upstreams } = useSuspenseQuery(
-    getUpstreamListQueryOptions({ page: 1, page_size: 500 })
+    getUpstreamListQueryOptions({ page: 1, page_size: 500 }, undefined, useListTeamId())
   );
 
   const upstreamId = useWatch({ control, name: 'upstream_id' });
@@ -307,7 +308,7 @@ export const FormSectionService = () => {
   const { control, setValue } = useFormContext<RoutePostType>();
   const readOnlyFields = useFormReadOnlyFields();
   const { data: services } = useSuspenseQuery(
-    getServiceListQueryOptions({ page: 1, page_size: 500 })
+    getServiceListQueryOptions({ page: 1, page_size: 500 }, undefined, useListTeamId())
   );
 
   const serviceOptions = useMemo(

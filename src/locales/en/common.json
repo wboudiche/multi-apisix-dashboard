@@ -951,6 +951,8 @@
     "build": "Build {{sha}} ({{branch}}), {{date}}",
     "buildUnknown": "Build of unknown commit, {{date}}",
     "allTeams": "All Teams",
+    "allMyTeams": "All my teams",
+    "teamSwitcher": "Team",
     "selectInstance": "Select instance",
     "healthConnected": "Connected",
     "healthDisconnected": "Disconnected",
@@ -995,6 +997,9 @@
   },
   "error": {
     "forbidden": "You do not have permission to do that on this instance.",
+    "teamRequired": "Choose one of your teams in the header before creating this: a new resource belongs to one team.",
+    "teamMissing": "This account has no team on this instance, so it cannot create this. Ask an admin to assign one.",
+    "teamNotAssigned": "You are not assigned to that team on this instance.",
     "unauthorized": "The gateway rejected this request. Its admin key may be wrong.",
     "notFound": "Not found.",
     "generic": "The request failed ({{status}}).",

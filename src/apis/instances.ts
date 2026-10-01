@@ -126,6 +126,12 @@ export type UserInstanceRole = {
   team_ids?: string[];
   /** The first of them, as the answer named it when an assignment held one. */
   team_id: string;
+  /**
+   * The teams among `team_ids` that still exist, by name: in the access list
+   * the account reads of itself, where it is the only place a developer or a
+   * viewer learns what their teams are called (#301).
+   */
+  teams?: { id: string; name: string }[];
   role: 'instance_admin' | 'developer' | 'viewer';
   scope?: Scope;
 };

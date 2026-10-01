@@ -65,6 +65,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom } from '@/stores/auth';
 import { type APISIXType } from '@/types/schema/apisix';
 import { extractSoapAction } from '@/utils/soap-route';
+import { proxyFailureText } from '@/utils/team-refusal';
 import IconCode from '~icons/material-symbols/code';
 import IconGroup from '~icons/material-symbols/group';
 import IconPlayArrow from '~icons/material-symbols/play-arrow';
@@ -115,7 +116,7 @@ const RouteDetailForm = (props: Props) => {
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError(err: any) {
-      const msg = err?.response?.data?.error_msg || err?.message || 'Failed to update route';
+      const msg = proxyFailureText(err) || 'Failed to update route';
       setSubmitError(msg);
     },
   });

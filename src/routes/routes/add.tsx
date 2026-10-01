@@ -51,6 +51,7 @@ import {
   findRouteDuplicates,
   type RouteDuplicate,
 } from '@/utils/route-duplicates';
+import { proxyFailureText } from '@/utils/team-refusal';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
 const DRAFT_KEY = 'apisix-route-draft';
@@ -194,7 +195,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
     // [Feature 8] Error handling
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError(err: any) {
-      const msg = err?.response?.data?.error_msg || err?.message || 'Failed to create route';
+      const msg = proxyFailureText(err) || 'Failed to create route';
       setSubmitError(msg);
     },
   });

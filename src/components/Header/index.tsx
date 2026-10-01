@@ -31,7 +31,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useAtom, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import type { FC } from 'react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +51,7 @@ import { roleLabel } from '@/config/role-labels';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom, instancesAtom, setInstancesAtom } from '@/stores/instance';
-import { currentTeamIdAtom } from '@/stores/team';
+import { currentTeamIdAtom, ownTeamsAtom, sentTeamIdAtom } from '@/stores/team';
 import { describeError } from '@/utils/api-error';
 import IconMenu from '~icons/material-symbols/menu';
 import IconMenuOpen from '~icons/material-symbols/menu-open';
@@ -110,17 +110,25 @@ const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
 };
 
 type TeamSwitcherProps = {
-  teams: Team[];
+  // An admin's: the whole catalogue. A developer's or a viewer's: their own
+  // teams on the instance, which is all they may choose between.
+  teams: Pick<Team, 'id' | 'name'>[];
   isAdmin: boolean;
 };
 
 const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   const { t } = useTranslation();
   const [currentTeamId, setCurrentTeamId] = useAtom(currentTeamIdAtom);
+  // What this tab's requests carry: for a developer or a viewer, the pick
+  // when it is one of the teams shown here, and none otherwise.
+  const sentTeamId = useAtomValue(sentTeamIdAtom);
 
   const handleTeamChange = (value: string | null) => {
     const newTeamId = value ?? '';
     setCurrentTeamId(newTeamId);
+    // A developer's or a viewer's lists are asked again by the header, when
+    // what is sent for them changes - a pick is one way that happens.
+    if (!isAdmin) return;
     queryClient.invalidateQueries({ queryKey: ['routes'] });
     queryClient.invalidateQueries({ queryKey: ['services'] });
     queryClient.invalidateQueries({ queryKey: ['upstreams'] });
@@ -148,14 +156,35 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
     );
   }
 
-  // developer / viewer — read-only badge showing their team
-  const currentTeam = teams.find((team) => team.id === currentTeamId);
-  if (!currentTeam) return null;
+  // A developer or a viewer. With one team there is nothing to choose: its
+  // name, so that they know whose resources they are looking at.
+  if (teams.length === 1) {
+    return (
+      <Badge data-testid="team-badge" variant="outline" color="apisix-red" size="sm" radius="sm">
+        {teams[0].name}
+      </Badge>
+    );
+  }
 
+  // With several (#301), which of them the lists show and a new resource goes
+  // to. None picked shows all of theirs. What it shows as picked is what is
+  // sent, so a pick that is not one of these teams - left by another tab, a
+  // team they were taken off, one that was deleted - reads as none here
+  // because none is sent for it (see teamToSend).
   return (
-    <Badge variant="outline" color="apisix-red" size="sm" radius="sm">
-      {currentTeam.name}
-    </Badge>
+    <Select
+      data-testid="team-switcher"
+      aria-label={t('header.teamSwitcher')}
+      data={[
+        { value: '', label: t('header.allMyTeams') },
+        ...teams.map((team) => ({ value: team.id, label: team.name })),
+      ]}
+      value={sentTeamId}
+      onChange={handleTeamChange}
+      style={{ width: 180 }}
+      clearable={false}
+      allowDeselect={false}
+    />
   );
 };
 
@@ -323,6 +352,13 @@ export const Header: FC<HeaderProps> = (props) => {
 
   const { isAdmin, role: effectiveRole } = usePermission();
 
+  // A developer's or a viewer's own teams on this instance, out of the access
+  // list above: the catalogue answers them 403. The same read the requests
+  // are checked against (see ownTeamsAtom).
+  const ownTeams = useAtomValue(ownTeamsAtom)[currentInstanceId];
+
+  const switcherTeams = isAdmin ? teams : (ownTeams?.teams ?? []);
+
   return (
     <AppShell.Header>
       <Group h="100%" px="md" justify="space-between">
@@ -363,8 +399,8 @@ export const Header: FC<HeaderProps> = (props) => {
           )}
 
           {/* Team Switcher */}
-          {teams.length > 0 && currentInstanceId && (
-            <TeamSwitcher teams={teams} isAdmin={isAdmin} />
+          {switcherTeams.length > 0 && currentInstanceId && (
+            <TeamSwitcher teams={switcherTeams} isAdmin={isAdmin} />
           )}
 
           <LanguageMenu />

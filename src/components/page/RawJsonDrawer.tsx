@@ -20,6 +20,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { monaco, setupMonacoEditor } from '@/utils/monaco';
+import { proxyFailureText } from '@/utils/team-refusal';
 import IconCheck from '~icons/material-symbols/check';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
 import IconError from '~icons/material-symbols/error-outline';
@@ -79,8 +80,7 @@ export const RawJsonDrawer = ({ opened, onClose, title, json, onSave, loading }:
       const parsed = JSON.parse(value);
       await onSave(parsed);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
-      setSaveError(e?.response?.data?.error_msg || e?.message || 'Failed to save');
+      setSaveError(proxyFailureText(err) || 'Failed to save');
     }
   }, [value, onSave]);
 

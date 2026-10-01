@@ -17,7 +17,8 @@
 
 import { atom, getDefaultStore } from 'jotai';
 
-import { currentUserAtom } from '@/stores/auth';
+import type { User } from '@/apis/auth';
+import { currentUserAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 
 // Custom storage helper to avoid JSON.stringify adding quotes to strings
@@ -71,35 +72,140 @@ export const currentTeamIdAtom = atom(
 );
 
 /**
+ * A developer's or a viewer's own teams on an instance: every team id the
+ * assignment holds, and the teams among them that still exist, by name.
+ */
+export type OwnTeams = {
+  ids: string[];
+  teams: { id: string; name: string }[];
+};
+
+/**
+ * Those, per instance, for the signed-in account: read out of its access
+ * list, which answers each assignment with its ids, its teams by name and its
+ * role. Only for a developer or a viewer - an instance admin is not tied to a
+ * team, and has no entry.
+ *
+ * The one source for what such an account may choose between: the switcher
+ * shows these teams, a request is checked against these teams, and both read
+ * them from the one answer that also says the role. Read apart - names from
+ * one request, ids from another - the switcher offered a team that was then
+ * not sent, and went on sending a deleted team it showed as "all my teams".
+ */
+const knownTeamNames = new Map<string, string>();
+
+export const ownTeamsAtom = atom((get) => {
+  const own: Record<string, OwnTeams> = {};
+  for (const assignment of get(userInstancesAtom)) {
+    if (assignment.role !== 'developer' && assignment.role !== 'viewer') continue;
+    // As `teamsOf` in `@/apis/instances`, which this module cannot import:
+    // that one loads the API client, and the client loads this.
+    const ids = assignment.team_ids ?? (assignment.team_id ? [assignment.team_id] : []);
+    for (const team of assignment.teams ?? []) knownTeamNames.set(team.id, team.name);
+    own[assignment.instance_id] = {
+      ids,
+      // An answer that does not name the teams - the backend could not read
+      // them this time - still says which the assignment holds. They go by
+      // the name last heard, or by their id: a switcher of ids is a poor one,
+      // and it is still the developer's teams, where dropping them took the
+      // switcher and the team sent away in the middle of a session.
+      teams: assignment.teams ?? ids.map((id) => ({ id, name: knownTeamNames.get(id) ?? id })),
+    };
+  }
+  return own;
+});
+
+/**
+ * The team sent for a developer or a viewer, given their teams on the
+ * instance and what they picked.
+ *
+ * With several teams, the pick when it is one of them, and none otherwise: a
+ * pick left in storage by another tab, or a team they were taken off or that
+ * was deleted since, would be refused (`team_not_assigned`) on every proxied
+ * request. None shows them all of their teams.
+ *
+ * With one team that exists there is nothing to choose and nothing to say -
+ * unless the assignment still names a team that is gone (#375). To the backend
+ * that account has several, and a create has to say which: the one that is
+ * left is the answer, so it is given.
+ */
+export const teamToSend = (own: OwnTeams | undefined, pick: string): string => {
+  if (!own) return '';
+  const live = own.teams.map((team) => team.id);
+  if (live.length > 1) return live.includes(pick) ? pick : '';
+  if (live.length === 1 && own.ids.length > 1) return live[0];
+  return '';
+};
+
+/**
+ * The team this account's requests carry for an instance, given its pick
+ * there. One rule, for the selected instance and for one a request names.
+ *
+ * For a super admin, the pick: the proxy records an admin's team as the owner
+ * of whatever it creates. Only a super admin gets the catalogue, and so a
+ * switcher over it: an instance admin, an admin to the proxy too, sent a team
+ * it could not see (#203), and sends none - it has no entry in ownTeamsAtom.
+ *
+ * For a developer or a viewer (#301), see teamToSend.
+ */
+const sentTeamFor = (
+  user: User | null,
+  own: Record<string, OwnTeams>,
+  instanceId: string,
+  pick: string
+): string => {
+  if (!user || !instanceId) return '';
+  if (user.role === 'super_admin') return pick;
+  return teamToSend(own[instanceId], pick);
+};
+
+/**
+ * The team this tab's requests carry for the selected instance. What the
+ * header's switcher shows as picked is this, or "all" when it is none.
+ */
+export const sentTeamIdAtom = atom((get) =>
+  sentTeamFor(
+    get(currentUserAtom),
+    get(ownTeamsAtom),
+    get(currentInstanceIdAtom),
+    get(currentTeamIdAtom)
+  )
+);
+
+/**
  * The team this tab sends for `instanceId`, for the request interceptors.
  *
- * None unless the account is a super admin. The proxy records an admin's team
- * as the owner of whatever it creates or edits, but only a super admin gets
- * the teams list, and so a switcher to see and change the team: an instance
- * admin, an admin to the proxy too, sent a team it could not see (#203).
- *
- * The other roles send none either, and must not send a stale pick: since
- * #301 the backend no longer ignores their header. It reads it as which of
- * the account's own teams a request is for, and refuses a team that is not
- * one of them (`team_not_assigned`) on every proxied request. With none sent,
- * a list shows all of their teams and a create goes to their only one.
- *
- * For the selected instance, exactly the team the header shows. For another
- * one — a request can name its instance — this tab's pick for it, or the
- * stored team before it has made one. Read from localStorage alone, it was
- * whichever team the last tab to pick had put there (#195).
+ * For the selected instance, sentTeamIdAtom: exactly what the header shows.
+ * For another one — a request can name its instance — the same rule over this
+ * tab's pick for it, or the stored team before it has made one. Read from
+ * localStorage alone, it was whichever team the last tab to pick had put
+ * there (#195).
  */
 export const selectedTeamId = (instanceId: string): string => {
   const store = getDefaultStore();
-  if (!instanceId || store.get(currentUserAtom)?.role !== 'super_admin') {
-    return '';
-  }
-  if (instanceId === store.get(currentInstanceIdAtom)) {
-    return store.get(currentTeamIdAtom);
-  }
+  if (instanceId === store.get(currentInstanceIdAtom)) return store.get(sentTeamIdAtom);
+
   const picked = store.get(_pickedTeamAtom);
-  return instanceId in picked ? picked[instanceId] : storedTeam(instanceId);
+  const pick = instanceId in picked ? picked[instanceId] : storedTeam(instanceId);
+  return sentTeamFor(store.get(currentUserAtom), store.get(ownTeamsAtom), instanceId, pick);
 };
+
+/**
+ * The team that narrows this account's lists on `instanceId`: what a
+ * developer or a viewer sends there. None for a super admin, whose team
+ * narrows nothing - it is where a create goes - so that a pick of theirs does
+ * not ask again for lists it cannot change.
+ *
+ * It is in the key of the lists a team can own, and named in their requests
+ * (see genListQueryOptions).
+ */
+export const listTeamId = (instanceId: string): string =>
+  getDefaultStore().get(currentUserAtom)?.role === 'super_admin' ? '' : selectedTeamId(instanceId);
+
+/** The same for the selected instance, for a component: it re-renders on a pick. */
+export const listTeamIdAtom = atom((get) =>
+  get(currentUserAtom)?.role === 'super_admin' ? '' : get(sentTeamIdAtom)
+);
 
 /**
  * Forget every team pick — this tab's, and the ones stored for new tabs.

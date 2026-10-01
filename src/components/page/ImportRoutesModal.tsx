@@ -41,6 +41,7 @@ import {
   findRouteDuplicates,
   type RouteDuplicate,
 } from '@/utils/route-duplicates';
+import { proxyFailureText } from '@/utils/team-refusal';
 import IconError from '~icons/material-symbols/error-outline';
 import IconUpload from '~icons/material-symbols/upload';
 
@@ -156,9 +157,8 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
         success++;
       } catch (err: unknown) {
         failed++;
-        const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
         const name = route.name || route.uri;
-        const msg = e?.response?.data?.error_msg || e?.message || 'Unknown error';
+        const msg = proxyFailureText(err) || 'Unknown error';
         errors.push(`${name}: ${msg}`);
       }
     }

@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next';
 import {
   getServiceListQueryOptions,
   getUpstreamListQueryOptions,
+  useListTeamId,
 } from '@/apis/hooks';
 import { FormItemSelect } from '@/components/form/Select';
 import { useFormReadOnlyFields } from '@/utils/form-context';
@@ -96,7 +97,7 @@ const ModeCard = ({
 const ServiceSummary = ({ serviceId }: { serviceId: string }) => {
   const { t } = useTranslation();
   const { data: services } = useSuspenseQuery(
-    getServiceListQueryOptions({ page: 1, page_size: 500 })
+    getServiceListQueryOptions({ page: 1, page_size: 500 }, undefined, useListTeamId())
   );
 
   const service = useMemo(
@@ -146,7 +147,7 @@ const ServiceSummary = ({ serviceId }: { serviceId: string }) => {
 const UpstreamSummary = ({ upstreamId }: { upstreamId: string }) => {
   const { t } = useTranslation();
   const { data: upstreams } = useSuspenseQuery(
-    getUpstreamListQueryOptions({ page: 1, page_size: 500 })
+    getUpstreamListQueryOptions({ page: 1, page_size: 500 }, undefined, useListTeamId())
   );
 
   const upstream = useMemo(
@@ -203,10 +204,10 @@ export const UpstreamModeSelector = () => {
   });
 
   const { data: services } = useSuspenseQuery(
-    getServiceListQueryOptions({ page: 1, page_size: 500 })
+    getServiceListQueryOptions({ page: 1, page_size: 500 }, undefined, useListTeamId())
   );
   const { data: upstreams } = useSuspenseQuery(
-    getUpstreamListQueryOptions({ page: 1, page_size: 500 })
+    getUpstreamListQueryOptions({ page: 1, page_size: 500 }, undefined, useListTeamId())
   );
 
   const serviceOptions = useMemo(

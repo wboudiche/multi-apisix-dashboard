@@ -149,6 +149,19 @@ test('an assignment holds every team it is given', async () => {
     { id: mine.id, name: mine.name },
     { id: alsoMine.id, name: alsoMine.name },
   ]);
+
+  // And in the access list they read of themselves, beside the role: what the
+  // header offers them to choose between, and checks a choice against.
+  const access = (await apiFetch(
+    `/api/v1/user-access/${assignment.user_id}/instances`,
+    await devToken()
+  )) as (UserInstance & { teams: { id: string; name: string }[] })[];
+  const here = access.find((a) => a.instance_id === fx().localInstanceId);
+  expect(here?.role).toBe('developer');
+  expect(here?.teams).toEqual([
+    { id: mine.id, name: mine.name },
+    { id: alsoMine.id, name: alsoMine.name },
+  ]);
 });
 
 test('a developer sees the routes of every team they work for, and of no other', async () => {

@@ -28,7 +28,11 @@ const dashboardBase = () => env.E2E_TARGET_URL.replace(/\/$/, '');
 export const headerSelect = (page: Page) =>
   page.locator('header').getByTestId('instance-switcher');
 
-/** The header's team Select, shown to admins only. Same reason as above. */
+/**
+ * The header's team Select: a super admin's, over the catalogue, or that of a
+ * developer or a viewer with several teams, over their own (#301). Same reason
+ * as above.
+ */
 export const headerTeamSelect = (page: Page) =>
   page.locator('header').getByTestId('team-switcher');
 

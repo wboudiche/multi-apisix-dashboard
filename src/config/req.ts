@@ -45,6 +45,7 @@ import {
   assertJsonBody,
   MalformedResponseError,
 } from '@/utils/response-shape';
+import { teamRefusal } from '@/utils/team-refusal';
 
 /**
  * Marks a PUT as a create that must not overwrite anything.
@@ -87,6 +88,16 @@ req.interceptors.request.use((conf) => {
   // stored team before it has made one (see selectedTeamId, #195). For an
   // admin, the proxy records it as the owner of what the request creates. What
   // already belongs to a team keeps it (#260).
+  //
+  // The team a caller names wins, as the instance does, and for the same
+  // reason: a list is kept under the team it was asked for (#301), so a
+  // refetch that runs after a pick has to ask for that team again, not for
+  // the one picked since. Named empty is none.
+  const namedTeam = conf.headers.get('X-Team-ID');
+  if (typeof namedTeam === 'string') {
+    if (!namedTeam) conf.headers.delete('X-Team-ID');
+    return conf;
+  }
   const teamId = selectedTeamId(instanceId);
   if (teamId) {
     conf.headers.set('X-Team-ID', teamId);
@@ -184,6 +195,8 @@ export type APISIXRespErr = {
    * the APISIX-shaped fields left every such response with nothing to show.
    */
   error?: string;
+  /** Names a refusal of the dashboard's own, where it has a name. */
+  code?: string;
 };
 
 /**
@@ -360,8 +373,12 @@ req.interceptors.response.use(
 
 
       const d = res.data;
+      // A refusal the dashboard's own backend names by a code is said in the
+      // reader's language: its sentence is English, and one of these - "choose
+      // a team" - is something they can act on only if they can read it (#301).
       const message =
-        d?.error_msg || d?.message || d?.error || fallbackMessage(status);
+        teamRefusal(d?.code, addressedTo(err.config))
+        || d?.error_msg || d?.message || d?.error || fallbackMessage(status);
       notifications.show({
         // A stable id is what makes repeats collapse into one notification.
         // Deriving it from the message left it undefined whenever the payload
