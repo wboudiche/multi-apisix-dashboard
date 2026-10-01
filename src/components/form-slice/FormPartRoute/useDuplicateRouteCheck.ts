@@ -19,7 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
 
-import { getRouteListQueryOptions } from '@/apis/hooks';
+import { getRouteListQueryOptions, useListTeamId } from '@/apis/hooks';
 import { PAGE_SIZE_MAX } from '@/config/constant';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
 
@@ -50,7 +50,7 @@ export const useDuplicateRouteCheck = (excludeID?: string) => {
   const { data: routes } = useQuery({
     // The whole list, not the first page: a duplicate hiding on page two is the
     // one most likely to be missed by a human, so it must not be missed here.
-    ...getRouteListQueryOptions({ page: 1, page_size: PAGE_SIZE_MAX }),
+    ...getRouteListQueryOptions({ page: 1, page_size: PAGE_SIZE_MAX }, undefined, useListTeamId()),
     enabled: hasSomethingToCompare,
   });
 

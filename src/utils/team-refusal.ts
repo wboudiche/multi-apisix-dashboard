@@ -43,8 +43,8 @@ export const teamRefusal = (
   if (code === 'team_not_assigned') return i18n.t('error.teamNotAssigned');
   if (code !== 'team_required') return undefined;
   const own = getDefaultStore().get(ownTeamsAtom)[instanceId];
-  // Known to have none. Not yet read is not that: the header says so itself
-  // when it could not read them.
+  // Known to have none. Not yet read - the access list has not arrived - is
+  // not that.
   return own && own.teams.length === 0
     ? i18n.t('error.teamMissing')
     : i18n.t('error.teamRequired');

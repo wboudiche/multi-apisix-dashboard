@@ -23,7 +23,7 @@ import { getUpstreamListReq, getUpstreamReq } from '@/apis/upstreams';
 import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { reqFor } from '@/config/req';
 import { currentInstanceIdAtom, selectedInstanceId } from '@/stores/instance';
-import { selectedTeamId, sentTeamIdAtom } from '@/stores/team';
+import { listTeamId, listTeamIdAtom } from '@/stores/team';
 import type {
   APISIXDetailResponse,
   APISIXListResponse,
@@ -108,6 +108,27 @@ const genDetailQueryOptions =
         retry: (failureCount, err) => !isNotFound(err) && failureCount < 3,
       });
     };
+/**
+ * The lists a developer's or a viewer's team narrows: what a team can own.
+ * A team sent with any other list changes nothing in its answer.
+ */
+const TEAM_OWNED_LISTS = new Set([
+  'routes',
+  'services',
+  'upstreams',
+  'consumers',
+  'consumer_groups',
+  'stream_routes',
+]);
+
+/**
+ * The team a list is asked for, read where a pick re-renders: for a component
+ * that builds list options itself, to pass as their third argument. Built
+ * without it, the options keep the team of the last render, and a picker
+ * went on showing the team before.
+ */
+export const useListTeamId = () => useAtomValue(listTeamIdAtom);
+
 /** simple factory func for list query options which support extends PageSearchType */
 const genListQueryOptions =
   <P extends PageSearchType, R>(
@@ -118,12 +139,15 @@ const genListQueryOptions =
       // The hook passes the instance it reads reactively; loaders pass none and
       // get this tab's selected instance.
       const instanceId = instanceIdOverride ?? selectedInstanceId();
-      // And the team its requests carry there. For a developer or a viewer
-      // with several teams it narrows the list (#301), so it is in the key: a
-      // list asked for under one team is not the list of another. Without it
-      // the answer to a request still in flight when the team changed - a
-      // loader's, after a reload - was stored as the current team's list.
-      const teamId = teamIdOverride ?? selectedTeamId(instanceId);
+      // And, for what a team can own, the team that narrows it there (#301):
+      // a list asked for under one team is not the list of another, so the
+      // team is in the key and named in the request, as the instance is.
+      // Without the first, the answer to a request still in flight when the
+      // team changed - a loader's, after a reload - was stored as the current
+      // team's list; without the second, a refetch after a pick stored the
+      // new team's list under the old team's key.
+      const teamOwned = TEAM_OWNED_LISTS.has(key);
+      const teamId = teamOwned ? (teamIdOverride ?? listTeamId(instanceId)) : '';
       return queryOptions({
         queryKey: [key, instanceId, props, teamId],
         queryFn: async () => {
@@ -135,7 +159,10 @@ const genListQueryOptions =
           try {
             // Answered by the instance in the key, whichever is selected when
             // the query runs (#187).
-            return await listReq(reqFor(instanceId), props);
+            return await listReq(
+              teamOwned ? reqFor(instanceId, { 'X-Team-ID': teamId }) : reqFor(instanceId),
+              props
+            );
           } catch (err) {
             if (isProxyUnreachable(err)) {
               return { list: [], total: 0 } as APISIXListResponse<R>;
@@ -162,11 +189,11 @@ export const genUseList = <
     // Reactively read instance ID — triggers a query key change when the user
     // switches instances in the Header, causing an automatic data refetch.
     const currentInstanceId = useAtomValue(currentInstanceIdAtom);
-    // And the team sent for it, for the same reason: picking one in the
+    // And the team that narrows it, for the same reason: picking one in the
     // header changes the key, and the list of that team is fetched.
-    const sentTeamId = useAtomValue(sentTeamIdAtom);
+    const teamId = useAtomValue(listTeamIdAtom);
     const listQuery = useSuspenseQuery(
-      listQueryOptions({ ...defaultParams, ...params } as P, currentInstanceId, sentTeamId)
+      listQueryOptions({ ...defaultParams, ...params } as P, currentInstanceId, teamId)
     );
     const { data, isLoading, refetch } = listQuery;
     const opts = { data, setParams, params };

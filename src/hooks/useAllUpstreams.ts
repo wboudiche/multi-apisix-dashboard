@@ -16,6 +16,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 
+import { useListTeamId } from '@/apis/hooks';
 import { getRouteListReq } from '@/apis/routes';
 import { getUpstreamListReq } from '@/apis/upstreams';
 import { PAGE_SIZE_MAX } from '@/config/constant';
@@ -36,14 +37,21 @@ import { reqFor } from '@/config/req';
  * Answered by the instance in the key, whichever is selected when the query
  * runs (#187).
  */
-export const useAllUpstreams = (instanceId: string, enabled = true) =>
-  useQuery({
-    queryKey: ['upstreams', instanceId, 'all'],
+export const useAllUpstreams = (instanceId: string, enabled = true) => {
+  // And by the team that narrows it, named in the request too: see
+  // genListQueryOptions (#301).
+  const teamId = useListTeamId();
+  return useQuery({
+    queryKey: ['upstreams', instanceId, 'all', teamId],
     queryFn: () =>
-      getUpstreamListReq(reqFor(instanceId), { page: 1, page_size: PAGE_SIZE_MAX }),
+      getUpstreamListReq(reqFor(instanceId, { 'X-Team-ID': teamId }), {
+        page: 1,
+        page_size: PAGE_SIZE_MAX,
+      }),
     staleTime: 60_000,
     enabled,
   });
+};
 
 /**
  * The whole route list for an instance.
@@ -53,11 +61,16 @@ export const useAllUpstreams = (instanceId: string, enabled = true) =>
  * it is read afresh each time the filter mounts: labels change with every
  * route written, and an import labels a whole batch at once.
  */
-export const useAllRoutes = (instanceId: string, enabled = true) =>
-  useQuery({
-    queryKey: ['routes', instanceId, 'all'],
+export const useAllRoutes = (instanceId: string, enabled = true) => {
+  const teamId = useListTeamId();
+  return useQuery({
+    queryKey: ['routes', instanceId, 'all', teamId],
     queryFn: () =>
-      getRouteListReq(reqFor(instanceId), { page: 1, page_size: PAGE_SIZE_MAX }),
+      getRouteListReq(reqFor(instanceId, { 'X-Team-ID': teamId }), {
+        page: 1,
+        page_size: PAGE_SIZE_MAX,
+      }),
     staleTime: 0,
     enabled,
   });
+};

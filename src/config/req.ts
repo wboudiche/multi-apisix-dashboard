@@ -88,6 +88,16 @@ req.interceptors.request.use((conf) => {
   // stored team before it has made one (see selectedTeamId, #195). For an
   // admin, the proxy records it as the owner of what the request creates. What
   // already belongs to a team keeps it (#260).
+  //
+  // The team a caller names wins, as the instance does, and for the same
+  // reason: a list is kept under the team it was asked for (#301), so a
+  // refetch that runs after a pick has to ask for that team again, not for
+  // the one picked since. Named empty is none.
+  const namedTeam = conf.headers.get('X-Team-ID');
+  if (typeof namedTeam === 'string') {
+    if (!namedTeam) conf.headers.delete('X-Team-ID');
+    return conf;
+  }
   const teamId = selectedTeamId(instanceId);
   if (teamId) {
     conf.headers.set('X-Team-ID', teamId);

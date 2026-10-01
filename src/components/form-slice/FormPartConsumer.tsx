@@ -19,7 +19,7 @@ import { useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { getConsumerGroupListQueryOptions } from '@/apis/hooks';
+import { getConsumerGroupListQueryOptions, useListTeamId } from '@/apis/hooks';
 import { FormItemSelect } from '@/components/form/Select';
 import { FormItemTextInput } from '@/components/form/TextInput';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -41,7 +41,7 @@ const FormItemConsumerGroupSelect = () => {
   const { t } = useTranslation();
   const { control } = useFormContext<APISIXType['ConsumerPut']>();
   const { data: consumerGroups } = useSuspenseQuery(
-    getConsumerGroupListQueryOptions({ page: 1, page_size: 500 })
+    getConsumerGroupListQueryOptions({ page: 1, page_size: 500 }, undefined, useListTeamId())
   );
 
   const options = useMemo(

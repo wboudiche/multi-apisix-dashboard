@@ -44,6 +44,8 @@ vi.stubGlobal('localStorage', {
 
 let currentTeamIdAtom: TeamModule['currentTeamIdAtom'];
 let sentTeamIdAtom: TeamModule['sentTeamIdAtom'];
+let ownTeamsAtom: TeamModule['ownTeamsAtom'];
+let listTeamId: TeamModule['listTeamId'];
 let clearTeamPicks: TeamModule['clearTeamPicks'];
 let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
 let currentUserAtom: AuthModule['currentUserAtom'];
@@ -65,7 +67,7 @@ const answer = async (config: InternalAxiosRequestConfig) => {
 };
 
 beforeAll(async () => {
-  ({ currentTeamIdAtom, sentTeamIdAtom, clearTeamPicks } = await import('./team'));
+  ({ currentTeamIdAtom, sentTeamIdAtom, ownTeamsAtom, listTeamId, clearTeamPicks } = await import('./team'));
   ({ currentInstanceIdAtom } = await import('./instance'));
   ({ currentUserAtom, userInstancesAtom } = await import('./auth'));
   ({ req, reqFor } = await import('@/config/req'));
@@ -324,15 +326,31 @@ describe('the team a developer with several sends', () => {
     expect(store().get(sentTeamIdAtom)).toBe('');
   });
 
-  it('is none when the answer names no teams, as from a backend before it did', async () => {
-    store().set(currentUserAtom, account(''));
+  it('still holds when an answer comes without the names', async () => {
+    // The backend could not read the teams this time, and answered the
+    // assignment without them. The ids are still the developer's teams:
+    // dropping them took the switcher, and the team sent, away mid-session.
+    own(here(), ['T1', 'T2']);
+    store().set(currentTeamIdAtom, 'T2');
     store().set(userInstancesAtom, [
       { user_id: 'user-none', instance_id: here(), role: 'developer', team_ids: ['T1', 'T2'], team_id: 'T1' },
     ]);
-    store().set(currentTeamIdAtom, 'T1');
 
     await req.get('/routes');
-    expect(lastTeam()).toBeUndefined();
+    expect(lastTeam()).toBe('T2');
+    // Under the names last heard.
+    expect(store().get(ownTeamsAtom)[here()].teams).toEqual([team('T1'), team('T2')]);
+  });
+
+  it('goes by ids when no answer ever named the teams', async () => {
+    store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [
+      { user_id: 'user-none', instance_id: here(), role: 'viewer', team_ids: ['N1', 'N2'], team_id: 'N1' },
+    ]);
+    expect(store().get(ownTeamsAtom)[here()].teams).toEqual([
+      { id: 'N1', name: 'N1' },
+      { id: 'N2', name: 'N2' },
+    ]);
   });
 
   it('is the pick for the instance a request names, when it is theirs there', async () => {
@@ -346,5 +364,47 @@ describe('the team a developer with several sends', () => {
     expect(lastTeam()).toBe('T4');
     await req.get('/routes');
     expect(lastTeam()).toBe('T1');
+  });
+});
+
+// A list is kept under the team it was asked for, and its request names that
+// team - as both do the instance (#187). The team that narrows a list is the
+// one a developer or a viewer sends; a super admin's narrows nothing.
+describe('the team a list is asked for', () => {
+  it('is the one a developer sends, and none for a super admin whatever they picked', () => {
+    store().set(currentTeamIdAtom, 'T1');
+    expect(listTeamId(here())).toBe('');
+
+    store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [
+      {
+        user_id: 'user-none',
+        instance_id: here(),
+        role: 'developer',
+        team_ids: ['T1', 'T2'],
+        team_id: 'T1',
+        teams: [
+          { id: 'T1', name: 'one' },
+          { id: 'T2', name: 'two' },
+        ],
+      },
+    ]);
+    expect(listTeamId(here())).toBe('T1');
+  });
+
+  it('is the one a request names, whatever is picked by the time it runs', async () => {
+    // A refetch of the list kept for T1, running after T2 was picked.
+    store().set(currentTeamIdAtom, 'T2');
+    await reqFor(here(), { 'X-Team-ID': 'T1' }).get('/routes');
+    expect(lastTeam()).toBe('T1');
+  });
+
+  it('is none when the request names none, whatever is picked', async () => {
+    // The list kept for "all my teams" - or for a super admin, whose pick is
+    // not the list's business.
+    store().set(currentTeamIdAtom, 'T2');
+    await reqFor(here(), { 'X-Team-ID': '' }).get('/routes');
+    expect(sent).toHaveLength(1);
+    expect(lastTeam()).toBeUndefined();
   });
 });

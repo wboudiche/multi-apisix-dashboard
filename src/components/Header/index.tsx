@@ -33,7 +33,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import type { FC } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { instanceApi, type InstanceHealth } from '@/apis/instances';
@@ -108,18 +108,6 @@ const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
     </Tooltip>
   );
 };
-
-// The lists a developer's or a viewer's team narrows, as src/apis/hooks.ts
-// keys them. Not the records: one of them is theirs to open whichever team
-// they have picked.
-const TEAM_OWNED_LISTS = new Set([
-  'routes',
-  'services',
-  'upstreams',
-  'consumers',
-  'consumer_groups',
-  'stream_routes',
-]);
 
 type TeamSwitcherProps = {
   // An admin's: the whole catalogue. A developer's or a viewer's: their own
@@ -368,26 +356,6 @@ export const Header: FC<HeaderProps> = (props) => {
   // list above: the catalogue answers them 403. The same read the requests
   // are checked against (see ownTeamsAtom).
   const ownTeams = useAtomValue(ownTeamsAtom)[currentInstanceId];
-
-  // What is sent for a developer or a viewer narrows the lists of what a
-  // team can own. The list pages follow by their key, which holds the team
-  // (see genListQueryOptions). The lists a form reads for its pickers are
-  // built where nothing re-renders on a pick, so the ones on screen are asked
-  // again here when what is sent changes - a pick, the access list arriving
-  // after a reload, or a role that stopped sending one.
-  const sentTeamId = useAtomValue(sentTeamIdAtom);
-  const lastSentTeamId = useRef(sentTeamId);
-  const isSuperAdmin = currentUser?.role === 'super_admin';
-  useEffect(() => {
-    if (lastSentTeamId.current === sentTeamId) return;
-    lastSentTeamId.current = sentTeamId;
-    // A super admin's team narrows nothing: it is where a create goes.
-    if (isSuperAdmin) return;
-    queryClient.invalidateQueries({
-      predicate: (query) =>
-        TEAM_OWNED_LISTS.has(String(query.queryKey[0])) && query.queryKey[1] === currentInstanceId,
-    });
-  }, [sentTeamId, isSuperAdmin, currentInstanceId]);
 
   const switcherTeams = isAdmin ? teams : (ownTeams?.teams ?? []);
 

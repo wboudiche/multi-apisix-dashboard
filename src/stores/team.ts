@@ -92,19 +92,24 @@ export type OwnTeams = {
  * one request, ids from another - the switcher offered a team that was then
  * not sent, and went on sending a deleted team it showed as "all my teams".
  */
+const knownTeamNames = new Map<string, string>();
+
 export const ownTeamsAtom = atom((get) => {
   const own: Record<string, OwnTeams> = {};
   for (const assignment of get(userInstancesAtom)) {
     if (assignment.role !== 'developer' && assignment.role !== 'viewer') continue;
-    // An answer that does not name the teams - the backend could not read
-    // them, or predates naming them - is not an account with none: no entry,
-    // which reads as "not known" rather than "has no team".
-    if (!assignment.teams) continue;
+    // As `teamsOf` in `@/apis/instances`, which this module cannot import:
+    // that one loads the API client, and the client loads this.
+    const ids = assignment.team_ids ?? (assignment.team_id ? [assignment.team_id] : []);
+    for (const team of assignment.teams ?? []) knownTeamNames.set(team.id, team.name);
     own[assignment.instance_id] = {
-      // As `teamsOf` in `@/apis/instances`, which this module cannot import:
-      // that one loads the API client, and the client loads this.
-      ids: assignment.team_ids ?? (assignment.team_id ? [assignment.team_id] : []),
-      teams: assignment.teams,
+      ids,
+      // An answer that does not name the teams - the backend could not read
+      // them this time - still says which the assignment holds. They go by
+      // the name last heard, or by their id: a switcher of ids is a poor one,
+      // and it is still the developer's teams, where dropping them took the
+      // switcher and the team sent away in the middle of a session.
+      teams: assignment.teams ?? ids.map((id) => ({ id, name: knownTeamNames.get(id) ?? id })),
     };
   }
   return own;
@@ -184,6 +189,23 @@ export const selectedTeamId = (instanceId: string): string => {
   const pick = instanceId in picked ? picked[instanceId] : storedTeam(instanceId);
   return sentTeamFor(store.get(currentUserAtom), store.get(ownTeamsAtom), instanceId, pick);
 };
+
+/**
+ * The team that narrows this account's lists on `instanceId`: what a
+ * developer or a viewer sends there. None for a super admin, whose team
+ * narrows nothing - it is where a create goes - so that a pick of theirs does
+ * not ask again for lists it cannot change.
+ *
+ * It is in the key of the lists a team can own, and named in their requests
+ * (see genListQueryOptions).
+ */
+export const listTeamId = (instanceId: string): string =>
+  getDefaultStore().get(currentUserAtom)?.role === 'super_admin' ? '' : selectedTeamId(instanceId);
+
+/** The same for the selected instance, for a component: it re-renders on a pick. */
+export const listTeamIdAtom = atom((get) =>
+  get(currentUserAtom)?.role === 'super_admin' ? '' : get(sentTeamIdAtom)
+);
 
 /**
  * Forget every team pick — this tab's, and the ones stored for new tabs.
