@@ -36,12 +36,6 @@ describe('the selection of a list page', () => {
     expect(selectionOf({ listKey: PAGE_1, ids: ['a', 'b'] }, PAGE_2, ['k', 'l'])).toEqual([]);
   });
 
-  it('is not what was ticked on another page, even coming back to it', () => {
-    // Page one, then two, then one again: the ticks were another visit's.
-    const afterPageTwo = tickedAfter({ listKey: PAGE_1, ids: ['a'] }, PAGE_2, ['k'], ['k']);
-    expect(selectionOf(afterPageTwo, PAGE_1, ['a', 'b'])).toEqual([]);
-  });
-
   it('is not what was ticked on another instance, though the ids are the same', () => {
     // Two gateways number their routes from the same 1. Ticked on staging,
     // routes 1 and 2 arrived ticked on production, with a Delete (2) nobody
@@ -62,25 +56,32 @@ describe('the selection of a list page', () => {
 });
 
 describe('a change of selection', () => {
-  it('replaces it, on the list it is made on', () => {
-    expect(tickedAfter({ listKey: PAGE_1, ids: ['a'] }, PAGE_2, ['k', 'l'], ['l'])).toEqual({
+  it('replaces it', () => {
+    expect(tickedAfter({ listKey: PAGE_2, ids: ['k'] }, PAGE_2, ['k', 'l'], ['l'])).toEqual({
       listKey: PAGE_2,
       ids: ['l'],
     });
   });
 
   it('given as a function, starts from what this list shows as selected', () => {
-    // Two toggles before a render each see the one before them...
+    // Two toggles before a render each see the one before them.
     const one = tickedAfter({ listKey: PAGE_1, ids: [] }, PAGE_1, ['a', 'b'], (s) => [...s, 'a']);
     const two = tickedAfter(one, PAGE_1, ['a', 'b'], (s) => [...s, 'b']);
     expect(two.ids).toEqual(['a', 'b']);
 
-    // ...and none of them sees another page's ticks, which adding to would
-    // carry along.
-    const onPageTwo = tickedAfter({ listKey: PAGE_1, ids: ['a', 'b'] }, PAGE_2, ['k'], (s) => [
+    // And not a row that has left the list since it was ticked.
+    const after = tickedAfter({ listKey: PAGE_1, ids: ['a', 'gone'] }, PAGE_1, ['a', 'b'], (s) => [
       ...s,
-      'k',
+      'b',
     ]);
-    expect(onPageTwo).toEqual({ listKey: PAGE_2, ids: ['k'] });
+    expect(after.ids).toEqual(['a', 'b']);
+  });
+
+  it('made for another list changes nothing', () => {
+    // A batch confirmed on page one, answered once page two is shown and
+    // ticked: its "clear the selection" is page one's, and wiped page two's.
+    const onPageTwo = { listKey: PAGE_2, ids: ['k'] };
+    expect(tickedAfter(onPageTwo, PAGE_1, ['a', 'b'], [])).toBe(onPageTwo);
+    expect(tickedAfter(onPageTwo, PAGE_1, ['a', 'b'], (s) => [...s, 'a'])).toBe(onPageTwo);
   });
 });

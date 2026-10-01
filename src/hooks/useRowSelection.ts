@@ -44,20 +44,33 @@ export const selectionOf = (
 export type SelectionUpdate = readonly string[] | ((selected: string[]) => readonly string[]);
 
 /**
- * What a change of selection leaves ticked. An update given as a function
- * starts from the selection as the list shows it - not from what is stored,
- * which may still hold another list's ticks.
+ * What a change of selection leaves ticked.
+ *
+ * A change made for another list than the one the ticks are on changes
+ * nothing. The page stays usable while a batch is being answered, so the
+ * "clear the selection" of a batch confirmed on page one can arrive once page
+ * two is shown and ticked: applied, it wiped ticks it was never about.
+ *
+ * An update given as a function starts from the selection as the list shows
+ * it, so two toggles before a render keep both.
  */
 export const tickedAfter = (
   ticked: Ticked,
   listKey: string,
   visibleIds: readonly string[],
   update: SelectionUpdate
-): Ticked => ({
-  listKey,
-  ids:
-    typeof update === 'function' ? update(selectionOf(ticked, listKey, visibleIds)) : update,
-});
+): Ticked => {
+  if (ticked.listKey !== listKey) return ticked;
+  return {
+    listKey,
+    ids:
+      typeof update === 'function' ? update(selectionOf(ticked, listKey, visibleIds)) : update,
+  };
+};
+
+/** Whether two selections hold the same ids in the same order. */
+const sameIds = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
 
 /**
  * The selection of a list page.
@@ -71,18 +84,18 @@ export const tickedAfter = (
  *
  * So a selection belongs to the list it was made on - `listKey`, which the
  * list hooks return and which changes with the instance, the page, the
- * filters and the team - and is never more than what that list shows. Both
- * are decided on each render rather than by an effect that clears the state:
- * there is no moment after a page change in which the old ids are still it.
+ * filters and the team - and is never more than what that list shows.
+ *
+ * What is stored is kept to that as well, not only what is returned: a tick
+ * hidden rather than dropped came back the day a row with the same id did - a
+ * route deleted and imported again, a consumer added back under its name -
+ * and was deleted with the next batch, ticked by nobody. It is put right
+ * while rendering, which React allows for exactly this - state that follows
+ * what a component is given - and which, unlike an effect, shows no frame of
+ * the old selection in between.
  */
 export const useRowSelection = (visibleIds: readonly string[], listKey: string) => {
   const [ticked, setTicked] = useState<Ticked>({ listKey, ids: [] });
-  // Another list than the one the ticks were made on: they are forgotten, so
-  // that coming back to that list does not find them again. Set while
-  // rendering, which React allows for exactly this - state that follows what
-  // a component is given - and which, unlike an effect, shows no frame with
-  // the old ticks in between. selectionOf already ignores them in this one.
-  if (ticked.listKey !== listKey) setTicked({ listKey, ids: [] });
 
   // The ids by value: a page builds the array anew on every render, and a
   // selection that changed identity each time would have a table redo its
@@ -94,6 +107,10 @@ export const useRowSelection = (visibleIds: readonly string[], listKey: string) 
     () => selectionOf(ticked, listKey, visible),
     [ticked, listKey, visible]
   );
+  if (ticked.listKey !== listKey || !sameIds(ticked.ids, selected)) {
+    setTicked({ listKey, ids: selected });
+  }
+
   const setSelected = useCallback(
     (update: SelectionUpdate) =>
       setTicked((current) => tickedAfter(current, listKey, visible, update)),

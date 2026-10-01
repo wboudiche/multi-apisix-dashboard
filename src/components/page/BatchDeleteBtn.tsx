@@ -22,8 +22,10 @@ import { useTranslation } from 'react-i18next';
 import { isNotFound } from '@/apis/hooks';
 import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { queryClient } from '@/config/global';
-import { req } from '@/config/req';
+import { reqFor } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
+import { selectedInstanceId } from '@/stores/instance';
+import { describeError } from '@/utils/api-error';
 import IconDelete from '~icons/material-symbols/delete-forever-outline';
 
 type BatchDeleteBtnProps = {
@@ -34,6 +36,21 @@ type BatchDeleteBtnProps = {
   onClearSelection?: () => void;
 };
 
+/**
+ * Whether a delete failed because the gateway no longer has the row.
+ *
+ * A 404 from the gateway, that is - its answers carry `message` or
+ * `error_msg`. The dashboard answers 404 too, with `error`, for an instance
+ * that is gone or switched off: nothing was deleted then, and counting it as
+ * gone reported a batch that did nothing as a success.
+ */
+const goneFromGateway = (failure: unknown) => {
+  if (!isNotFound(failure)) return false;
+  const body = (failure as { response?: { data?: { message?: string; error_msg?: string } } })
+    .response?.data;
+  return !!(body?.message || body?.error_msg);
+};
+
 export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
   const { ids, apiBase, resourceName, onSuccess, onClearSelection } = props;
   const { canDelete } = usePermission();
@@ -42,6 +59,11 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
   if (!canDelete || ids.length === 0) return null;
 
   const handleBatchDelete = () => {
+    // The instance the rows were ticked on, which is the one selected now.
+    // Named in every delete: read when each is sent, it was whichever
+    // instance was selected by then, and a confirmation left open while the
+    // header moved on deleted the same ids from another gateway.
+    const gateway = reqFor(selectedInstanceId());
     modals.openConfirmModal({
       centered: true,
       confirmProps: { color: 'red' },
@@ -63,19 +85,20 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
       onConfirm: async () => {
         const answers = await Promise.allSettled(
           ids.map((id) =>
-            // A 404 is not a refusal, and gets no toast of its own: see below.
-            req.delete(`${apiBase}/${id}`, { headers: { [SKIP_INTERCEPTOR_HEADER]: ['404'] } })
+            // A 404 gets no toast from `req`: it is told apart below.
+            gateway.delete(`${apiBase}/${id}`, { headers: { [SKIP_INTERCEPTOR_HEADER]: ['404'] } })
           )
+        );
+        const failures = answers.flatMap((answer) =>
+          answer.status === 'rejected' ? [answer.reason as unknown] : []
         );
         // Not there any more - another tab, another admin - is what was asked
         // for: the row is gone. Counted as a failure, a batch that ended
         // exactly as intended was reported in red.
-        const refused = answers.filter(
-          (answer) => answer.status === 'rejected' && !isNotFound(answer.reason)
-        ).length;
-        const gone = answers.length - refused;
+        const refusals = failures.filter((failure) => !goneFromGateway(failure));
+        const gone = answers.length - refusals.length;
 
-        if (refused === 0) {
+        if (refusals.length === 0) {
           notifications.show({
             message: t('info.delete.success', { name: `${gone} ${resourceName}` }),
             color: 'green',
@@ -84,13 +107,27 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
         } else {
           // The selection is left alone: the rows that went leave it with the
           // list, and the ones that were refused stay ticked, to be tried
-          // again once whatever refused them - an unreachable gateway, most
-          // often - is put right. Why is `req`'s to say: a toast, or the
-          // banner when it is the gateway that cannot be reached.
+          // again once whatever refused them is put right.
           notifications.show({
-            message: t('info.delete.partial', { deleted: gone, failed: refused, name: resourceName }),
+            message: t('info.delete.partial', {
+              deleted: gone,
+              failed: refusals.length,
+              name: resourceName,
+            }),
             color: gone > 0 ? 'orange' : 'red',
           });
+          // Why is `req`'s to say - a toast, or the banner when the gateway
+          // cannot be reached - except for the 404s it was told to keep quiet
+          // about: the dashboard's own, for an instance that is gone or
+          // switched off. Said here, once.
+          const unsaid = refusals.find(isNotFound);
+          if (unsaid) {
+            notifications.show({
+              id: 'batch-delete-not-found',
+              message: describeError(unsaid, t('error.notFound')),
+              color: 'red',
+            });
+          }
         }
 
         if (gone > 0) {
