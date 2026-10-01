@@ -52,7 +52,7 @@ import { roleLabel } from '@/config/role-labels';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom, instancesAtom, setInstancesAtom } from '@/stores/instance';
-import { currentTeamIdAtom } from '@/stores/team';
+import { choosableTeamIds, currentTeamIdAtom } from '@/stores/team';
 import { describeError } from '@/utils/api-error';
 import IconMenu from '~icons/material-symbols/menu';
 import IconMenuOpen from '~icons/material-symbols/menu-open';
@@ -115,11 +115,25 @@ type TeamSwitcherProps = {
   // teams on the instance, which is all they may choose between.
   teams: Pick<Team, 'id' | 'name'>[];
   isAdmin: boolean;
+  // The teams the assignment lets a developer or a viewer choose between, by
+  // id: empty unless it holds several (see choosableTeamIds).
+  choosable?: string[];
 };
 
-const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
+const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin, choosable = [] }) => {
   const { t } = useTranslation();
   const [currentTeamId, setCurrentTeamId] = useAtom(currentTeamIdAtom);
+
+  // An assignment that still names a team that is gone (#375): several ids to
+  // the backend, which then wants to be told which team a new resource is
+  // for, and one team here, with nothing to choose. The one that is left is
+  // the answer, so it is given - or every create would be refused with
+  // "choose a team" under a header that offers none.
+  const onlyOneLeft =
+    !isAdmin && teams.length === 1 && choosable.includes(teams[0].id) ? teams[0].id : '';
+  useEffect(() => {
+    if (onlyOneLeft && currentTeamId !== onlyOneLeft) setCurrentTeamId(onlyOneLeft);
+  }, [onlyOneLeft, currentTeamId, setCurrentTeamId]);
 
   const handleTeamChange = (value: string | null) => {
     const newTeamId = value ?? '';
@@ -403,7 +417,11 @@ export const Header: FC<HeaderProps> = (props) => {
 
           {/* Team Switcher */}
           {switcherTeams.length > 0 && currentInstanceId && (
-            <TeamSwitcher teams={switcherTeams} isAdmin={isAdmin} />
+            <TeamSwitcher
+              teams={switcherTeams}
+              isAdmin={isAdmin}
+              choosable={choosableTeamIds(userInstances, currentInstanceId)}
+            />
           )}
 
           <LanguageMenu />

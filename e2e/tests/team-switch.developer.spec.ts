@@ -207,3 +207,50 @@ test('a developer with one team is shown its name, and has nothing to choose', a
     await context.close();
   }
 });
+
+test('a developer whose other team was deleted can still create, for the team that is left', async ({
+  browser,
+}) => {
+  // Deleting a team does not look at the assignments that name it (#375). To
+  // the backend this account still has two teams, and a create has to say
+  // which; to the header it has one, and nothing to choose. The one that is
+  // left is sent, or every create would be refused with "choose a team" under
+  // a header offering none.
+  test.setTimeout(TIMEOUT_MS);
+  const admin = await loginAdmin();
+  const prefix = randomId('e2e-dev-gone');
+  const kept = await ensureTeam(admin, { name: `${prefix}-kept` });
+  const gone = await ensureTeam(admin, { name: `${prefix}-gone` });
+  const user = await ensureUser(admin, { username: `${prefix}-dev`, password: PASSWORD });
+  await ensureUserInstanceRole(admin, user.id, fx().localInstanceId, {
+    role: 'developer',
+    team_ids: [gone.id, kept.id],
+  });
+  await apiFetch(`/api/v1/teams/${gone.id}`, admin, { method: 'DELETE' });
+  const consumer = `e2e_dev_gone_${Date.now().toString(36)}`;
+  const context = await browser.newContext({ storageState: undefined });
+
+  try {
+    const page = await context.newPage();
+    await permission.loginAs(page, `${prefix}-dev`, PASSWORD);
+    await permission.switchInstance(page, 'Local APISIX');
+    await page.goto('/ui/consumers/add');
+    await expect(page.locator('header').getByTestId('team-badge')).toHaveText(kept.name, {
+      timeout: 30000,
+    });
+
+    await consumersPom.isAddPage(page);
+    await page.getByRole('textbox', { name: 'Username' }).fill(consumer);
+    await consumersPom.getAddBtn(page).click();
+    await consumersPom.isDetailPage(page);
+    expect(await ownerOf(consumer)).toBe(kept.id);
+  } finally {
+    await context.close();
+    await apiFetch(`${PROXY}/consumers/${consumer}`, admin, {
+      method: 'DELETE',
+      headers: onLocal(),
+    }).catch(() => undefined);
+    await deleteUsersByPrefix(prefix);
+    await deleteTeamsByPrefix(prefix);
+  }
+});
