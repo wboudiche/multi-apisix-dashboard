@@ -96,11 +96,15 @@ export const ownTeamsAtom = atom((get) => {
   const own: Record<string, OwnTeams> = {};
   for (const assignment of get(userInstancesAtom)) {
     if (assignment.role !== 'developer' && assignment.role !== 'viewer') continue;
+    // An answer that does not name the teams - the backend could not read
+    // them, or predates naming them - is not an account with none: no entry,
+    // which reads as "not known" rather than "has no team".
+    if (!assignment.teams) continue;
     own[assignment.instance_id] = {
       // As `teamsOf` in `@/apis/instances`, which this module cannot import:
       // that one loads the API client, and the client loads this.
       ids: assignment.team_ids ?? (assignment.team_id ? [assignment.team_id] : []),
-      teams: assignment.teams ?? [],
+      teams: assignment.teams,
     };
   }
   return own;

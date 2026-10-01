@@ -23,6 +23,7 @@ import { getUpstreamListReq, getUpstreamReq } from '@/apis/upstreams';
 import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { reqFor } from '@/config/req';
 import { currentInstanceIdAtom, selectedInstanceId } from '@/stores/instance';
+import { selectedTeamId, sentTeamIdAtom } from '@/stores/team';
 import type {
   APISIXDetailResponse,
   APISIXListResponse,
@@ -113,12 +114,18 @@ const genListQueryOptions =
     key: string,
     listReq: (req: AxiosInstance, props: P) => Promise<APISIXListResponse<R>>
   ) =>
-    (props: P, instanceIdOverride?: string) => {
+    (props: P, instanceIdOverride?: string, teamIdOverride?: string) => {
       // The hook passes the instance it reads reactively; loaders pass none and
       // get this tab's selected instance.
       const instanceId = instanceIdOverride ?? selectedInstanceId();
+      // And the team its requests carry there. For a developer or a viewer
+      // with several teams it narrows the list (#301), so it is in the key: a
+      // list asked for under one team is not the list of another. Without it
+      // the answer to a request still in flight when the team changed - a
+      // loader's, after a reload - was stored as the current team's list.
+      const teamId = teamIdOverride ?? selectedTeamId(instanceId);
       return queryOptions({
-        queryKey: [key, instanceId, props],
+        queryKey: [key, instanceId, props, teamId],
         queryFn: async () => {
           // Skip the API call when no APISIX instance is selected yet.
           // This prevents the route loader from throwing before the Header mounts.
@@ -155,8 +162,11 @@ export const genUseList = <
     // Reactively read instance ID — triggers a query key change when the user
     // switches instances in the Header, causing an automatic data refetch.
     const currentInstanceId = useAtomValue(currentInstanceIdAtom);
+    // And the team sent for it, for the same reason: picking one in the
+    // header changes the key, and the list of that team is fetched.
+    const sentTeamId = useAtomValue(sentTeamIdAtom);
     const listQuery = useSuspenseQuery(
-      listQueryOptions({ ...defaultParams, ...params } as P, currentInstanceId)
+      listQueryOptions({ ...defaultParams, ...params } as P, currentInstanceId, sentTeamId)
     );
     const { data, isLoading, refetch } = listQuery;
     const opts = { data, setParams, params };

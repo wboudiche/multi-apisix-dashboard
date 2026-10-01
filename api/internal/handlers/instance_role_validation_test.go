@@ -146,4 +146,16 @@ func TestAssignmentWithTeams(t *testing.T) {
 	if string(raw["teams"]) != "[]" {
 		t.Errorf("teams %s, want []", raw["teams"])
 	}
+
+	// And no field at all when the teams were not read: no names is not "no
+	// teams", and the reader must be able to tell.
+	out, _ = json.Marshal(assignmentWithTeams(ui, nil))
+	raw = nil
+	_ = json.Unmarshal(out, &raw)
+	if _, named := raw["teams"]; named {
+		t.Errorf("teams %s, want the field left out", raw["teams"])
+	}
+	if string(raw["role"]) != `"developer"` || string(raw["team_ids"]) != `["t2","t9","t1"]` {
+		t.Errorf("the record without its names: %s", out)
+	}
 }

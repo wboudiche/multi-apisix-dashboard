@@ -109,15 +109,16 @@ const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
   );
 };
 
-// The queries a developer's or a viewer's team narrows: the lists and the
-// records of what a team can own, as src/apis/hooks.ts keys them.
-const TEAM_OWNED_QUERIES = new Set([
-  'routes', 'route',
-  'services', 'service',
-  'upstreams', 'upstream',
-  'consumers', 'consumer', 'credentials', 'credential',
-  'consumer_groups', 'consumer_group',
-  'stream_routes', 'stream_route',
+// The lists a developer's or a viewer's team narrows, as src/apis/hooks.ts
+// keys them. Not the records: one of them is theirs to open whichever team
+// they have picked.
+const TEAM_OWNED_LISTS = new Set([
+  'routes',
+  'services',
+  'upstreams',
+  'consumers',
+  'consumer_groups',
+  'stream_routes',
 ]);
 
 type TeamSwitcherProps = {
@@ -368,26 +369,25 @@ export const Header: FC<HeaderProps> = (props) => {
   // are checked against (see ownTeamsAtom).
   const ownTeams = useAtomValue(ownTeamsAtom)[currentInstanceId];
 
-  // What is sent for a developer or a viewer narrows every list a team can
-  // own, and none of them is keyed by it. So when it changes - a pick, or the
-  // access list arriving after a reload and making the stored pick count -
-  // they are asked again. Not on mount: nothing has been asked under another
-  // team yet.
-  //
-  // Whether or not a page is showing them: a list a route loader is still
-  // waiting for has no observer, and left alone it would arrive as it was
-  // asked - under the team before - and be taken for fresh.
+  // What is sent for a developer or a viewer narrows the lists of what a
+  // team can own. The list pages follow by their key, which holds the team
+  // (see genListQueryOptions). The lists a form reads for its pickers are
+  // built where nothing re-renders on a pick, so the ones on screen are asked
+  // again here when what is sent changes - a pick, the access list arriving
+  // after a reload, or a role that stopped sending one.
   const sentTeamId = useAtomValue(sentTeamIdAtom);
   const lastSentTeamId = useRef(sentTeamId);
+  const isSuperAdmin = currentUser?.role === 'super_admin';
   useEffect(() => {
     if (lastSentTeamId.current === sentTeamId) return;
     lastSentTeamId.current = sentTeamId;
-    if (isAdmin) return;
+    // A super admin's team narrows nothing: it is where a create goes.
+    if (isSuperAdmin) return;
     queryClient.invalidateQueries({
-      predicate: (query) => TEAM_OWNED_QUERIES.has(String(query.queryKey[0])),
-      refetchType: 'all',
+      predicate: (query) =>
+        TEAM_OWNED_LISTS.has(String(query.queryKey[0])) && query.queryKey[1] === currentInstanceId,
     });
-  }, [sentTeamId, isAdmin]);
+  }, [sentTeamId, isSuperAdmin, currentInstanceId]);
 
   const switcherTeams = isAdmin ? teams : (ownTeams?.teams ?? []);
 
