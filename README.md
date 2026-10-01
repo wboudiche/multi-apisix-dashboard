@@ -60,7 +60,7 @@ Open <http://localhost:8080/ui>, log in with `admin` and the `ADMIN_PASSWORD` fr
 
 ## Develop locally
 
-To work on the dashboard itself you need: Docker (for APISIX + etcd), Node 22 + pnpm 10, and Go 1.22+ (with toolchain auto-download for the 1.24 declared in `api/go.mod`).
+To work on the dashboard itself you need: Docker (for APISIX + etcd), Node 22 + pnpm 10, and Go 1.22+ (which downloads the toolchain `api/go.mod` declares on first build, unless `GOTOOLCHAIN=local`).
 
 ```sh
 # 1. Bring up APISIX + etcd

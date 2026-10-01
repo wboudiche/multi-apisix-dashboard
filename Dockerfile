@@ -47,7 +47,7 @@ RUN pnpm build
 # $BUILDPLATFORM) and the Go binary is cross-compiled for the target via
 # GOOS/GOARCH, so a multi-arch build never emulates the pnpm/tsc/vite or Go
 # toolchains under QEMU.
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS api
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS api
 WORKDIR /src
 COPY api/go.mod api/go.sum ./
 RUN go mod download
