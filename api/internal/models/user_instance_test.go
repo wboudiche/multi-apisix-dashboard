@@ -39,6 +39,8 @@ func TestUserInstanceReadsTheRecordsWrittenBeforeItHeldAList(t *testing.T) {
 		{"both", `{"team_ids":["team-a","team-b"],"team_id":"team-a","role":"developer"}`, []string{"team-a", "team-b"}},
 		{"neither", `{"user_id":"u","instance_id":"i","role":"viewer"}`, []string{}},
 		{"null list", `{"team_ids":null,"team_id":"team-a"}`, []string{"team-a"}},
+		// A list that is there counts, empty or not.
+		{"an empty list beside the old name", `{"team_ids":[],"team_id":"team-a"}`, []string{}},
 		{"repeats and blanks", `{"team_ids":["team-a","","team-a","team-b"]}`, []string{"team-a", "team-b"}},
 	}
 	for _, tc := range cases {

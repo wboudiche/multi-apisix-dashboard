@@ -62,7 +62,6 @@ test.describe.configure({ mode: 'serial' });
 let mine: Team;
 let alsoMine: Team;
 let theirs: Team;
-let userId: string;
 let assignment: UserInstance;
 const ROUTE_NAME = `${PREFIX}-route`;
 const routeOf = { mine: `${ROUTE_NAME}-a`, alsoMine: `${ROUTE_NAME}-b`, theirs: `${ROUTE_NAME}-c` };
@@ -94,8 +93,7 @@ test.beforeAll(async () => {
   theirs = await ensureTeam(admin, { name: `${PREFIX}-c` });
 
   const user = await ensureUser(admin, { username: `${PREFIX}-dev`, password: PASSWORD });
-  userId = user.id;
-  assignment = await ensureUserInstanceRole(admin, userId, fx().localInstanceId, {
+  assignment = await ensureUserInstanceRole(admin, user.id, fx().localInstanceId, {
     role: 'developer',
     team_ids: [mine.id, alsoMine.id],
   });
@@ -120,7 +118,8 @@ test.afterAll(async () => {
   // whose assignment names the teams. Whatever this run's name is on, not a
   // list kept by hand: a create that should have been refused and was not is
   // exactly the route such a list would not hold.
-  for (const id of Object.keys(await listed(admin))) {
+  const left = await listed(admin).catch(() => ({}));
+  for (const id of Object.keys(left)) {
     await apiFetch(`${PROXY}/routes/${id}`, admin, {
       method: 'DELETE',
       headers: onInstance(),
@@ -146,17 +145,6 @@ test('an assignment holds every team it is given', async () => {
     { id: mine.id, name: mine.name },
     { id: alsoMine.id, name: alsoMine.name },
   ]);
-});
-
-test('a client that knows one team does not take the others away', async () => {
-  // The Users page of the release before the list reads the first team of an
-  // assignment and sends it back on any save - a changed email included.
-  const admin = await loginAdmin();
-  const saved = await ensureUserInstanceRole(admin, userId, fx().localInstanceId, {
-    role: 'developer',
-    team_id: mine.id,
-  });
-  expect(saved.team_ids).toEqual([mine.id, alsoMine.id]);
 });
 
 test('a developer sees the routes of every team they work for, and of no other', async () => {

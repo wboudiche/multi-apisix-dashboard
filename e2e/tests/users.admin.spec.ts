@@ -262,6 +262,54 @@ test('saving a dialog opened before the assignments arrived removes nothing', as
   expect(assignments).toHaveLength(1);
 });
 
+test('saving a user who works for two teams keeps both, until a team is picked here', async ({
+  page,
+}) => {
+  // An assignment can hold several teams (#301). This form shows and edits
+  // one, and writes every assignment back on any save - so sending the team it
+  // shows rewrote [first, second] as [first], and the user lost a team to an
+  // edit that never touched it.
+  const username = `${PREFIX}-two-teams`;
+  const token = await adminToken();
+  const second = await ensureTeam(token, { name: `${PREFIX}-team-2` });
+  const user = await ensureUser(token, { username, password: PASSWORD });
+  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+    role: 'developer',
+    team_ids: [teamId, second.id],
+  });
+  const stored = async () => {
+    const assignments = (await apiFetch(`/api/v1/user-access/${user.id}/instances`, token)) as {
+      team_ids: string[];
+    }[];
+    return assignments[0]?.team_ids;
+  };
+  const openPermissions = async () => {
+    await adminPom.toUsers(page);
+    const row = adminPom.rowByText(page, username);
+    // Seeded from the assignment, not from the list before it arrived.
+    await expect(row.getByText(`(${roleText('developer')})`, { exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+    await row.getByRole('button', { name: 'Permissions' }).click();
+    await expect(page.getByText('Edit User & Permissions')).toBeVisible();
+  };
+
+  await openPermissions();
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  expect(await stored()).toEqual([teamId, second.id]);
+
+  // Picking a team here is a change, and the pick is the whole of it: the
+  // form has one team to offer until it grows a list.
+  await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  await localInstanceCard(page).getByLabel('Team').click();
+  await page.getByRole('option', { name: `${PREFIX}-team-2`, exact: true }).click();
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  expect(await stored()).toEqual([second.id]);
+});
+
 test('a viewer assignment takes effect: one instance, no create button', async ({
   page,
 }) => {

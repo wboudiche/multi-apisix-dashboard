@@ -122,6 +122,9 @@ export type Scope = {
 export type UserInstanceRole = {
   user_id: string;
   instance_id: string;
+  /** Every team of the assignment (#301). Absent from a backend before it. */
+  team_ids?: string[];
+  /** The first of them, as the answer named it when an assignment held one. */
   team_id: string;
   role: 'instance_admin' | 'developer' | 'viewer';
   scope?: Scope;
@@ -130,6 +133,8 @@ export type UserInstanceRole = {
 export type SetUserRoleRequest = {
   role: string;
   team_id: string;
+  /** The whole list. Where it is sent, it is the one that counts. */
+  team_ids?: string[];
   scope?: Scope;
 };
 

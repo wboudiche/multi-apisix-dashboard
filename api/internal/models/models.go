@@ -193,11 +193,13 @@ func (ui UserInstance) HasTeam(teamID string) bool {
 }
 
 // TeamIDsFrom reads the teams out of the two shapes they are written in: the
-// list, or the single team from before it. Where both are present the list is
-// the one that counts. One reading for a stored record and for a request, so
-// that the two cannot come to mean different things.
+// list, or the single team from before it. Where a list is present it is the
+// one that counts - an empty one included: a client that sends [] beside a
+// team it read back means no team, not that team. One reading for a stored
+// record and for a request, so that the two cannot come to mean different
+// things.
 func TeamIDsFrom(list []string, single string) []string {
-	if len(list) == 0 && single != "" {
+	if list == nil && single != "" {
 		return []string{single}
 	}
 	return NormalizeTeamIDs(list)

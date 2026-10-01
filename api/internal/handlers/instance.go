@@ -103,21 +103,17 @@ type SetUserInstanceRoleRequest struct {
 	Scope  *models.Scope `json:"scope"`
 }
 
-// teams is the list the request asks for, given the assignment already
-// stored: team_ids, or the single team_id of a client that does not send a
-// list yet. Where both are sent the list counts, as it does when a record is
-// read.
+// teams is the list the request asks for: team_ids, or the single team_id of a
+// client that does not send a list. Where a list is sent it counts, as it does
+// when a record is read.
 //
-// A client that only knows one team cannot say "and the others": it reads the
-// first team of an assignment and sends it back on every save. Taken at its
-// word, saving a user's email on the Users page of the release before the
-// list rewrote [A, B] as [A], and the user lost team B without a word. So
-// team_id alone, naming a team the assignment already holds, leaves the list
-// as it is; naming another team is a change, and replaces it.
-func (r SetUserInstanceRoleRequest) teams(existing *models.UserInstance) []string {
-	if r.TeamIDs == nil && existing != nil && existing.HasTeam(r.TeamID) {
-		return models.NormalizeTeamIDs(existing.TeamIDs)
-	}
+// The request is taken at its word: team_id alone means that one team, and
+// replaces whatever the assignment held. Guessing instead that a one-team
+// client meant "and the others too" made the answer depend on what was stored
+// and left no way to narrow a list to one team. A client that shows an
+// assignment and saves it back has to send the list it read - the Users page
+// does.
+func (r SetUserInstanceRoleRequest) teams() []string {
 	return models.TeamIDsFrom(r.TeamIDs, r.TeamID)
 }
 
@@ -596,10 +592,7 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 		return
 	}
 
-	// What is stored now, for a client that sends one team: see teams. A read
-	// that fails leaves nothing to keep, and the write below would fail too.
-	existing, _ := h.authService.GetUserInstance(c.Request.Context(), userID, instanceID)
-	teamIDs := req.teams(existing)
+	teamIDs := req.teams()
 	if roleNeedsTeam(req.Role) && len(teamIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required for developer and viewer roles"})
 		return

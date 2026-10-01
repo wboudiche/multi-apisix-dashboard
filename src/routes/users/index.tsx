@@ -102,7 +102,7 @@ const UsersPage = () => {
   // the later list, every role the form does not show reads as "cleared", and
   // saving an e-mail change took the account's access away.
   const [seededAssignments, setSeededAssignments] = useState<UserInstanceRole[]>([]);
-  const [instanceRoles, setInstanceRoles] = useState<Record<string, { role: string, team_id: string, scope?: { tags: string[], pathPrefixes: string[] } }>>({});
+  const [instanceRoles, setInstanceRoles] = useState<Record<string, { role: string, team_id: string, team_ids?: string[], scope?: { tags: string[], pathPrefixes: string[] } }>>({});
 
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -269,6 +269,9 @@ const UsersPage = () => {
             await instanceApi.setUserRole(userId, instanceID, {
               role: config.role,
               team_id: config.team_id,
+              // The list as it was read, unless a team was picked here: then
+              // the pick is the list.
+              team_ids: config.team_ids ?? (config.team_id ? [config.team_id] : []),
               scope: config.scope,
             });
           } catch (err) {
@@ -405,11 +408,15 @@ const UsersPage = () => {
     // Load existing instance assignments
     const assignments = userAssignments[user.id] || [];
     setSeededAssignments(assignments);
-    const roles: Record<string, { role: string, team_id: string, scope?: { tags: string[], pathPrefixes: string[] } }> = {};
+    const roles: Record<string, { role: string, team_id: string, team_ids?: string[], scope?: { tags: string[], pathPrefixes: string[] } }> = {};
     for (const a of assignments) {
       roles[a.instance_id] = {
         role: a.role,
         team_id: a.team_id || '',
+        // Every team of the assignment, kept to be sent back as it was read.
+        // This form shows and edits one team; an assignment can hold several
+        // (#301), and saving the one it shows took the others away.
+        team_ids: a.team_ids,
         scope: a.scope ? { tags: a.scope.tags || [], pathPrefixes: a.scope.path_prefixes || [] } : undefined,
       };
     }
@@ -714,7 +721,7 @@ const UsersPage = () => {
                                 value={config?.team_id || null}
                                 onChange={(teamId) => setInstanceRoles({
                                   ...instanceRoles,
-                                  [inst.id]: { ...instanceRoles[inst.id], team_id: teamId || '', role: instanceRoles[inst.id]?.role || '' }
+                                  [inst.id]: { ...instanceRoles[inst.id], team_id: teamId || '', team_ids: undefined, role: instanceRoles[inst.id]?.role || '' }
                                 })}
                               />
                             )}
