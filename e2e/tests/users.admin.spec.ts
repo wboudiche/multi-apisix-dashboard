@@ -318,6 +318,19 @@ test('shows every team of an assignment, keeps them on a save, and takes one awa
   await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
   expect(await stored()).toEqual([teamId, second.id]);
 
+  // Nor does unticking the first team and ticking it again: the first team of
+  // the list is still the one the rest of the dashboard reads as the user's,
+  // and the field alone would have moved it behind the second.
+  await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  await teamsField(page).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  expect(await stored()).toEqual([teamId, second.id]);
+
   // Taking one team away takes that one, and leaves the other.
   await openPermissions();
   await page.getByRole('tab', { name: 'Instance Access' }).click();
@@ -336,8 +349,9 @@ test('shows every team of an assignment, keeps them on a save, and takes one awa
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
-  // Both, in the order of the teams list, whatever the order of the clicks.
-  expect([...((await stored()) ?? [])].sort()).toEqual([teamId, second.id].sort());
+  // Behind the one that was there: what the assignment held stays where it
+  // was, and what is added goes after it.
+  expect(await stored()).toEqual([second.id, teamId]);
 });
 
 test('a viewer assignment takes effect: one instance, no create button', async ({

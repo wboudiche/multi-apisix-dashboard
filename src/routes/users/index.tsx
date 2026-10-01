@@ -90,20 +90,14 @@ const UsersPage = () => {
   const [availableInstances] = useAtom(instancesAtom);
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  // Whether the teams have been read at all: until then a team the list does
+  // not hold is one that has not arrived, not one that is gone.
+  const [teamsLoaded, setTeamsLoaded] = useState(false);
   const teamById = new Map(teams.map((team) => [team.id, team]));
-  /**
-   * The teams picked, in the order of the teams list rather than of the
-   * clicks. The first team of an assignment is still the one `team_id` names
-   * and the header shows, so unticking a team and ticking it again must not
-   * change which that is. A team the list no longer holds goes last.
-   */
-  const inListOrder = (ids: string[]) => {
-    const at = (id: string) => {
-      const index = teams.findIndex((team) => team.id === id);
-      return index === -1 ? teams.length : index;
-    };
-    return [...ids].sort((a, b) => at(a) - at(b));
-  };
+  // By name: the API answers in no particular order, a different one each time.
+  const teamOptions = [...teams]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((team) => ({ value: team.id, label: team.name }));
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -134,6 +128,23 @@ const UsersPage = () => {
   // the later list, every role the form does not show reads as "cleared", and
   // saving an e-mail change took the account's access away.
   const [seededAssignments, setSeededAssignments] = useState<UserInstanceRole[]>([]);
+  /**
+   * The teams picked for an instance, in the order the assignment was stored
+   * in: the teams it already held where they were, the ones added behind them
+   * in the order they were added. The first team of an assignment is still the
+   * one `team_id` names and the header shows, and the field alone would move a
+   * team unticked and ticked again to the end.
+   */
+  const inStoredOrder = (instanceId: string, ids: string[]) => {
+    const seeded = seededAssignments.find((a) => a.instance_id === instanceId);
+    const stored = seeded ? teamsOf(seeded) : [];
+    const at = (id: string) => {
+      const index = stored.indexOf(id);
+      return index === -1 ? stored.length : index;
+    };
+    // Stable, so the teams that are new keep the order of the clicks.
+    return [...ids].sort((a, b) => at(a) - at(b));
+  };
   const [instanceRoles, setInstanceRoles] = useState<Record<string, AssignmentForm>>({});
 
 
@@ -169,6 +180,7 @@ const UsersPage = () => {
 
       const teamData = await teamApi.list();
       setTeams(teamData);
+      setTeamsLoaded(true);
 
       const failed = Object.keys(unreadable).length;
       if (failed > 0) {
@@ -485,9 +497,11 @@ const UsersPage = () => {
               // exists is shown by its id rather than left out: the form shows
               // it and the backend holds it, and a column saying "none" beside
               // them was this screen contradicting itself.
-              const uniqueTeams = [...new Set(assignments.flatMap(teamsOf))].map(
-                (id) => teamById.get(id) ?? { id, name: id }
-              );
+              // Only once the teams have been read: before that, or when
+              // that read failed, every team would show as an id.
+              const uniqueTeams = [...new Set(assignments.flatMap(teamsOf))]
+                .map((id) => teamById.get(id) ?? (teamsLoaded ? { id, name: id } : undefined))
+                .filter((team) => team !== undefined);
 
               return (
               <Table.Tr key={user.id} className={`stagger-${(index % 5) + 1}`}>
@@ -758,14 +772,11 @@ const UsersPage = () => {
                                   tabIndex: 0,
                                 }}
                                 required={roleNeedsTeam(config.role)}
-                                data={teams.map((team) => ({
-                                  value: team.id,
-                                  label: team.name,
-                                }))}
+                                data={teamOptions}
                                 value={config.team_ids}
                                 onChange={(teamIds) => setInstanceRoles({
                                   ...instanceRoles,
-                                  [inst.id]: { ...instanceRoles[inst.id], team_ids: inListOrder(teamIds), role: instanceRoles[inst.id]?.role || '' }
+                                  [inst.id]: { ...instanceRoles[inst.id], team_ids: inStoredOrder(inst.id, teamIds), role: instanceRoles[inst.id]?.role || '' }
                                 })}
                               />
                             )}
