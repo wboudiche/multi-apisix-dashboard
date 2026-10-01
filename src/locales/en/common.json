@@ -157,6 +157,7 @@
     "btn": {
       "add": "Add",
       "back": "Back",
+      "previous": "Back",
       "backToList": "Back to List",
       "cancel": "Cancel",
       "configure": "Configure",

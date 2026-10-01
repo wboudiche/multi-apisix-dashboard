@@ -67,7 +67,18 @@ const PLURAL_FORM = /_(zero|one|two|few|many|other)$/;
 const base = (key: string) => key.replace(PLURAL_FORM, '');
 const filled = (value: string | undefined) => typeof value === 'string' && value.trim() !== '';
 
+/**
+ * Whether a call on `key` resolves from a catalogue: the key as written, or
+ * the plural forms written for it. Not the other way round - `t('x_one')`
+ * does not resolve from an `x`.
+ */
+const resolves = (catalogue: Map<string, string>, key: string) =>
+  catalogue.has(key) || catalogue.has(`${key}_other`);
+
 const en = flatten(bundle(BASE));
+// What `en` writes, each plural family under its base: a translation belongs
+// to a family, in whatever forms its own grammar has.
+const families = new Set([...en.keys()].map(base));
 const translations = new Map(LANGUAGES.map((lang) => [lang, flatten(bundle(lang))]));
 
 describe.each(LANGUAGES)('%s', (lang) => {
@@ -81,9 +92,7 @@ describe.each(LANGUAGES)('%s', (lang) => {
   // the ones English happens to need. Spanish says "1 seleccionado" where
   // English says "1 selected" for any count.
   it('holds no key en does not have', () => {
-    const stranded = [...translated.keys()].filter(
-      (key) => !en.has(key) && !en.has(base(key))
-    );
+    const stranded = [...translated.keys()].filter((key) => !en.has(key) && !families.has(base(key)));
     expect(stranded).toEqual([]);
   });
 
@@ -277,10 +286,10 @@ const spelled = (expression: string): boolean => {
   if (/^'[^']*'$/.test(text)) return true;
   // The first `?` at depth zero that is not `??` or `?.` opens a ternary; its
   // `:` is the one at depth zero after it, skipping the `?`s nested in its
-  // branches. `?.` followed by a digit is a ternary on a decimal, as the
-  // language itself reads it.
-  const chains = (at: number) => text[at + 1] === '.' && !/\d/.test(text[at + 2] ?? '');
+  // branches. Parentheses around the whole of it say nothing: the closing one
+  // that brings the depth back to zero is the last character.
   let depth = 0;
+  let wrapped = text[0] === '(';
   let quote: string | undefined;
   let question = -1;
   let nested = 0;
@@ -293,8 +302,13 @@ const spelled = (expression: string): boolean => {
     }
     if (c === "'" || c === '"' || c === '`') quote = c;
     else if ('([{'.includes(c)) depth++;
-    else if (')]}'.includes(c)) depth--;
-    else if (depth === 0 && c === '?' && text[at + 1] !== '?' && text[at - 1] !== '?' && !chains(at)) {
+    else if (')]}'.includes(c)) {
+      depth--;
+      if (depth === 0 && wrapped) {
+        if (at === text.length - 1) return spelled(text.slice(1, -1));
+        wrapped = false;
+      }
+    } else if (depth === 0 && c === '?' && !['?', '.'].includes(text[at + 1]) && text[at - 1] !== '?') {
       if (question === -1) question = at;
       else nested++;
     } else if (depth === 0 && c === ':' && question !== -1) {
@@ -314,11 +328,25 @@ it.each([
   ["user?.isAdmin ? 'a.b' : 'c.d'", true],
   ["a?.b?.c ? 'a.b' : 'c.d'", true],
   ["a ? 'a.b' : b?.c ? 'c.d' : 'e.f'", true],
+  ["(cond ? 'a.b' : 'c.d')", true],
+  ["a ? (b ? 'a.b' : 'c.d') : 'e.f'", true],
+  ["(a) ? 'a.b' : (b)", false],
+  ['(pick)(entry)', false],
   ["cond ? entry?.label : 'c.d'", false],
   ["table[x] ?? 'a.b'", false],
   ['entry?.label', false],
 ])('reads %s as spelled: %s', (expression, expected) => {
   expect(spelled(expression)).toBe(expected);
+});
+
+// `en` writes no key in plural forms today, so nothing in the bundles would
+// say if this went back to stripping the suffix off the key the source spells.
+it('resolves a key from its plural forms, and not a plural form from its key', () => {
+  const plural = new Map([['x_one', ''], ['x_other', '']]);
+  expect(resolves(plural, 'x')).toBe(true);
+  expect(resolves(new Map([['x', '']]), 'x')).toBe(true);
+  expect(resolves(new Map([['x', '']]), 'x_one')).toBe(false);
+  expect(resolves(plural, 'y')).toBe(false);
 });
 
 it('excludes only files that exist', () => {
@@ -333,7 +361,7 @@ describe.each(files)('%s', (file) => {
     // `en` writes in plural forms is asked for by its base, and resolves: the
     // other way round - `t('x_one')` where `en` holds `x` - does not.
     const keys = [...new Set(keysRead(source))].sort();
-    expect(keys.filter((key) => !en.has(key) && !en.has(`${key}_other`))).toEqual([]);
+    expect(keys.filter((key) => !resolves(en, key))).toEqual([]);
   });
 
   // What the harvest above cannot see: a key held in a variable or built from

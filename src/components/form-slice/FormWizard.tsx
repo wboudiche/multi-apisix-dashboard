@@ -396,7 +396,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
               leftSection={<IconChevronLeft width="18" height="18" />}
               style={{ fontWeight: 600 }}
             >
-              {t('form.btn.back')}
+              {t('form.btn.previous')}
             </Button>
           )}
 

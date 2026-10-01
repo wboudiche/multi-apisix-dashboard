@@ -233,6 +233,7 @@
       "view": "Ver",
       "saveChanges": "Guardar cambios",
       "back": "Atrás",
+      "previous": "Atrás",
       "backToList": "Volver a la lista",
       "next": "Siguiente",
       "submit": "Enviar"
