@@ -132,9 +132,8 @@ export type UserInstanceRole = {
 
 export type SetUserRoleRequest = {
   role: string;
-  team_id: string;
-  /** The whole list. Where it is sent, it is the one that counts. */
-  team_ids?: string[];
+  /** Every team of the assignment (#301). */
+  team_ids: string[];
   scope?: Scope;
 };
 

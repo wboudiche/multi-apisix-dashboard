@@ -22,6 +22,7 @@ import {
   Container,
   Group,
   Modal,
+  MultiSelect,
   Paper,
   PasswordInput,
   Select,
@@ -66,6 +67,24 @@ type UserFormData = {
   must_change_password: boolean;
 };
 
+/** One instance's assignment as the form holds it. */
+type AssignmentForm = {
+  role: string;
+  /**
+   * Every team of the assignment (#301), and the only place the form keeps
+   * them: what it shows, what it checks and what it sends are this one list.
+   */
+  team_ids: string[];
+  scope?: { tags: string[]; pathPrefixes: string[] };
+};
+
+/**
+ * The teams of an assignment as the backend answered it: the list, or the one
+ * team of an answer from before the list.
+ */
+const teamsOf = (a: UserInstanceRole): string[] =>
+  a.team_ids ?? (a.team_id ? [a.team_id] : []);
+
 const UsersPage = () => {
   const { t } = useTranslation();
   const [currentUser] = useAtom(currentUserAtom);
@@ -102,7 +121,7 @@ const UsersPage = () => {
   // the later list, every role the form does not show reads as "cleared", and
   // saving an e-mail change took the account's access away.
   const [seededAssignments, setSeededAssignments] = useState<UserInstanceRole[]>([]);
-  const [instanceRoles, setInstanceRoles] = useState<Record<string, { role: string, team_id: string, team_ids?: string[], scope?: { tags: string[], pathPrefixes: string[] } }>>({});
+  const [instanceRoles, setInstanceRoles] = useState<Record<string, AssignmentForm>>({});
 
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -174,7 +193,7 @@ const UsersPage = () => {
     // Validate team selection for developer/viewer roles
     for (const instanceID in instanceRoles) {
       const config = instanceRoles[instanceID];
-      if (config.role && (config.role === 'developer' || config.role === 'viewer') && !config.team_id) {
+      if (config.role && (config.role === 'developer' || config.role === 'viewer') && config.team_ids.length === 0) {
         notifications.show({
           message: t('users.teamRequired'),
           color: 'red',
@@ -268,10 +287,7 @@ const UsersPage = () => {
           try {
             await instanceApi.setUserRole(userId, instanceID, {
               role: config.role,
-              team_id: config.team_id,
-              // The list as it was read, unless a team was picked here: then
-              // the pick is the list.
-              team_ids: config.team_ids ?? (config.team_id ? [config.team_id] : []),
+              team_ids: config.team_ids,
               scope: config.scope,
             });
           } catch (err) {
@@ -408,15 +424,11 @@ const UsersPage = () => {
     // Load existing instance assignments
     const assignments = userAssignments[user.id] || [];
     setSeededAssignments(assignments);
-    const roles: Record<string, { role: string, team_id: string, team_ids?: string[], scope?: { tags: string[], pathPrefixes: string[] } }> = {};
+    const roles: Record<string, AssignmentForm> = {};
     for (const a of assignments) {
       roles[a.instance_id] = {
         role: a.role,
-        team_id: a.team_id || '',
-        // Every team of the assignment, kept to be sent back as it was read.
-        // This form shows and edits one team; an assignment can hold several
-        // (#301), and saving the one it shows took the others away.
-        team_ids: a.team_ids,
+        team_ids: teamsOf(a),
         scope: a.scope ? { tags: a.scope.tags || [], pathPrefixes: a.scope.path_prefixes || [] } : undefined,
       };
     }
@@ -457,7 +469,8 @@ const UsersPage = () => {
             {users.map((user, index) => {
               const assignments = getAssignments(user.id);
               const assignedTeams = assignments
-                .map((a) => teams.find((team) => team.id === a.team_id))
+                .flatMap((a) => teamsOf(a))
+                .map((id) => teams.find((team) => team.id === id))
                 .filter(Boolean);
               const uniqueTeams = [
                 ...new Map(assignedTeams.map((team) => [team!.id, team!])).values(),
@@ -700,7 +713,7 @@ const UsersPage = () => {
                               value={config?.role || null}
                               onChange={(role) => setInstanceRoles({
                                 ...instanceRoles,
-                                [inst.id]: { ...instanceRoles[inst.id], role: role || '', team_id: instanceRoles[inst.id]?.team_id || '' }
+                                [inst.id]: { ...instanceRoles[inst.id], role: role || '', team_ids: instanceRoles[inst.id]?.team_ids || [] }
                               })}
                               data={INSTANCE_ROLES.map((role) => ({
                                 value: role,
@@ -708,7 +721,7 @@ const UsersPage = () => {
                               }))}
                             />
                             {(config?.role === 'developer' || config?.role === 'viewer') && (
-                              <Select
+                              <MultiSelect
                                 size="sm"
                                 label={t('users.fieldTeam')}
                                 placeholder={t('users.fieldTeamPlaceholder')}
@@ -718,10 +731,10 @@ const UsersPage = () => {
                                   value: team.id,
                                   label: team.name,
                                 }))}
-                                value={config?.team_id || null}
-                                onChange={(teamId) => setInstanceRoles({
+                                value={config?.team_ids || []}
+                                onChange={(teamIds) => setInstanceRoles({
                                   ...instanceRoles,
-                                  [inst.id]: { ...instanceRoles[inst.id], team_id: teamId || '', team_ids: undefined, role: instanceRoles[inst.id]?.role || '' }
+                                  [inst.id]: { ...instanceRoles[inst.id], team_ids: teamIds, role: instanceRoles[inst.id]?.role || '' }
                                 })}
                               />
                             )}

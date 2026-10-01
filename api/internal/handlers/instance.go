@@ -594,7 +594,7 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 
 	teamIDs := req.teams()
 	if roleNeedsTeam(req.Role) && len(teamIDs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required for developer and viewer roles"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one team is required for developer and viewer roles: team_ids, or team_id for a single team"})
 		return
 	}
 	// Every one of them: a team that does not exist would be a boundary around
@@ -602,7 +602,7 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	for _, teamID := range teamIDs {
 		team, err := h.teamService.GetTeam(c.Request.Context(), teamID)
 		if err != nil || team == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team_id: team not found"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team: " + teamID + " not found"})
 			return
 		}
 	}

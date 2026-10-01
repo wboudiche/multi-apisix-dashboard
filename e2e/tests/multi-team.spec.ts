@@ -114,19 +114,23 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   const admin = await loginAdmin();
-  // Routes first: a team that still owns one cannot be deleted. Then the user,
-  // whose assignment names the teams. Whatever this run's name is on, not a
-  // list kept by hand: a create that should have been refused and was not is
-  // exactly the route such a list would not hold.
-  const left = await listed(admin).catch(() => ({}));
-  for (const id of Object.keys(left)) {
-    await apiFetch(`${PROXY}/routes/${id}`, admin, {
-      method: 'DELETE',
-      headers: onInstance(),
-    }).catch(() => undefined);
+  try {
+    // Routes first: a team that still owns one cannot be deleted. Whatever
+    // this run's name is on, not a list kept by hand: a create that should
+    // have been refused and was not is exactly the route such a list would
+    // not hold. A listing that fails is reported, not swallowed - what it
+    // leaves behind keeps the teams from being deleted.
+    for (const id of Object.keys(await listed(admin))) {
+      await apiFetch(`${PROXY}/routes/${id}`, admin, {
+        method: 'DELETE',
+        headers: onInstance(),
+      }).catch(() => undefined);
+    }
+  } finally {
+    // Then the user, whose assignment names the teams, and the teams.
+    await deleteUsersByPrefix(PREFIX);
+    await deleteTeamsByPrefix(PREFIX);
   }
-  await deleteUsersByPrefix(PREFIX);
-  await deleteTeamsByPrefix(PREFIX);
 });
 
 test('an assignment holds every team it is given', async () => {

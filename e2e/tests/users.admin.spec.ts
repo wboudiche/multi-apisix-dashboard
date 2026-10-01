@@ -100,8 +100,11 @@ test('assigns a per-instance viewer role through the Permissions modal', async (
   const card = localInstanceCard(page);
   await card.getByLabel('Role', { exact: true }).click();
   await page.getByRole('option', { name: 'Viewer', exact: true }).click();
-  await card.getByLabel('Team').click();
-  await page.getByRole('option', { name: teamName }).click();
+  await card.getByLabel('Teams').click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  // The field takes several teams (#301), so its list stays open for the next
+  // one - over the button below. Escape closes the list, not the dialog.
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Save Changes' }).click();
 
   // The users table row now shows the assignment.
@@ -262,13 +265,13 @@ test('saving a dialog opened before the assignments arrived removes nothing', as
   expect(assignments).toHaveLength(1);
 });
 
-test('saving a user who works for two teams keeps both, until a team is picked here', async ({
+test('shows every team of an assignment, keeps them on a save, and takes one away when asked', async ({
   page,
 }) => {
-  // An assignment can hold several teams (#301). This form shows and edits
-  // one, and writes every assignment back on any save - so sending the team it
-  // shows rewrote [first, second] as [first], and the user lost a team to an
-  // edit that never touched it.
+  // An assignment can hold several teams (#301). The form writes every
+  // assignment back on any save, so while it showed one team, saving a user
+  // rewrote [first, second] as [first]: a team lost to an edit that never
+  // touched it. It shows the list and sends the list.
   const username = `${PREFIX}-two-teams`;
   const token = await adminToken();
   const second = await ensureTeam(token, { name: `${PREFIX}-team-2` });
@@ -294,17 +297,28 @@ test('saving a user who works for two teams keeps both, until a team is picked h
     await expect(page.getByText('Edit User & Permissions')).toBeVisible();
   };
 
+  // Both in the table...
+  await adminPom.toUsers(page);
+  const row = adminPom.rowByText(page, username);
+  await expect(row.getByText(teamName, { exact: true })).toBeVisible({ timeout: 20000 });
+  await expect(row.getByText(`${PREFIX}-team-2`, { exact: true })).toBeVisible();
+
+  // ...and both in the form, which a save with nothing changed leaves alone.
   await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  const card = localInstanceCard(page);
+  await expect(card.getByText(teamName, { exact: true })).toBeVisible();
+  await expect(card.getByText(`${PREFIX}-team-2`, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
   expect(await stored()).toEqual([teamId, second.id]);
 
-  // Picking a team here is a change, and the pick is the whole of it: the
-  // form has one team to offer until it grows a list.
+  // Taking one team away takes that one, and leaves the other.
   await openPermissions();
   await page.getByRole('tab', { name: 'Instance Access' }).click();
-  await localInstanceCard(page).getByLabel('Team').click();
-  await page.getByRole('option', { name: `${PREFIX}-team-2`, exact: true }).click();
+  await localInstanceCard(page).getByLabel('Teams').click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
   expect(await stored()).toEqual([second.id]);
