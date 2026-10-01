@@ -168,9 +168,11 @@ const TeamsPage = () => {
       const message =
         refusal?.code === 'team_owns_resources'
           ? t('teams.deleteOwnsResources', { count: refusal.count ?? 0 })
-          : refusal?.code === 'team_has_members'
-            ? t('teams.deleteHasMembers', { users: namesOf(refusal.users ?? []) })
-            : // Anything else in the backend's own words, where it has some.
+          : refusal?.code === 'team_has_members' && refusal.users?.length
+            ? t('teams.deleteHasMembers', { users: namesOf(refusal.users) })
+            : // Anything else in the backend's own words, where it has some -
+              // a refusal that names nobody included, rather than a sentence
+              // with a blank where the names go.
               describeError(err, t('teams.deleteFailed'));
       notifications.show({ title: t('teams.errorTitle'), message, color: 'red' });
     }

@@ -135,3 +135,31 @@ test('a team an assignment names is not deleted, and the page says why', async (
   await uiHasToastMsg(page, { hasText: 'Team deleted successfully' });
   await expect(adminPom.rowByText(page, teamName)).toHaveCount(0);
 });
+
+test('an assignment nobody can be asked to move does not keep a team, nor go on naming it', async () => {
+  // A super admin's assignments are never read - the role is global - and the
+  // Users page does not offer them for editing. Counted, one made the team
+  // undeletable behind "move those users first"; skipped, it went on naming
+  // the team after it was gone, and came back to life the day the account was
+  // demoted. The delete takes the team out of it.
+  const token = await adminToken();
+  const team = await ensureTeam(token, { name: `${PREFIX}-released` });
+  const kept = await ensureTeam(token, { name: `${PREFIX}-released-kept` });
+  const user = await ensureUser(token, {
+    username: `${PREFIX}-root`,
+    password: 'e2e-Team-r00t!pass',
+    role: 'super_admin',
+  });
+  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+    role: 'developer',
+    team_ids: [team.id, kept.id],
+  });
+
+  await apiFetch(`/api/v1/teams/${team.id}`, token, { method: 'DELETE' });
+
+  const assignments = (await apiFetch(`/api/v1/user-access/${user.id}/instances`, token)) as {
+    team_ids: string[];
+  }[];
+  expect(assignments).toHaveLength(1);
+  expect(assignments[0].team_ids).toEqual([kept.id]);
+});

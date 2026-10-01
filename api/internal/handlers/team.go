@@ -222,15 +222,23 @@ func (h *TeamHandler) DeleteTeam(c *gin.Context) {
 	// Who is assigned to it, on any instance - not asked when what it owns
 	// already decides. A read that fails refuses the delete: "nobody" is not
 	// something to assume.
-	var holders []string
+	var holders, released []string
 	if owned == 0 {
-		if holders, err = h.authService.TeamHolders(c.Request.Context(), id); err != nil {
+		if holders, released, err = h.authService.TeamAssignments(c.Request.Context(), id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	}
 	if refusal := teamDeleteRefusal(owned, holders); refusal != nil {
 		c.JSON(http.StatusConflict, refusal)
+		return
+	}
+	// The assignments nobody can be asked to move stop naming the team before
+	// it goes, so that none is left naming a team that does not exist. Before
+	// the delete, not after: a failure here leaves a team with fewer records
+	// naming it, where the other order left records naming no team at all.
+	if err := h.authService.ReleaseTeam(c.Request.Context(), id, released); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

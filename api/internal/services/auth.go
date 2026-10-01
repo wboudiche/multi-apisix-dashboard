@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
@@ -407,56 +408,129 @@ func (s *AuthService) ListUsersByTeam(ctx context.Context, teamID string) ([]*mo
 	return assignmentsOfTeam(resp, teamID), nil
 }
 
-// TeamHolders returns the usernames of the accounts whose assignments stand in
-// the way of deleting a team, sorted: see teamHolders.
-func (s *AuthService) TeamHolders(ctx context.Context, teamID string) ([]string, error) {
+// TeamAssignments sorts the assignments that name a team into the people it
+// cannot be deleted from under, by username, and the keys of the records the
+// team is simply taken out of: see teamAssignments.
+func (s *AuthService) TeamAssignments(ctx context.Context, teamID string) (holders, released []string, err error) {
 	assignments, err := s.etcd.List(ctx, models.KeyPrefixUserInstances)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	users, err := s.etcd.List(ctx, models.KeyPrefixUsers)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return teamHolders(assignments, users, teamID), nil
+	instances, err := s.etcd.List(ctx, models.KeyPrefixInstances)
+	if err != nil {
+		return nil, nil, err
+	}
+	return teamAssignments(assignments, users, instances, teamID)
 }
 
-// teamHolders picks the accounts a team cannot be deleted from under: the
-// living users, not super admins, with an assignment that names it.
+// ReleaseTeam takes a team out of the assignments at `keys`, which
+// TeamAssignments found not to be anybody's to move. A record that has
+// stopped naming the team in the meantime is left as it is.
+func (s *AuthService) ReleaseTeam(ctx context.Context, teamID string, keys []string) error {
+	for _, key := range keys {
+		var ui models.UserInstance
+		if err := s.etcd.GetJSON(ctx, key, &ui); err != nil {
+			return err
+		}
+		if !ui.HasTeam(teamID) {
+			continue
+		}
+		ui.TeamIDs = withoutTeam(ui.TeamIDs, teamID)
+		if err := s.etcd.PutJSON(ctx, key, &ui); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func withoutTeam(ids []string, teamID string) []string {
+	kept := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id != teamID {
+			kept = append(kept, id)
+		}
+	}
+	return kept
+}
+
+// teamAssignments sorts the assignments that name a team into two kinds.
 //
-// Not every assignment that names a team is somebody's access. One left by a
-// user who was since deleted is nobody's - the maintenance page purges those -
-// and a super admin's is never read: their role is global. Counted, either
-// made the team undeletable for a reason no screen could show, the Users page
-// listing neither a deleted user nor a super admin's assignments.
+// The holders: the people the team cannot be deleted from under. A living
+// user, not a super admin, assigned on an instance that exists, in a record
+// the Users page lists - that is, one an operator can open and move to another
+// team, which is what the refusal asks for.
 //
-// By username, since the operator has to go and find them.
-func teamHolders(assignments, users map[string][]byte, teamID string) []string {
+// And the rest, which nobody can be asked to move because no screen shows
+// them: an assignment left by a user since deleted, or on an instance since
+// removed; a super admin's, whose Instance Access the Users page disables; a
+// record under a key an old bug wrote in quotes, which the page does not read.
+// Counted as holders, each made a team undeletable for a reason nobody could
+// act on. Left alone, each went on naming the team once it was gone - and a
+// super admin demoted later, or a quoted record read as a fallback, brought
+// the dangling team back to life. So the team is taken out of them as part of
+// the delete: it owns nothing by then, and takes no access with it.
+//
+// With no users read at all, nothing is judged - as for the orphan scan: that
+// read failed, and against it every assignment would look like nobody's.
+func teamAssignments(assignments, users, instances map[string][]byte, teamID string) (holders, released []string, err error) {
+	if len(users) == 0 {
+		return nil, nil, ErrNoUsersRead
+	}
 	type account struct {
-		username   string
+		name       string
 		superAdmin bool
 	}
-	known := make(map[string]account, len(users))
-	for _, data := range users {
+	accounts := make(map[string]account, len(users))
+	for key, data := range users {
+		id := strings.TrimPrefix(key, models.KeyPrefixUsers)
+		// A record that no longer parses is still a user: known by its key,
+		// and by that name for want of another.
+		found := account{name: id}
 		var user models.User
-		if json.Unmarshal(data, &user) != nil || user.ID == "" {
-			continue
+		if json.Unmarshal(data, &user) == nil {
+			if user.ID != "" {
+				id = user.ID
+			}
+			if user.Username != "" {
+				found.name = user.Username
+			} else {
+				found.name = id
+			}
+			found.superAdmin = user.Role == models.RoleSuperAdmin
 		}
-		known[unquoteID(user.ID)] = account{user.Username, user.Role == models.RoleSuperAdmin}
+		accounts[id] = found
+	}
+	exists := make(map[string]bool, len(instances))
+	for key := range instances {
+		exists[strings.TrimPrefix(key, models.KeyPrefixInstances)] = true
 	}
 
-	seen := map[string]bool{}
-	holders := []string{}
-	for _, ui := range assignmentsOfTeam(assignments, teamID) {
-		holder, alive := known[unquoteID(ui.UserID)]
-		if !alive || holder.superAdmin || seen[holder.username] {
+	held := map[string]bool{}
+	holders, released = []string{}, []string{}
+	for key, data := range assignments {
+		var ui models.UserInstance
+		if json.Unmarshal(data, &ui) != nil || !ui.HasTeam(teamID) {
 			continue
 		}
-		seen[holder.username] = true
-		holders = append(holders, holder.username)
+		userSegment, instanceID, _ := strings.Cut(strings.TrimPrefix(key, models.KeyPrefixUserInstances), "/")
+		// The key as the Users page reads it: the user's id, unquoted.
+		holder, alive := accounts[userSegment]
+		if !alive || holder.superAdmin || !exists[instanceID] {
+			released = append(released, key)
+			continue
+		}
+		if !held[userSegment] {
+			held[userSegment] = true
+			holders = append(holders, holder.name)
+		}
 	}
 	sort.Strings(holders)
-	return holders
+	sort.Strings(released)
+	return holders, released, nil
 }
 
 // assignmentsOfTeam picks, out of the stored assignments, those that hold
