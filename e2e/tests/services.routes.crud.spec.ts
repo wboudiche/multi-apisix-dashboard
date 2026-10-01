@@ -184,7 +184,7 @@ test('should CRUD route under service with required fields', async ({
     await servicesPom.toServiceRoutes(page, testServiceId);
     await servicesPom.isServiceRoutesPage(page);
 
-    await expect(page.getByRole('cell', { name: routeName })).toBeVisible();
+    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeVisible();
 
     await page
       .getByRole('row', { name: routeName })
@@ -211,6 +211,6 @@ test('should CRUD route under service with required fields', async ({
     // The route is gone from the nested service routes list too
     await servicesPom.toServiceRoutes(page, serviceId);
     await servicesPom.isServiceRoutesPage(page);
-    await expect(page.getByRole('cell', { name: routeName })).toBeHidden();
+    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeHidden();
   });
 });

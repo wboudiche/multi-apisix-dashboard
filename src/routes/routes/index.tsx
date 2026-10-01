@@ -354,12 +354,14 @@ export const RouteList = (props: RouteListProps) => {
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
                 <Checkbox
-                  // The same name on every row, which is worse for a screen
-                  // reader and the only thing the suite can address: naming the
-                  // route here puts it in the row's accessible name, and five
-                  // specs match a cell or a checkbox by a name that then
-                  // resolves to two elements (#348).
-                  aria-label={t('routes.list.selectRow')}
+                  // Named after its route, or its id when it has no name: the
+                  // same name on every row had a screen reader select rows for
+                  // a batch delete blind (#348). The name also lands in this
+                  // cell's accessible name, so a spec addresses the name cell
+                  // with `exact: true`.
+                  aria-label={t('routes.list.selectRow', {
+                    name: record.value.name || record.value.id,
+                  })}
                   checked={selectedIds.has(record.value.id)}
                   onChange={() => toggleSelect(record.value.id)}
                 />

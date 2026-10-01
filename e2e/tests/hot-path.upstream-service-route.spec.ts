@@ -258,7 +258,7 @@ test('can create upstream -> service -> route', async ({ page }) => {
 
     await routesPom.toIndex(page);
     await routesPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: route.name })).toBeVisible();
+    await expect(page.getByRole('cell', { name: route.name, exact: true })).toBeVisible();
 
     // Verify the chain through the Admin API
     const routeData = await getRouteReq(e2eReq, route.id!);

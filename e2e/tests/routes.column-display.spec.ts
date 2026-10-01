@@ -17,6 +17,7 @@
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
+import { i18n } from '@e2e/utils/ui/i18n';
 import { expect } from '@playwright/test';
 
 /**
@@ -43,6 +44,10 @@ const seed = async (id: string, body: Record<string, unknown>) => {
     },
   });
 };
+
+// Every test here seeds and deletes the same two ids, so two of them at once
+// delete each other's routes: one at a time, whatever the worker count.
+test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(async () => {
   await seed(NAMED_ID, { uri: '/e2e-columns-named', name: ROUTE_NAME });
@@ -114,7 +119,27 @@ test('offers Name as a fixed column that cannot be unchecked', async ({ page }) 
 
   await page.getByRole('button', { name: 'Column Display' }).click();
 
-  const nameBox = page.getByRole('checkbox', { name: 'Name' });
+  // Exact: each row's checkbox is named after its route, and this spec's
+  // route is called e2e-columns-named-route (#348).
+  const nameBox = page.getByRole('checkbox', { name: 'Name', exact: true });
   await expect(nameBox).toBeChecked();
   await expect(nameBox).toBeDisabled();
+});
+
+test('names each row’s checkbox after its route, or its id when it has none', async ({
+  page,
+}) => {
+  await page.goto('/ui/routes');
+  await expect(page.getByText(ROUTE_NAME)).toBeVisible({ timeout: 15000 });
+
+  // Every row's checkbox used to be called "Select row", so a screen reader
+  // picked rows for a batch delete without hearing which (#348).
+  for (const name of [ROUTE_NAME, NAMELESS_ID]) {
+    await expect(
+      page.getByRole('checkbox', {
+        name: i18n.t('routes.list.selectRow', { name }),
+        exact: true,
+      })
+    ).toBeVisible();
+  }
 });
