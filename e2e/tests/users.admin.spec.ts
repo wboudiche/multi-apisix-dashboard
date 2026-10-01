@@ -63,6 +63,11 @@ const localInstanceCard = (page: Page) =>
     .filter({ hasText: 'Local APISIX' })
     .first();
 
+// The Teams field of that card. By role: once a team is picked the field has
+// a "Clear teams" button, which a lookup by the label "Teams" matches as well.
+const teamsField = (page: Page) =>
+  localInstanceCard(page).getByRole('textbox', { name: 'Teams' });
+
 test('creates a user via the Add User modal', async ({ page }) => {
   const username = `${PREFIX}-created`;
   await adminPom.toUsers(page);
@@ -100,8 +105,11 @@ test('assigns a per-instance viewer role through the Permissions modal', async (
   const card = localInstanceCard(page);
   await card.getByLabel('Role', { exact: true }).click();
   await page.getByRole('option', { name: 'Viewer', exact: true }).click();
-  await card.getByLabel('Team').click();
-  await page.getByRole('option', { name: teamName }).click();
+  await teamsField(page).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  // The field takes several teams (#301), so its list stays open for the next
+  // one - over the button below. Escape closes the list, not the dialog.
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Save Changes' }).click();
 
   // The users table row now shows the assignment.
@@ -260,6 +268,90 @@ test('saving a dialog opened before the assignments arrived removes nothing', as
     token
   )) as unknown[];
   expect(assignments).toHaveLength(1);
+});
+
+test('shows every team of an assignment, keeps them on a save, and takes one away when asked', async ({
+  page,
+}) => {
+  // An assignment can hold several teams (#301). The form writes every
+  // assignment back on any save, so while it showed one team, saving a user
+  // rewrote [first, second] as [first]: a team lost to an edit that never
+  // touched it. It shows the list and sends the list.
+  const username = `${PREFIX}-two-teams`;
+  const token = await adminToken();
+  const second = await ensureTeam(token, { name: `${PREFIX}-team-2` });
+  const user = await ensureUser(token, { username, password: PASSWORD });
+  await ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+    role: 'developer',
+    team_ids: [teamId, second.id],
+  });
+  const stored = async () => {
+    const assignments = (await apiFetch(`/api/v1/user-access/${user.id}/instances`, token)) as {
+      team_ids: string[];
+    }[];
+    return assignments[0]?.team_ids;
+  };
+  const openPermissions = async () => {
+    await adminPom.toUsers(page);
+    const row = adminPom.rowByText(page, username);
+    // Seeded from the assignment, not from the list before it arrived.
+    await expect(row.getByText(`(${roleText('developer')})`, { exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+    await row.getByRole('button', { name: 'Permissions' }).click();
+    await expect(page.getByText('Edit User & Permissions')).toBeVisible();
+  };
+
+  // Both in the table...
+  await adminPom.toUsers(page);
+  const row = adminPom.rowByText(page, username);
+  await expect(row.getByText(teamName, { exact: true })).toBeVisible({ timeout: 20000 });
+  await expect(row.getByText(`${PREFIX}-team-2`, { exact: true })).toBeVisible();
+
+  // ...and both in the form, which a save with nothing changed leaves alone.
+  await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  const card = localInstanceCard(page);
+  await expect(card.getByText(teamName, { exact: true })).toBeVisible();
+  await expect(card.getByText(`${PREFIX}-team-2`, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  expect(await stored()).toEqual([teamId, second.id]);
+
+  // Nor does unticking the first team and ticking it again: the first team of
+  // the list is still the one the rest of the dashboard reads as the user's,
+  // and the field alone would have moved it behind the second.
+  await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  await teamsField(page).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  expect(await stored()).toEqual([teamId, second.id]);
+
+  // Taking one team away takes that one, and leaves the other.
+  await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  await teamsField(page).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  expect(await stored()).toEqual([second.id]);
+
+  // And giving it back adds it to the one that is there.
+  await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  await teamsField(page).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  // Behind the one that was there: what the assignment held stays where it
+  // was, and what is added goes after it.
+  expect(await stored()).toEqual([second.id, teamId]);
 });
 
 test('a viewer assignment takes effect: one instance, no create button', async ({

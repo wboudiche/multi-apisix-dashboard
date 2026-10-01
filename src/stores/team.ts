@@ -76,9 +76,13 @@ export const currentTeamIdAtom = atom(
  * None unless the account is a super admin. The proxy records an admin's team
  * as the owner of whatever it creates or edits, but only a super admin gets
  * the teams list, and so a switcher to see and change the team: an instance
- * admin, an admin to the proxy too, sent a team it could not see (#203). For
- * the other roles the backend takes the team from the account's assignment
- * and ignores the header.
+ * admin, an admin to the proxy too, sent a team it could not see (#203).
+ *
+ * The other roles send none either, and must not send a stale pick: since
+ * #301 the backend no longer ignores their header. It reads it as which of
+ * the account's own teams a request is for, and refuses a team that is not
+ * one of them (`team_not_assigned`) on every proxied request. With none sent,
+ * a list shows all of their teams and a create goes to their only one.
  *
  * For the selected instance, exactly the team the header shows. For another
  * one — a request can name its instance — this tab's pick for it, or the

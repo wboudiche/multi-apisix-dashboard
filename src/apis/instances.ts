@@ -122,14 +122,25 @@ export type Scope = {
 export type UserInstanceRole = {
   user_id: string;
   instance_id: string;
+  /** Every team of the assignment (#301). Absent from a backend before it. */
+  team_ids?: string[];
+  /** The first of them, as the answer named it when an assignment held one. */
   team_id: string;
   role: 'instance_admin' | 'developer' | 'viewer';
   scope?: Scope;
 };
 
+/**
+ * The teams of an assignment as the backend answered it: the list, or the one
+ * team of an answer from before the list.
+ */
+export const teamsOf = (a: UserInstanceRole): string[] =>
+  a.team_ids ?? (a.team_id ? [a.team_id] : []);
+
 export type SetUserRoleRequest = {
   role: string;
-  team_id: string;
+  /** Every team of the assignment (#301). */
+  team_ids: string[];
   scope?: Scope;
 };
 

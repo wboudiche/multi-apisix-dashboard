@@ -150,9 +150,21 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 	// dashboard that sits on its network, and an account that may write routes
 	// on this instance is not thereby entitled to send traffic at another
 	// team's (#311).
-	isAdmin, teamID := callerTeamScope(c)
+	scope := callerTeamScope(c)
+	isAdmin, teamID := scope.isAdmin, scope.acting
+	if scope.foreign {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": teamNotAssignedMsg,
+			"code":  teamNotAssignedCode,
+		})
+		return
+	}
 	if !isAdmin {
 		owner, err := h.ownershipService.GetOwner(c.Request.Context(), instance.ID, "routes", req.RouteID)
+		// For the record below: the team this caller was let through as. With
+		// several teams and none named there is no acting team, and the line
+		// would read like a teamless account's.
+		teamID = owner
 		if err != nil {
 			// Fail closed: a route whose owner cannot be read is not a route to
 			// send a request to.
@@ -162,7 +174,7 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 			})
 			return
 		}
-		if !nonAdminMayAccess(owner, teamID) {
+		if !scope.mayAccess(owner) {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error": otherTeamMsg,
 				"code":  routeTestOtherTeamCode,

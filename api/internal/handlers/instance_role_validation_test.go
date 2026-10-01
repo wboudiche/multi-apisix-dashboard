@@ -16,6 +16,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
@@ -47,5 +49,52 @@ func TestIsAssignableInstanceRole(t *testing.T) {
 				t.Errorf("isAssignableInstanceRole(%q) = %v, want %v", tt.role, got, tt.want)
 			}
 		})
+	}
+}
+
+// An assignment takes a list of teams (#301). A client from before the list
+// sends one team under the old name, and is still understood - as that one
+// team: the e2e seeding relies on it to put an account back on a known team.
+func TestAssignmentRequestTeams(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want []string
+	}{
+		{"a list", `{"role":"developer","team_ids":["t1","t2"]}`, []string{"t1", "t2"}},
+		{"one team, the old name", `{"role":"developer","team_id":"t1"}`, []string{"t1"}},
+		{"both: the list counts", `{"role":"developer","team_ids":["t2","t3"],"team_id":"t1"}`, []string{"t2", "t3"}},
+		{"neither", `{"role":"instance_admin"}`, []string{}},
+		{"an empty old name", `{"role":"instance_admin","team_id":""}`, []string{}},
+		{"repeats and blanks", `{"role":"viewer","team_ids":["t1","","t1"]}`, []string{"t1"}},
+		// What a client sends that read an assignment, emptied its list and
+		// saved the object back: no team, whatever the old name still says.
+		{"an empty list beside the old name", `{"role":"instance_admin","team_ids":[],"team_id":"t1"}`, []string{}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var req SetUserInstanceRoleRequest
+			if err := json.Unmarshal([]byte(tc.body), &req); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if got := req.teams(); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("teams() = %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+}
+
+// For a developer or a viewer the teams are the whole of what they can see, so
+// an assignment with none is an account that can do nothing. An instance admin
+// is not tied to a team.
+func TestRoleNeedsTeam(t *testing.T) {
+	for role, want := range map[string]bool{
+		models.RoleDeveloper:     true,
+		models.RoleViewer:        true,
+		models.RoleInstanceAdmin: false,
+	} {
+		if got := roleNeedsTeam(role); got != want {
+			t.Errorf("roleNeedsTeam(%q) = %v, want %v", role, got, want)
+		}
 	}
 }

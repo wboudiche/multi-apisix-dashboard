@@ -113,7 +113,7 @@ api/
 /users/<userID>
 /teams/<teamID>
 /instances/<instanceID>
-/user_instances/<userID>/<instanceID>   ← role + team + scope for that pair
+/user_instances/<userID>/<instanceID>   ← role + teams + scope for that pair
 /ownership/<instanceID>/<resourceType>/<resourceID>
 /labels/<key>
 /roles/<name>
@@ -247,6 +247,6 @@ Body required for everything except `docs:` and must explain *why*. See [CONTRIB
 - **Debug logging in the backend is loud and unconditional** (`auth.go`, `rbac.go` log JWT secret prefixes, token prefixes, every validation and RBAC decision via `log.Printf("[DEBUG ...")`). Gate behind a log level before deploying to anything non-local.
 - **`UserID` quoting fallbacks in `middleware/rbac.go`** (three successive lookups with different quote-stripping/wrapping). This is a workaround for inconsistent etcd keys written by earlier bugs. Do a migration pass, then remove.
 - **`JWT_SECRET` is required and validated at startup** — the backend `log.Fatal`s if it is empty, equal to the legacy default `your-secret-key-change-in-production`, or shorter than 32 bytes. The quickstart recipe generates one with `openssl rand -hex 32`.
-- **`X-Team-ID` is client-controlled** for admins; for non-admins the proxy ignores the header and forces the team to `UserInstance.TeamID`. The "admin" status is sourced from `UserInstance.Role`, not the JWT global role — only `super_admin` is honored from the JWT.
+- **`X-Team-ID` is client-controlled** for admins. A non-admin can only name one of the teams of their assignment (`UserInstance.TeamIDs`): another team is refused with `team_not_assigned`, none means all of their teams for a read and their only team for a create — a create with several teams and none named is refused with `team_required` (`handlers/caller_scope.go`). Records written before #301 hold a single `team_id`; `UserInstance` reads both shapes. The "admin" status is sourced from `UserInstance.Role`, not the JWT global role — only `super_admin` is honored from the JWT.
 - **Resource-type RBAC** is enforced in `handlers/proxy.go` via `models.HasResourcePermission(effRole, resourceType, "read"|"write")`. A `developer` is limited to the resource types in `models.RolePermissions[RoleDeveloper]` (routes/services/upstreams/consumers/consumer_groups/stream_routes); they cannot write to `ssls`, `global_rules`, `plugin_configs`, `secrets`, etc. Keep the role-table in `models.go` aligned with APISIX path segments (plural where APISIX is plural).
 - **Two axios instances**: `req` for APISIX resource calls, `apiClient` for `/api/v1/*` calls to the Go backend. Mixing them up means the wrong headers (or no JWT) on a request — easy to do, hard to spot.

@@ -16,14 +16,79 @@
 package handlers
 
 import (
+	"net/http"
+	"slices"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
+// teamScope is who a caller acts as on an instance, and for which teams.
+type teamScope struct {
+	// isAdmin: a super admin, or an instance admin of this instance. Nothing
+	// below restricts an admin.
+	isAdmin bool
+	// teams are a non-admin's teams on this instance: the boundary of what
+	// they may see and change.
+	teams []string
+	// chosen is the team a non-admin named in X-Team-ID, when it is one of
+	// theirs. It narrows what a list shows, not what they may reach.
+	chosen string
+	// foreign: a non-admin named a team that is not theirs. The request is
+	// refused rather than answered for a team it did not ask about.
+	foreign bool
+	// acting is the team a resource this request creates will belong to: for
+	// an admin the team they named, for a non-admin the one they named or the
+	// only one they have. Empty when there is none to give.
+	acting string
+}
+
+// mayAccess reports whether a non-admin may see or modify a resource owned by
+// ownerTeamID: it has to be one of their teams.
+//
+// A resource with no team is administrative territory: it is invisible and
+// unwritable to non-admins until an admin assigns it (see ReassignOwnership).
+// Resources predating the dashboard, or created directly against the Admin API,
+// arrive in exactly that state.
+//
+// A caller with no team of their own passes nothing: they own no resources, and
+// unowned resources must not become a free-for-all for teamless accounts.
+func (s teamScope) mayAccess(ownerTeamID string) bool {
+	return ownerTeamID != "" && slices.Contains(s.teams, ownerTeamID)
+}
+
+// lists reports whether a non-admin's list shows a resource owned by
+// ownerTeamID: everything they may access, or the one team they named. The
+// same view an admin has of "all teams" and of one, within the caller's own.
+func (s teamScope) lists(ownerTeamID string) bool {
+	if s.chosen != "" {
+		return ownerTeamID == s.chosen
+	}
+	return s.mayAccess(ownerTeamID)
+}
+
+// createNeedsTeam reports whether a non-admin's create has to be refused for
+// want of a team to own it. A resource has one owner; a caller with several
+// teams and none named has not said which, and one with no team has none to
+// give. Written anyway, the resource would carry no owner and disappear from
+// its own author, since unowned is admin-only.
+//
+// Only for a method that creates - a POST to a collection, or a PUT to an id
+// the caller has found not to exist. A DELETE or a PATCH of something that is
+// not there creates nothing, and is the gateway's to answer with its 404.
+//
+// And only for what a team can own (see the ownership recorded after a write):
+// the types teams share, and not a write beneath a resource, which reads as
+// the resource above it.
+func createNeedsTeam(s teamScope, method, resourceType, path string) bool {
+	creates := method == http.MethodPost || method == http.MethodPut
+	return creates && !s.isAdmin && s.acting == "" && teamScopedResources[resourceType] && !beneathResource(path)
+}
+
 // callerTeamScope answers, for the endpoints that apply team ownership, whether
-// the caller acts as an admin on this instance and which team they act for.
+// the caller acts as an admin on this instance and which teams they act for.
 //
 // The effective role comes from the per-instance assignment, not the JWT's
 // global claim: the only global role honored is super_admin. An account whose
@@ -31,25 +96,38 @@ import (
 // instances it has no business with.
 //
 // An admin's team comes from the X-Team-ID header, which is theirs to choose -
-// that is how an admin works on a team's behalf - and a non-admin's from their
-// assignment, which is not.
+// that is how an admin works on a team's behalf. A non-admin's teams come from
+// their assignment, which is not theirs to choose; the header only says which
+// of those teams a request is for (#301).
 //
 // One function because two endpoints apply the same rule: the proxy, for every
 // Admin API path it forwards, and the route test, for the route it is asked to
 // send a request to (#311).
-func callerTeamScope(c *gin.Context) (isAdmin bool, teamID string) {
+func callerTeamScope(c *gin.Context) teamScope {
 	ui := middleware.GetUserInstance(c)
 	jwtRole := middleware.GetRole(c)
+	named := c.GetHeader("X-Team-ID")
 
 	isSuperAdmin := jwtRole == models.RoleSuperAdmin
 	isInstanceAdmin := !isSuperAdmin && ui != nil && ui.Role == models.RoleInstanceAdmin
-	isAdmin = isSuperAdmin || isInstanceAdmin
-
-	switch {
-	case isAdmin:
-		teamID = c.GetHeader("X-Team-ID")
-	case ui != nil:
-		teamID = ui.TeamID
+	if isSuperAdmin || isInstanceAdmin {
+		return teamScope{isAdmin: true, acting: named}
 	}
-	return isAdmin, teamID
+
+	var scope teamScope
+	if ui != nil {
+		scope.teams = ui.TeamIDs
+	}
+	switch {
+	case named == "":
+		if len(scope.teams) == 1 {
+			scope.acting = scope.teams[0]
+		}
+	case scope.mayAccess(named):
+		scope.chosen = named
+		scope.acting = named
+	default:
+		scope.foreign = true
+	}
+	return scope
 }

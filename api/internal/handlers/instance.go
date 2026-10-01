@@ -95,9 +95,33 @@ func applyControlAPIURL(instance *models.Instance, update *string) {
 }
 
 type SetUserInstanceRoleRequest struct {
-	Role   string        `json:"role" binding:"required"`
+	Role string `json:"role" binding:"required"`
+	// TeamIDs are the teams the user works for on the instance (#301).
+	TeamIDs []string `json:"team_ids"`
+	// TeamID is what a client from before the list sends: one team.
 	TeamID string        `json:"team_id"`
 	Scope  *models.Scope `json:"scope"`
+}
+
+// teams is the list the request asks for: team_ids, or the single team_id of a
+// client that does not send a list. Where a list is sent it counts, as it does
+// when a record is read.
+//
+// The request is taken at its word: team_id alone means that one team, and
+// replaces whatever the assignment held. Guessing instead that a one-team
+// client meant "and the others too" made the answer depend on what was stored
+// and left no way to narrow a list to one team. A client that shows an
+// assignment and saves it back has to send the list it read - the Users page
+// does.
+func (r SetUserInstanceRoleRequest) teams() []string {
+	return models.TeamIDsFrom(r.TeamIDs, r.TeamID)
+}
+
+// roleNeedsTeam reports whether an assignment with this role is nothing
+// without a team. For a developer or a viewer the teams are the whole of what
+// they can see; an instance admin is not tied to one.
+func roleNeedsTeam(role string) bool {
+	return role == models.RoleDeveloper || role == models.RoleViewer
 }
 
 // InstanceResponse is an instance plus any non-fatal advisory about it. The
@@ -568,16 +592,23 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 		return
 	}
 
-	if req.Role == models.RoleDeveloper || req.Role == models.RoleViewer {
-		if req.TeamID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required for developer and viewer roles"})
+	teamIDs := req.teams()
+	if roleNeedsTeam(req.Role) && len(teamIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one team is required for developer and viewer roles: team_ids, or team_id for a single team"})
+		return
+	}
+	// Every one of them: a team that does not exist would be a boundary around
+	// nothing, and the assignment would look made.
+	for _, teamID := range teamIDs {
+		team, err := h.teamService.GetTeam(c.Request.Context(), teamID)
+		if err != nil {
+			// Not "not found": a read that failed says nothing about the
+			// team, and an admin told it is gone would take it off the list.
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-	}
-	if req.TeamID != "" {
-		team, err := h.teamService.GetTeam(c.Request.Context(), req.TeamID)
-		if err != nil || team == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team_id: team not found"})
+		if team == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team: " + teamID + " not found"})
 			return
 		}
 	}
@@ -585,7 +616,7 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	ui := &models.UserInstance{
 		UserID:     userID,
 		InstanceID: instanceID,
-		TeamID:     req.TeamID,
+		TeamIDs:    teamIDs,
 		Role:       req.Role,
 		Scope:      req.Scope,
 	}

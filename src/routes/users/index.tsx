@@ -22,6 +22,7 @@ import {
   Container,
   Group,
   Modal,
+  MultiSelect,
   Paper,
   PasswordInput,
   Select,
@@ -40,7 +41,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type User } from '@/apis/auth';
-import { instanceApi, type UserInstanceRole } from '@/apis/instances';
+import { instanceApi, teamsOf, type UserInstanceRole } from '@/apis/instances';
 import { type Team,teamApi } from '@/apis/teams';
 import { userApi } from '@/apis/users';
 import PageHeader from '@/components/page/PageHeader';
@@ -66,12 +67,37 @@ type UserFormData = {
   must_change_password: boolean;
 };
 
+/** One instance's assignment as the form holds it. */
+type AssignmentForm = {
+  role: string;
+  /**
+   * Every team of the assignment (#301), and the only place the form keeps
+   * them: what it shows, what it checks and what it sends are this one list.
+   */
+  team_ids: string[];
+  scope?: { tags: string[]; pathPrefixes: string[] };
+};
+
+/**
+ * For a developer or a viewer the teams are the whole of what they can see; an
+ * instance admin is not tied to one. The backend's own rule, of the same name.
+ */
+const roleNeedsTeam = (role: string) => role === 'developer' || role === 'viewer';
+
 const UsersPage = () => {
   const { t } = useTranslation();
   const [currentUser] = useAtom(currentUserAtom);
   const [availableInstances] = useAtom(instancesAtom);
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  // Whether the teams have been read at all: until then a team the list does
+  // not hold is one that has not arrived, not one that is gone.
+  const [teamsLoaded, setTeamsLoaded] = useState(false);
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+  // By name: the API answers in no particular order, a different one each time.
+  const teamOptions = [...teams]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((team) => ({ value: team.id, label: team.name }));
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -102,7 +128,24 @@ const UsersPage = () => {
   // the later list, every role the form does not show reads as "cleared", and
   // saving an e-mail change took the account's access away.
   const [seededAssignments, setSeededAssignments] = useState<UserInstanceRole[]>([]);
-  const [instanceRoles, setInstanceRoles] = useState<Record<string, { role: string, team_id: string, scope?: { tags: string[], pathPrefixes: string[] } }>>({});
+  /**
+   * The teams picked for an instance, in the order the assignment was stored
+   * in: the teams it already held where they were, the ones added behind them
+   * in the order they were added. The first team of an assignment is still the
+   * one `team_id` names and the header shows, and the field alone would move a
+   * team unticked and ticked again to the end.
+   */
+  const inStoredOrder = (instanceId: string, ids: string[]) => {
+    const seeded = seededAssignments.find((a) => a.instance_id === instanceId);
+    const stored = seeded ? teamsOf(seeded) : [];
+    const at = (id: string) => {
+      const index = stored.indexOf(id);
+      return index === -1 ? stored.length : index;
+    };
+    // Stable, so the teams that are new keep the order of the clicks.
+    return [...ids].sort((a, b) => at(a) - at(b));
+  };
+  const [instanceRoles, setInstanceRoles] = useState<Record<string, AssignmentForm>>({});
 
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -137,6 +180,7 @@ const UsersPage = () => {
 
       const teamData = await teamApi.list();
       setTeams(teamData);
+      setTeamsLoaded(true);
 
       const failed = Object.keys(unreadable).length;
       if (failed > 0) {
@@ -174,7 +218,7 @@ const UsersPage = () => {
     // Validate team selection for developer/viewer roles
     for (const instanceID in instanceRoles) {
       const config = instanceRoles[instanceID];
-      if (config.role && (config.role === 'developer' || config.role === 'viewer') && !config.team_id) {
+      if (roleNeedsTeam(config.role) && config.team_ids.length === 0) {
         notifications.show({
           message: t('users.teamRequired'),
           color: 'red',
@@ -268,7 +312,7 @@ const UsersPage = () => {
           try {
             await instanceApi.setUserRole(userId, instanceID, {
               role: config.role,
-              team_id: config.team_id,
+              team_ids: config.team_ids,
               scope: config.scope,
             });
           } catch (err) {
@@ -405,11 +449,11 @@ const UsersPage = () => {
     // Load existing instance assignments
     const assignments = userAssignments[user.id] || [];
     setSeededAssignments(assignments);
-    const roles: Record<string, { role: string, team_id: string, scope?: { tags: string[], pathPrefixes: string[] } }> = {};
+    const roles: Record<string, AssignmentForm> = {};
     for (const a of assignments) {
       roles[a.instance_id] = {
         role: a.role,
-        team_id: a.team_id || '',
+        team_ids: teamsOf(a),
         scope: a.scope ? { tags: a.scope.tags || [], pathPrefixes: a.scope.path_prefixes || [] } : undefined,
       };
     }
@@ -449,12 +493,15 @@ const UsersPage = () => {
           <Table.Tbody>
             {users.map((user, index) => {
               const assignments = getAssignments(user.id);
-              const assignedTeams = assignments
-                .map((a) => teams.find((team) => team.id === a.team_id))
-                .filter(Boolean);
-              const uniqueTeams = [
-                ...new Map(assignedTeams.map((team) => [team!.id, team!])).values(),
-              ];
+              // Every team of every assignment, once. One that no longer
+              // exists is shown by its id rather than left out: the form shows
+              // it and the backend holds it, and a column saying "none" beside
+              // them was this screen contradicting itself.
+              // Only once the teams have been read: before that, or when
+              // that read failed, every team would show as an id.
+              const uniqueTeams = [...new Set(assignments.flatMap(teamsOf))]
+                .map((id) => teamById.get(id) ?? (teamsLoaded ? { id, name: id } : undefined))
+                .filter((team) => team !== undefined);
 
               return (
               <Table.Tr key={user.id} className={`stagger-${(index % 5) + 1}`}>
@@ -693,28 +740,43 @@ const UsersPage = () => {
                               value={config?.role || null}
                               onChange={(role) => setInstanceRoles({
                                 ...instanceRoles,
-                                [inst.id]: { ...instanceRoles[inst.id], role: role || '', team_id: instanceRoles[inst.id]?.team_id || '' }
+                                [inst.id]: { ...instanceRoles[inst.id], role: role || '', team_ids: instanceRoles[inst.id]?.team_ids || [] }
                               })}
                               data={INSTANCE_ROLES.map((role) => ({
                                 value: role,
                                 label: roleLabel(t, role),
                               }))}
                             />
-                            {(config?.role === 'developer' || config?.role === 'viewer') && (
-                              <Select
+                            {/* For every role, though only a developer or a
+                                viewer must have a team: an instance admin's
+                                list is sent with the rest, and hidden it could
+                                neither be seen nor emptied. */}
+                            {config?.role && (
+                              <MultiSelect
                                 size="sm"
                                 label={t('users.fieldTeam')}
-                                placeholder={t('users.fieldTeamPlaceholder')}
+                                // Mantine keeps showing the placeholder beside
+                                // the teams picked.
+                                placeholder={config.team_ids.length ? undefined : t('users.fieldTeamPlaceholder')}
+                                // Typing narrows a long list of teams - and
+                                // without it Mantine hides the field itself
+                                // once a team is picked and there is no
+                                // placeholder, leaving nothing to focus.
+                                searchable
                                 clearable
-                                required
-                                data={teams.map((team) => ({
-                                  value: team.id,
-                                  label: team.name,
-                                }))}
-                                value={config?.team_id || null}
-                                onChange={(teamId) => setInstanceRoles({
+                                // As for the role above: named, in the tab
+                                // order and in the tree.
+                                clearButtonProps={{
+                                  'aria-label': t('users.clearTeams'),
+                                  'aria-hidden': false,
+                                  tabIndex: 0,
+                                }}
+                                required={roleNeedsTeam(config.role)}
+                                data={teamOptions}
+                                value={config.team_ids}
+                                onChange={(teamIds) => setInstanceRoles({
                                   ...instanceRoles,
-                                  [inst.id]: { ...instanceRoles[inst.id], team_id: teamId || '', role: instanceRoles[inst.id]?.role || '' }
+                                  [inst.id]: { ...instanceRoles[inst.id], team_ids: inStoredOrder(inst.id, teamIds), role: instanceRoles[inst.id]?.role || '' }
                                 })}
                               />
                             )}

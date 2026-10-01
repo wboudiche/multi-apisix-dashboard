@@ -44,6 +44,7 @@ func TestOrphanedAssignments(t *testing.T) {
 		`/user_instances/"\"alice\""/i3`: assignment("developer", "t1"),
 		"/user_instances/gone/i1":        assignment("developer", "t9"),
 		"/user_instances/gone/i2":        []byte(`not json`),
+		"/user_instances/gone/i3":        []byte(`{"role":"developer","team_ids":["t7","t8"]}`),
 		"/user_instances/malformed":      assignment("developer", "t1"),
 	}
 
@@ -53,14 +54,16 @@ func TestOrphanedAssignments(t *testing.T) {
 	}
 
 	want := []OrphanedAssignment{
-		{Key: "/user_instances/gone/i1", UserID: "gone", InstanceID: "i1", Role: "developer", TeamID: "t9"},
+		{Key: "/user_instances/gone/i1", UserID: "gone", InstanceID: "i1", Role: "developer", TeamID: "t9", TeamIDs: []string{"t9"}},
 		{Key: "/user_instances/gone/i2", UserID: "gone", InstanceID: "i2"},
+		// Every team the assignment held (#301), and the first under the old name.
+		{Key: "/user_instances/gone/i3", UserID: "gone", InstanceID: "i3", Role: "developer", TeamID: "t7", TeamIDs: []string{"t7", "t8"}},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d orphans %+v, want %d %+v", len(got), got, len(want), want)
 	}
 	for i := range want {
-		if got[i] != want[i] {
+		if !reflect.DeepEqual(got[i], want[i]) {
 			t.Errorf("orphan %d = %+v, want %+v", i, got[i], want[i])
 		}
 	}

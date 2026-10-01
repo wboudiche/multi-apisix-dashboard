@@ -95,10 +95,3 @@ func GetUserInstance(c *gin.Context) *models.UserInstance {
 	}
 	return nil
 }
-
-func GetTeamID(c *gin.Context) string {
-	if ui := GetUserInstance(c); ui != nil {
-		return ui.TeamID
-	}
-	return ""
-}

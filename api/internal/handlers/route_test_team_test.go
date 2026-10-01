@@ -77,12 +77,22 @@ func gatewayThatAnswers(t *testing.T) (*httptest.Server, *[]string) {
 // on the context: the instance, the caller's role and their assignment.
 func callTestRoute(t *testing.T, owners ownerReader, instance *models.Instance, role string, ui *models.UserInstance, body string) *httptest.ResponseRecorder {
 	t.Helper()
+	return callTestRouteForTeam(t, owners, instance, role, ui, body, "")
+}
+
+// callTestRouteForTeam is callTestRoute with the team the caller names in
+// X-Team-ID, when they name one.
+func callTestRouteForTeam(t *testing.T, owners ownerReader, instance *models.Instance, role string, ui *models.UserInstance, body, team string) *httptest.ResponseRecorder {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/test-route", strings.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
+	if team != "" {
+		c.Request.Header.Set("X-Team-ID", team)
+	}
 	c.Set(middleware.InstanceKey, instance)
 	c.Set(middleware.RoleKey, role)
 	if ui != nil {
@@ -116,7 +126,7 @@ func TestRouteTestRefusesAnotherTeamsRoute(t *testing.T) {
 	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: otherTeam}}
 
 	w := callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"DELETE","path":"/theirs"}`)
 
 	if w.Code != http.StatusForbidden {
@@ -133,7 +143,7 @@ func TestRouteTestAllowsTheCallersOwnRoute(t *testing.T) {
 	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
 
 	w := callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"GET","path":"/mine"}`)
 
 	if w.Code != http.StatusOK {
@@ -151,7 +161,7 @@ func TestRouteTestRefusesAnUnownedRouteToANonAdmin(t *testing.T) {
 	gateway, reached := gatewayThatAnswers(t)
 
 	w := callTestRoute(t, stubOwners{}, instanceFor(adminAPI.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"GET","path":"/unowned"}`)
 
 	if w.Code != http.StatusForbidden {
@@ -189,7 +199,7 @@ func TestRouteTestRefusesAPathTheRouteDoesNotMatch(t *testing.T) {
 	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
 
 	w := callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"DELETE","path":"/theirs"}`)
 
 	if w.Code != http.StatusBadRequest {
@@ -206,7 +216,7 @@ func TestRouteTestNeedsARouteThatExists(t *testing.T) {
 	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
 
 	w := callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"GET","path":"/mine"}`)
 
 	if w.Code != http.StatusNotFound {
@@ -224,7 +234,7 @@ func TestRouteTestFailsClosedWhenOwnershipCannotBeRead(t *testing.T) {
 	owners := stubOwners{err: errors.New("etcd is away")}
 
 	w := callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"GET","path":"/mine"}`)
 
 	if w.Code != http.StatusBadGateway {
@@ -245,7 +255,7 @@ func TestRouteTestRefusesADotSegment(t *testing.T) {
 
 	for _, path := range []string{"/mine/../victim", "/mine/./victim", "/mine//victim", "/mine/%2e%2e/victim"} {
 		w := callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
-			models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+			models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 			`{"route_id":"`+testRouteID+`","method":"DELETE","path":"`+path+`"}`)
 
 		if w.Code != http.StatusBadRequest {
@@ -270,7 +280,7 @@ func TestRouteTestDoesNotLetTheCallerWriteTheLog(t *testing.T) {
 	t.Cleanup(func() { log.SetOutput(orig) })
 
 	callTestRoute(t, owners, instanceFor(adminAPI.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"GET\n2026/01/01 00:00:00 [route-test] user=admin FORGED","path":"/mine"}`)
 
 	// One line, whatever the method carried.
@@ -296,7 +306,7 @@ func TestRouteTestReadsAFlatAdminAnswer(t *testing.T) {
 	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
 
 	w := callTestRoute(t, owners, instanceFor(flat.URL, gateway.URL),
-		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamID: myTeam},
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
 		`{"route_id":"`+testRouteID+`","method":"GET","path":"/mine"}`)
 
 	if w.Code != http.StatusOK {
@@ -346,5 +356,51 @@ func TestRouteMatchesPath(t *testing.T) {
 				t.Errorf("routeMatchesPath(%+v, %q) = %v, want %v", tt.route, tt.path, got, tt.want)
 			}
 		})
+	}
+}
+
+// A developer who works for two teams may test a route of either, whichever
+// team they have named: the team named narrows a list, not what they may reach
+// (#301).
+func TestRouteTestAllowsARouteOfAnyOfTheCallersTeams(t *testing.T) {
+	both := &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam, otherTeam}}
+
+	for _, named := range []string{"", myTeam, otherTeam} {
+		adminAPI := adminAPIWithRoute(t, testRouteID, map[string]any{"uri": "/theirs"})
+		gateway, reached := gatewayThatAnswers(t)
+		owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: otherTeam}}
+
+		w := callTestRouteForTeam(t, owners, instanceFor(adminAPI.URL, gateway.URL),
+			models.RoleDeveloper, both,
+			`{"route_id":"`+testRouteID+`","method":"GET","path":"/theirs"}`, named)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("naming %q: status %d, want %d: body %s", named, w.Code, http.StatusOK, w.Body.String())
+		}
+		if len(*reached) != 1 {
+			t.Errorf("naming %q: the gateway was sent %v, want one request", named, *reached)
+		}
+	}
+}
+
+// Naming a team that is not theirs is refused before anything is read or sent,
+// even for a route of a team that is.
+func TestRouteTestRefusesATeamTheCallerDoesNotHave(t *testing.T) {
+	adminAPI := adminAPIWithRoute(t, testRouteID, map[string]any{"uri": "/mine"})
+	gateway, reached := gatewayThatAnswers(t)
+	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: myTeam}}
+
+	w := callTestRouteForTeam(t, owners, instanceFor(adminAPI.URL, gateway.URL),
+		models.RoleDeveloper, &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam}},
+		`{"route_id":"`+testRouteID+`","method":"GET","path":"/mine"}`, otherTeam)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status %d, want %d: body %s", w.Code, http.StatusForbidden, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), teamNotAssignedCode) {
+		t.Errorf("body %s, want the code %q", w.Body.String(), teamNotAssignedCode)
+	}
+	if len(*reached) != 0 {
+		t.Errorf("the gateway was sent %v", *reached)
 	}
 }

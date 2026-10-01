@@ -403,15 +403,22 @@ func (s *AuthService) ListUsersByTeam(ctx context.Context, teamID string) ([]*mo
 	if err != nil {
 		return nil, err
 	}
+	return assignmentsOfTeam(resp, teamID), nil
+}
+
+// assignmentsOfTeam picks, out of the stored assignments, those that hold
+// teamID - as their only team or as one of several (#301). A record that does
+// not decode is nobody's member.
+func assignmentsOfTeam(records map[string][]byte, teamID string) []*models.UserInstance {
 	var results []*models.UserInstance
-	for _, data := range resp {
+	for _, data := range records {
 		var ui models.UserInstance
 		if err := json.Unmarshal(data, &ui); err != nil {
 			continue
 		}
-		if ui.TeamID == teamID {
+		if ui.HasTeam(teamID) {
 			results = append(results, &ui)
 		}
 	}
-	return results, nil
+	return results
 }
