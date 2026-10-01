@@ -80,5 +80,13 @@ jobs:
       # No etcd and no gateway: the tests bring their own fakes. -race because
       # the services answer concurrent requests over shared state - the
       # overview's singleflight group, for one.
+      #
+      # -count=1 because setup-go restores the build cache, and the build cache
+      # holds test results: without it a package whose inputs did not change
+      # answers `ok (cached)`, and neither its tests nor the race detector run.
+      #
+      # Runs even when vet fails: a vet finding would otherwise hide a broken
+      # access-rule test until the next push.
       - name: Unit tests
-        run: go test -race ./...
+        if: ${{ !cancelled() }}
+        run: go test -race -count=1 ./...
