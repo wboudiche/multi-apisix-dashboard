@@ -275,8 +275,11 @@ const firstArguments = (source: string) => {
 const spelled = (expression: string): boolean => {
   const text = expression.trim();
   if (/^'[^']*'$/.test(text)) return true;
-  // The first `?` at depth zero that is not `??` opens a ternary; its `:` is
-  // the one at depth zero after it, skipping the `?`s nested in its branches.
+  // The first `?` at depth zero that is not `??` or `?.` opens a ternary; its
+  // `:` is the one at depth zero after it, skipping the `?`s nested in its
+  // branches. `?.` followed by a digit is a ternary on a decimal, as the
+  // language itself reads it.
+  const chains = (at: number) => text[at + 1] === '.' && !/\d/.test(text[at + 2] ?? '');
   let depth = 0;
   let quote: string | undefined;
   let question = -1;
@@ -291,7 +294,7 @@ const spelled = (expression: string): boolean => {
     if (c === "'" || c === '"' || c === '`') quote = c;
     else if ('([{'.includes(c)) depth++;
     else if (')]}'.includes(c)) depth--;
-    else if (depth === 0 && c === '?' && text[at + 1] !== '?' && text[at - 1] !== '?') {
+    else if (depth === 0 && c === '?' && text[at + 1] !== '?' && text[at - 1] !== '?' && !chains(at)) {
       if (question === -1) question = at;
       else nested++;
     } else if (depth === 0 && c === ':' && question !== -1) {
@@ -302,6 +305,22 @@ const spelled = (expression: string): boolean => {
   return false;
 };
 
+// `user?.isAdmin ? 'a' : 'b'` was refused as a variable key: the `?` of the
+// chain was taken for the ternary's, and the only ways out were to contort the
+// condition or to list the file, which lifts the check for all of it.
+it.each([
+  ["'a.b'", true],
+  ["cond ? 'a.b' : 'c.d'", true],
+  ["user?.isAdmin ? 'a.b' : 'c.d'", true],
+  ["a?.b?.c ? 'a.b' : 'c.d'", true],
+  ["a ? 'a.b' : b?.c ? 'c.d' : 'e.f'", true],
+  ["cond ? entry?.label : 'c.d'", false],
+  ["table[x] ?? 'a.b'", false],
+  ['entry?.label', false],
+])('reads %s as spelled: %s', (expression, expected) => {
+  expect(spelled(expression)).toBe(expected);
+});
+
 it('excludes only files that exist', () => {
   expect(KEYS_BUILT_FROM_VARIABLES.filter((file) => !files.includes(file))).toEqual([]);
 });
@@ -310,9 +329,11 @@ describe.each(files)('%s', (file) => {
   const source = sources.get(file)!;
 
   it('reads only keys en holds', () => {
-    // A screen asking for a key no bundle has renders the key itself.
+    // A screen asking for a key no bundle has renders the key itself. A key
+    // `en` writes in plural forms is asked for by its base, and resolves: the
+    // other way round - `t('x_one')` where `en` holds `x` - does not.
     const keys = [...new Set(keysRead(source))].sort();
-    expect(keys.filter((key) => !en.has(key) && !en.has(base(key)))).toEqual([]);
+    expect(keys.filter((key) => !en.has(key) && !en.has(`${key}_other`))).toEqual([]);
   });
 
   // What the harvest above cannot see: a key held in a variable or built from

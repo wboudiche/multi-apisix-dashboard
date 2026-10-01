@@ -539,7 +539,7 @@
         "title": "Keepalive Pool",
         "idleTimeoutDesc": "Maximale Leerlaufzeit (Sekunden), bevor eine Verbindung geschlossen wird",
         "requestsDesc": "Maximale Anzahl Requests pro Keepalive-Verbindung, bevor sie erneuert wird",
-        "sizeDesc": "Maximale Anzahl offener Keepalive-Verbindungen zum Upstream pro Worker"
+        "sizeDesc": "Maximale Anzahl inaktiver Keepalive-Verbindungen zum Upstream pro Worker"
       },
       "key": "Key",
       "keyDesc": "Gültig, wenn Typ den Wert `chash` hat",
