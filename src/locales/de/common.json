@@ -30,7 +30,6 @@
   },
   "header": {
     "account": "Konto",
-    "changePassword": "Passwort ändern",
     "logout": "Abmelden",
     "accountRole": "Rolle: {{role}}",
     "loadFailedTitle": "Instanzen nicht verfügbar",
@@ -187,7 +186,8 @@
     "username": "Benutzername",
     "usernamePlaceholder": "Benutzernamen eingeben",
     "welcome": "Willkommen, {{username}}!",
-    "welcomeBack": "Willkommen zurück"
+    "welcomeBack": "Willkommen zurück",
+    "sessionEnded": "Ihre Sitzung ist abgelaufen und Sie wurden abgemeldet. Laufende Vorgänge sind möglicherweise nicht abgeschlossen."
   },
   "proxyError": {
     "title": "Verbindung zu {{name}} fehlgeschlagen",
@@ -210,10 +210,8 @@
       "desc": "Beschreibung",
       "labels": {
         "errorFormat": "Das Format des Labels ist falsch, es sollte `key:value` sein",
-        "key": "Key",
         "placeholder": "Text wie `key:value` eingeben, dann mit Enter oder Fokus verlassen",
-        "title": "Labels",
-        "value": "Wert"
+        "title": "Labels"
       },
       "name": "Name",
       "status": "Status",
@@ -225,7 +223,6 @@
     },
     "btn": {
       "add": "Hinzufügen",
-      "addARow": "Zeile hinzufügen",
       "cancel": "Abbrechen",
       "configure": "Konfigurieren",
       "create": "Erstellen",
@@ -234,7 +231,12 @@
       "save": "Speichern",
       "upload": "Hochladen",
       "view": "Anzeigen",
-      "saveChanges": "Änderungen speichern"
+      "saveChanges": "Änderungen speichern",
+      "back": "Zurück",
+      "previous": "Zurück",
+      "backToList": "Zurück zur Liste",
+      "next": "Weiter",
+      "submit": "Absenden"
     },
     "consumers": {
       "groupId": "Gruppen ID",
@@ -247,7 +249,6 @@
     "info": {
       "create_time": "Erstellt am",
       "id": "ID",
-      "title": "Information",
       "update_time": "Geändert am"
     },
     "json": {
@@ -257,7 +258,11 @@
       "exportOpenAPI": "OpenAPI exportieren",
       "saveSuccess": "JSON erfolgreich gespeichert",
       "selectedCount": "{{count}} ausgewählt",
-      "viewRaw": "JSON ansehen"
+      "viewRaw": "JSON ansehen",
+      "unsaved": "Nicht gespeichert",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "format": "Formatieren"
     },
     "plugins": {
       "addPlugin": "Plugin hinzufügen",
@@ -275,7 +280,25 @@
         "title": "Plugins auswählen"
       },
       "viewPlugin": "Plugin anzeigen",
-      "noConfigs": "Auf diesem Gateway gibt es noch keine Plugin-Konfigurationen"
+      "noConfigs": "Auf diesem Gateway gibt es noch keine Plugin-Konfigurationen",
+      "exampleConfig": "Beispielkonfiguration",
+      "requiredFields": "Pflichtfelder",
+      "category": {
+        "authentication": "Authentifizierung",
+        "traffic-control": "Verkehrssteuerung",
+        "observability": "Observability",
+        "transformation": "Transformation",
+        "security": "Sicherheit",
+        "serverless": "Serverless",
+        "logging": "Logging",
+        "protocol": "Protokoll",
+        "ai": "KI",
+        "other": "Sonstige"
+      },
+      "editorMode": {
+        "form": "Formular",
+        "json": "JSON"
+      }
     },
     "protos": {
       "content": "Inhalt",
@@ -305,7 +328,24 @@
         "vars": "Ausdrücke über Nginx-Variablen für erweiterte Bedingungen",
         "filterFunc": "Eigene Lua-Funktion, um Anfragen weitergehend zu filtern"
       },
-      "varsDescription": "Variablen im Format [[\"var\", \"operator\", \"value\"]] eingeben. Beispiel: [[\"arg_name\", \"==\", \"val\"]] oder [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]"
+      "varsDescription": "Variablen im Format [[\"var\", \"operator\", \"value\"]] eingeben. Beispiel: [[\"arg_name\", \"==\", \"val\"]] oder [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]",
+      "preview": {
+        "allMethods": "ALLE METHODEN",
+        "matchPreviewLabel": "Routenvorschau",
+        "apiInfo": "API-Informationen",
+        "upstream": "Upstream-Konfiguration",
+        "plugins": "Plugins",
+        "boundToService": "An Service gebunden",
+        "noUpstream": "Kein Upstream konfiguriert",
+        "noPlugins": "Keine Plugins konfiguriert"
+      },
+      "duplicateWarning": "Eine Route mit derselben URI existiert bereits: „{{name}}“ ({{- uri}})",
+      "duplicateConfirmTitle": "Diese Route sieht wie ein Duplikat aus",
+      "duplicateConfirmBody": "APISIX erlaubt mehrere Routen auf demselben Pfad und wählt nach Priorität zwischen ihnen — das ist zulässig, aber meist nicht beabsichtigt. Folgende existieren bereits:",
+      "duplicateReasonName": "„{{- name}}“ trägt denselben Namen",
+      "duplicateReasonPath": "„{{- name}}“ antwortet bereits auf {{- uri}}",
+      "duplicateReasonBoth": "„{{- name}}“ trägt denselben Namen und antwortet bereits auf {{- uri}}",
+      "duplicateConfirmAction": "Trotzdem anlegen"
     },
     "requestOverride": {
       "title": "Request Override",
@@ -349,7 +389,6 @@
       },
       "manager": "Secret Manager",
       "managerConfig": "Manager Konfiguration",
-      "title": "Secret Konfiguration",
       "vault": {
         "namespace": "Namespace",
         "prefix": "Präfix",
@@ -358,10 +397,31 @@
       }
     },
     "services": {
-      "enableWebsocket": "WebSocket aktivieren",
       "hosts": "Hosts",
-      "script": "Skript",
-      "settings": "Service Einstellungen"
+      "hostsPlaceholder": "z. B. api.example.com",
+      "hostsDescription": "Domainnamen, die dieser Service bedient",
+      "steps": {
+        "basic": "Basis",
+        "basicDesc": "Name und Hosts",
+        "upstream": "Upstream",
+        "upstreamDesc": "Backend-Ziele",
+        "plugin": "Plugins",
+        "pluginDesc": "Erweiterungen",
+        "preview": "Vorschau",
+        "previewDesc": "Prüfen und absenden"
+      },
+      "namePlaceholder": "z. B. my-api-service",
+      "descPlaceholder": "Optionale Beschreibung dieses Services",
+      "tooltip": {
+        "name": "Ein eindeutiger, lesbarer Name, der diesen Service kennzeichnet",
+        "desc": "Optionale Beschreibung, die den Zweck dieses Services dokumentiert",
+        "hosts": "Domainnamen, die dieser Service bedient. Routen, die an diesen Service gebunden sind, greifen für diese Hosts"
+      },
+      "preview": {
+        "upstream": "Upstream-Konfiguration",
+        "plugins": "Plugins",
+        "noPlugins": "Keine Plugins konfiguriert"
+      }
     },
     "ssls": {
       "cert": "Zertifikat",
@@ -409,10 +469,11 @@
       "serverHint": "Verbindungsfilter: Eine Stream-Route greift anhand dieser Werte. Das Transportprotokoll (TCP, UDP, TLS) wird hier nicht gesetzt — es gehört zum Listener, in der config.yaml von APISIX unter stream_proxy.",
       "serverPort": "Server Port",
       "sni": "SNI",
-      "transportTip": "Sie suchen TCP, UDP oder TLS? Das sind Listener-Einstellungen, deklariert unter stream_proxy in der config.yaml von APISIX, und sie gelten für jede Stream-Route dieses Listeners."
-    },
-    "tagsInput": {
-      "placeholder": "Text eingeben, dann mit Enter oder Fokus verlassen"
+      "transportTip": "Sie suchen TCP, UDP oder TLS? Das sind Listener-Einstellungen, deklariert unter stream_proxy in der config.yaml von APISIX, und sie gelten für jede Stream-Route dieses Listeners.",
+      "duplicateAny": "greift für jeden Stream-Verkehr",
+      "duplicateConfirmAction": "Trotzdem anlegen",
+      "duplicateConfirmBody": "Diese Stream-Routen greifen bereits für denselben Verkehr. Nur eine von ihnen kann gewinnen, und welche, haben Sie nicht in der Hand.",
+      "duplicateConfirmTitle": "Eine passende Stream-Route existiert bereits"
     },
     "upload": {
       "fileOverSize": "Dateigrösse ist zu gross",
@@ -470,41 +531,35 @@
       "discoveryType": {
         "title": "Discovery Typ"
       },
-      "findUpstreamFrom": "Upstream finden von",
       "hashOn": "Hash auf",
       "hashOnDesc": "Gültig, wenn Typ den Wert `chash` hat",
-      "identifier": "Upstream Identifikator",
-      "inline": "Inline Upstream Konfiguration",
       "keepalivePool": {
         "idleTimeout": "IDLE Timeout",
         "requests": "Requests",
         "size": "Grösse",
-        "title": "Keepalive Pool"
+        "title": "Keepalive Pool",
+        "idleTimeoutDesc": "Maximale Leerlaufzeit (Sekunden), bevor eine Verbindung geschlossen wird",
+        "requestsDesc": "Maximale Anzahl Requests pro Keepalive-Verbindung, bevor sie erneuert wird",
+        "sizeDesc": "Maximale Anzahl von Keepalive-Verbindungen im Leerlauf zum Upstream pro Worker"
       },
       "key": "Key",
       "keyDesc": "Gültig, wenn Typ den Wert `chash` hat",
       "loadBalancing": "Load Balancing",
       "nodes": {
-        "action": {
-          "title": "Aktion"
-        },
         "add": "Node hinzufügen",
         "host": {
           "title": "Host",
           "placeholder": "Hostname oder IP"
         },
         "port": {
-          "title": "Port",
-          "desc": "Portnummer (1-65535). Leer lassen, um den Standard des Schemas zu verwenden, den APISIX für http und https einsetzt."
-        },
-        "priority": {
-          "title": "Priorität"
+          "title": "Port"
         },
         "remove": "Node entfernen",
         "title": "Nodes",
         "weight": {
           "title": "Gewicht"
-        }
+        },
+        "desc": "Backend-Server, die den weitergeleiteten Verkehr erhalten"
       },
       "passHost": "Host übergeben",
       "passHostOptions": {
@@ -517,10 +572,8 @@
       "retryTimeout": "Retry Timeout",
       "scheme": "Schema",
       "serviceDiscovery": {
-        "serviceName": "Service Name",
         "title": "Service Discovery"
       },
-      "serviceId": "Service ID",
       "serviceName": {
         "title": "Service Name"
       },
@@ -536,7 +589,10 @@
         "connect": "Verbinden",
         "read": "Lesen",
         "send": "Senden",
-        "title": "Timeout"
+        "title": "Timeout",
+        "connectDesc": "Maximale Zeit (Sekunden) für den Verbindungsaufbau zum Upstream",
+        "readDesc": "Maximale Zeit (Sekunden), die auf eine Antwort des Upstreams gewartet wird",
+        "sendDesc": "Maximale Zeit (Sekunden) für die Übertragung der Anfrage an den Upstream"
       },
       "title": "Upstream",
       "tls": {
@@ -545,14 +601,45 @@
         "clientCertKeyPair": "Client-Zertifikatschlüsselpaar",
         "clientKey": "Client Key",
         "title": "TLS",
-        "verify": "Überprüfen"
+        "verify": "Überprüfen",
+        "clientCertDesc": "PEM-kodiertes Client-Zertifikat für mTLS mit dem Upstream",
+        "clientCertIdDesc": "Verweis auf eine vorhandene SSL-Ressource statt Zertifikat und Schlüssel direkt hier",
+        "clientKeyDesc": "PEM-kodierter privater Schlüssel zum Client-Zertifikat",
+        "verifyDesc": "TLS-Zertifikatsprüfung für Verbindungen zum Upstream aktivieren"
       },
       "type": "Typ",
       "updateTime": "Aktualisierungszeit",
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "Setzen Sie dies, wenn `pass_host` den Wert `rewrite` hat",
-      "upstreamId": "Upstream ID",
-      "custom": "Benutzerdefiniert"
+      "custom": "Benutzerdefiniert",
+      "advancedSettings": "Erweiterte Einstellungen",
+      "advancedSettingsDesc": "Retry, Timeout, Keepalive, TLS",
+      "algorithm": "Algorithmus",
+      "typeDesc": "Algorithmus, nach dem der Verkehr auf die Upstream-Nodes verteilt wird",
+      "passHostDesc": "Wie der Host-Header an den Upstream geht: pass (Original behalten), node (IP des Ziels), rewrite (eigener Host)",
+      "retriesDesc": "Anzahl der Wiederholungen, wenn eine Anfrage an den Upstream fehlschlägt",
+      "retryTimeoutDesc": "Maximale Zeit (Sekunden) für Wiederholungen, bevor aufgegeben wird",
+      "schemeDesc": "Protokoll für die Kommunikation mit dem Upstream-Server",
+      "steps": {
+        "basic": "Basis",
+        "basicDesc": "Name und Labels",
+        "nodes": "Nodes",
+        "nodesDesc": "Backend-Ziele",
+        "connection": "Verbindung",
+        "connectionDesc": "Protokoll und Einstellungen",
+        "preview": "Vorschau",
+        "previewDesc": "Prüfen und absenden"
+      },
+      "preview": {
+        "nodesTitle": "Backend-Nodes",
+        "noNodes": "Keine Nodes konfiguriert",
+        "connectionTitle": "Verbindungseinstellungen",
+        "keepaliveTitle": "Keepalive Pool",
+        "healthChecksTitle": "Health Checks",
+        "activeChecks": "Aktive Checks",
+        "passiveChecks": "Passive Checks",
+        "healthCheckSummary": "Pfad: {{path}}, Intervall: {{interval}}s"
+      }
     },
     "routeTest": {
       "requestFailed": "Anfrage fehlgeschlagen",
@@ -561,13 +648,102 @@
       "noSuchRoute": "Diese Route existiert auf dieser Instanz nicht mehr.",
       "pathNotMatched": "Dieser Pfad passt nicht zu dieser Route.",
       "unverified": "Das Dashboard konnte nicht prüfen, wem diese Route gehört, und hat die Anfrage daher nicht gesendet.",
-      "title": "Route testen"
+      "title": "Route testen",
+      "send": "Senden",
+      "headers": "Header",
+      "query": "Query",
+      "body": "Body",
+      "addHeader": "Header hinzufügen",
+      "addParameter": "Parameter hinzufügen",
+      "response": "Antwort",
+      "header": "Header",
+      "value": "Wert",
+      "emptyResponse": "Senden Sie eine Anfrage, um die Antwort zu sehen"
     },
     "import": {
-      "title": "Routen importieren"
+      "title": "Routen importieren",
+      "description": "OpenAPI-3.x-Spezifikation oder APISIX-Routen-JSON einfügen",
+      "placeholder": "OpenAPI-Spezifikation oder APISIX-Routen-JSON hier einfügen...",
+      "parse": "Auswerten",
+      "noRoutes": "In den übergebenen Daten wurden keine Routen gefunden",
+      "routesFound": "{{count}} Route(n) gefunden",
+      "importRoutes": "{{count}} Route(n) importieren",
+      "successCount": "{{count}} Route(n) erfolgreich importiert",
+      "failedCount": "{{count}} Route(n) konnten nicht importiert werden",
+      "duplicateTitle": "{{count}} davon gibt es auf diesem Gateway bereits",
+      "duplicateItem": "„{{- name}}“ kollidiert mit {{- existing}}",
+      "duplicateHint": "APISIX erlaubt mehrere Routen auf demselben Pfad, ein erneuter Import legt also Kopien an, statt etwas zu aktualisieren. Importieren Sie erneut, um fortzufahren.",
+      "duplicateCheckFailed": "Vorhandene Routen konnten nicht geprüft werden. Importieren Sie erneut, um ohne diese Prüfung fortzufahren."
     },
     "importWsdl": {
-      "title": "Aus WSDL importieren"
+      "title": "Aus WSDL importieren",
+      "description": "WSDL/ZIP hochladen, WSDL-XML einfügen oder von einer URL abrufen",
+      "tabUpload": "Hochladen / Einfügen",
+      "tabUrl": "Von URL",
+      "urlPlaceholder": "http://host/service?wsdl",
+      "urlLabel": "WSDL-URL",
+      "fetch": "Abrufen",
+      "fetching": "Wird abgerufen…",
+      "placeholder": "WSDL-XML hier einfügen…",
+      "mode": "Ergebnis",
+      "modePerOperation": "Eine Route pro Operation",
+      "modePassthrough": "Eine einzelne Durchleitungsroute",
+      "upstream": "Backend",
+      "upstreamExisting": "Vorhandene Upstream-ID verwenden",
+      "upstreamExistingPlaceholder": "Upstream-ID",
+      "upstreamAuto": "Automatisch aus der WSDL-Adresse anlegen",
+      "parse": "Auswerten",
+      "noServices": "In der WSDL wurden keine SOAP-Services gefunden",
+      "servicesFound": "{{services}} Service(s), {{operations}} Operation(en)",
+      "warningsTitle": "Warnungen",
+      "import": "{{count}} Route(n) anlegen",
+      "successCount": "{{count}} Route(n) aus der WSDL angelegt",
+      "failedCount": "{{count}} Route(n) konnten nicht angelegt werden",
+      "readError": "Datei konnte nicht gelesen werden",
+      "fetchError": "WSDL konnte nicht abgerufen werden",
+      "upstreamRequired": "Geben Sie eine vorhandene Upstream-ID an oder wählen Sie das automatische Anlegen aus der WSDL-Adresse",
+      "unknownError": "Unbekannter Fehler"
+    },
+    "loadingConfiguration": "Konfiguration wird geladen…",
+    "unsavedChanges": {
+      "title": "Nicht gespeicherte Änderungen",
+      "message": "Sie haben nicht gespeicherte Änderungen, die verloren gehen, wenn Sie diese Seite verlassen.",
+      "leave": "Verlassen",
+      "stay": "Bleiben"
+    },
+    "error": {
+      "submitFailed": "Absenden fehlgeschlagen",
+      "tryAgain": "Bitte prüfen Sie Ihre Konfiguration und versuchen Sie es erneut"
+    },
+    "draft": {
+      "restored": "Entwurf aus der letzten Sitzung wiederhergestellt",
+      "discard": "Entwurf verwerfen"
+    },
+    "reassignTeam": {
+      "title": "Team neu zuweisen",
+      "selectTeam": "Team auswählen",
+      "current": "Aktuelles Team",
+      "confirm": "Neu zuweisen",
+      "success": "Team erfolgreich neu zugewiesen",
+      "error": "Team konnte nicht neu zugewiesen werden",
+      "noTeam": "Kein Team",
+      "unassignWarning": "Ohne Team gehört diese Route niemandem. Sie verschwindet aus jeder Liste, die kein Admin sieht, bis ein Admin sie wieder zuweist.",
+      "unassignConfirm": "Team entfernen",
+      "unassignSuccess": "Team erfolgreich entfernt",
+      "unassignError": "Team konnte nicht entfernt werden"
+    },
+    "upstreamMode": {
+      "title": "Upstream-Quelle",
+      "service": "An Service binden",
+      "serviceDesc": "Den Upstream eines vorhandenen Services verwenden",
+      "existing": "Vorhandenen Upstream verwenden",
+      "existingDesc": "Einen bereits konfigurierten Upstream auswählen",
+      "custom": "Eigener Upstream",
+      "customDesc": "Upstream-Nodes und -Einstellungen direkt hier festlegen",
+      "serviceProvides": "Die Upstream-Konfiguration kommt von diesem Service",
+      "serviceFixed": "Hier angelegte Routen gehören zu diesem Service, der ihren Upstream liefert",
+      "pluginsCount": "{{count}} Plugin(s)",
+      "scheme": "Schema"
     }
   },
   "globalRules": {
@@ -604,9 +780,7 @@
   "noData": "Keine Daten",
   "or": "ODER",
   "passwordRules": {
-    "title": "Das Passwort muss:",
     "min_length": "Mindestens {{min}} Zeichen lang sein",
-    "max_length": "Höchstens {{max}} Zeichen lang sein",
     "missing_uppercase": "Einen Großbuchstaben enthalten",
     "missing_lowercase": "Einen Kleinbuchstaben enthalten",
     "missing_digit": "Eine Ziffer enthalten",
@@ -617,7 +791,8 @@
   },
   "pluginMetadata": {
     "search": "Plugin Metadaten durchsuchen",
-    "singular": "Plugin Metadaten"
+    "singular": "Plugin Metadaten",
+    "forbidden": "Ihre Rolle auf dieser Instanz darf keine Plugin-Metadaten lesen. Wenden Sie sich an einen Admin, wenn Sie Zugriff brauchen."
   },
   "protos": {
     "singular": "Proto"
@@ -681,7 +856,6 @@
       "headerTeam": "Team"
     }
   },
-  "seconds": "Sekunden",
   "secrets": {
     "singular": "Secret"
   },
@@ -697,7 +871,6 @@
     "viewTable": "Tabelle"
   },
   "settings": {
-    "title": "Einstellungen",
     "passwordPolicy": "Passwortrichtlinie",
     "minLength": "Mindestlänge",
     "maxLength": "Maximallänge",
@@ -736,7 +909,9 @@
     "streamRoutes": "Stream Routen",
     "upstreams": "Upstreams",
     "instances": "Instanzen",
-    "teams": "Teams"
+    "teams": "Teams",
+    "overview": "Übersicht",
+    "users": "Benutzer"
   },
   "ssls": {
     "expired": "Abgelaufen",
@@ -839,7 +1014,9 @@
     "title": "Unvollständige Ergebnisse",
     "unknown": "Einige Ergebnisse fehlen möglicherweise.",
     "upstream_dependants_unresolved": "Die Abhängigkeiten der Upstreams konnten nicht vollständig gezählt werden. Alle Upstreams sind aufgeführt; ein Teil ihrer Abhängigkeiten wird möglicherweise nicht angezeigt.",
-    "upstream_health_unresolved": "Der Zustand dieser Upstreams konnte nicht vom Gateway gelesen werden. Alle Upstreams sind aufgeführt; was ihre Prüfungen gesehen haben, wird nicht angezeigt."
+    "upstream_health_unresolved": "Der Zustand dieser Upstreams konnte nicht vom Gateway gelesen werden. Alle Upstreams sind aufgeführt; was ihre Prüfungen gesehen haben, wird nicht angezeigt.",
+    "service_upstream_unresolved": "Die Service-Liste konnte nicht gelesen werden, daher zeigen Routen, die ihren Upstream über einen Service erreichen, unten keinen an.",
+    "unresolvedTitle": "Upstreams nicht aufgelöst"
   },
   "common": {
     "expand": "Ausklappen",
@@ -847,6 +1024,88 @@
   },
   "error": {
     "probeBusy": "Das Dashboard führt bereits so viele ausgehende Tests aus, wie es gleichzeitig zulässt. Versuchen Sie es in einem Moment erneut.",
-    "probeBusyCaller": "Sie haben bereits so viele ausgehende Tests laufen, wie ein Konto haben darf. Warten Sie, bis einer fertig ist."
+    "probeBusyCaller": "Sie haben bereits so viele ausgehende Tests laufen, wie ein Konto haben darf. Warten Sie, bis einer fertig ist.",
+    "forbidden": "Sie haben auf dieser Instanz nicht die Berechtigung dafür.",
+    "unauthorized": "Das Gateway hat diese Anfrage abgelehnt. Sein Admin-Schlüssel ist möglicherweise falsch.",
+    "notFound": "Nicht gefunden.",
+    "generic": "Die Anfrage ist fehlgeschlagen ({{status}}).",
+    "malformedResponse": "Der Server hat für {{- url}} keine Daten geliefert. Das Dashboard steht möglicherweise hinter einem falsch konfigurierten Proxy.",
+    "refreshFailed": "Ihre Sitzung konnte nicht verlängert werden: {{- reason}}. Ihre Anmeldung ist weiterhin gültig — versuchen Sie es erneut."
+  },
+  "teams": {
+    "title": "Teams",
+    "add": "Team hinzufügen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "cancel": "Abbrechen",
+    "headerName": "Teamname",
+    "headerDescription": "Beschreibung",
+    "headerActions": "Aktionen",
+    "noDescription": "Keine Beschreibung angegeben",
+    "emptyTitle": "Keine Teams gefunden",
+    "emptyMessage": "Legen Sie Ihr erstes Team an, um Ressourcen nach Zuständigkeit zu verwalten.",
+    "addTitle": "Neues Team hinzufügen",
+    "editTitle": "Team bearbeiten",
+    "nameLabel": "Teamname",
+    "namePlaceholder": "z. B. Team Payments",
+    "descriptionLabel": "Beschreibung",
+    "descriptionPlaceholder": "Was verwaltet dieses Team?",
+    "createSubmit": "Team anlegen",
+    "accessDenied": "Zugriff verweigert",
+    "accessDeniedMessage": "Nur Super-Admins können Teams verwalten.",
+    "confirmDelete": "Möchten Sie dieses Team wirklich löschen?",
+    "errorTitle": "Fehler",
+    "successTitle": "Erfolg",
+    "loadFailed": "Teams konnten nicht geladen werden",
+    "nameRequired": "Der Teamname ist erforderlich",
+    "created": "Team erfolgreich angelegt",
+    "createFailed": "Team konnte nicht angelegt werden",
+    "updated": "Team erfolgreich aktualisiert",
+    "updateFailed": "Team konnte nicht aktualisiert werden",
+    "deleted": "Team erfolgreich gelöscht",
+    "deleteFailed": "Team konnte nicht gelöscht werden"
+  },
+  "labelFilter": {
+    "add": "Zum Filter hinzufügen",
+    "selectKey": "Key auswählen",
+    "selectValue": "Wert auswählen",
+    "anyValue": "Beliebiger Wert",
+    "loading": "Labels werden geladen…",
+    "loadFailed": "Der Label-Katalog konnte nicht geladen werden, das Filtern nach Label ist daher nicht verfügbar.",
+    "noKeys": "Es sind noch keine Label-Keys definiert",
+    "noValues": "Für diesen Key sind noch keine Werte definiert"
+  },
+  "pageError": {
+    "retry": "Erneut versuchen",
+    "goHome": "Zur Startseite"
+  },
+  "overview": {
+    "title": "Dashboard-Übersicht",
+    "subtitle": "Zusammenfassung von Systemzustand und Ressourcennutzung",
+    "refresh": "Daten aktualisieren",
+    "gatewayHealth": "Gateway-Zustand",
+    "online": "Online",
+    "healthyGateways": "Gesunde Gateways",
+    "disconnectedGateways": "Getrennte Gateways",
+    "operationalStatus": "Betriebsstatus",
+    "allClear": "Alles in Ordnung",
+    "issuesDetected": "Probleme erkannt",
+    "resourceMatrix": "Globale Ressourcenmatrix",
+    "resourceMatrixDesc": "Ressourcen aller zugänglichen Instanzen zusammengefasst",
+    "totalRoutes": "Routen gesamt",
+    "totalServices": "Services gesamt",
+    "totalUpstreams": "Upstreams gesamt",
+    "systemConfig": "Systemkonfiguration",
+    "systemConfigDesc": "Alle Daten liegen dauerhaft im etcd-Cluster",
+    "connectivity": "Verbindung der Instanzen",
+    "columnInstance": "Gateway-Instanz",
+    "columnConnectivity": "Verbindung",
+    "columnLastCheck": "Letzte Prüfung",
+    "columnDiagnostic": "Diagnose",
+    "logError": "Fehler",
+    "stable": "Stabil",
+    "loadFailedTitle": "Fehler",
+    "loadFailed": "Die Dashboard-Übersicht konnte nicht geladen werden",
+    "uncountedInstances": "Gateways, deren Ressourcen nicht vollständig gezählt werden konnten, sodass mindestens eine Summe oben zu niedrig ist: {{count}}"
   }
 }

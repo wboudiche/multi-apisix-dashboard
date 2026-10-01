@@ -200,13 +200,13 @@ ESLint enforces no-literal-string, no-unknown-key (keys must exist in `en/common
 
 Attributes (`label`, `placeholder`, `title`, `aria-label`, …) are checked on every screen, not only JSX text (#328). A literal there that is not a sentence — an example address, a value the gateway spells — gets an `eslint-disable-next-line i18next/no-literal-string` with the reason beside it. The rule only sees what sits in JSX: a label in an object built above the `return` is not reported, so it still has to go through `t()`.
 
-`src/config/translated-screens.ts` names the files whose every key must exist in all five languages (`locale-keys.test.ts`). Files outside that list still read keys only English has; a file joins it once its keys are written in all five.
+**Every key in `en` must exist in all five languages** — `locale-keys.test.ts` checks the bundles against each other, so a new key needs its four translations in the same change (#362). The same test reads every string under one of `en`'s namespaces out of every file under `src/` and fails on one `en` does not hold, and fails on a key in `en` that no file reads (dead keys cost four translations each). A file that hands `t()` a key in a variable is named in `src/config/keys-not-readable.ts`, with the reason and the prefixes it can reach.
 
 Interpolations are **not** escaped: `escapeValue: false` is set once in `src/config/i18n.ts`, because React escapes what it renders and the two together turned every slash into `&#x2F;` (#341). Don't re-add it per call.
 
 Two authoring quirks worth knowing:
 
-- **Write keys out at the call site.** `t(cond ? 'a.b' : 'c.d')` is fine — eslint's `i18n/no-unknown-key` does not descend into a ternary, but `locale-keys.test.ts` reads every dotted name out of the source and fails on one `en` does not hold. `t(someVariable)` is not: neither can see it, and the same test refuses it outright on a screen in `translated-screens.ts`. Where a variable key is the design, as in `src/config/role-labels.ts`, the module exports the list of keys it can reach (`roleLabelKeys`) and the test consumes that instead.
+- **Write keys out at the call site.** `t(cond ? 'a.b' : 'c.d')` is fine — eslint's `i18n/no-unknown-key` does not descend into a ternary, but `locale-keys.test.ts` reads every dotted name out of the source and fails on one `en` does not hold. `t(someVariable)` is not: neither can see it, and the same test refuses it outright unless the file is named in `keys-not-readable.ts`. Where a variable key is the design, as in `src/config/role-labels.ts`, the module exports the list of keys it can reach (`roleLabelKeys`) and the test consumes that instead.
 - **No spread in `t()` options.** `t('k', { name, ...opts })` used to crash `i18n/no-unknown-key` and the whole lint run with it; `patches/@m6web__eslint-plugin-i18n.patch` fixes the crash, and a `no-restricted-syntax` rule still refuses the spread, because the options inside one are never checked (#343).
 
 ### E2E (Playwright)

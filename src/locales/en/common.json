@@ -141,13 +141,10 @@
     "loadingConfiguration": "Loading configuration…",
     "basic": {
       "desc": "Description",
-      "id": "ID",
       "labels": {
         "errorFormat": "The format of label is wrong, it should be `key:value`",
-        "key": "Key",
         "placeholder": "Input text like `key:value`, then enter or blur",
-        "title": "Labels",
-        "value": "Value"
+        "title": "Labels"
       },
       "name": "Name",
       "status": "Status",
@@ -159,8 +156,8 @@
     },
     "btn": {
       "add": "Add",
-      "addARow": "Add a row",
       "back": "Back",
+      "previous": "Back",
       "backToList": "Back to List",
       "cancel": "Cancel",
       "configure": "Configure",
@@ -185,7 +182,6 @@
     "info": {
       "create_time": "Created At",
       "id": "ID",
-      "title": "Information",
       "update_time": "Updated At"
     },
     "json": {
@@ -197,7 +193,6 @@
       "copied": "Copied",
       "format": "Format",
       "duplicate": "Duplicate",
-      "duplicateSuccess": "Route duplicated successfully",
       "exportOpenAPI": "Export OpenAPI",
       "selectedCount": "{{count}} selected",
       "saveSuccess": "JSON saved successfully"
@@ -282,7 +277,6 @@
     "plugins": {
       "addPlugin": "Add Plugin",
       "configId": "Plugin Config ID",
-      "configuration": "Configuration",
       "editPlugin": "Edit Plugin",
       "exampleConfig": "Example Configuration",
       "label": "Plugins",
@@ -292,8 +286,6 @@
         "title": "Select Plugins"
       },
       "viewPlugin": "View Plugin",
-      "quickTemplates": "Quick Templates",
-      "quickTemplatesDesc": "Common plugin configurations",
       "category": {
         "authentication": "Authentication",
         "traffic-control": "Traffic Control",
@@ -306,8 +298,6 @@
         "ai": "AI",
         "other": "Other"
       },
-      "configSummary": "Config",
-      "noDescription": "No description available",
       "editorMode": {
         "form": "Form",
         "json": "JSON"
@@ -351,13 +341,10 @@
       },
       "preview": {
         "allMethods": "ALL METHODS",
-        "noUri": "No URI defined",
         "matchPreviewLabel": "Route Preview",
         "apiInfo": "API Information",
         "upstream": "Upstream Configuration",
         "plugins": "Plugins",
-        "customUpstream": "Custom Upstream",
-        "existingUpstream": "Existing Upstream",
         "boundToService": "Bound to Service",
         "noUpstream": "No upstream configured",
         "noPlugins": "No plugins configured"
@@ -425,7 +412,6 @@
       },
       "manager": "Secret Manager",
       "managerConfig": "Manager Configuration",
-      "title": "Secret Configuration",
       "vault": {
         "namespace": "Namespace",
         "prefix": "Prefix",
@@ -434,12 +420,9 @@
       }
     },
     "services": {
-      "enableWebsocket": "Enable WebSocket",
       "hosts": "Hosts",
       "hostsPlaceholder": "e.g. api.example.com",
       "hostsDescription": "Domain names this service will handle",
-      "script": "Script",
-      "settings": "Service Settings",
       "steps": {
         "basic": "Basic",
         "basicDesc": "Name and hosts",
@@ -488,7 +471,6 @@
       "duplicateConfirmAction": "Create anyway",
       "duplicateConfirmBody": "These stream routes already match the same traffic. Only one of them can win, and which one is not something you control.",
       "duplicateConfirmTitle": "A matching stream route already exists",
-      "duplicateEntry": "{{conditions}}",
       "protocol": {
         "conf": "Conf",
         "confExample": "Insert an example",
@@ -516,9 +498,6 @@
       "sni": "SNI",
       "transportTip": "Looking for TCP, UDP or TLS? Those are listener settings, declared under stream_proxy in APISIX’s config.yaml, and apply to every stream route on that listener."
     },
-    "tagsInput": {
-      "placeholder": "Input text, then enter or blur"
-    },
     "upload": {
       "fileOverSize": "file size is too large",
       "readError": "file read error:"
@@ -531,10 +510,8 @@
       "existingDesc": "Select a pre-configured upstream",
       "custom": "Custom Upstream",
       "customDesc": "Define upstream nodes and settings inline",
-      "required": "Select an upstream, bind a service, or configure a custom upstream with at least one node",
       "serviceProvides": "Upstream configuration is provided by this service",
       "serviceFixed": "Routes added here belong to this service, which provides their upstream",
-      "nodesCount": "{{count}} node(s)",
       "pluginsCount": "{{count}} plugin(s)",
       "scheme": "Scheme"
     },
@@ -593,11 +570,8 @@
       "discoveryType": {
         "title": "Discovery Type"
       },
-      "findUpstreamFrom": "Find Upstream From",
       "hashOn": "Hash On",
       "hashOnDesc": "This will be valid when `type` is `chash`",
-      "identifier": "Upstream Identifier",
-      "inline": "Inline Upstream Configuration",
       "keepalivePool": {
         "idleTimeout": "IDLE Timeout",
         "idleTimeoutDesc": "Max idle time (seconds) before a connection is closed",
@@ -612,27 +586,18 @@
       "loadBalancing": "Load Balancing",
       "typeDesc": "Algorithm used to distribute traffic across upstream nodes",
       "nodes": {
-        "action": {
-          "title": "Action"
-        },
         "add": "Add a Node",
         "desc": "Backend server targets that receive proxied traffic",
         "host": {
           "title": "Host",
-          "desc": "IP address or hostname of the upstream server",
           "placeholder": "Hostname or IP"
         },
         "port": {
-          "title": "Port",
-          "desc": "Port number (1-65535). Leave empty to use the scheme default, which APISIX fills for http and https."
-        },
-        "priority": {
-          "title": "Priority"
+          "title": "Port"
         },
         "title": "Nodes",
         "weight": {
-          "title": "Weight",
-          "desc": "Load balancing weight — higher values receive more traffic"
+          "title": "Weight"
         },
         "remove": "Remove node"
       },
@@ -661,10 +626,8 @@
         "previewDesc": "Review and submit"
       },
       "serviceDiscovery": {
-        "serviceName": "Service Name",
         "title": "Service Discovery"
       },
-      "serviceId": "Service ID",
       "serviceName": {
         "title": "Service Name"
       },
@@ -678,7 +641,6 @@
         "title": "Timeout"
       },
       "title": "Upstream",
-      "none": "None (Only available when binding the service)",
       "custom": "Custom",
       "testConnection": {
         "title": "Test Connection",
@@ -704,10 +666,7 @@
       "updateTime": "Update Time",
       "upstreamHost": "Upstream Host",
       "upstreamHostDesc": "Set this when `pass_host` is `rewrite`",
-      "upstreamId": "Upstream ID",
       "preview": {
-        "node": "node",
-        "nodes": "nodes",
         "nodesTitle": "Backend Nodes",
         "noNodes": "No nodes configured",
         "connectionTitle": "Connection Settings",
@@ -753,9 +712,7 @@
   "noData": "No Data",
   "or": "OR",
   "passwordRules": {
-    "title": "Password must:",
     "min_length": "Be at least {{min}} characters",
-    "max_length": "Be at most {{max}} characters",
     "missing_uppercase": "Contain an uppercase letter",
     "missing_lowercase": "Contain a lowercase letter",
     "missing_digit": "Contain a digit",
@@ -831,7 +788,6 @@
       "headerTeam": "Team"
     }
   },
-  "seconds": "Seconds",
   "secrets": {
     "singular": "Secret"
   },
@@ -847,7 +803,6 @@
     "viewTable": "Table"
   },
   "settings": {
-    "title": "Settings",
     "passwordPolicy": "Password policy",
     "minLength": "Minimum length",
     "maxLength": "Maximum length",
@@ -988,7 +943,6 @@
     "accountRole": "Role: {{role}}",
     "account": "Account",
     "logout": "Logout",
-    "changePassword": "Change password",
     "loadFailedTitle": "Instances unavailable",
     "loadFailed": "Could not load the instance list.",
     "accessLoadFailedTitle": "Access list unavailable",
@@ -1024,7 +978,6 @@
     "descriptionLabel": "Description",
     "descriptionPlaceholder": "What does this team manage?",
     "createSubmit": "Create Team",
-    "membersHint": "Members are assigned per instance from the Users screen.",
     "accessDenied": "Access Denied",
     "accessDeniedMessage": "Only Super Admins can manage teams.",
     "confirmDelete": "Are you sure you want to delete this team?",

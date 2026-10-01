@@ -30,7 +30,6 @@
   },
   "header": {
     "account": "账户",
-    "changePassword": "修改密码",
     "logout": "退出登录",
     "accountRole": "角色：{{role}}",
     "loadFailedTitle": "实例不可用",
@@ -187,7 +186,8 @@
     "username": "用户名",
     "usernamePlaceholder": "请输入用户名",
     "welcome": "欢迎，{{username}}！",
-    "welcomeBack": "欢迎回来"
+    "welcomeBack": "欢迎回来",
+    "sessionEnded": "您的会话已结束并已退出登录。进行中的操作可能没有完成。"
   },
   "proxyError": {
     "title": "无法连接到 {{name}}",
@@ -210,10 +210,8 @@
       "desc": "描述",
       "labels": {
         "errorFormat": "标签格式错误，应为 `key:value`",
-        "key": "Key",
         "placeholder": "输入类似 `key:value` 的文本，然后回车或失去焦点",
-        "title": "标签",
-        "value": "值"
+        "title": "标签"
       },
       "name": "名字",
       "status": "状态",
@@ -225,7 +223,6 @@
     },
     "btn": {
       "add": "新增",
-      "addARow": "新增一行",
       "cancel": "取消",
       "configure": "配置",
       "create": "创建",
@@ -234,7 +231,12 @@
       "save": "保存",
       "upload": "上传",
       "view": "查看",
-      "saveChanges": "保存更改"
+      "saveChanges": "保存更改",
+      "back": "返回",
+      "previous": "上一步",
+      "backToList": "返回列表",
+      "next": "下一步",
+      "submit": "提交"
     },
     "consumers": {
       "groupId": "分组 ID",
@@ -247,7 +249,6 @@
     "info": {
       "create_time": "创建时间",
       "id": "ID",
-      "title": "信息",
       "update_time": "更新时间"
     },
     "json": {
@@ -257,7 +258,11 @@
       "exportOpenAPI": "导出 OpenAPI",
       "saveSuccess": "JSON 保存成功",
       "selectedCount": "已选择 {{count}} 项",
-      "viewRaw": "查看 JSON"
+      "viewRaw": "查看 JSON",
+      "unsaved": "未保存",
+      "copy": "复制",
+      "copied": "已复制",
+      "format": "格式化"
     },
     "plugins": {
       "addPlugin": "添加插件",
@@ -275,7 +280,25 @@
         "title": "选择插件"
       },
       "viewPlugin": "查看插件",
-      "noConfigs": "此网关上还没有插件配置"
+      "noConfigs": "此网关上还没有插件配置",
+      "exampleConfig": "示例配置",
+      "requiredFields": "必填字段",
+      "category": {
+        "authentication": "身份认证",
+        "traffic-control": "流量控制",
+        "observability": "可观测性",
+        "transformation": "转换",
+        "security": "安全",
+        "serverless": "Serverless",
+        "logging": "日志",
+        "protocol": "协议",
+        "ai": "AI",
+        "other": "其他"
+      },
+      "editorMode": {
+        "form": "表单",
+        "json": "JSON"
+      }
     },
     "protos": {
       "content": "内容",
@@ -305,7 +328,24 @@
         "vars": "用于高级匹配条件的 Nginx 变量表达式",
         "filterFunc": "用于高级请求过滤的自定义 Lua 函数"
       },
-      "varsDescription": "按 [[\"var\", \"operator\", \"value\"]] 的格式填写变量。例如：[[\"arg_name\", \"==\", \"val\"]] 或 [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]"
+      "varsDescription": "按 [[\"var\", \"operator\", \"value\"]] 的格式填写变量。例如：[[\"arg_name\", \"==\", \"val\"]] 或 [[\"http_user_agent\", \"~~\", \"Mozilla.*\"]]",
+      "preview": {
+        "allMethods": "所有方法",
+        "matchPreviewLabel": "路由预览",
+        "apiInfo": "API 信息",
+        "upstream": "上游配置",
+        "plugins": "插件",
+        "boundToService": "已绑定服务",
+        "noUpstream": "未配置上游",
+        "noPlugins": "未配置插件"
+      },
+      "duplicateWarning": "已存在相同 URI 的路由：“{{name}}”（{{- uri}}）",
+      "duplicateConfirmTitle": "此路由看起来是重复的",
+      "duplicateConfirmBody": "APISIX 允许同一路径上存在多条路由，并按优先级在它们之间选择，因此这是允许的——但通常并非本意。以下路由已经存在：",
+      "duplicateReasonName": "“{{- name}}”使用了相同的名称",
+      "duplicateReasonPath": "“{{- name}}”已经在 {{- uri}} 上响应",
+      "duplicateReasonBoth": "“{{- name}}”使用了相同的名称，并且已经在 {{- uri}} 上响应",
+      "duplicateConfirmAction": "仍然创建"
     },
     "requestOverride": {
       "title": "请求覆盖",
@@ -349,7 +389,6 @@
       },
       "manager": "密钥管理器",
       "managerConfig": "管理器配置",
-      "title": "密钥配置",
       "vault": {
         "namespace": "命名空间",
         "prefix": "前缀",
@@ -358,10 +397,31 @@
       }
     },
     "services": {
-      "enableWebsocket": "启用WebSocket",
       "hosts": "主机列表",
-      "script": "脚本",
-      "settings": "服务设置"
+      "hostsPlaceholder": "例如 api.example.com",
+      "hostsDescription": "此服务处理的域名",
+      "steps": {
+        "basic": "基本",
+        "basicDesc": "名称与主机",
+        "upstream": "上游",
+        "upstreamDesc": "后端目标",
+        "plugin": "插件",
+        "pluginDesc": "扩展",
+        "preview": "预览",
+        "previewDesc": "检查并提交"
+      },
+      "namePlaceholder": "例如 my-api-service",
+      "descPlaceholder": "此服务的可选描述",
+      "tooltip": {
+        "name": "用于标识此服务的唯一、易读的名称",
+        "desc": "可选描述，用于说明此服务的用途",
+        "hosts": "此服务处理的域名。绑定到此服务的路由将匹配这些主机"
+      },
+      "preview": {
+        "upstream": "上游配置",
+        "plugins": "插件",
+        "noPlugins": "未配置插件"
+      }
     },
     "ssls": {
       "cert": "证书",
@@ -409,10 +469,11 @@
       "serverHint": "连接匹配条件：stream route 依据这些字段匹配。传输协议（TCP、UDP、TLS）不在此处设置——它属于监听器，配置在 APISIX 的 config.yaml 的 stream_proxy 下。",
       "serverPort": "服务器端口",
       "sni": "SNI",
-      "transportTip": "在找 TCP、UDP 或 TLS？这些是监听器设置，声明在 APISIX 的 config.yaml 的 stream_proxy 下，对该监听器上的所有 stream route 生效。"
-    },
-    "tagsInput": {
-      "placeholder": "输入文本，然后回车或失去焦点"
+      "transportTip": "在找 TCP、UDP 或 TLS？这些是监听器设置，声明在 APISIX 的 config.yaml 的 stream_proxy 下，对该监听器上的所有 stream route 生效。",
+      "duplicateAny": "匹配所有 stream 流量",
+      "duplicateConfirmAction": "仍然创建",
+      "duplicateConfirmBody": "这些 stream route 已经匹配相同的流量。只有一条会生效，而哪一条生效并不由您控制。",
+      "duplicateConfirmTitle": "已存在匹配的 stream route"
     },
     "upload": {
       "fileOverSize": "文件尺寸太大",
@@ -470,41 +531,35 @@
       "discoveryType": {
         "title": "发现类型"
       },
-      "findUpstreamFrom": "从以下来源查找上游",
       "hashOn": "哈希依据",
       "hashOnDesc": "`type` 为 `chash` 时生效",
-      "identifier": "上游标识符",
-      "inline": "内联上游配置",
       "keepalivePool": {
         "idleTimeout": "空闲超时时间",
         "requests": "请求数",
         "size": "大小",
-        "title": "Keepalive 连接池"
+        "title": "Keepalive 连接池",
+        "idleTimeoutDesc": "连接被关闭前的最长空闲时间（秒）",
+        "requestsDesc": "每个 keepalive 连接在回收前可处理的最大请求数",
+        "sizeDesc": "每个 worker 到上游的最大空闲 keepalive 连接数"
       },
       "key": "Key",
       "keyDesc": "`type` 为 `chash` 时生效",
       "loadBalancing": "负载均衡",
       "nodes": {
-        "action": {
-          "title": "操作"
-        },
         "add": "添加节点",
         "host": {
           "title": "主机",
           "placeholder": "主机名或 IP"
         },
         "port": {
-          "title": "端口",
-          "desc": "端口号（1-65535）。留空则使用协议默认端口，APISIX 会为 http 和 https 填充。"
-        },
-        "priority": {
-          "title": "优先级"
+          "title": "端口"
         },
         "remove": "移除节点",
         "title": "节点",
         "weight": {
           "title": "权重"
-        }
+        },
+        "desc": "接收代理流量的后端服务器"
       },
       "passHost": "传递 Host",
       "passHostOptions": {
@@ -517,10 +572,8 @@
       "retryTimeout": "重试超时时间",
       "scheme": "协议",
       "serviceDiscovery": {
-        "serviceName": "服务名称",
         "title": "服务发现"
       },
-      "serviceId": "服务ID",
       "serviceName": {
         "title": "服务名称"
       },
@@ -536,7 +589,10 @@
         "connect": "连接",
         "read": "读取",
         "send": "发送",
-        "title": "超时设置"
+        "title": "超时设置",
+        "connectDesc": "与上游建立连接的最长时间（秒）",
+        "readDesc": "等待上游响应的最长时间（秒）",
+        "sendDesc": "向上游发送请求的最长时间（秒）"
       },
       "title": "上游",
       "tls": {
@@ -545,14 +601,45 @@
         "clientCertKeyPair": "客户端证书密钥对",
         "clientKey": "客户端密钥",
         "title": "TLS",
-        "verify": "校验"
+        "verify": "校验",
+        "clientCertDesc": "用于与上游进行 mTLS 的 PEM 格式客户端证书",
+        "clientCertIdDesc": "引用已有的 SSL 资源，而不是内联的证书和密钥",
+        "clientKeyDesc": "与客户端证书匹配的 PEM 格式私钥",
+        "verifyDesc": "为上游连接启用 TLS 证书校验"
       },
       "type": "类型",
       "updateTime": "更新时间",
       "upstreamHost": "上游主机名",
       "upstreamHostDesc": "`pass_host` 为 `rewrite` 时设置",
-      "upstreamId": "上游ID",
-      "custom": "自定义"
+      "custom": "自定义",
+      "advancedSettings": "高级设置",
+      "advancedSettingsDesc": "重试、超时、Keepalive、TLS",
+      "algorithm": "算法",
+      "typeDesc": "在上游节点之间分配流量所用的算法",
+      "passHostDesc": "Host 请求头如何发送到上游：pass（保持原样）、node（使用目标 IP）、rewrite（自定义主机名）",
+      "retriesDesc": "对上游的请求失败时的重试次数",
+      "retryTimeoutDesc": "放弃之前允许重试的最长时间（秒）",
+      "schemeDesc": "与上游服务器通信所用的协议",
+      "steps": {
+        "basic": "基本",
+        "basicDesc": "名称与标签",
+        "nodes": "节点",
+        "nodesDesc": "后端目标",
+        "connection": "连接",
+        "connectionDesc": "协议与设置",
+        "preview": "预览",
+        "previewDesc": "检查并提交"
+      },
+      "preview": {
+        "nodesTitle": "后端节点",
+        "noNodes": "未配置节点",
+        "connectionTitle": "连接设置",
+        "keepaliveTitle": "Keepalive 连接池",
+        "healthChecksTitle": "健康检查",
+        "activeChecks": "主动检查",
+        "passiveChecks": "被动检查",
+        "healthCheckSummary": "路径：{{path}}，间隔：{{interval}} 秒"
+      }
     },
     "routeTest": {
       "requestFailed": "请求失败",
@@ -561,13 +648,102 @@
       "noSuchRoute": "该路由在此实例上已不存在。",
       "pathNotMatched": "该路径与此路由不匹配。",
       "unverified": "仪表板无法确认该路由的归属，因此未发送请求。",
-      "title": "测试路由"
+      "title": "测试路由",
+      "send": "发送",
+      "headers": "标头",
+      "query": "查询参数",
+      "body": "正文",
+      "addHeader": "添加标头",
+      "addParameter": "添加参数",
+      "response": "响应",
+      "header": "标头",
+      "value": "值",
+      "emptyResponse": "发送一个请求以查看响应"
     },
     "import": {
-      "title": "导入路由"
+      "title": "导入路由",
+      "description": "粘贴 OpenAPI 3.x 规范或 APISIX 路由 JSON",
+      "placeholder": "在此粘贴 OpenAPI 规范或 APISIX 路由 JSON...",
+      "parse": "解析",
+      "noRoutes": "提供的数据中未找到路由",
+      "routesFound": "找到 {{count}} 条路由",
+      "importRoutes": "导入 {{count}} 条路由",
+      "successCount": "{{count}} 条路由导入成功",
+      "failedCount": "{{count}} 条路由导入失败",
+      "duplicateTitle": "其中 {{count}} 条在此网关上已经存在",
+      "duplicateItem": "“{{- name}}”与 {{- existing}} 冲突",
+      "duplicateHint": "APISIX 允许同一路径上存在多条路由，因此再次导入会添加副本，而不会更新任何内容。要继续，请再次导入。",
+      "duplicateCheckFailed": "无法检查已有路由。要跳过检查继续，请再次导入。"
     },
     "importWsdl": {
-      "title": "从 WSDL 导入"
+      "title": "从 WSDL 导入",
+      "description": "上传 WSDL/ZIP、粘贴 WSDL XML，或从 URL 获取",
+      "tabUpload": "上传 / 粘贴",
+      "tabUrl": "从 URL",
+      "urlPlaceholder": "http://host/service?wsdl",
+      "urlLabel": "WSDL 地址",
+      "fetch": "获取",
+      "fetching": "正在获取…",
+      "placeholder": "在此粘贴 WSDL XML…",
+      "mode": "输出",
+      "modePerOperation": "每个操作一条路由",
+      "modePassthrough": "单条透传路由",
+      "upstream": "后端",
+      "upstreamExisting": "使用已有上游 ID",
+      "upstreamExistingPlaceholder": "上游 ID",
+      "upstreamAuto": "根据 WSDL 地址自动创建",
+      "parse": "解析",
+      "noServices": "WSDL 中未找到 SOAP 服务",
+      "servicesFound": "{{services}} 个服务，{{operations}} 个操作",
+      "warningsTitle": "警告",
+      "import": "创建 {{count}} 条路由",
+      "successCount": "已根据 WSDL 创建 {{count}} 条路由",
+      "failedCount": "{{count}} 条路由创建失败",
+      "readError": "读取文件失败",
+      "fetchError": "获取 WSDL 失败",
+      "upstreamRequired": "请输入已有上游的 ID，或选择根据 WSDL 地址自动创建",
+      "unknownError": "未知错误"
+    },
+    "loadingConfiguration": "正在加载配置…",
+    "unsavedChanges": {
+      "title": "有未保存的更改",
+      "message": "您有未保存的更改，离开此页面后将会丢失。",
+      "leave": "离开",
+      "stay": "留下"
+    },
+    "error": {
+      "submitFailed": "提交失败",
+      "tryAgain": "请检查配置后重试"
+    },
+    "draft": {
+      "restored": "已恢复上次会话的草稿",
+      "discard": "放弃草稿"
+    },
+    "reassignTeam": {
+      "title": "重新分配团队",
+      "selectTeam": "选择团队",
+      "current": "当前团队",
+      "confirm": "重新分配",
+      "success": "团队重新分配成功",
+      "error": "重新分配团队失败",
+      "noTeam": "无团队",
+      "unassignWarning": "移除团队后，此路由将不属于任何团队。在管理员重新分配之前，它会从所有非管理员的列表中消失。",
+      "unassignConfirm": "移除团队",
+      "unassignSuccess": "团队移除成功",
+      "unassignError": "移除团队失败"
+    },
+    "upstreamMode": {
+      "title": "上游来源",
+      "service": "绑定服务",
+      "serviceDesc": "使用已有服务定义的上游",
+      "existing": "使用已有上游",
+      "existingDesc": "选择一个已配置的上游",
+      "custom": "自定义上游",
+      "customDesc": "在此直接定义上游节点和设置",
+      "serviceProvides": "上游配置由此服务提供",
+      "serviceFixed": "在此添加的路由属于此服务，其上游由该服务提供",
+      "pluginsCount": "{{count}} 个插件",
+      "scheme": "协议"
     }
   },
   "globalRules": {
@@ -604,9 +780,7 @@
   "noData": "无数据",
   "or": "OR",
   "passwordRules": {
-    "title": "密码必须:",
     "min_length": "至少 {{min}} 个字符",
-    "max_length": "最多 {{max}} 个字符",
     "missing_uppercase": "包含一个大写字母",
     "missing_lowercase": "包含一个小写字母",
     "missing_digit": "包含一个数字",
@@ -617,7 +791,8 @@
   },
   "pluginMetadata": {
     "search": "搜索插件元数据",
-    "singular": "插件元数据"
+    "singular": "插件元数据",
+    "forbidden": "您在此实例上的角色无法读取插件元数据。如需访问，请联系管理员。"
   },
   "protos": {
     "singular": "Proto"
@@ -681,7 +856,6 @@
       "headerTeam": "团队"
     }
   },
-  "seconds": "秒",
   "secrets": {
     "singular": "Secret"
   },
@@ -697,7 +871,6 @@
     "viewTable": "表格"
   },
   "settings": {
-    "title": "设置",
     "passwordPolicy": "密码策略",
     "minLength": "最小长度",
     "maxLength": "最大长度",
@@ -736,7 +909,9 @@
     "streamRoutes": "流路由",
     "upstreams": "上游",
     "instances": "实例",
-    "teams": "团队"
+    "teams": "团队",
+    "overview": "概览",
+    "users": "用户"
   },
   "ssls": {
     "expired": "已过期",
@@ -839,7 +1014,9 @@
     "title": "结果不完整",
     "unknown": "部分结果可能缺失。",
     "upstream_dependants_unresolved": "未能完整统计依赖各上游的对象。上游已全部列出，但部分依赖项可能未显示。",
-    "upstream_health_unresolved": "无法从网关读取这些上游的健康状态。上游已全部列出，但其检查结果未显示。"
+    "upstream_health_unresolved": "无法从网关读取这些上游的健康状态。上游已全部列出，但其检查结果未显示。",
+    "service_upstream_unresolved": "无法读取服务列表，因此通过服务访问上游的路由在下方不显示上游。",
+    "unresolvedTitle": "上游未解析"
   },
   "common": {
     "expand": "展开",
@@ -847,6 +1024,88 @@
   },
   "error": {
     "probeBusy": "仪表板已在同时运行其允许的最大数量的外部测试。请稍后重试。",
-    "probeBusyCaller": "您已有一个账号允许的最大数量的外部测试在运行。请等待其中一个完成。"
+    "probeBusyCaller": "您已有一个账号允许的最大数量的外部测试在运行。请等待其中一个完成。",
+    "forbidden": "您没有权限在此实例上执行该操作。",
+    "unauthorized": "网关拒绝了此请求。它的 Admin 密钥可能有误。",
+    "notFound": "未找到。",
+    "generic": "请求失败（{{status}}）。",
+    "malformedResponse": "服务器没有为 {{- url}} 返回数据。Dashboard 可能位于配置错误的代理之后。",
+    "refreshFailed": "无法续期您的会话：{{- reason}}。您的登录仍然有效——请重试。"
+  },
+  "teams": {
+    "title": "团队",
+    "add": "添加团队",
+    "edit": "编辑",
+    "delete": "删除",
+    "cancel": "取消",
+    "headerName": "团队名称",
+    "headerDescription": "描述",
+    "headerActions": "操作",
+    "noDescription": "未提供描述",
+    "emptyTitle": "未找到团队",
+    "emptyMessage": "定义第一个团队，开始按范围管理资源。",
+    "addTitle": "添加新团队",
+    "editTitle": "编辑团队",
+    "nameLabel": "团队名称",
+    "namePlaceholder": "例如：支付团队",
+    "descriptionLabel": "描述",
+    "descriptionPlaceholder": "这个团队负责管理什么？",
+    "createSubmit": "创建团队",
+    "accessDenied": "拒绝访问",
+    "accessDeniedMessage": "只有超级管理员可以管理团队。",
+    "confirmDelete": "确定要删除此团队吗？",
+    "errorTitle": "错误",
+    "successTitle": "成功",
+    "loadFailed": "加载团队失败",
+    "nameRequired": "团队名称为必填项",
+    "created": "团队创建成功",
+    "createFailed": "创建团队失败",
+    "updated": "团队更新成功",
+    "updateFailed": "更新团队失败",
+    "deleted": "团队删除成功",
+    "deleteFailed": "删除团队失败"
+  },
+  "labelFilter": {
+    "add": "添加到筛选",
+    "selectKey": "选择键",
+    "selectValue": "选择值",
+    "anyValue": "任意值",
+    "loading": "正在加载标签…",
+    "loadFailed": "无法加载标签目录，因此无法按标签筛选。",
+    "noKeys": "尚未定义任何标签键",
+    "noValues": "此键尚未定义任何值"
+  },
+  "pageError": {
+    "retry": "重试",
+    "goHome": "返回首页"
+  },
+  "overview": {
+    "title": "Dashboard 概览",
+    "subtitle": "系统健康状况与资源使用摘要",
+    "refresh": "刷新数据",
+    "gatewayHealth": "网关健康状况",
+    "online": "在线",
+    "healthyGateways": "健康的网关",
+    "disconnectedGateways": "断开连接的网关",
+    "operationalStatus": "运行状态",
+    "allClear": "一切正常",
+    "issuesDetected": "检测到问题",
+    "resourceMatrix": "全局资源矩阵",
+    "resourceMatrixDesc": "所有可访问实例的资源汇总",
+    "totalRoutes": "路由总数",
+    "totalServices": "服务总数",
+    "totalUpstreams": "上游总数",
+    "systemConfig": "系统配置",
+    "systemConfigDesc": "所有数据持久化在 etcd 集群中",
+    "connectivity": "实例连接状态",
+    "columnInstance": "网关实例",
+    "columnConnectivity": "连接状态",
+    "columnLastCheck": "上次检查",
+    "columnDiagnostic": "诊断",
+    "logError": "错误",
+    "stable": "稳定",
+    "loadFailedTitle": "错误",
+    "loadFailed": "加载 Dashboard 概览失败",
+    "uncountedInstances": "以下数量的网关资源未能完整统计，因此上方至少有一项总数偏少：{{count}}"
   }
 }
