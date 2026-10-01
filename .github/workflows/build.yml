@@ -51,3 +51,34 @@ jobs:
       # guard on the react/react-dom invariant from #121.
       - name: Unit tests
         run: pnpm test
+
+  backend:
+    # The backend's own tests ran nowhere: the e2e job builds the binary and
+    # drives it through a browser, which says it compiles and that the specs
+    # still pass, not that `go test` does. The access rules live here — the
+    # per-instance role, the team boundary in the proxy, the password policy —
+    # and #339 went green on nine checks without one of their tests having
+    # run (#367).
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7
+
+      # The version api/go.mod declares, not a number written here: a bump of
+      # the directive moves this job with it, in the same pull request.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      # No etcd and no gateway: the tests bring their own fakes. -race because
+      # the services answer concurrent requests over shared state - the
+      # overview's singleflight group, for one.
+      - name: Unit tests
+        run: go test -race ./...
