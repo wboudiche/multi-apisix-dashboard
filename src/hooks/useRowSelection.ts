@@ -48,24 +48,16 @@ export type SelectionUpdate = readonly string[] | ((selected: string[]) => reado
  *
  * A change made for another list than the one the ticks are on changes
  * nothing. The page stays usable while a batch is being answered, so the
- * "clear the selection" of a batch confirmed on page one can arrive once page
- * two is shown and ticked: applied, it wiped ticks it was never about.
+ * change a batch confirmed on page one asks for can arrive once page two is
+ * shown and ticked: applied, it wiped ticks it was never about.
  *
- * An update given as a function starts from the selection as the list shows
- * it, so two toggles before a render keep both.
+ * An update given as a function starts from everything ticked on the list,
+ * as it is when the update is applied - so two toggles before a render keep
+ * both, and one asked for a while ago does not undo what was ticked since.
  */
-export const tickedAfter = (
-  ticked: Ticked,
-  listKey: string,
-  visibleIds: readonly string[],
-  update: SelectionUpdate
-): Ticked => {
+export const tickedAfter = (ticked: Ticked, listKey: string, update: SelectionUpdate): Ticked => {
   if (ticked.listKey !== listKey) return ticked;
-  return {
-    listKey,
-    ids:
-      typeof update === 'function' ? update(selectionOf(ticked, listKey, visibleIds)) : update,
-  };
+  return { listKey, ids: typeof update === 'function' ? update([...ticked.ids]) : update };
 };
 
 /**
@@ -109,9 +101,8 @@ export const useRowSelection = (visibleIds: readonly string[], listKey: string) 
   if (ticked.listKey !== listKey) setTicked({ listKey, ids: [] });
 
   const setSelected = useCallback(
-    (update: SelectionUpdate) =>
-      setTicked((current) => tickedAfter(current, listKey, visible, update)),
-    [listKey, visible]
+    (update: SelectionUpdate) => setTicked((current) => tickedAfter(current, listKey, update)),
+    [listKey]
   );
   return [selected, setSelected] as const;
 };

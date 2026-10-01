@@ -17,6 +17,7 @@
 import { Button, Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
+import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 
 import { isNotFound } from '@/apis/hooks';
@@ -41,25 +42,33 @@ type BatchDeleteBtnProps = {
   onDeleted?: (ids: string[]) => void;
 };
 
+type Refused = { response?: { status?: number; data?: Record<string, string | undefined> } };
+
 /**
  * Whether a delete failed because the gateway no longer has the row.
  *
- * The gateway says so with a 404 and `{"message": "Key not found"}`. Not
- * every 404 is that. Its answer to a request it does not understand carries
- * `error_msg` - an Admin URL pointing at the wrong port gets one for every
- * delete - and the dashboard answers 404 itself, with `error`, for an
- * instance that is gone or switched off. Nothing was deleted in either case,
+ * The gateway says so with a 404 and `{"message": "Key not found"}`, and that
+ * is the only answer read as "gone". Any other 404 is not: its own with
+ * `error_msg` is a request it did not understand - an Admin URL pointing at
+ * the wrong port gets one for every delete - a proxy in front of it has its
+ * own wording, and the dashboard answers 404 itself, with `error`, for an
+ * instance that is gone or switched off. Nothing was deleted in any of those,
  * and counted as gone they reported a batch that did nothing as a success.
+ * A gateway that words it otherwise one day is then reported as a refusal,
+ * which is the mistake to prefer.
  */
-const goneFromGateway = (failure: unknown) => {
-  if (!isNotFound(failure)) return false;
-  const body = (
-    failure as { response?: { data?: { message?: string; error_msg?: string; error?: string } } }
-  ).response?.data;
-  return !!body?.message && !body.error_msg && !body.error;
-};
+const goneFromGateway = (failure: unknown) =>
+  isNotFound(failure) && (failure as Refused).response?.data?.message === 'Key not found';
 
-const hasResponse = (failure: unknown) => !!(failure as { response?: unknown })?.response;
+/**
+ * What a refused 404 says, with the notification id `req` gives the same
+ * sentence - so that if the list asked again says it too, it is shown once.
+ */
+const notFoundNotice = (failure: unknown, fallback: string) => {
+  const body = (failure as Refused).response?.data;
+  const message = body?.error_msg || body?.message || body?.error || fallback;
+  return { id: `req-error-404-${message}`, message, color: 'red' };
+};
 
 export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
   const { ids, apiBase, resourceName, onSuccess, onDeleted } = props;
@@ -124,11 +133,16 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
             }),
             color: gone > 0 ? 'orange' : 'red',
           });
-          // Why is `req`'s to say - a toast, the banner when the gateway
-          // cannot be reached, and for the dashboard's own 404 the toast of
-          // the list asked again below. It says nothing when there was no
-          // answer at all, so that one is said here.
-          const unanswered = refusals.find((refusal) => !hasResponse(refusal));
+          // Why is `req`'s to say - a toast, or the banner when the gateway
+          // cannot be reached - with two exceptions, said here: the 404s it
+          // was told to keep quiet about and that turned out to be refusals,
+          // and a delete that got no answer at all, where it has no response
+          // to read.
+          const notFound = refusals.find(isNotFound);
+          if (notFound) notifications.show(notFoundNotice(notFound, t('error.notFound')));
+          const unanswered = refusals.find(
+            (refusal) => axios.isAxiosError(refusal) && !refusal.response
+          );
           if (unanswered) {
             notifications.show({
               id: 'batch-delete-unanswered',

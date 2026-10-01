@@ -57,31 +57,53 @@ describe('the selection of a list page', () => {
 
 describe('a change of selection', () => {
   it('replaces it', () => {
-    expect(tickedAfter({ listKey: PAGE_2, ids: ['k'] }, PAGE_2, ['k', 'l'], ['l'])).toEqual({
+    expect(tickedAfter({ listKey: PAGE_2, ids: ['k'] }, PAGE_2, ['l'])).toEqual({
       listKey: PAGE_2,
       ids: ['l'],
     });
   });
 
-  it('given as a function, starts from what this list shows as selected', () => {
+  it('given as a function, starts from what is ticked when it is applied', () => {
     // Two toggles before a render each see the one before them.
-    const one = tickedAfter({ listKey: PAGE_1, ids: [] }, PAGE_1, ['a', 'b'], (s) => [...s, 'a']);
-    const two = tickedAfter(one, PAGE_1, ['a', 'b'], (s) => [...s, 'b']);
+    const one = tickedAfter({ listKey: PAGE_1, ids: [] }, PAGE_1, (s) => [...s, 'a']);
+    const two = tickedAfter(one, PAGE_1, (s) => [...s, 'b']);
     expect(two.ids).toEqual(['a', 'b']);
-
-    // And not a row that has left the list since it was ticked.
-    const after = tickedAfter({ listKey: PAGE_1, ids: ['a', 'gone'] }, PAGE_1, ['a', 'b'], (s) => [
-      ...s,
-      'b',
-    ]);
-    expect(after.ids).toEqual(['a', 'b']);
   });
 
   it('made for another list changes nothing', () => {
     // A batch confirmed on page one, answered once page two is shown and
-    // ticked: its "clear the selection" is page one's, and wiped page two's.
+    // ticked: what it asks for is page one's, and wiped page two's.
     const onPageTwo = { listKey: PAGE_2, ids: ['k'] };
-    expect(tickedAfter(onPageTwo, PAGE_1, ['a', 'b'], [])).toBe(onPageTwo);
-    expect(tickedAfter(onPageTwo, PAGE_1, ['a', 'b'], (s) => [...s, 'a'])).toBe(onPageTwo);
+    expect(tickedAfter(onPageTwo, PAGE_1, [])).toBe(onPageTwo);
+    expect(tickedAfter(onPageTwo, PAGE_1, (s) => [...s, 'a'])).toBe(onPageTwo);
+  });
+});
+
+// What Batch Delete asks of the page: the ids that went, out of the
+// selection - those and no others.
+describe('what a batch deleted', () => {
+  const without = (gone: string[]) => (selected: string[]) =>
+    selected.filter((id) => !gone.includes(id));
+
+  it('leaves the selection, and what it was refused stays', () => {
+    const after = tickedAfter({ listKey: PAGE_1, ids: ['a', 'b', 'c'] }, PAGE_1, without(['a', 'c']));
+    expect(after.ids).toEqual(['b']);
+  });
+
+  it('does not untick what was ticked while it was being answered', () => {
+    // d appeared on the list and was ticked after the batch was confirmed.
+    const after = tickedAfter({ listKey: PAGE_1, ids: ['a', 'b', 'd'] }, PAGE_1, without(['a', 'b']));
+    expect(after.ids).toEqual(['d']);
+  });
+});
+
+// A gateway that cannot be reached answers as an empty list, under the same
+// key. The ticks are kept through it: dropped with every row that left the
+// screen, a selection was lost to one failed refetch.
+describe('a list that comes back empty for a while', () => {
+  it('shows nothing selected, and the same selection when the rows are back', () => {
+    const ticked = { listKey: PAGE_1, ids: ['a', 'b'] };
+    expect(selectionOf(ticked, PAGE_1, [])).toEqual([]);
+    expect(selectionOf(ticked, PAGE_1, ['a', 'b', 'c'])).toEqual(['a', 'b']);
   });
 });
