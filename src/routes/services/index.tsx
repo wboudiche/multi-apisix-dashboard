@@ -50,7 +50,7 @@ const servicesSearchSchema = pageSearchSchema.extend({
 });
 
 const ServiceList = () => {
-  const { data, isLoading, refetch, pagination } = useServiceList();
+  const { data, isLoading, refetch, pagination, listKey } = useServiceList();
   const { view } = Route.useSearch();
   const navigate = useNavigate({ from: '/services/' });
   const setView = (next: 'table' | 'cards') => {
@@ -64,7 +64,8 @@ const ServiceList = () => {
   const { canWriteResource } = usePermission();
   // Never more than the rows on screen: see useRowSelection (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id)
+    data.list.map((record) => record.value.id),
+    listKey
   );
 
   // The proxy says so when it could not count: without this the table and the

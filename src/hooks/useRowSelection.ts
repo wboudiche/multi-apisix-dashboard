@@ -14,24 +14,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+
+/** What was ticked, and the list it was ticked on. */
+export type Ticked = { listKey: string; ids: readonly string[] };
 
 /**
- * The rows ticked among the ones on screen, in the order they were ticked.
+ * The rows selected on a list: the ones ticked on that very list - the same
+ * instance, page and filters - that it still shows, in the order they were
+ * ticked.
  *
- * What was ticked and is not shown is not selected: a row on another page,
- * one a filter took out of the list, one that has since been deleted.
+ * What was ticked on another list is not selected, however alike the ids: two
+ * gateways number their routes from the same 1, and a route ticked on staging
+ * must not arrive ticked on production. What was ticked here and is no longer
+ * shown - deleted from its own menu, or by someone else - is not selected
+ * either.
  */
-export const visibleSelection = (
-  ticked: readonly string[],
+export const selectionOf = (
+  ticked: Ticked,
+  listKey: string,
   visibleIds: readonly string[]
 ): string[] => {
+  if (ticked.listKey !== listKey) return [];
   const visible = new Set(visibleIds);
-  return ticked.filter((id) => visible.has(id));
+  return ticked.ids.filter((id) => visible.has(id));
 };
 
+/** A selection to replace the current one with, or how to get it from it. */
+export type SelectionUpdate = readonly string[] | ((selected: string[]) => readonly string[]);
+
 /**
- * The selection of a list page: the rows ticked, among the rows it shows.
+ * What a change of selection leaves ticked. An update given as a function
+ * starts from the selection as the list shows it - not from what is stored,
+ * which may still hold another list's ticks.
+ */
+export const tickedAfter = (
+  ticked: Ticked,
+  listKey: string,
+  visibleIds: readonly string[],
+  update: SelectionUpdate
+): Ticked => ({
+  listKey,
+  ids:
+    typeof update === 'function' ? update(selectionOf(ticked, listKey, visibleIds)) : update,
+});
+
+/**
+ * The selection of a list page.
  *
  * A list page kept the ids it was given in state for as long as it was
  * mounted, and handed all of them to Batch Delete. Two rows ticked on page
@@ -40,15 +69,35 @@ export const visibleSelection = (
  * and the delete took the two routes that were not on screen (#371). A row
  * deleted from its own menu stayed in the set too, and failed the next batch.
  *
- * So the selection is never more than what the page shows. It is derived on
- * each render rather than pruned by an effect: there is no moment between a
- * page change and the pruning in which the old ids are still the selection.
- *
- * Whatever sets it is given what the page shows as selected to start from -
- * a table's own onChange is - so ticking a row on page two drops the ticks
- * of page one rather than carrying them along.
+ * So a selection belongs to the list it was made on - `listKey`, which the
+ * list hooks return and which changes with the instance, the page, the
+ * filters and the team - and is never more than what that list shows. Both
+ * are decided on each render rather than by an effect that clears the state:
+ * there is no moment after a page change in which the old ids are still it.
  */
-export const useRowSelection = (visibleIds: readonly string[]) => {
-  const [ticked, setTicked] = useState<string[]>([]);
-  return [visibleSelection(ticked, visibleIds), setTicked] as const;
+export const useRowSelection = (visibleIds: readonly string[], listKey: string) => {
+  const [ticked, setTicked] = useState<Ticked>({ listKey, ids: [] });
+  // Another list than the one the ticks were made on: they are forgotten, so
+  // that coming back to that list does not find them again. Set while
+  // rendering, which React allows for exactly this - state that follows what
+  // a component is given - and which, unlike an effect, shows no frame with
+  // the old ticks in between. selectionOf already ignores them in this one.
+  if (ticked.listKey !== listKey) setTicked({ listKey, ids: [] });
+
+  // The ids by value: a page builds the array anew on every render, and a
+  // selection that changed identity each time would have a table redo its
+  // own work for nothing.
+  const visibleKey = JSON.stringify(visibleIds);
+  const visible = useMemo(() => JSON.parse(visibleKey) as string[], [visibleKey]);
+
+  const selected = useMemo(
+    () => selectionOf(ticked, listKey, visible),
+    [ticked, listKey, visible]
+  );
+  const setSelected = useCallback(
+    (update: SelectionUpdate) =>
+      setTicked((current) => tickedAfter(current, listKey, visible, update)),
+    [listKey, visible]
+  );
+  return [selected, setSelected] as const;
 };

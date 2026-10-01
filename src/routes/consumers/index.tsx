@@ -37,10 +37,11 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function ConsumersList() {
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
-  const { data, isLoading, refetch, pagination } = useConsumerList();
+  const { data, isLoading, refetch, pagination, listKey } = useConsumerList();
   // Never more than the rows on screen: see useRowSelection (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.username)
+    data.list.map((record) => record.value.username),
+    listKey
   );
 
   const columns = useMemo<ProColumns<APISIXType['RespConsumerItem']>[]>(() => {

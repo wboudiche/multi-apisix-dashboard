@@ -34,10 +34,11 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 function PluginConfigsList() {
   const { t } = useTranslation();
-  const { data, isLoading, refetch, pagination } = usePluginConfigList();
+  const { data, isLoading, refetch, pagination, listKey } = usePluginConfigList();
   // Never more than the rows on screen: see useRowSelection (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id)
+    data.list.map((record) => record.value.id),
+    listKey
   );
 
   const columns = useMemo<

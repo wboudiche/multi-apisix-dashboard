@@ -35,10 +35,11 @@ import { pageSearchSchema } from '@/types/schema/pageSearch';
 function RouteComponent() {
   const { t } = useTranslation();
 
-  const { data, isLoading, refetch, pagination } = useProtoList();
+  const { data, isLoading, refetch, pagination, listKey } = useProtoList();
   // Never more than the rows on screen: see useRowSelection (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id)
+    data.list.map((record) => record.value.id),
+    listKey
   );
 
   const columns = useMemo<

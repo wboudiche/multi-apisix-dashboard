@@ -19,6 +19,8 @@ import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { useTranslation } from 'react-i18next';
 
+import { isNotFound } from '@/apis/hooks';
+import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
@@ -56,31 +58,47 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
       labels: { confirm: t('form.btn.delete'), cancel: t('form.btn.cancel') },
       // Every answer waited for and counted. On the first refusal Promise.all
       // gave up the lot: the other deletes had gone through, and the page was
-      // left as it was - the selection still ticked, the list not asked again,
-      // and nothing said about what had and had not been deleted (#371). Each
-      // refusal has its own toast, from `req`, with the gateway's reason.
+      // left as it was - the list not asked again, and nothing said about
+      // what had and had not been deleted (#371).
       onConfirm: async () => {
         const answers = await Promise.allSettled(
-          ids.map((id) => req.delete(`${apiBase}/${id}`))
+          ids.map((id) =>
+            // A 404 is not a refusal, and gets no toast of its own: see below.
+            req.delete(`${apiBase}/${id}`, { headers: { [SKIP_INTERCEPTOR_HEADER]: ['404'] } })
+          )
         );
-        const failed = answers.filter((answer) => answer.status === 'rejected').length;
-        const deleted = answers.length - failed;
-        if (failed === 0) {
+        // Not there any more - another tab, another admin - is what was asked
+        // for: the row is gone. Counted as a failure, a batch that ended
+        // exactly as intended was reported in red.
+        const refused = answers.filter(
+          (answer) => answer.status === 'rejected' && !isNotFound(answer.reason)
+        ).length;
+        const gone = answers.length - refused;
+
+        if (refused === 0) {
           notifications.show({
-            message: t('info.delete.success', { name: `${deleted} ${resourceName}` }),
+            message: t('info.delete.success', { name: `${gone} ${resourceName}` }),
             color: 'green',
           });
+          onClearSelection?.();
         } else {
+          // The selection is left alone: the rows that went leave it with the
+          // list, and the ones that were refused stay ticked, to be tried
+          // again once whatever refused them - an unreachable gateway, most
+          // often - is put right. Why is `req`'s to say: a toast, or the
+          // banner when it is the gateway that cannot be reached.
           notifications.show({
-            message: t('info.delete.partial', { deleted, failed, name: resourceName }),
-            color: deleted > 0 ? 'orange' : 'red',
+            message: t('info.delete.partial', { deleted: gone, failed: refused, name: resourceName }),
+            color: gone > 0 ? 'orange' : 'red',
           });
         }
-        // Whatever the answers: what is left on the list is what the next
-        // selection is made from.
-        onClearSelection?.();
-        onSuccess?.();
-        queryClient.invalidateQueries();
+
+        if (gone > 0) {
+          // Everything that counted or listed what went, this list included.
+          queryClient.invalidateQueries();
+        } else {
+          onSuccess?.();
+        }
       },
     });
   };

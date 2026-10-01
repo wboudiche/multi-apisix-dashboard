@@ -55,10 +55,11 @@ type SSLRow = APISIXType['RespSSLItem'] & {
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { data, isLoading, refetch, pagination } = useSSLList();
+  const { data, isLoading, refetch, pagination, listKey } = useSSLList();
   // Never more than the rows on screen: see useRowSelection (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id)
+    data.list.map((record) => record.value.id),
+    listKey
   );
   const currentInstanceId = useAtomValue(currentInstanceIdAtom);
 

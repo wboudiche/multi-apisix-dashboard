@@ -42,10 +42,11 @@ import { summarizeHealth } from '@/utils/upstream-health';
 function RouteComponent() {
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
-  const { data, isLoading, refetch, pagination } = useUpstreamList();
+  const { data, isLoading, refetch, pagination, listKey } = useUpstreamList();
   // Never more than the rows on screen: see useRowSelection (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id)
+    data.list.map((record) => record.value.id),
+    listKey
   );
 
   // The proxy says so when it could not count: a page that showed nothing

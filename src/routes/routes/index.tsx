@@ -89,13 +89,15 @@ export type RouteListProps = {
   refetch: () => void;
   setParams: (params: any) => void;
   visibleColumns: string[];
+  /** Which list `data` is, as the list hook names it: the selection is kept under it. */
+  listKey: string;
   defaultParams?: Record<string, any>;
   ToDetailBtn?: React.ComponentType<{ record: any }>;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const RouteList = (props: RouteListProps) => {
-  const { routeKey, data, isLoading, refetch, setParams, visibleColumns } = props;
+  const { routeKey, data, isLoading, refetch, setParams, visibleColumns, listKey } = props;
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
@@ -158,17 +160,17 @@ export const RouteList = (props: RouteListProps) => {
     listWarning === 'service_upstream_unresolved' && !wantsUpstreams ? undefined : listWarning;
 
   const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
-  // Never more than the rows on screen. Kept for the life of the page, the
-  // ticks of page one were still selected on page two: the bar came back at
-  // the first row ticked there counting them, and Batch Delete took routes
-  // nobody could see (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(allIds);
+  // The rows ticked on this very list, and still on it. Kept for the life of
+  // the page, the ticks of page one were still selected on page two: the bar
+  // came back at the first row ticked there counting them, and Batch Delete
+  // took routes nobody could see (#371).
+  const [selectedIds, setSelectedIds] = useRowSelection(allIds, listKey);
   const allSelected = allIds.length > 0 && selectedIds.length === allIds.length;
   const someSelected = selectedIds.length > 0;
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(
-      selectedIds.includes(id) ? selectedIds.filter((other) => other !== id) : [...selectedIds, id]
+    setSelectedIds((selected) =>
+      selected.includes(id) ? selected.filter((other) => other !== id) : [...selected, id]
     );
   };
 
@@ -705,7 +707,7 @@ function RouteComponent() {
   const { t } = useTranslation();
   const { canEdit, isAdmin } = usePermission();
   const { params, setParams, resetParams } = useSearchParams('/routes/');
-  const { data, isLoading, refetch, setParams: setRouteParams } = useRouteList('/routes/');
+  const { data, isLoading, refetch, setParams: setRouteParams, listKey } = useRouteList('/routes/');
   // Options for the bar. Teams are admin-only; upstreams are what the new
   // filter narrows by, and the same list the table resolves names from.
   const currentUser = useAtomValue(currentUserAtom);
@@ -881,6 +883,7 @@ function RouteComponent() {
           refetch={refetch}
           setParams={setRouteParams}
           visibleColumns={visibleColumns}
+          listKey={listKey}
         />
       </Paper>
 

@@ -47,14 +47,15 @@ export type StreamRouteListProps = {
 
 export const StreamRouteList = (props: StreamRouteListProps) => {
   const { routeKey, ToDetailBtn, defaultParams } = props;
-  const { data, isLoading, refetch, pagination } = useStreamRouteList(
+  const { data, isLoading, refetch, pagination, listKey } = useStreamRouteList(
     routeKey,
     defaultParams
   );
   const { t } = useTranslation();
   // Never more than the rows on screen: see useRowSelection (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id)
+    data.list.map((record) => record.value.id),
+    listKey
   );
 
   const columns = useMemo<

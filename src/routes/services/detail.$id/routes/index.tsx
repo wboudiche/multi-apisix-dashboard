@@ -29,7 +29,7 @@ function RouteComponent() {
   const { id } = useParams({ from: '/services/detail/$id/routes/' });
   // Pass the nested route id — the hook defaults to '/routes/', which has
   // no active match under /services/detail/$id/routes and crashes the page
-  const { data, isLoading, refetch, setParams } = useRouteList(
+  const { data, isLoading, refetch, setParams, listKey } = useRouteList(
     '/services/detail/$id/routes/',
     { filter: { service_id: id } }
   );
@@ -43,6 +43,7 @@ function RouteComponent() {
         refetch={refetch}
         setParams={setParams}
         visibleColumns={['name', 'host', 'path', 'desc', 'operation']}
+        listKey={listKey}
         defaultParams={{ filter: { service_id: id } }}
         ToDetailBtn={({ record }: { record: { value: { id: string } } }) => (
           <ToDetailPageBtn

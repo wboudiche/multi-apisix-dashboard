@@ -32,13 +32,22 @@ import { useRowSelection } from '@/hooks/useRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
+/**
+ * A secret as the Admin API addresses it: `<manager>/<id>`.
+ *
+ * The list splits that into its two parts, and the id alone is neither unique
+ * - `vault/foo` and `aws/foo` are two secrets, and ticking one ticked both -
+ * nor a path: Batch Delete built `/secrets/foo` from it, which the proxy does
+ * not know, so every delete in a batch was refused.
+ */
+const secretPath = (record: { value: { manager?: string; id: string } }) =>
+  record.value.manager ? `${record.value.manager}/${record.value.id}` : record.value.id;
+
 function SecretList() {
   const { t } = useTranslation();
-  const { data, isLoading, refetch, pagination } = useSecretList();
+  const { data, isLoading, refetch, pagination, listKey } = useSecretList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id)
-  );
+  const [selectedIds, setSelectedIds] = useRowSelection(data.list.map(secretPath), listKey);
 
   const columns = useMemo<
     ProColumns<APISIXType['RespSecretList']['data']['list'][number]>[]
@@ -90,7 +99,7 @@ function SecretList() {
       <ProTable
         columns={columns}
         dataSource={data?.list || []}
-        rowKey={(record) => record.value.id}
+        rowKey={secretPath}
         loading={isLoading}
         search={false}
         options={false}
