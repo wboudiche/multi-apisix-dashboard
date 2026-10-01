@@ -849,7 +849,7 @@
       "filterTeamUnassigned": "Sin asignar",
       "headerId": "ID",
       "selectAll": "Seleccionar todo",
-      "selectRow": "Seleccionar fila",
+      "selectRow": "Seleccionar {{name}}",
       "duplicateFailed": "No se ha podido duplicar",
       "updateFailed": "No se ha podido actualizar",
       "columnsFixed": "Fijo",

@@ -847,7 +847,7 @@
       "filterTeamUnassigned": "Atanmamış",
       "headerId": "ID",
       "selectAll": "Tümünü seç",
-      "selectRow": "Satırı seç",
+      "selectRow": "{{name}} seç",
       "duplicateFailed": "Çoğaltılamadı",
       "updateFailed": "Güncellenemedi",
       "columnsFixed": "Sabit",

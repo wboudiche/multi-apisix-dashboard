@@ -159,7 +159,7 @@ test('should CRUD route with required fields', async ({ page }) => {
   await test.step('route should exist in list page', async () => {
     await routesPom.getRouteNavBtn(page).click();
     await routesPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: routeName })).toBeVisible();
+    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeVisible();
 
     await page
       .getByRole('row', { name: routeName })
@@ -180,6 +180,6 @@ test('should CRUD route with required fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete Route Successfully',
     });
-    await expect(page.getByRole('cell', { name: routeName })).toBeHidden();
+    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeHidden();
   });
 });

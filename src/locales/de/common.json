@@ -847,7 +847,7 @@
       "filterTeamUnassigned": "Nicht zugewiesen",
       "headerId": "ID",
       "selectAll": "Alle auswählen",
-      "selectRow": "Zeile auswählen",
+      "selectRow": "{{name}} auswählen",
       "duplicateFailed": "Duplizieren fehlgeschlagen",
       "updateFailed": "Aktualisierung fehlgeschlagen",
       "columnsFixed": "Fest",

@@ -334,13 +334,13 @@ test('should CRUD route with all fields', async ({ page }) => {
       hasText: 'Delete Route Successfully',
     });
     await expect(
-      page.getByRole('cell', { name: routeNameWithAllFields })
+      page.getByRole('cell', { name: routeNameWithAllFields, exact: true })
     ).toBeHidden();
 
     await page.reload();
     await routesPom.isIndexPage(page);
     await expect(
-      page.getByRole('cell', { name: routeNameWithAllFields })
+      page.getByRole('cell', { name: routeNameWithAllFields, exact: true })
     ).toBeHidden();
   });
 });

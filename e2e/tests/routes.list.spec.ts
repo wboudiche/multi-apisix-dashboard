@@ -84,7 +84,7 @@ test.describe('page and page_size should work correctly', () => {
     // filter the item which not in the current page
     // it should be random, so we need get all items in the table
     const itemsInPage = await page
-      .getByRole('cell', { name: /route_name_/ })
+      .getByRole('cell', { name: /^route_name_/ })
       .all();
     const names = await Promise.all(itemsInPage.map((v) => v.textContent()));
     return routes.filter((d) => !names.includes(d.name));
@@ -104,7 +104,7 @@ test.describe('page and page_size should work correctly', () => {
     },
     filterItemsNotInPage,
     getCell: (page, item) =>
-      page.getByRole('cell', { name: item.name }).first(),
+      page.getByRole('cell', { name: item.name, exact: true }).first(),
     // The redesigned routes list uses Mantine Pagination without a
     // page-size selector
     variant: 'mantine',
