@@ -1070,8 +1070,8 @@
     "updateFailed": "Team konnte nicht aktualisiert werden",
     "deleted": "Team erfolgreich gelöscht",
     "deleteFailed": "Team konnte nicht gelöscht werden",
-    "deleteOwnsResources": "Dieses Team besitzt noch {{count}} Ressourcen. Weisen Sie sie zuerst neu zu oder löschen Sie sie.",
-    "deleteHasMembers": "{{count}} Benutzerzuweisungen verweisen noch auf dieses Team. Weisen Sie diese Benutzer zuerst einem anderen Team zu."
+    "deleteOwnsResources": "Ressourcen, die dieses Team noch besitzt: {{count}}. Weisen Sie sie zuerst neu zu oder löschen Sie sie.",
+    "deleteHasMembers": "Diesem Team noch zugewiesene Benutzer: {{users}}. Weisen Sie sie zuerst einem anderen Team zu."
   },
   "labelFilter": {
     "add": "Zum Filter hinzufügen",

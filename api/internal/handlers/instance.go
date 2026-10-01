@@ -738,8 +738,8 @@ func (v assignmentView) MarshalJSON() ([]byte, error) {
 }
 
 // assignmentWithTeams pairs an assignment with the teams it holds that still
-// exist, in the assignment's order. A team that is gone - deleting one does
-// not look at the assignments that name it (#375) - keeps its id in team_ids
+// exist, in the assignment's order. A team that is gone - deleted before a
+// delete looked at who was assigned to it (#375) - keeps its id in team_ids
 // and has no entry in teams: the two together are how a reader tells.
 //
 // With no names at all - they were not read - the assignment is answered as it

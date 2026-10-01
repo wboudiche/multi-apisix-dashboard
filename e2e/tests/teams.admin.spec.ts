@@ -104,8 +104,8 @@ test('a team an assignment names is not deleted, and the page says why', async (
     });
   await assign([team.id, other.id]);
 
-  // The API refuses it, and says which refusal it is and how many stand in
-  // the way.
+  // The API refuses it, and says which refusal it is and who stands in the
+  // way.
   let refused: HttpError | undefined;
   await apiFetch(`/api/v1/teams/${team.id}`, token, { method: 'DELETE' }).catch((err) => {
     refused = err as HttpError;
@@ -113,6 +113,7 @@ test('a team an assignment names is not deleted, and the page says why', async (
   expect(refused?.status).toBe(409);
   expect(refused?.message).toContain('"code":"team_has_members"');
   expect(refused?.message).toContain('"count":1');
+  expect(refused?.message).toContain(`"users":["${PREFIX}-member"]`);
 
   await adminPom.toTeams(page);
   await adminPom.isTeamsPage(page);
@@ -121,8 +122,11 @@ test('a team an assignment names is not deleted, and the page says why', async (
   page.on('dialog', (dialog) => void dialog.accept());
   await row.getByRole('button', { name: 'Delete' }).click();
 
-  // In the reader's language, with what to do - not "Failed to delete team".
-  await uiHasToastMsg(page, { hasText: i18n.t('teams.deleteHasMembers', { count: 1 }) });
+  // In the reader's language, naming who, with what to do - not "Failed to
+  // delete team".
+  await uiHasToastMsg(page, {
+    hasText: i18n.t('teams.deleteHasMembers', { users: `${PREFIX}-member` }),
+  });
   await expect(adminPom.rowByText(page, teamName)).toBeVisible();
 
   // The operator moves the user off the team; then it goes.

@@ -38,9 +38,14 @@ import { useTranslation } from 'react-i18next';
 import { type Team,teamApi } from '@/apis/teams';
 import PageHeader from '@/components/page/PageHeader';
 import { usePermission } from '@/hooks/usePermission';
+import { describeError } from '@/utils/api-error';
 import IconPlus from '~icons/material-symbols/add';
 import IconEdit from '~icons/material-symbols/edit-outline';
 import IconGroup from '~icons/material-symbols/group-outline';
+
+/** The first few names, and how many more: a toast is not a list. */
+const namesOf = (users: string[]) =>
+  users.length > 5 ? `${users.slice(0, 5).join(', ')}, +${users.length - 5}` : users.join(', ');
 
 const TeamsPage = () => {
   const { t } = useTranslation();
@@ -155,18 +160,18 @@ const TeamsPage = () => {
       loadTeams();
     } catch (err) {
       // Why, when the backend says: a team is not deleted while it owns
-      // resources or while an assignment names it (#375), and "Failed to
-      // delete team" left the operator to guess which, and what to do.
+      // resources or while somebody is assigned to it (#375), and "Failed to
+      // delete team" left the operator to guess which, and whom.
       const refusal = axios.isAxiosError(err)
-        ? (err.response?.data as { code?: string; count?: number } | undefined)
+        ? (err.response?.data as { code?: string; count?: number; users?: string[] } | undefined)
         : undefined;
-      const count = refusal?.count ?? 0;
       const message =
         refusal?.code === 'team_owns_resources'
-          ? t('teams.deleteOwnsResources', { count })
+          ? t('teams.deleteOwnsResources', { count: refusal.count ?? 0 })
           : refusal?.code === 'team_has_members'
-            ? t('teams.deleteHasMembers', { count })
-            : t('teams.deleteFailed');
+            ? t('teams.deleteHasMembers', { users: namesOf(refusal.users ?? []) })
+            : // Anything else in the backend's own words, where it has some.
+              describeError(err, t('teams.deleteFailed'));
       notifications.show({ title: t('teams.errorTitle'), message, color: 'red' });
     }
   };

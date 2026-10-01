@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
@@ -404,6 +405,58 @@ func (s *AuthService) ListUsersByTeam(ctx context.Context, teamID string) ([]*mo
 		return nil, err
 	}
 	return assignmentsOfTeam(resp, teamID), nil
+}
+
+// TeamHolders returns the usernames of the accounts whose assignments stand in
+// the way of deleting a team, sorted: see teamHolders.
+func (s *AuthService) TeamHolders(ctx context.Context, teamID string) ([]string, error) {
+	assignments, err := s.etcd.List(ctx, models.KeyPrefixUserInstances)
+	if err != nil {
+		return nil, err
+	}
+	users, err := s.etcd.List(ctx, models.KeyPrefixUsers)
+	if err != nil {
+		return nil, err
+	}
+	return teamHolders(assignments, users, teamID), nil
+}
+
+// teamHolders picks the accounts a team cannot be deleted from under: the
+// living users, not super admins, with an assignment that names it.
+//
+// Not every assignment that names a team is somebody's access. One left by a
+// user who was since deleted is nobody's - the maintenance page purges those -
+// and a super admin's is never read: their role is global. Counted, either
+// made the team undeletable for a reason no screen could show, the Users page
+// listing neither a deleted user nor a super admin's assignments.
+//
+// By username, since the operator has to go and find them.
+func teamHolders(assignments, users map[string][]byte, teamID string) []string {
+	type account struct {
+		username   string
+		superAdmin bool
+	}
+	known := make(map[string]account, len(users))
+	for _, data := range users {
+		var user models.User
+		if json.Unmarshal(data, &user) != nil || user.ID == "" {
+			continue
+		}
+		known[unquoteID(user.ID)] = account{user.Username, user.Role == models.RoleSuperAdmin}
+	}
+
+	seen := map[string]bool{}
+	holders := []string{}
+	for _, ui := range assignmentsOfTeam(assignments, teamID) {
+		holder, alive := known[unquoteID(ui.UserID)]
+		if !alive || holder.superAdmin || seen[holder.username] {
+			continue
+		}
+		seen[holder.username] = true
+		holders = append(holders, holder.username)
+	}
+	sort.Strings(holders)
+	return holders
 }
 
 // assignmentsOfTeam picks, out of the stored assignments, those that hold
