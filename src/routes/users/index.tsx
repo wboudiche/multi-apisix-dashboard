@@ -41,7 +41,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type User } from '@/apis/auth';
-import { instanceApi, type UserInstanceRole } from '@/apis/instances';
+import { instanceApi, teamsOf, type UserInstanceRole } from '@/apis/instances';
 import { type Team,teamApi } from '@/apis/teams';
 import { userApi } from '@/apis/users';
 import PageHeader from '@/components/page/PageHeader';
@@ -79,11 +79,10 @@ type AssignmentForm = {
 };
 
 /**
- * The teams of an assignment as the backend answered it: the list, or the one
- * team of an answer from before the list.
+ * For a developer or a viewer the teams are the whole of what they can see; an
+ * instance admin is not tied to one. The backend's own rule, of the same name.
  */
-const teamsOf = (a: UserInstanceRole): string[] =>
-  a.team_ids ?? (a.team_id ? [a.team_id] : []);
+const roleNeedsTeam = (role: string) => role === 'developer' || role === 'viewer';
 
 const UsersPage = () => {
   const { t } = useTranslation();
@@ -91,6 +90,20 @@ const UsersPage = () => {
   const [availableInstances] = useAtom(instancesAtom);
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+  /**
+   * The teams picked, in the order of the teams list rather than of the
+   * clicks. The first team of an assignment is still the one `team_id` names
+   * and the header shows, so unticking a team and ticking it again must not
+   * change which that is. A team the list no longer holds goes last.
+   */
+  const inListOrder = (ids: string[]) => {
+    const at = (id: string) => {
+      const index = teams.findIndex((team) => team.id === id);
+      return index === -1 ? teams.length : index;
+    };
+    return [...ids].sort((a, b) => at(a) - at(b));
+  };
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -193,7 +206,7 @@ const UsersPage = () => {
     // Validate team selection for developer/viewer roles
     for (const instanceID in instanceRoles) {
       const config = instanceRoles[instanceID];
-      if (config.role && (config.role === 'developer' || config.role === 'viewer') && config.team_ids.length === 0) {
+      if (roleNeedsTeam(config.role) && config.team_ids.length === 0) {
         notifications.show({
           message: t('users.teamRequired'),
           color: 'red',
@@ -468,13 +481,13 @@ const UsersPage = () => {
           <Table.Tbody>
             {users.map((user, index) => {
               const assignments = getAssignments(user.id);
-              const assignedTeams = assignments
-                .flatMap((a) => teamsOf(a))
-                .map((id) => teams.find((team) => team.id === id))
-                .filter(Boolean);
-              const uniqueTeams = [
-                ...new Map(assignedTeams.map((team) => [team!.id, team!])).values(),
-              ];
+              // Every team of every assignment, once. One that no longer
+              // exists is shown by its id rather than left out: the form shows
+              // it and the backend holds it, and a column saying "none" beside
+              // them was this screen contradicting itself.
+              const uniqueTeams = [...new Set(assignments.flatMap(teamsOf))].map(
+                (id) => teamById.get(id) ?? { id, name: id }
+              );
 
               return (
               <Table.Tr key={user.id} className={`stagger-${(index % 5) + 1}`}>
@@ -720,21 +733,39 @@ const UsersPage = () => {
                                 label: roleLabel(t, role),
                               }))}
                             />
-                            {(config?.role === 'developer' || config?.role === 'viewer') && (
+                            {/* For every role, though only a developer or a
+                                viewer must have a team: an instance admin's
+                                list is sent with the rest, and hidden it could
+                                neither be seen nor emptied. */}
+                            {config?.role && (
                               <MultiSelect
                                 size="sm"
                                 label={t('users.fieldTeam')}
-                                placeholder={t('users.fieldTeamPlaceholder')}
+                                // Mantine keeps showing the placeholder beside
+                                // the teams picked.
+                                placeholder={config.team_ids.length ? undefined : t('users.fieldTeamPlaceholder')}
+                                // Typing narrows a long list of teams - and
+                                // without it Mantine hides the field itself
+                                // once a team is picked and there is no
+                                // placeholder, leaving nothing to focus.
+                                searchable
                                 clearable
-                                required
+                                // As for the role above: named, in the tab
+                                // order and in the tree.
+                                clearButtonProps={{
+                                  'aria-label': t('users.clearTeams'),
+                                  'aria-hidden': false,
+                                  tabIndex: 0,
+                                }}
+                                required={roleNeedsTeam(config.role)}
                                 data={teams.map((team) => ({
                                   value: team.id,
                                   label: team.name,
                                 }))}
-                                value={config?.team_ids || []}
+                                value={config.team_ids}
                                 onChange={(teamIds) => setInstanceRoles({
                                   ...instanceRoles,
-                                  [inst.id]: { ...instanceRoles[inst.id], team_ids: teamIds, role: instanceRoles[inst.id]?.role || '' }
+                                  [inst.id]: { ...instanceRoles[inst.id], team_ids: inListOrder(teamIds), role: instanceRoles[inst.id]?.role || '' }
                                 })}
                               />
                             )}

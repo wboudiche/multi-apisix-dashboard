@@ -63,6 +63,11 @@ const localInstanceCard = (page: Page) =>
     .filter({ hasText: 'Local APISIX' })
     .first();
 
+// The Teams field of that card. By role: once a team is picked the field has
+// a "Clear teams" button, which a lookup by the label "Teams" matches as well.
+const teamsField = (page: Page) =>
+  localInstanceCard(page).getByRole('textbox', { name: 'Teams' });
+
 test('creates a user via the Add User modal', async ({ page }) => {
   const username = `${PREFIX}-created`;
   await adminPom.toUsers(page);
@@ -100,7 +105,7 @@ test('assigns a per-instance viewer role through the Permissions modal', async (
   const card = localInstanceCard(page);
   await card.getByLabel('Role', { exact: true }).click();
   await page.getByRole('option', { name: 'Viewer', exact: true }).click();
-  await card.getByLabel('Teams').click();
+  await teamsField(page).click();
   await page.getByRole('option', { name: teamName, exact: true }).click();
   // The field takes several teams (#301), so its list stays open for the next
   // one - over the button below. Escape closes the list, not the dialog.
@@ -316,12 +321,23 @@ test('shows every team of an assignment, keeps them on a save, and takes one awa
   // Taking one team away takes that one, and leaves the other.
   await openPermissions();
   await page.getByRole('tab', { name: 'Instance Access' }).click();
-  await localInstanceCard(page).getByLabel('Teams').click();
+  await teamsField(page).click();
   await page.getByRole('option', { name: teamName, exact: true }).click();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
   expect(await stored()).toEqual([second.id]);
+
+  // And giving it back adds it to the one that is there.
+  await openPermissions();
+  await page.getByRole('tab', { name: 'Instance Access' }).click();
+  await teamsField(page).click();
+  await page.getByRole('option', { name: teamName, exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
+  // Both, in the order of the teams list, whatever the order of the clicks.
+  expect([...((await stored()) ?? [])].sort()).toEqual([teamId, second.id].sort());
 });
 
 test('a viewer assignment takes effect: one instance, no create button', async ({

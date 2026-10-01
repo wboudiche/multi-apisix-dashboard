@@ -130,6 +130,13 @@ export type UserInstanceRole = {
   scope?: Scope;
 };
 
+/**
+ * The teams of an assignment as the backend answered it: the list, or the one
+ * team of an answer from before the list.
+ */
+export const teamsOf = (a: UserInstanceRole): string[] =>
+  a.team_ids ?? (a.team_id ? [a.team_id] : []);
+
 export type SetUserRoleRequest = {
   role: string;
   /** Every team of the assignment (#301). */

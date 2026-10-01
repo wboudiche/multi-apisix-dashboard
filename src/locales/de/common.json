@@ -974,6 +974,7 @@
     "assignmentsUnreadableForm": "Die aktuellen Zuweisungen dieses Benutzers konnten nicht gelesen werden, die Rollen unten sind daher möglicherweise unvollständig. Beim Speichern werden nur die hier gewählten Rollen geschrieben; es wird keine entfernt.",
     "assignmentsUnreadableBody": "Für {{count}} der aufgeführten Konten konnten die Instanzzuweisungen nicht gelesen werden; diese Tabelle kann daher nicht sagen, was sie dürfen. Grund: {{reason}}",
     "clearRole": "Rolle entfernen",
+    "clearTeams": "Teams entfernen",
     "roleOptionSuperAdmin": "Super-Admin (Vollzugriff)",
     "roleOptionUser": "Benutzer (Rollen pro Instanz unten zuweisen)",
     "columnUser": "Benutzer",

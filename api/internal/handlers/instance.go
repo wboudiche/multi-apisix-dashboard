@@ -601,7 +601,13 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	// nothing, and the assignment would look made.
 	for _, teamID := range teamIDs {
 		team, err := h.teamService.GetTeam(c.Request.Context(), teamID)
-		if err != nil || team == nil {
+		if err != nil {
+			// Not "not found": a read that failed says nothing about the
+			// team, and an admin told it is gone would take it off the list.
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if team == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team: " + teamID + " not found"})
 			return
 		}
