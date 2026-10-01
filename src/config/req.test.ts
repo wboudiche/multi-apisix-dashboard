@@ -28,6 +28,7 @@ type InstanceModule = typeof import('@/stores/instance');
 type ProxyErrorModule = typeof import('@/stores/proxyError');
 type AuthModule = typeof import('@/stores/auth');
 type I18nModule = typeof import('./i18n');
+type TeamModule = typeof import('@/stores/team');
 
 // req and the stores it reads touch localStorage as their modules load, and
 // this suite runs in node: a Map stands in for it, installed before they are
@@ -50,6 +51,7 @@ let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
 let currentUserAtom: AuthModule['currentUserAtom'];
 let proxyErrorAtom: ProxyErrorModule['proxyErrorAtom'];
 let i18n: I18nModule['default'];
+let ownTeamsAtom: TeamModule['ownTeamsAtom'];
 
 // What the gateway answers, and every request that reached it.
 type Answer = (config: InternalAxiosRequestConfig) => Promise<AxiosResponse>;
@@ -82,6 +84,7 @@ beforeAll(async () => {
   ({ currentUserAtom } = await import('@/stores/auth'));
   ({ proxyErrorAtom } = await import('@/stores/proxyError'));
   ({ default: i18n } = await import('./i18n'));
+  ({ ownTeamsAtom } = await import('@/stores/team'));
   req.defaults.adapter = (config) => {
     sent.push(config);
     return answer(config);
@@ -197,6 +200,17 @@ describe('a refusal the backend names by a code', () => {
     );
     expect(message).toBe(i18n.t(key));
     expect(message).not.toBe(sentence);
+  });
+
+  it('team_required says to ask an admin when the account has no team to choose', async () => {
+    // One code to the backend, two situations to the reader: told to choose a
+    // team in the header, an account with none finds none there.
+    store().set(ownTeamsAtom, { A: { ids: [], teams: [] } });
+    const message = await shownAfter(
+      refusedWith(400, { error: 'x', error_msg: 'x', code: 'team_required' })
+    );
+    store().set(ownTeamsAtom, {});
+    expect(message).toBe(i18n.t('error.teamMissing'));
   });
 
   it('one with no name of its own keeps the backend’s sentence', async () => {

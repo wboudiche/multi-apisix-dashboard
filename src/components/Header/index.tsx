@@ -31,15 +31,15 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useAtom, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import type { FC } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { instanceApi, type InstanceHealth } from '@/apis/instances';
 import {
   instancesQueryOptions,
-  myTeamsQueryOptions,
+  ownTeamsQueryOptions,
   teamsQueryOptions,
   userInstancesQueryOptions,
 } from '@/apis/queries';
@@ -52,7 +52,7 @@ import { roleLabel } from '@/config/role-labels';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom, logoutActionAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom, instancesAtom, setInstancesAtom } from '@/stores/instance';
-import { choosableTeamIds, currentTeamIdAtom } from '@/stores/team';
+import { currentTeamIdAtom, ownTeamsAtom, sentTeamIdAtom } from '@/stores/team';
 import { describeError } from '@/utils/api-error';
 import IconMenu from '~icons/material-symbols/menu';
 import IconMenuOpen from '~icons/material-symbols/menu-open';
@@ -110,40 +110,30 @@ const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
   );
 };
 
+// The queries about the account itself rather than about what a team owns:
+// what a developer's team narrows is everything else.
+const ACCOUNT_QUERIES = new Set(['instances', 'user-instances', 'own-teams', 'teams', 'instance-health']);
+
 type TeamSwitcherProps = {
   // An admin's: the whole catalogue. A developer's or a viewer's: their own
   // teams on the instance, which is all they may choose between.
   teams: Pick<Team, 'id' | 'name'>[];
   isAdmin: boolean;
-  // The teams the assignment lets a developer or a viewer choose between, by
-  // id: empty unless it holds several (see choosableTeamIds).
-  choosable?: string[];
 };
 
-const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin, choosable = [] }) => {
+const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   const { t } = useTranslation();
   const [currentTeamId, setCurrentTeamId] = useAtom(currentTeamIdAtom);
-
-  // An assignment that still names a team that is gone (#375): several ids to
-  // the backend, which then wants to be told which team a new resource is
-  // for, and one team here, with nothing to choose. The one that is left is
-  // the answer, so it is given - or every create would be refused with
-  // "choose a team" under a header that offers none.
-  const onlyOneLeft =
-    !isAdmin && teams.length === 1 && choosable.includes(teams[0].id) ? teams[0].id : '';
-  useEffect(() => {
-    if (onlyOneLeft && currentTeamId !== onlyOneLeft) setCurrentTeamId(onlyOneLeft);
-  }, [onlyOneLeft, currentTeamId, setCurrentTeamId]);
+  // What this tab's requests carry: for a developer or a viewer, the pick
+  // when it is one of the teams shown here, and none otherwise.
+  const sentTeamId = useAtomValue(sentTeamIdAtom);
 
   const handleTeamChange = (value: string | null) => {
     const newTeamId = value ?? '';
     setCurrentTeamId(newTeamId);
-    if (!isAdmin) {
-      // For a developer or a viewer the team narrows every list a team can
-      // own, and none of them is keyed by it: all of them are asked again.
-      queryClient.invalidateQueries();
-      return;
-    }
+    // A developer's or a viewer's lists are asked again by the header, when
+    // what is sent for them changes - a pick is one way that happens.
+    if (!isAdmin) return;
     queryClient.invalidateQueries({ queryKey: ['routes'] });
     queryClient.invalidateQueries({ queryKey: ['services'] });
     queryClient.invalidateQueries({ queryKey: ['upstreams'] });
@@ -182,10 +172,10 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin, choosable = [] })
   }
 
   // With several (#301), which of them the lists show and a new resource goes
-  // to. None picked shows all of theirs. A pick that is not one of their teams
-  // - left by another tab, or a team they were taken off - reads as none,
-  // which is also what is sent for it (see selectedTeamId).
-  const mine = currentTeamId && teams.some((team) => team.id === currentTeamId) ? currentTeamId : '';
+  // to. None picked shows all of theirs. What it shows as picked is what is
+  // sent, so a pick that is not one of these teams - left by another tab, a
+  // team they were taken off, one that was deleted - reads as none here
+  // because none is sent for it (see teamToSend).
   return (
     <Select
       data-testid="team-switcher"
@@ -194,7 +184,7 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin, choosable = [] })
         { value: '', label: t('header.allMyTeams') },
         ...teams.map((team) => ({ value: team.id, label: team.name })),
       ]}
-      value={mine}
+      value={sentTeamId}
       onChange={handleTeamChange}
       style={{ width: 180 }}
       clearable={false}
@@ -367,14 +357,50 @@ export const Header: FC<HeaderProps> = (props) => {
 
   const { isAdmin, role: effectiveRole } = usePermission();
 
-  // A developer's or a viewer's own teams on this instance, by name: the
-  // catalogue above answers them 403, and their assignment holds only ids.
-  const { data: myTeams = [] } = useQuery({
-    ...myTeamsQueryOptions(currentUser?.id, currentInstanceId),
-    enabled: !!currentUser && !!currentInstanceId
-      && (effectiveRole === 'developer' || effectiveRole === 'viewer'),
+  // A developer's or a viewer's own teams on this instance: the catalogue
+  // above answers them 403, and their assignment holds only ids. Read once
+  // and stored, for the switcher, for what the requests carry and for the
+  // lists that name a team - read apart, they disagreed.
+  const hasOwnTeams = effectiveRole === 'developer' || effectiveRole === 'viewer';
+  const { data: ownTeams, error: ownTeamsError } = useQuery({
+    ...ownTeamsQueryOptions(currentUser?.id, currentInstanceId),
+    enabled: !!currentUser && !!currentInstanceId && hasOwnTeams,
   });
-  const switcherTeams = isAdmin ? teams : myTeams;
+  const setOwnTeams = useSetAtom(ownTeamsAtom);
+  useEffect(() => {
+    if (!ownTeams || !currentInstanceId) return;
+    setOwnTeams((all) => ({ ...all, [currentInstanceId]: ownTeams }));
+  }, [ownTeams, currentInstanceId, setOwnTeams]);
+
+  useEffect(() => {
+    if (!ownTeamsError) return;
+    // Not quiet like the catalogue's 403: everyone may read their own teams,
+    // and without them a developer with several has no switcher - and a
+    // refusal telling them to choose a team in a header that offers none.
+    notifications.show({
+      id: 'header-own-teams-load-failed',
+      title: t('header.ownTeamsLoadFailedTitle'),
+      message: describeError(ownTeamsError, t('header.ownTeamsLoadFailed')),
+      color: 'red',
+    });
+  }, [ownTeamsError, t]);
+
+  // What is sent for a developer or a viewer narrows every list a team can
+  // own, and none of them is keyed by it. So when it changes - a pick, or the
+  // teams arriving after a reload and making the stored pick count - they are
+  // asked again. Not on mount: nothing has been asked under another team yet.
+  const sentTeamId = useAtomValue(sentTeamIdAtom);
+  const lastSentTeamId = useRef(sentTeamId);
+  useEffect(() => {
+    if (lastSentTeamId.current === sentTeamId) return;
+    lastSentTeamId.current = sentTeamId;
+    if (!hasOwnTeams) return;
+    queryClient.invalidateQueries({
+      predicate: (query) => !ACCOUNT_QUERIES.has(String(query.queryKey[0])),
+    });
+  }, [sentTeamId, hasOwnTeams]);
+
+  const switcherTeams = isAdmin ? teams : (ownTeams?.teams ?? []);
 
   return (
     <AppShell.Header>
@@ -417,11 +443,7 @@ export const Header: FC<HeaderProps> = (props) => {
 
           {/* Team Switcher */}
           {switcherTeams.length > 0 && currentInstanceId && (
-            <TeamSwitcher
-              teams={switcherTeams}
-              isAdmin={isAdmin}
-              choosable={choosableTeamIds(userInstances, currentInstanceId)}
-            />
+            <TeamSwitcher teams={switcherTeams} isAdmin={isAdmin} />
           )}
 
           <LanguageMenu />

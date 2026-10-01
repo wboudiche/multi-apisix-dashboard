@@ -41,7 +41,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
-import { myTeamsQueryOptions, teamsQueryOptions } from '@/apis/queries';
+import { teamsQueryOptions } from '@/apis/queries';
 import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
@@ -61,11 +61,13 @@ import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { ownTeamsAtom } from '@/stores/team';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { withoutDashboardFields } from '@/utils/dashboard-fields';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
+import { proxyFailureText } from '@/utils/team-refusal';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
@@ -117,16 +119,14 @@ export const RouteList = (props: RouteListProps) => {
   // names of their own teams instead - which, with several of them (#301), is
   // what tells one team's routes from another's in this list. Without it the
   // Team column showed them an id.
-  const { data: myTeams } = useQuery({
-    ...myTeamsQueryOptions(currentUser?.id, currentInstanceId),
-    enabled: !!currentUser && !!currentInstanceId && !isAdmin,
-  });
+  // As the header read them: one read, for the switcher and for this.
+  const ownTeams = useAtomValue(ownTeamsAtom)[currentInstanceId]?.teams;
   const teamMap = useMemo(() => {
     const map = new Map<string, string>();
-    myTeams?.forEach((tm) => map.set(tm.id, tm.name));
+    ownTeams?.forEach((tm) => map.set(tm.id, tm.name));
     teams?.forEach((tm) => map.set(tm.id, tm.name));
     return map;
-  }, [teams, myTeams]);
+  }, [teams, ownTeams]);
 
   // A route reaches its upstream directly, through a service, or inline with no
   // id at all. All three have to render as something an operator can read: an
@@ -246,12 +246,11 @@ export const RouteList = (props: RouteListProps) => {
         await navigate({ to: '/routes/detail/$id', params: { id: newId } });
       }
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
       notifications.show({
         // The sentence first, the reason under it: axios fills `message` on
         // every network failure, so a fallback behind it was never read.
         title: t('routes.list.duplicateFailed'),
-        message: e?.response?.data?.error_msg || e?.message,
+        message: proxyFailureText(err),
         color: 'red',
       });
     }

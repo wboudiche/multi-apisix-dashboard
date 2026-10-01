@@ -151,6 +151,15 @@ test('a developer with several teams chooses between their own, and the lists fo
     await expect(headerTeamSelect(page)).toHaveValue(second.name);
     await expect(rowOf(routeOf.second)).toBeVisible();
     await expect(rowOf(routeOf.first)).toBeHidden();
+
+    // And after a reload. The pick is in storage at once; the teams it is
+    // checked against arrive with the header, after the list was first asked
+    // for. The list is asked again when they do - or the header would read
+    // the second team over both teams' routes.
+    await page.reload();
+    await expect(headerTeamSelect(page)).toHaveValue(second.name, { timeout: 30000 });
+    await expect(rowOf(routeOf.second)).toBeVisible({ timeout: 30000 });
+    await expect(rowOf(routeOf.first)).toBeHidden();
   } finally {
     await context.close();
   }

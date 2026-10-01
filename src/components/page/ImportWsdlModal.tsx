@@ -46,6 +46,7 @@ import {
   findRouteDuplicates,
   type RouteDuplicate,
 } from '@/utils/route-duplicates';
+import { proxyFailureText } from '@/utils/team-refusal';
 import {
   parseWsdlBundle,
   type WsdlImportMode,
@@ -295,8 +296,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
         success++;
       } catch (err: unknown) {
         failed++;
-        const e = err as { response?: { data?: { error_msg?: string } }; message?: string };
-        errors.push(`${route.name ?? route.uri}: ${e?.response?.data?.error_msg ?? e?.message ?? t('form.importWsdl.unknownError')}`);
+        errors.push(`${route.name ?? route.uri}: ${proxyFailureText(err) ?? t('form.importWsdl.unknownError')}`);
       }
     }
     setImportResults({ success, failed, errors });
