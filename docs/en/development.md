@@ -16,7 +16,7 @@ The stack has three moving parts:
 
 - **Docker / Docker Compose** — for APISIX + etcd.
 - **Node 22 + pnpm 10** — frontend toolchain. `pnpm` is pinned via the `packageManager` field in `package.json`.
-- **Go 1.22+** — Go's auto-toolchain will fetch 1.24 (declared in `api/go.mod`) on first build.
+- **Go 1.22+** — Go's auto-toolchain will fetch 1.26 (declared in `api/go.mod`) on first build.
 
 ## Docker in this repo
 
