@@ -127,7 +127,9 @@ function GlobalRulesList() {
                     apiBase={API_GLOBAL_RULES}
                     resourceName={t('globalRules.singular')}
                     onSuccess={refetch}
-                    onClearSelection={() => setSelectedIds([])}
+                    onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                   />
                 ),
               },

@@ -261,7 +261,9 @@ const ServiceList = () => {
                     apiBase={API_SERVICES}
                     resourceName={t('services.singular')}
                     onSuccess={refetch}
-                    onClearSelection={() => setSelectedIds([])}
+                    onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                   />
                 ),
               },

@@ -137,7 +137,9 @@ function ConsumerGroupsList() {
                     apiBase={API_CONSUMER_GROUPS}
                     resourceName={t('consumerGroups.singular')}
                     onSuccess={refetch}
-                    onClearSelection={() => setSelectedIds([])}
+                    onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                   />
                 ),
               },

@@ -131,7 +131,9 @@ function SecretList() {
                     apiBase={API_SECRETS}
                     resourceName={t('secrets.singular')}
                     onSuccess={refetch}
-                    onClearSelection={() => setSelectedIds([])}
+                    onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                   />
                 ),
               },

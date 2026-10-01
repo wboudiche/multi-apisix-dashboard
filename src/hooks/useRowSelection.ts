@@ -68,10 +68,6 @@ export const tickedAfter = (
   };
 };
 
-/** Whether two selections hold the same ids in the same order. */
-const sameIds = (a: readonly string[], b: readonly string[]) =>
-  a.length === b.length && a.every((id, i) => id === b[i]);
-
 /**
  * The selection of a list page.
  *
@@ -86,13 +82,16 @@ const sameIds = (a: readonly string[], b: readonly string[]) =>
  * list hooks return and which changes with the instance, the page, the
  * filters and the team - and is never more than what that list shows.
  *
- * What is stored is kept to that as well, not only what is returned: a tick
- * hidden rather than dropped came back the day a row with the same id did - a
- * route deleted and imported again, a consumer added back under its name -
- * and was deleted with the next batch, ticked by nobody. It is put right
- * while rendering, which React allows for exactly this - state that follows
- * what a component is given - and which, unlike an effect, shows no frame of
- * the old selection in between.
+ * The ticks are forgotten when another list is shown, while rendering - which
+ * React allows for exactly this, state that follows what a component is given,
+ * and which, unlike an effect, shows no frame of the old selection in between.
+ *
+ * Within a list they are kept while their row is away, not dropped: a gateway
+ * that cannot be reached answers as an empty list, and a selection dropped
+ * with every row that left the screen was lost to one failed refetch - the
+ * rows came back unticked. What a batch deleted is taken out by the batch
+ * (see BatchDeleteBtn), so that a row made again under the same id does not
+ * arrive ticked.
  */
 export const useRowSelection = (visibleIds: readonly string[], listKey: string) => {
   const [ticked, setTicked] = useState<Ticked>({ listKey, ids: [] });
@@ -107,9 +106,7 @@ export const useRowSelection = (visibleIds: readonly string[], listKey: string) 
     () => selectionOf(ticked, listKey, visible),
     [ticked, listKey, visible]
   );
-  if (ticked.listKey !== listKey || !sameIds(ticked.ids, selected)) {
-    setTicked({ listKey, ids: selected });
-  }
+  if (ticked.listKey !== listKey) setTicked({ listKey, ids: [] });
 
   const setSelected = useCallback(
     (update: SelectionUpdate) =>

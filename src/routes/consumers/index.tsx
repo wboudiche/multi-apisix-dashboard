@@ -145,7 +145,9 @@ function ConsumersList() {
                     apiBase={API_CONSUMERS}
                     resourceName={t('consumers.singular')}
                     onSuccess={refetch}
-                    onClearSelection={() => setSelectedIds([])}
+                    onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                   />
                 ),
               },

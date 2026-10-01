@@ -240,7 +240,9 @@ function RouteComponent() {
                       apiBase={API_SSLS}
                       resourceName={t('ssls.singular')}
                       onSuccess={refetch}
-                      onClearSelection={() => setSelectedIds([])}
+                      onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                     />
                   ),
                 },

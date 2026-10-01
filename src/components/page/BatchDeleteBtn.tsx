@@ -33,26 +33,36 @@ type BatchDeleteBtnProps = {
   apiBase: string;
   resourceName: string;
   onSuccess?: () => void;
-  onClearSelection?: () => void;
+  /**
+   * Given the ids that are gone, for the page to take out of its selection.
+   * Those and no others: the page stays usable while a batch is answered, and
+   * clearing the selection whole unticked what had been ticked since.
+   */
+  onDeleted?: (ids: string[]) => void;
 };
 
 /**
  * Whether a delete failed because the gateway no longer has the row.
  *
- * A 404 from the gateway, that is - its answers carry `message` or
- * `error_msg`. The dashboard answers 404 too, with `error`, for an instance
- * that is gone or switched off: nothing was deleted then, and counting it as
- * gone reported a batch that did nothing as a success.
+ * The gateway says so with a 404 and `{"message": "Key not found"}`. Not
+ * every 404 is that. Its answer to a request it does not understand carries
+ * `error_msg` - an Admin URL pointing at the wrong port gets one for every
+ * delete - and the dashboard answers 404 itself, with `error`, for an
+ * instance that is gone or switched off. Nothing was deleted in either case,
+ * and counted as gone they reported a batch that did nothing as a success.
  */
 const goneFromGateway = (failure: unknown) => {
   if (!isNotFound(failure)) return false;
-  const body = (failure as { response?: { data?: { message?: string; error_msg?: string } } })
-    .response?.data;
-  return !!(body?.message || body?.error_msg);
+  const body = (
+    failure as { response?: { data?: { message?: string; error_msg?: string; error?: string } } }
+  ).response?.data;
+  return !!body?.message && !body.error_msg && !body.error;
 };
 
+const hasResponse = (failure: unknown) => !!(failure as { response?: unknown })?.response;
+
 export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
-  const { ids, apiBase, resourceName, onSuccess, onClearSelection } = props;
+  const { ids, apiBase, resourceName, onSuccess, onDeleted } = props;
   const { canDelete } = usePermission();
   const { t } = useTranslation();
 
@@ -89,25 +99,23 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
             gateway.delete(`${apiBase}/${id}`, { headers: { [SKIP_INTERCEPTOR_HEADER]: ['404'] } })
           )
         );
-        const failures = answers.flatMap((answer) =>
-          answer.status === 'rejected' ? [answer.reason as unknown] : []
-        );
         // Not there any more - another tab, another admin - is what was asked
         // for: the row is gone. Counted as a failure, a batch that ended
         // exactly as intended was reported in red.
-        const refusals = failures.filter((failure) => !goneFromGateway(failure));
-        const gone = answers.length - refusals.length;
+        const refusals: unknown[] = [];
+        const goneIds: string[] = [];
+        answers.forEach((answer, i) => {
+          if (answer.status === 'fulfilled' || goneFromGateway(answer.reason)) goneIds.push(ids[i]);
+          else refusals.push(answer.reason);
+        });
+        const gone = goneIds.length;
 
         if (refusals.length === 0) {
           notifications.show({
             message: t('info.delete.success', { name: `${gone} ${resourceName}` }),
             color: 'green',
           });
-          onClearSelection?.();
         } else {
-          // The selection is left alone: the rows that went leave it with the
-          // list, and the ones that were refused stay ticked, to be tried
-          // again once whatever refused them is put right.
           notifications.show({
             message: t('info.delete.partial', {
               deleted: gone,
@@ -116,19 +124,23 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
             }),
             color: gone > 0 ? 'orange' : 'red',
           });
-          // Why is `req`'s to say - a toast, or the banner when the gateway
-          // cannot be reached - except for the 404s it was told to keep quiet
-          // about: the dashboard's own, for an instance that is gone or
-          // switched off. Said here, once.
-          const unsaid = refusals.find(isNotFound);
-          if (unsaid) {
+          // Why is `req`'s to say - a toast, the banner when the gateway
+          // cannot be reached, and for the dashboard's own 404 the toast of
+          // the list asked again below. It says nothing when there was no
+          // answer at all, so that one is said here.
+          const unanswered = refusals.find((refusal) => !hasResponse(refusal));
+          if (unanswered) {
             notifications.show({
-              id: 'batch-delete-not-found',
-              message: describeError(unsaid, t('error.notFound')),
+              id: 'batch-delete-unanswered',
+              message: describeError(unanswered, t('error.generic', { status: '?' })),
               color: 'red',
             });
           }
         }
+        // What went is taken out of the selection, and nothing else: the rows
+        // that were refused stay ticked, to be tried again, and so do the
+        // ones ticked while this was being answered.
+        if (gone > 0) onDeleted?.(goneIds);
 
         if (gone > 0) {
           // Everything that counted or listed what went, this list included.

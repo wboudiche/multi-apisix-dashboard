@@ -117,7 +117,9 @@ function RouteComponent() {
                       apiBase={API_PROTOS}
                       resourceName={t('protos.singular')}
                       onSuccess={refetch}
-                      onClearSelection={() => setSelectedIds([])}
+                      onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                     />
                   ),
                 },

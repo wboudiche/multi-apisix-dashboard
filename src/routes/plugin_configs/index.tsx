@@ -137,7 +137,9 @@ function PluginConfigsList() {
                     apiBase={API_PLUGIN_CONFIGS}
                     resourceName={t('pluginConfigs.singular')}
                     onSuccess={refetch}
-                    onClearSelection={() => setSelectedIds([])}
+                    onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                   />
                 ),
               },

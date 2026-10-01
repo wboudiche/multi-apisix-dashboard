@@ -319,7 +319,9 @@ export const RouteList = (props: RouteListProps) => {
               apiBase={API_ROUTES}
               resourceName={t('routes.singular')}
               onSuccess={refetch}
-              onClearSelection={() => setSelectedIds([])}
+              onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
             />
             <Button
               size="compact-sm"
