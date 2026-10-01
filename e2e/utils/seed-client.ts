@@ -57,6 +57,9 @@ export type UserInstance = {
   user_id: string;
   instance_id: string;
   role: string;
+  /** Every team of the assignment (#301). */
+  team_ids: string[];
+  /** The first of them, as the answer named it when an assignment held one. */
   team_id: string;
 };
 
@@ -412,8 +415,10 @@ export type Scope = {
 
 export type UserInstanceRoleInput = {
   role: string;
-  /** Required for developer and viewer roles. */
-  team_id: string;
+  /** One team. Required for developer and viewer roles, unless `team_ids` is given. */
+  team_id?: string;
+  /** Several teams on the one instance (#301). */
+  team_ids?: string[];
   scope?: Scope;
 };
 
@@ -430,7 +435,8 @@ export async function ensureUserInstanceRole(
       method: 'POST',
       json: {
         role: input.role,
-        team_id: input.team_id,
+        ...(input.team_id !== undefined ? { team_id: input.team_id } : {}),
+        ...(input.team_ids ? { team_ids: input.team_ids } : {}),
         ...(input.scope ? { scope: input.scope } : {}),
       },
     },

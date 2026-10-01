@@ -194,24 +194,29 @@ func TestCreateNeedsATeam(t *testing.T) {
 	cases := []struct {
 		name         string
 		scope        teamScope
+		method       string
 		resourceType string
 		path         string
 		want         bool
 	}{
-		{"several teams, none named", undecided, "routes", "/routes", true},
-		{"several teams, none named, a PUT to an id", undecided, "consumers", "/consumers/alice", true},
-		{"no team at all", teamless, "routes", "/routes", true},
-		{"one named", decided, "routes", "/routes", false},
+		{"several teams, none named", undecided, http.MethodPost, "routes", "/routes", true},
+		{"several teams, none named, a PUT to an id", undecided, http.MethodPut, "consumers", "/consumers/alice", true},
+		{"no team at all", teamless, http.MethodPost, "routes", "/routes", true},
+		{"one named", decided, http.MethodPost, "routes", "/routes", false},
 		// An admin with no team named creates an unassigned resource, as before.
-		{"an admin naming none", admin, "routes", "/routes", false},
+		{"an admin naming none", admin, http.MethodPost, "routes", "/routes", false},
 		// Nothing records an owner for these, so there is nothing to choose.
-		{"a type teams do not share", undecided, "plugin_metadata", "/plugin_metadata/x", false},
+		{"a type teams do not share", undecided, http.MethodPut, "plugin_metadata", "/plugin_metadata/x", false},
 		// A credential reads as its consumer, which already has its team.
-		{"beneath a resource", undecided, "consumers", "/consumers/alice/credentials/k", false},
+		{"beneath a resource", undecided, http.MethodPut, "consumers", "/consumers/alice/credentials/k", false},
+		// Not a create: deleting or patching a route that is already gone is
+		// the gateway's 404, not a question about teams.
+		{"a DELETE of something that is not there", undecided, http.MethodDelete, "routes", "/routes/gone", false},
+		{"a PATCH of something that is not there", undecided, http.MethodPatch, "routes", "/routes/gone", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := createNeedsTeam(tc.scope, tc.resourceType, tc.path); got != tc.want {
+			if got := createNeedsTeam(tc.scope, tc.method, tc.resourceType, tc.path); got != tc.want {
 				t.Errorf("createNeedsTeam = %v, want %v", got, tc.want)
 			}
 		})

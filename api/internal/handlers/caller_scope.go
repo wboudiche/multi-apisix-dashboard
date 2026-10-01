@@ -16,6 +16,9 @@
 package handlers
 
 import (
+	"net/http"
+	"slices"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
@@ -53,15 +56,7 @@ type teamScope struct {
 // A caller with no team of their own passes nothing: they own no resources, and
 // unowned resources must not become a free-for-all for teamless accounts.
 func (s teamScope) mayAccess(ownerTeamID string) bool {
-	if ownerTeamID == "" {
-		return false
-	}
-	for _, id := range s.teams {
-		if id == ownerTeamID {
-			return true
-		}
-	}
-	return false
+	return ownerTeamID != "" && slices.Contains(s.teams, ownerTeamID)
 }
 
 // lists reports whether a non-admin's list shows a resource owned by
@@ -80,11 +75,16 @@ func (s teamScope) lists(ownerTeamID string) bool {
 // give. Written anyway, the resource would carry no owner and disappear from
 // its own author, since unowned is admin-only.
 //
-// Only for what a team can own (see the ownership recorded after a write): the
-// types teams share, and not a write beneath a resource, which reads as the
-// resource above it.
-func createNeedsTeam(s teamScope, resourceType, path string) bool {
-	return !s.isAdmin && s.acting == "" && teamScopedResources[resourceType] && !beneathResource(path)
+// Only for a method that creates - a POST to a collection, or a PUT to an id
+// the caller has found not to exist. A DELETE or a PATCH of something that is
+// not there creates nothing, and is the gateway's to answer with its 404.
+//
+// And only for what a team can own (see the ownership recorded after a write):
+// the types teams share, and not a write beneath a resource, which reads as
+// the resource above it.
+func createNeedsTeam(s teamScope, method, resourceType, path string) bool {
+	creates := method == http.MethodPost || method == http.MethodPut
+	return creates && !s.isAdmin && s.acting == "" && teamScopedResources[resourceType] && !beneathResource(path)
 }
 
 // callerTeamScope answers, for the endpoints that apply team ownership, whether

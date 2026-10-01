@@ -151,14 +151,10 @@ func (ui *UserInstance) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	teams := raw.TeamIDs
-	if len(teams) == 0 && raw.TeamID != "" {
-		teams = []string{raw.TeamID}
-	}
 	*ui = UserInstance{
 		UserID:     raw.UserID,
 		InstanceID: raw.InstanceID,
-		TeamIDs:    NormalizeTeamIDs(teams),
+		TeamIDs:    TeamIDsFrom(raw.TeamIDs, raw.TeamID),
 		Role:       raw.Role,
 		Scope:      raw.Scope,
 	}
@@ -194,6 +190,17 @@ func (ui UserInstance) HasTeam(teamID string) bool {
 		}
 	}
 	return false
+}
+
+// TeamIDsFrom reads the teams out of the two shapes they are written in: the
+// list, or the single team from before it. Where both are present the list is
+// the one that counts. One reading for a stored record and for a request, so
+// that the two cannot come to mean different things.
+func TeamIDsFrom(list []string, single string) []string {
+	if len(list) == 0 && single != "" {
+		return []string{single}
+	}
+	return NormalizeTeamIDs(list)
 }
 
 // NormalizeTeamIDs returns the teams in the order given, without blanks or

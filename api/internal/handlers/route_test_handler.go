@@ -161,6 +161,10 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 	}
 	if !isAdmin {
 		owner, err := h.ownershipService.GetOwner(c.Request.Context(), instance.ID, "routes", req.RouteID)
+		// For the record below: the team this caller was let through as. With
+		// several teams and none named there is no acting team, and the line
+		// would read like a teamless account's.
+		teamID = owner
 		if err != nil {
 			// Fail closed: a route whose owner cannot be read is not a route to
 			// send a request to.

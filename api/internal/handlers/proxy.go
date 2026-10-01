@@ -639,7 +639,8 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// author could not see. The other way to create - a PUT to an id that does
 	// not exist yet - is told apart from an update below, where the existence
 	// of its target is known.
-	if c.Request.Method == http.MethodPost && resourceID == "" && createNeedsTeam(scope, resourceType, path) {
+	if c.Request.Method == http.MethodPost && resourceID == "" &&
+		createNeedsTeam(scope, c.Request.Method, resourceType, path) {
 		refuse(c, http.StatusBadRequest, teamRequiredMsg, teamRequiredCode)
 		return
 	}
@@ -686,8 +687,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 					c.Abort()
 					return
 				}
-				// A create, then. It needs one team to belong to.
-				if createNeedsTeam(scope, resourceType, path) {
+				// A create, then, if the method is one that creates. It needs
+				// one team to belong to.
+				if createNeedsTeam(scope, c.Request.Method, resourceType, path) {
 					refuse(c, http.StatusBadRequest, teamRequiredMsg, teamRequiredCode)
 					return
 				}

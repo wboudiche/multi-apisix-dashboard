@@ -74,7 +74,42 @@ func TestAssignmentRequestTeams(t *testing.T) {
 			if err := json.Unmarshal([]byte(tc.body), &req); err != nil {
 				t.Fatalf("decode: %v", err)
 			}
-			if got := req.teams(); !reflect.DeepEqual(got, tc.want) {
+			if got := req.teams(nil); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("teams() = %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+}
+
+// The Users page of the release before the list reads the first team of every
+// assignment and sends it back on any save - a changed email included. Taken
+// at its word, that rewrote [t1, t2] as [t1] and took a team away from the
+// user without anybody having asked.
+func TestAssignmentRequestFromAClientThatKnowsOneTeam(t *testing.T) {
+	stored := &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{"t1", "t2"}}
+	cases := []struct {
+		name     string
+		body     string
+		existing *models.UserInstance
+		want     []string
+	}{
+		{"the first team sent back keeps the list", `{"role":"developer","team_id":"t1"}`, stored, []string{"t1", "t2"}},
+		{"any team of the list does", `{"role":"viewer","team_id":"t2"}`, stored, []string{"t1", "t2"}},
+		// A change: the client picked a team the assignment did not hold.
+		{"another team replaces it", `{"role":"developer","team_id":"t3"}`, stored, []string{"t3"}},
+		// A client that sends a list means the list, shorter or not.
+		{"a list replaces it", `{"role":"developer","team_ids":["t1"]}`, stored, []string{"t1"}},
+		{"an empty list empties it", `{"role":"instance_admin","team_ids":[]}`, stored, []string{}},
+		{"no team at all empties it", `{"role":"instance_admin","team_id":""}`, stored, []string{}},
+		{"nothing stored", `{"role":"developer","team_id":"t1"}`, nil, []string{"t1"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var req SetUserInstanceRoleRequest
+			if err := json.Unmarshal([]byte(tc.body), &req); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if got := req.teams(tc.existing); !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("teams() = %#v, want %#v", got, tc.want)
 			}
 		})

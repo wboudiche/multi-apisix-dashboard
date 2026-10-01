@@ -21,9 +21,11 @@ import {
   apiFetch,
   ensureTeam,
   ensureUser,
+  ensureUserInstanceRole,
   HttpError,
   loginAdmin,
   type Team,
+  type UserInstance,
 } from '@e2e/utils/seed-client';
 import { expect, test } from '@playwright/test';
 
@@ -37,7 +39,9 @@ import { expect, test } from '@playwright/test';
  * this is the only place they are exercised with a gateway behind them.
  */
 const PROXY = '/api/v1/apisix/admin';
-const PREFIX = 'e2e-multi-team';
+// Its own for every run: afterAll deletes users and teams by this prefix, and
+// a fixed one would delete those of another run against the same backend.
+const PREFIX = randomId('e2e-multi-team');
 const PASSWORD = 'e2e-Mult1-team!pass';
 const fx = () => getFixtures();
 const onInstance = (team?: string) => ({
@@ -51,7 +55,6 @@ const route = (id: string) => ({
 });
 
 type Row = { value: { id: string; desc?: string; __team_id?: string } };
-type Assignment = { team_ids: string[]; team_id: string };
 
 // Every test reads what beforeAll made, and two of them write to it.
 test.describe.configure({ mode: 'serial' });
@@ -59,10 +62,10 @@ test.describe.configure({ mode: 'serial' });
 let mine: Team;
 let alsoMine: Team;
 let theirs: Team;
-let assignment: Assignment;
-const ROUTE_NAME = randomId(PREFIX);
+let userId: string;
+let assignment: UserInstance;
+const ROUTE_NAME = `${PREFIX}-route`;
 const routeOf = { mine: `${ROUTE_NAME}-a`, alsoMine: `${ROUTE_NAME}-b`, theirs: `${ROUTE_NAME}-c` };
-const made: string[] = [];
 
 const devToken = () => loginAdmin(`${PREFIX}-dev`, PASSWORD);
 
@@ -91,11 +94,11 @@ test.beforeAll(async () => {
   theirs = await ensureTeam(admin, { name: `${PREFIX}-c` });
 
   const user = await ensureUser(admin, { username: `${PREFIX}-dev`, password: PASSWORD });
-  assignment = (await apiFetch(
-    `/api/v1/user-access/${user.id}/instances/${fx().localInstanceId}/role`,
-    admin,
-    { method: 'POST', json: { role: 'developer', team_ids: [mine.id, alsoMine.id] } }
-  )) as Assignment;
+  userId = user.id;
+  assignment = await ensureUserInstanceRole(admin, userId, fx().localInstanceId, {
+    role: 'developer',
+    team_ids: [mine.id, alsoMine.id],
+  });
 
   // One route for each team: for an admin, X-Team-ID is the owner a write records.
   for (const [id, team] of [
@@ -108,15 +111,16 @@ test.beforeAll(async () => {
       headers: onInstance(team),
       json: route(id),
     });
-    made.push(id);
   }
 });
 
 test.afterAll(async () => {
   const admin = await loginAdmin();
   // Routes first: a team that still owns one cannot be deleted. Then the user,
-  // whose assignment names the teams.
-  for (const id of made.splice(0)) {
+  // whose assignment names the teams. Whatever this run's name is on, not a
+  // list kept by hand: a create that should have been refused and was not is
+  // exactly the route such a list would not hold.
+  for (const id of Object.keys(await listed(admin))) {
     await apiFetch(`${PROXY}/routes/${id}`, admin, {
       method: 'DELETE',
       headers: onInstance(),
@@ -142,6 +146,17 @@ test('an assignment holds every team it is given', async () => {
     { id: mine.id, name: mine.name },
     { id: alsoMine.id, name: alsoMine.name },
   ]);
+});
+
+test('a client that knows one team does not take the others away', async () => {
+  // The Users page of the release before the list reads the first team of an
+  // assignment and sends it back on any save - a changed email included.
+  const admin = await loginAdmin();
+  const saved = await ensureUserInstanceRole(admin, userId, fx().localInstanceId, {
+    role: 'developer',
+    team_id: mine.id,
+  });
+  expect(saved.team_ids).toEqual([mine.id, alsoMine.id]);
 });
 
 test('a developer sees the routes of every team they work for, and of no other', async () => {
@@ -242,10 +257,19 @@ test('a new route needs to be told which team it is for', async () => {
   );
 });
 
+test('deleting a route that is already gone is the gateway’s 404, not a question about teams', async () => {
+  const gone = await refusal(
+    apiFetch(`${PROXY}/routes/${ROUTE_NAME}-gone`, await devToken(), {
+      method: 'DELETE',
+      headers: onInstance(),
+    })
+  );
+  expect(gone?.status).toBe(404);
+});
+
 test('and belongs to the team that was named', async () => {
   const dev = await devToken();
   const id = `${ROUTE_NAME}-new`;
-  made.push(id);
 
   await apiFetch(`${PROXY}/routes/${id}`, dev, {
     method: 'PUT',
