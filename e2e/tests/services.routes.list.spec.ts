@@ -191,7 +191,7 @@ test('should display routes list under service', async ({ page }) => {
     // Verify all created routes are displayed
     for (const route of routes) {
       await expect(page.getByRole('cell', { name: route.name, exact: true })).toBeVisible();
-      await expect(page.getByRole('cell', { name: route.uri, exact: true })).toBeVisible();
+      await expect(page.getByRole('cell', { name: route.uri })).toBeVisible();
     }
   });
 

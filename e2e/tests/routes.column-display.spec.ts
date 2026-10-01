@@ -45,6 +45,10 @@ const seed = async (id: string, body: Record<string, unknown>) => {
   });
 };
 
+// Every test here seeds and deletes the same two ids, so two of them at once
+// delete each other's routes: one at a time, whatever the worker count.
+test.describe.configure({ mode: 'serial' });
+
 test.beforeEach(async () => {
   await seed(NAMED_ID, { uri: '/e2e-columns-named', name: ROUTE_NAME });
   // APISIX does not require a name, so the pinned column has to cope with one

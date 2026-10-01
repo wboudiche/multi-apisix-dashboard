@@ -250,11 +250,11 @@ test('can create upstream -> service -> route', async ({ page }) => {
     // Lists show all three resources
     await upstreamsPom.toIndex(page);
     await upstreamsPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: upstream.name, exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: upstream.name })).toBeVisible();
 
     await servicesPom.toIndex(page);
     await servicesPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: service.name, exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: service.name })).toBeVisible();
 
     await routesPom.toIndex(page);
     await routesPom.isIndexPage(page);

@@ -84,7 +84,7 @@ test.describe('page and page_size should work correctly', () => {
     // filter the item which not in the current page
     // it should be random, so we need get all items in the table
     const itemsInPage = await page
-      .getByRole('cell', { name: /^route_name_/ })
+      .getByRole('cell', { name: new RegExp(`^${FIXTURE_PREFIX}`) })
       .all();
     const names = await Promise.all(itemsInPage.map((v) => v.textContent()));
     return routes.filter((d) => !names.includes(d.name));
