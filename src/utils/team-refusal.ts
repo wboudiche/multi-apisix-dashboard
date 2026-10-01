@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { AxiosHeaders } from 'axios';
 import { getDefaultStore } from 'jotai';
 
 import i18n from '@/config/i18n';
@@ -51,7 +52,22 @@ export const teamRefusal = (
 
 type ProxyFailure = {
   response?: { data?: { code?: string; error_msg?: string } };
+  config?: { headers?: unknown };
   message?: string;
+};
+
+/**
+ * The instance a failed request was addressed to: the one it named, which the
+ * request interceptor always writes, or the selected one. The reason is about
+ * that instance's teams, whichever the tab has moved on to since.
+ */
+const addressedTo = (failure: ProxyFailure | undefined): string => {
+  const headers = failure?.config?.headers;
+  const named =
+    headers instanceof AxiosHeaders
+      ? headers.get('X-Instance-ID')
+      : (headers as Record<string, unknown> | undefined)?.['X-Instance-ID'];
+  return typeof named === 'string' && named ? named : selectedInstanceId();
 };
 
 /**
@@ -63,7 +79,7 @@ type ProxyFailure = {
 export const proxyFailureText = (error: unknown): string | undefined => {
   const failure = error as ProxyFailure | undefined;
   return (
-    teamRefusal(failure?.response?.data?.code) ||
+    teamRefusal(failure?.response?.data?.code, addressedTo(failure)) ||
     failure?.response?.data?.error_msg ||
     failure?.message ||
     undefined

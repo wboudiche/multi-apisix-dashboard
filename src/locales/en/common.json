@@ -952,8 +952,6 @@
     "buildUnknown": "Build of unknown commit, {{date}}",
     "allTeams": "All Teams",
     "allMyTeams": "All my teams",
-    "ownTeamsLoadFailedTitle": "Teams unavailable",
-    "ownTeamsLoadFailed": "Could not read this account's teams on this instance, so there is no team to choose here.",
     "teamSwitcher": "Team",
     "selectInstance": "Select instance",
     "healthConnected": "Connected",

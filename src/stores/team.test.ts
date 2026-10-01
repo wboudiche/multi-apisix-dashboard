@@ -43,11 +43,11 @@ vi.stubGlobal('localStorage', {
 });
 
 let currentTeamIdAtom: TeamModule['currentTeamIdAtom'];
-let ownTeamsAtom: TeamModule['ownTeamsAtom'];
 let sentTeamIdAtom: TeamModule['sentTeamIdAtom'];
 let clearTeamPicks: TeamModule['clearTeamPicks'];
 let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
 let currentUserAtom: AuthModule['currentUserAtom'];
+let userInstancesAtom: AuthModule['userInstancesAtom'];
 let req: ReqModule['req'];
 let reqFor: ReqModule['reqFor'];
 let apiClient: ClientModule['apiClient'];
@@ -65,9 +65,9 @@ const answer = async (config: InternalAxiosRequestConfig) => {
 };
 
 beforeAll(async () => {
-  ({ currentTeamIdAtom, ownTeamsAtom, sentTeamIdAtom, clearTeamPicks } = await import('./team'));
+  ({ currentTeamIdAtom, sentTeamIdAtom, clearTeamPicks } = await import('./team'));
   ({ currentInstanceIdAtom } = await import('./instance'));
-  ({ currentUserAtom } = await import('./auth'));
+  ({ currentUserAtom, userInstancesAtom } = await import('./auth'));
   ({ req, reqFor } = await import('@/config/req'));
   ({ apiClient } = await import('@/apis/client'));
   req.defaults.adapter = answer;
@@ -97,7 +97,7 @@ beforeEach(() => {
   storage.clear();
   sent.length = 0;
   store().set(currentUserAtom, account('super_admin'));
-  store().set(ownTeamsAtom, {});
+  store().set(userInstancesAtom, []);
   // A fresh instance id per test: the team atom keeps what it read for an
   // instance, so reusing one would carry a test's choice into the next.
   n += 1;
@@ -211,14 +211,26 @@ describe('the team this tab works with', () => {
 // tab sends for them is one of the teams the header offers them, or nothing.
 describe('the team a developer with several sends', () => {
   const team = (id: string) => ({ id, name: `team ${id}` });
-  // What the header stores from /user for the account on an instance: every
-  // id of the assignment, and the teams among them that still exist.
-  const own = (instance: string, ids: string[], live: string[] = ids) => {
+  // The account's assignment on an instance, as its access list answers it:
+  // every id it holds, and the teams among them that still exist.
+  const own = (
+    instance: string,
+    ids: string[],
+    live: string[] = ids,
+    role: 'developer' | 'viewer' | 'instance_admin' = 'developer'
+  ) => {
     store().set(currentUserAtom, account(''));
-    store().set(ownTeamsAtom, {
-      ...store().get(ownTeamsAtom),
-      [instance]: { ids, teams: live.map(team) },
-    });
+    store().set(userInstancesAtom, [
+      ...store().get(userInstancesAtom).filter((a) => a.instance_id !== instance),
+      {
+        user_id: 'user-none',
+        instance_id: instance,
+        role,
+        team_ids: ids,
+        team_id: ids[0] ?? '',
+        teams: live.map(team),
+      },
+    ]);
   };
 
   it('is the one of their teams they picked', async () => {
@@ -280,9 +292,9 @@ describe('the team a developer with several sends', () => {
     expect(lastTeam()).toBe('T2');
   });
 
-  it('is none before the header has read their teams, and the pick once it has', async () => {
-    // A reload: the pick is in storage at once, the teams arrive with the
-    // header. Nothing is sent on trust in between.
+  it('is none before the access list has arrived, and the pick once it has', async () => {
+    // A reload: the pick is in storage at once, the access list arrives with
+    // the header. Nothing is sent on trust in between.
     store().set(currentUserAtom, account(''));
     anotherTabPicks(here(), 'T2');
 
@@ -296,9 +308,27 @@ describe('the team a developer with several sends', () => {
     expect(lastTeam()).toBe('T2');
   });
 
-  it('is none for an account the header stores no teams for', async () => {
-    // An instance admin - still #203 - or a session that has just begun.
+  it('is none for an instance admin, whatever teams the assignment holds', async () => {
+    // Still #203: an admin to the proxy, whose header would become the owner
+    // of what it creates, and who has no switcher to see it in. The role is
+    // read from the same answer as the teams, so a developer promoted in the
+    // middle of a session stops sending the team it had picked.
+    own(here(), ['T1', 'T2']);
+    store().set(currentTeamIdAtom, 'T1');
+    await req.get('/routes');
+    expect(lastTeam()).toBe('T1');
+
+    own(here(), ['T1', 'T2'], ['T1', 'T2'], 'instance_admin');
+    await req.get('/routes');
+    expect(lastTeam()).toBeUndefined();
+    expect(store().get(sentTeamIdAtom)).toBe('');
+  });
+
+  it('is none when the answer names no teams, as from a backend before it did', async () => {
     store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [
+      { user_id: 'user-none', instance_id: here(), role: 'developer', team_ids: ['T1', 'T2'], team_id: 'T1' },
+    ]);
     store().set(currentTeamIdAtom, 'T1');
 
     await req.get('/routes');
@@ -316,11 +346,5 @@ describe('the team a developer with several sends', () => {
     expect(lastTeam()).toBe('T4');
     await req.get('/routes');
     expect(lastTeam()).toBe('T1');
-  });
-
-  it('forgets the last account’s teams when a session starts', () => {
-    own(here(), ['T1', 'T2']);
-    clearTeamPicks();
-    expect(store().get(ownTeamsAtom)).toEqual({});
   });
 });

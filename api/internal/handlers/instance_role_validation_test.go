@@ -98,3 +98,52 @@ func TestRoleNeedsTeam(t *testing.T) {
 		}
 	}
 }
+
+// The access list answers each assignment with the teams it holds that still
+// exist, by name: what a developer with several is offered to choose between,
+// beside the ids and the role it is checked against (#301).
+func TestAssignmentWithTeams(t *testing.T) {
+	names := map[string]string{"t1": "Payments", "t2": "Checkout"}
+	ui := &models.UserInstance{
+		UserID: "u", InstanceID: "i", Role: models.RoleDeveloper,
+		// t9 was deleted since: still named by the assignment (#375).
+		TeamIDs: []string{"t2", "t9", "t1"},
+	}
+
+	out, err := json.Marshal(assignmentWithTeams(ui, names))
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	var got struct {
+		UserID     string     `json:"user_id"`
+		InstanceID string     `json:"instance_id"`
+		Role       string     `json:"role"`
+		TeamIDs    []string   `json:"team_ids"`
+		TeamID     string     `json:"team_id"`
+		Teams      []teamName `json:"teams"`
+	}
+	if err := json.Unmarshal(out, &got); err != nil {
+		t.Fatalf("decode %s: %v", out, err)
+	}
+
+	// The record, as it is answered everywhere else.
+	if got.UserID != "u" || got.InstanceID != "i" || got.Role != models.RoleDeveloper || got.TeamID != "t2" {
+		t.Errorf("the record: %s", out)
+	}
+	if !reflect.DeepEqual(got.TeamIDs, []string{"t2", "t9", "t1"}) {
+		t.Errorf("team_ids %v: every id the assignment holds, the deleted one too", got.TeamIDs)
+	}
+	// The teams that exist, in the assignment's order.
+	want := []teamName{{ID: "t2", Name: "Checkout"}, {ID: "t1", Name: "Payments"}}
+	if !reflect.DeepEqual(got.Teams, want) {
+		t.Errorf("teams %v, want %v", got.Teams, want)
+	}
+
+	// A list, not null, for an assignment with no team.
+	out, _ = json.Marshal(assignmentWithTeams(&models.UserInstance{Role: models.RoleInstanceAdmin}, names))
+	var raw map[string]json.RawMessage
+	_ = json.Unmarshal(out, &raw)
+	if string(raw["teams"]) != "[]" {
+		t.Errorf("teams %s, want []", raw["teams"])
+	}
+}

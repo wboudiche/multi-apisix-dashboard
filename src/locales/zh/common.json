@@ -40,8 +40,6 @@
     "buildUnknown": "未知提交的构建，{{date}}",
     "allTeams": "所有团队",
     "allMyTeams": "我的所有团队",
-    "ownTeamsLoadFailedTitle": "团队不可用",
-    "ownTeamsLoadFailed": "无法读取此账户在该实例上的团队，因此此处没有可选择的团队。",
     "teamSwitcher": "团队",
     "selectInstance": "选择实例",
     "healthConnected": "已连接",

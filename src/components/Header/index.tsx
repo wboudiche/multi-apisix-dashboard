@@ -39,7 +39,6 @@ import { useTranslation } from 'react-i18next';
 import { instanceApi, type InstanceHealth } from '@/apis/instances';
 import {
   instancesQueryOptions,
-  ownTeamsQueryOptions,
   teamsQueryOptions,
   userInstancesQueryOptions,
 } from '@/apis/queries';
@@ -110,9 +109,16 @@ const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
   );
 };
 
-// The queries about the account itself rather than about what a team owns:
-// what a developer's team narrows is everything else.
-const ACCOUNT_QUERIES = new Set(['instances', 'user-instances', 'own-teams', 'teams', 'instance-health']);
+// The queries a developer's or a viewer's team narrows: the lists and the
+// records of what a team can own, as src/apis/hooks.ts keys them.
+const TEAM_OWNED_QUERIES = new Set([
+  'routes', 'route',
+  'services', 'service',
+  'upstreams', 'upstream',
+  'consumers', 'consumer', 'credentials', 'credential',
+  'consumer_groups', 'consumer_group',
+  'stream_routes', 'stream_route',
+]);
 
 type TeamSwitcherProps = {
   // An admin's: the whole catalogue. A developer's or a viewer's: their own
@@ -357,48 +363,31 @@ export const Header: FC<HeaderProps> = (props) => {
 
   const { isAdmin, role: effectiveRole } = usePermission();
 
-  // A developer's or a viewer's own teams on this instance: the catalogue
-  // above answers them 403, and their assignment holds only ids. Read once
-  // and stored, for the switcher, for what the requests carry and for the
-  // lists that name a team - read apart, they disagreed.
-  const hasOwnTeams = effectiveRole === 'developer' || effectiveRole === 'viewer';
-  const { data: ownTeams, error: ownTeamsError } = useQuery({
-    ...ownTeamsQueryOptions(currentUser?.id, currentInstanceId),
-    enabled: !!currentUser && !!currentInstanceId && hasOwnTeams,
-  });
-  const setOwnTeams = useSetAtom(ownTeamsAtom);
-  useEffect(() => {
-    if (!ownTeams || !currentInstanceId) return;
-    setOwnTeams((all) => ({ ...all, [currentInstanceId]: ownTeams }));
-  }, [ownTeams, currentInstanceId, setOwnTeams]);
-
-  useEffect(() => {
-    if (!ownTeamsError) return;
-    // Not quiet like the catalogue's 403: everyone may read their own teams,
-    // and without them a developer with several has no switcher - and a
-    // refusal telling them to choose a team in a header that offers none.
-    notifications.show({
-      id: 'header-own-teams-load-failed',
-      title: t('header.ownTeamsLoadFailedTitle'),
-      message: describeError(ownTeamsError, t('header.ownTeamsLoadFailed')),
-      color: 'red',
-    });
-  }, [ownTeamsError, t]);
+  // A developer's or a viewer's own teams on this instance, out of the access
+  // list above: the catalogue answers them 403. The same read the requests
+  // are checked against (see ownTeamsAtom).
+  const ownTeams = useAtomValue(ownTeamsAtom)[currentInstanceId];
 
   // What is sent for a developer or a viewer narrows every list a team can
   // own, and none of them is keyed by it. So when it changes - a pick, or the
-  // teams arriving after a reload and making the stored pick count - they are
-  // asked again. Not on mount: nothing has been asked under another team yet.
+  // access list arriving after a reload and making the stored pick count -
+  // they are asked again. Not on mount: nothing has been asked under another
+  // team yet.
+  //
+  // Whether or not a page is showing them: a list a route loader is still
+  // waiting for has no observer, and left alone it would arrive as it was
+  // asked - under the team before - and be taken for fresh.
   const sentTeamId = useAtomValue(sentTeamIdAtom);
   const lastSentTeamId = useRef(sentTeamId);
   useEffect(() => {
     if (lastSentTeamId.current === sentTeamId) return;
     lastSentTeamId.current = sentTeamId;
-    if (!hasOwnTeams) return;
+    if (isAdmin) return;
     queryClient.invalidateQueries({
-      predicate: (query) => !ACCOUNT_QUERIES.has(String(query.queryKey[0])),
+      predicate: (query) => TEAM_OWNED_QUERIES.has(String(query.queryKey[0])),
+      refetchType: 'all',
     });
-  }, [sentTeamId, hasOwnTeams]);
+  }, [sentTeamId, isAdmin]);
 
   const switcherTeams = isAdmin ? teams : (ownTeams?.teams ?? []);
 

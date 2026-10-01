@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -666,7 +667,75 @@ func (h *InstanceHandler) GetUserInstances(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, userInstances)
+	// With the names of the teams each assignment holds. The catalogue of
+	// teams is an admin's to read, so a developer or a viewer with several
+	// teams learns here what to call them - in the same answer as the ids and
+	// the role, for every instance at once, so that what the dashboard offers
+	// them to choose between and what it checks a choice against are one read
+	// (#301).
+	teams, err := h.teamService.ListTeams(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	names := make(map[string]string, len(teams))
+	for _, team := range teams {
+		names[team.ID] = team.Name
+	}
+	views := make([]assignmentView, 0, len(userInstances))
+	for _, ui := range userInstances {
+		views = append(views, assignmentWithTeams(ui, names))
+	}
+
+	c.JSON(http.StatusOK, views)
+}
+
+// teamName is a team as an assignment's answer names it.
+type teamName struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// assignmentView is an assignment as it is answered: the record, and the
+// teams among its ids that still exist, by name.
+//
+// The record is embedded by value for its fields, not for its encoding: its
+// own MarshalJSON would be promoted and write the record alone, so the view
+// encodes itself.
+type assignmentView struct {
+	assignment models.UserInstance
+	teams      []teamName
+}
+
+func (v assignmentView) MarshalJSON() ([]byte, error) {
+	record, err := json.Marshal(v.assignment)
+	if err != nil {
+		return nil, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(record, &fields); err != nil {
+		return nil, err
+	}
+	teams, err := json.Marshal(v.teams)
+	if err != nil {
+		return nil, err
+	}
+	fields["teams"] = teams
+	return json.Marshal(fields)
+}
+
+// assignmentWithTeams pairs an assignment with the teams it holds that still
+// exist, in the assignment's order. A team that is gone - deleting one does
+// not look at the assignments that name it (#375) - keeps its id in team_ids
+// and has no entry in teams: the two together are how a reader tells.
+func assignmentWithTeams(ui *models.UserInstance, names map[string]string) assignmentView {
+	teams := make([]teamName, 0, len(ui.TeamIDs))
+	for _, id := range ui.TeamIDs {
+		if name, ok := names[id]; ok {
+			teams = append(teams, teamName{ID: id, Name: name})
+		}
+	}
+	return assignmentView{assignment: *ui, teams: teams}
 }
 
 func (h *InstanceHandler) hasAccess(c *gin.Context, instanceID string) bool {

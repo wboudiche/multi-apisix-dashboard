@@ -17,8 +17,6 @@
 
 import axios from 'axios';
 
-import type { OwnTeams } from '@/stores/team';
-import { parseRecordList } from '@/utils/list-shape';
 import { assertJsonBody } from '@/utils/response-shape';
 
 import { apiClient } from './client';
@@ -88,25 +86,6 @@ export const authApi = {
   getCurrentUser: async (): Promise<User> => {
     const response = await apiClient.get<User>('/api/v1/user');
     return response.data;
-  },
-
-  // The account's own teams on an instance: every id its assignment holds,
-  // and the teams among them that still exist, with their names. The team
-  // catalogue is an admin's to read, so this is the only place a developer or
-  // a viewer with several teams can learn what to call them (#301). One
-  // response for both, so that the two cannot disagree for being read apart.
-  ownTeams: async (instanceId: string): Promise<OwnTeams> => {
-    const response = await apiClient.get<{ team_ids?: unknown; teams?: unknown }>(
-      '/api/v1/user',
-      { headers: { 'X-Instance-ID': instanceId } }
-    );
-    // Both absent for an account with no team there, and from a backend
-    // before the list.
-    const { team_ids: ids, teams } = response.data;
-    return {
-      ids: Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [],
-      teams: parseRecordList<OwnTeams['teams'][number]>(teams ?? [], '/api/v1/user'),
-    };
   },
 
   changePassword: async (oldPassword: string, newPassword: string) => {

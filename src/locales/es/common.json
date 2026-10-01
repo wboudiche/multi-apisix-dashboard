@@ -40,8 +40,6 @@
     "buildUnknown": "Compilación de un commit desconocido, {{date}}",
     "allTeams": "Todos los equipos",
     "allMyTeams": "Todos mis equipos",
-    "ownTeamsLoadFailedTitle": "Equipos no disponibles",
-    "ownTeamsLoadFailed": "No se pudieron leer los equipos de esta cuenta en esta instancia, así que aquí no hay equipo que elegir.",
     "teamSwitcher": "Equipo",
     "selectInstance": "Seleccionar instancia",
     "healthConnected": "Conectado",

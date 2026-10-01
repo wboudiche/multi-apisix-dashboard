@@ -40,8 +40,6 @@
     "buildUnknown": "Build eines unbekannten Commits, {{date}}",
     "allTeams": "Alle Teams",
     "allMyTeams": "Alle meine Teams",
-    "ownTeamsLoadFailedTitle": "Teams nicht verfügbar",
-    "ownTeamsLoadFailed": "Die Teams dieses Kontos auf dieser Instanz konnten nicht gelesen werden; hier kann daher kein Team gewählt werden.",
     "teamSwitcher": "Team",
     "selectInstance": "Instanz auswählen",
     "healthConnected": "Verbunden",

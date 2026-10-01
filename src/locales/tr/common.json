@@ -40,8 +40,6 @@
     "buildUnknown": "Bilinmeyen bir commit’in yapısı, {{date}}",
     "allTeams": "Tüm takımlar",
     "allMyTeams": "Tüm takımlarım",
-    "ownTeamsLoadFailedTitle": "Takımlar kullanılamıyor",
-    "ownTeamsLoadFailed": "Bu hesabın bu örnekteki takımları okunamadı; bu yüzden burada seçilecek takım yok.",
     "teamSwitcher": "Takım",
     "selectInstance": "Örnek seçin",
     "healthConnected": "Bağlı",

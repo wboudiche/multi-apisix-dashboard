@@ -19,7 +19,6 @@ import axios from 'axios';
 
 import { MalformedResponseError } from '@/utils/response-shape';
 
-import { authApi } from './auth';
 import { instanceApi } from './instances';
 import { teamApi } from './teams';
 
@@ -103,28 +102,5 @@ export const teamsQueryOptions = (userId: string | undefined) =>
     queryKey: ['teams', userId],
     queryFn: () => teamApi.list(),
     staleTime: 60_000,
-    retry: retryTransient,
-  });
-
-/**
- * The signed-in account's own teams on an instance.
- *
- * What a developer or a viewer chooses between in the header when their
- * assignment holds several (#301): the catalogue above is admin-only, and
- * their assignment holds ids. Keyed by the instance as well as the user - the
- * teams are the assignment's, and an account has one per instance.
- *
- * The header runs it and stores the answer (ownTeamsAtom); everything else
- * reads that, so the switcher, the requests and the lists go by one read.
- */
-export const ownTeamsQueryOptions = (
-  userId: string | undefined,
-  instanceId: string | undefined
-) =>
-  queryOptions({
-    queryKey: ['own-teams', userId, instanceId],
-    queryFn: () => authApi.ownTeams(instanceId!),
-    enabled: !!userId && !!instanceId,
-    staleTime: 30_000,
     retry: retryTransient,
   });
