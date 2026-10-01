@@ -54,17 +54,34 @@ export const BatchDeleteBtn = (props: BatchDeleteBtnProps) => {
         </Text>
       ),
       labels: { confirm: t('form.btn.delete'), cancel: t('form.btn.cancel') },
-      onConfirm: () =>
-        Promise.all(ids.map((id) => req.delete(`${apiBase}/${id}`)))
-          .then(() => {
-            notifications.show({
-              message: t('info.delete.success', { name: `${ids.length} ${resourceName}` }),
-              color: 'green',
-            });
-            onClearSelection?.();
-            onSuccess?.();
-            queryClient.invalidateQueries();
-          }),
+      // Every answer waited for and counted. On the first refusal Promise.all
+      // gave up the lot: the other deletes had gone through, and the page was
+      // left as it was - the selection still ticked, the list not asked again,
+      // and nothing said about what had and had not been deleted (#371). Each
+      // refusal has its own toast, from `req`, with the gateway's reason.
+      onConfirm: async () => {
+        const answers = await Promise.allSettled(
+          ids.map((id) => req.delete(`${apiBase}/${id}`))
+        );
+        const failed = answers.filter((answer) => answer.status === 'rejected').length;
+        const deleted = answers.length - failed;
+        if (failed === 0) {
+          notifications.show({
+            message: t('info.delete.success', { name: `${deleted} ${resourceName}` }),
+            color: 'green',
+          });
+        } else {
+          notifications.show({
+            message: t('info.delete.partial', { deleted, failed, name: resourceName }),
+            color: deleted > 0 ? 'orange' : 'red',
+          });
+        }
+        // Whatever the answers: what is left on the list is what the next
+        // selection is made from.
+        onClearSelection?.();
+        onSuccess?.();
+        queryClient.invalidateQueries();
+      },
     });
   };
 

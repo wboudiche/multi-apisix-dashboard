@@ -762,6 +762,7 @@
     "delete": {
       "content": "¿Desea eliminar el {{name}}?",
       "success": "Eliminado {{name}} con éxito",
+      "partial": "{{deleted}} {{name}} eliminados, {{failed}} no se pudieron eliminar",
       "title": "Eliminar {{name}}"
     },
     "detail": {

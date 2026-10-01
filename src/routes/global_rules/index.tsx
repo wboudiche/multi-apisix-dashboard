@@ -17,7 +17,7 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getGlobalRuleListQueryOptions, useGlobalRuleList } from '@/apis/hooks';
@@ -28,6 +28,7 @@ import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_GLOBAL_RULES } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { useRowSelection } from '@/hooks/useRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
@@ -47,7 +48,10 @@ function RouteComponent() {
 function GlobalRulesList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination } = useGlobalRuleList();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Never more than the rows on screen: see useRowSelection (#371).
+  const [selectedIds, setSelectedIds] = useRowSelection(
+    data.list.map((record) => record.value.id)
+  );
 
   const columns = useMemo<
     ProColumns<APISIXType['RespConsumerGroupItem']>[]

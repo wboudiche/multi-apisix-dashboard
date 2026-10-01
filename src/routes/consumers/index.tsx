@@ -17,7 +17,7 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getConsumerListQueryOptions, useConsumerList } from '@/apis/hooks';
@@ -30,6 +30,7 @@ import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMERS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
+import { useRowSelection } from '@/hooks/useRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
@@ -37,7 +38,10 @@ function ConsumersList() {
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination } = useConsumerList();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Never more than the rows on screen: see useRowSelection (#371).
+  const [selectedIds, setSelectedIds] = useRowSelection(
+    data.list.map((record) => record.value.username)
+  );
 
   const columns = useMemo<ProColumns<APISIXType['RespConsumerItem']>[]>(() => {
     return [

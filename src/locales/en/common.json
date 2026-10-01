@@ -690,6 +690,7 @@
     "delete": {
       "content": "Do you want to delete the {{name}}",
       "success": "Delete {{name}} Successfully",
+      "partial": "{{deleted}} {{name}} deleted, {{failed}} could not be deleted",
       "title": "Delete {{name}}"
     },
     "publish": {
