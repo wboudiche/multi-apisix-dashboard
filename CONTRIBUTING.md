@@ -47,7 +47,7 @@ Before you push:
 
 - `pnpm lint` must pass with zero warnings (`--max-warnings=0`).
 - `pnpm build` must succeed (TypeScript + Vite).
-- `go test -C api ./...` must pass for backend changes.
+- `go vet -C api ./...` and `go test -C api -race ./...` must pass for backend changes; CI runs both.
 - E2E (`pnpm e2e`) should pass for changes that touch resource pages or the auth flow.
 - Add tests for new functionality. Co-locate Go tests next to the code; add Playwright specs under `e2e/tests/`.
 - Multi-tenant RBAC and ownership coverage lives in `e2e/tests/*.ownership.spec.ts` and `e2e/tests/*.restricted-write.spec.ts`; fixtures (test users, teams, second instance) are provisioned by `e2e/utils/global-setup.ts` before any spec runs.

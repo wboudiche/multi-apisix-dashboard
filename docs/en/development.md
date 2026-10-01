@@ -128,6 +128,7 @@ Run a single E2E spec: `pnpm e2e e2e/tests/multi-instance.spec.ts` (add `--heade
 
 ```sh
 go test -C api ./...                         # all backend tests
+go vet -C api ./... && go test -C api -race ./...  # what CI runs
 go test -C api ./internal/services -run Label  # one package
 go build -C api -o ../bin/api ./cmd          # build
 ```
