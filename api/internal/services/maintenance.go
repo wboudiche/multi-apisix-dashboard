@@ -38,7 +38,10 @@ type OrphanedAssignment struct {
 	UserID     string `json:"user_id"`
 	InstanceID string `json:"instance_id"`
 	Role       string `json:"role,omitempty"`
-	TeamID     string `json:"team_id,omitempty"`
+	// TeamID is the first of TeamIDs, under the name it had when an
+	// assignment held one team.
+	TeamID  string   `json:"team_id,omitempty"`
+	TeamIDs []string `json:"team_ids,omitempty"`
 }
 
 // PurgeResult says what became of each key a purge was asked to delete.
@@ -199,7 +202,10 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 		var ui models.UserInstance
 		if json.Unmarshal(value, &ui) == nil {
 			orphan.Role = ui.Role
-			orphan.TeamID = ui.TeamID
+			if len(ui.TeamIDs) > 0 {
+				orphan.TeamID = ui.TeamIDs[0]
+				orphan.TeamIDs = ui.TeamIDs
+			}
 		}
 		orphans = append(orphans, orphan)
 	}

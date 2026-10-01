@@ -116,11 +116,99 @@ type Scope struct {
 
 // UserInstance represents the role assignment between user and instance
 type UserInstance struct {
-	UserID     string `json:"user_id"`
-	InstanceID string `json:"instance_id"`
-	TeamID     string `json:"team_id"` // The Team context for this instance
-	Role       string `json:"role"`    // instance_admin, developer, viewer
-	Scope      *Scope `json:"scope,omitempty"`
+	UserID     string
+	InstanceID string
+	// TeamIDs are the teams the user works for on this instance. For a
+	// developer or a viewer they are the access boundary: what one of them
+	// owns is what the user may see and change. An assignment held a single
+	// team until #301, which left instance_admin as the only way to let
+	// somebody work for two.
+	TeamIDs []string
+	Role    string // instance_admin, developer, viewer
+	Scope   *Scope
+}
+
+// userInstanceJSON is the record as it is stored and sent.
+//
+// team_id is the shape from before the list. It is read, because every record
+// written before #301 holds it and nothing rewrites them; and it is still
+// written, as the first team of the list, for the dashboard that reads one
+// team and for a binary rolled back to before the list - both then see a team
+// the user does have.
+type userInstanceJSON struct {
+	UserID     string   `json:"user_id"`
+	InstanceID string   `json:"instance_id"`
+	TeamIDs    []string `json:"team_ids"`
+	TeamID     string   `json:"team_id"`
+	Role       string   `json:"role"`
+	Scope      *Scope   `json:"scope,omitempty"`
+}
+
+// UnmarshalJSON reads the list, or the single team of a record that predates
+// it. Where both are present the list is the one that counts.
+func (ui *UserInstance) UnmarshalJSON(data []byte) error {
+	var raw userInstanceJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	teams := raw.TeamIDs
+	if len(teams) == 0 && raw.TeamID != "" {
+		teams = []string{raw.TeamID}
+	}
+	*ui = UserInstance{
+		UserID:     raw.UserID,
+		InstanceID: raw.InstanceID,
+		TeamIDs:    NormalizeTeamIDs(teams),
+		Role:       raw.Role,
+		Scope:      raw.Scope,
+	}
+	return nil
+}
+
+// MarshalJSON writes the list and, under the old name, its first team.
+func (ui UserInstance) MarshalJSON() ([]byte, error) {
+	teams := NormalizeTeamIDs(ui.TeamIDs)
+	first := ""
+	if len(teams) > 0 {
+		first = teams[0]
+	}
+	return json.Marshal(userInstanceJSON{
+		UserID:     ui.UserID,
+		InstanceID: ui.InstanceID,
+		TeamIDs:    teams,
+		TeamID:     first,
+		Role:       ui.Role,
+		Scope:      ui.Scope,
+	})
+}
+
+// HasTeam reports whether the user works for teamID on this instance. The
+// empty id is no team, and nobody has it.
+func (ui UserInstance) HasTeam(teamID string) bool {
+	if teamID == "" {
+		return false
+	}
+	for _, id := range ui.TeamIDs {
+		if id == teamID {
+			return true
+		}
+	}
+	return false
+}
+
+// NormalizeTeamIDs returns the teams in the order given, without blanks or
+// repeats. Never nil: the list is sent as [] rather than null.
+func NormalizeTeamIDs(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }
 
 // TeamScopedResources are the APISIX resource types whose objects are owned by

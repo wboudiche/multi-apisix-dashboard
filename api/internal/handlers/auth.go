@@ -189,11 +189,25 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 	instanceID := c.GetHeader("X-Instance-ID")
 	if instanceID != "" {
 		ui, err := h.authService.GetUserInstance(c.Request.Context(), userID, instanceID)
-		if err == nil && ui != nil && ui.TeamID != "" {
-			resp["team_id"] = ui.TeamID
-			team, err := h.teamService.GetTeam(c.Request.Context(), ui.TeamID)
-			if err == nil && team != nil {
-				resp["team_name"] = team.Name
+		if err == nil && ui != nil && len(ui.TeamIDs) > 0 {
+			// The caller's teams on this instance, with their names: the list
+			// of teams is an admin's to read, so this is the only place a
+			// developer with several can learn what to call them (#301).
+			teams := []gin.H{}
+			for _, teamID := range ui.TeamIDs {
+				team, err := h.teamService.GetTeam(c.Request.Context(), teamID)
+				if err != nil || team == nil {
+					continue
+				}
+				teams = append(teams, gin.H{"id": team.ID, "name": team.Name})
+			}
+			resp["team_ids"] = ui.TeamIDs
+			resp["teams"] = teams
+			// The first of them, under the names this answer had when an
+			// assignment held one team.
+			resp["team_id"] = ui.TeamIDs[0]
+			if len(teams) > 0 && teams[0]["id"] == ui.TeamIDs[0] {
+				resp["team_name"] = teams[0]["name"]
 			}
 		}
 	}

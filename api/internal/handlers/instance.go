@@ -95,9 +95,30 @@ func applyControlAPIURL(instance *models.Instance, update *string) {
 }
 
 type SetUserInstanceRoleRequest struct {
-	Role   string        `json:"role" binding:"required"`
+	Role string `json:"role" binding:"required"`
+	// TeamIDs are the teams the user works for on the instance (#301).
+	TeamIDs []string `json:"team_ids"`
+	// TeamID is what a client from before the list sends: one team.
 	TeamID string        `json:"team_id"`
 	Scope  *models.Scope `json:"scope"`
+}
+
+// teams is the list the request asks for: team_ids, or the single team_id of a
+// client that does not send a list yet. Where both are sent the list counts,
+// as it does when a record is read.
+func (r SetUserInstanceRoleRequest) teams() []string {
+	ids := r.TeamIDs
+	if len(ids) == 0 && r.TeamID != "" {
+		ids = []string{r.TeamID}
+	}
+	return models.NormalizeTeamIDs(ids)
+}
+
+// roleNeedsTeam reports whether an assignment with this role is nothing
+// without a team. For a developer or a viewer the teams are the whole of what
+// they can see; an instance admin is not tied to one.
+func roleNeedsTeam(role string) bool {
+	return role == models.RoleDeveloper || role == models.RoleViewer
 }
 
 // InstanceResponse is an instance plus any non-fatal advisory about it. The
@@ -568,14 +589,15 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 		return
 	}
 
-	if req.Role == models.RoleDeveloper || req.Role == models.RoleViewer {
-		if req.TeamID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required for developer and viewer roles"})
-			return
-		}
+	teamIDs := req.teams()
+	if roleNeedsTeam(req.Role) && len(teamIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required for developer and viewer roles"})
+		return
 	}
-	if req.TeamID != "" {
-		team, err := h.teamService.GetTeam(c.Request.Context(), req.TeamID)
+	// Every one of them: a team that does not exist would be a boundary around
+	// nothing, and the assignment would look made.
+	for _, teamID := range teamIDs {
+		team, err := h.teamService.GetTeam(c.Request.Context(), teamID)
 		if err != nil || team == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team_id: team not found"})
 			return
@@ -585,7 +607,7 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 	ui := &models.UserInstance{
 		UserID:     userID,
 		InstanceID: instanceID,
-		TeamID:     req.TeamID,
+		TeamIDs:    teamIDs,
 		Role:       req.Role,
 		Scope:      req.Scope,
 	}

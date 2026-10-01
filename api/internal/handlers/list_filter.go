@@ -47,7 +47,7 @@ var paginationParams = []string{"page", "page_size"}
 // unassignedTeamFilter asks for the resources that belong to no team.
 //
 // Those are a real category rather than an oddity: they are invisible to every
-// non-admin until assigned (see nonAdminMayAccess), and detaching one is now a
+// non-admin until assigned (see teamScope.mayAccess), and detaching one is now a
 // deliberate action, so an admin needs a way to find them. A reserved token
 // rather than an empty value, which already means "no filter at all".
 const unassignedTeamFilter = "__none__"

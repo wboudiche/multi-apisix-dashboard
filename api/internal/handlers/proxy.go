@@ -167,6 +167,15 @@ const unassignedResourceCode = "resource_not_assigned"
 // can point at the field rather than show a generic failure.
 const alreadyExistsCode = "resource_already_exists"
 
+// teamRequiredCode marks a create refused because the caller has not said
+// which of their teams the new resource is for (or has none), so the UI can
+// ask for a team rather than show a refusal (#301).
+const teamRequiredCode = "team_required"
+
+// teamNotAssignedCode marks a request made for a team the caller does not
+// work for on this instance.
+const teamNotAssignedCode = "team_not_assigned"
+
 // maxListRows is the point past which a full list fetch is worth a log line.
 // Nothing is truncated - dropping rows would hide resources - but an operator
 // deserves to know the dashboard is pulling this much per list request.
@@ -348,20 +357,16 @@ const (
 	couldNotVerifyMsg     = "Could not verify the resource before writing to it"
 	otherTeamMsg          = "Resource owned by another team"
 	accessDeniedMsg       = "Access denied to this resource"
+	teamRequiredMsg       = "Choose which of your teams this is for before creating it."
+	teamNotAssignedMsg    = "You are not assigned to this team on this instance"
 )
 
-// nonAdminMayAccess reports whether a non-admin whose team is callerTeamID may
-// see or modify a resource owned by ownerTeamID.
-//
-// A resource with no team is administrative territory: it is invisible and
-// unwritable to non-admins until an admin assigns it (see ReassignOwnership).
-// Resources predating the dashboard, or created directly against the Admin API,
-// arrive in exactly that state.
-//
-// A caller with no team of their own passes nothing: they own no resources, and
-// unowned resources must not become a free-for-all for teamless accounts.
-func nonAdminMayAccess(ownerTeamID, callerTeamID string) bool {
-	return ownerTeamID != "" && ownerTeamID == callerTeamID
+// refuse answers a request the team rules turn down. error_msg as well as
+// error: `req` (the APISIX admin client) renders a failure from
+// error_msg/message, so a refusal carrying only `error` shows a blank toast.
+func refuse(c *gin.Context, status int, msg, code string) {
+	c.JSON(status, gin.H{"error": msg, "error_msg": msg, "code": code})
+	c.Abort()
 }
 
 // ownershipChecked reports whether a request has to be checked against the
@@ -509,7 +514,17 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// Who this caller acts as, and for which team: callerTeamScope, so that the
 	// route test cannot come to a different answer about the same request
 	// (#311).
-	isAdmin, effectiveTeamID := callerTeamScope(c)
+	scope := callerTeamScope(c)
+	isAdmin, effectiveTeamID := scope.isAdmin, scope.acting
+	// A team the caller does not work for here. Before #301 a non-admin's
+	// header was ignored and their one team applied; now that it says which of
+	// their teams a request is for, a team outside them is a request for
+	// something they cannot have, and is told so rather than answered for
+	// another team.
+	if scope.foreign {
+		refuse(c, http.StatusForbidden, teamNotAssignedMsg, teamNotAssignedCode)
+		return
+	}
 
 	// Resolve the target instance through the same canonical helper RBACMiddleware
 	// uses. Resolving it differently here (e.g. header-first vs RBAC's query-first)
@@ -619,6 +634,16 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 	}
 
+	// A POST to a collection creates, and what it creates needs an owner: see
+	// createNeedsTeam. Refused here, before the gateway holds a resource its
+	// author could not see. The other way to create - a PUT to an id that does
+	// not exist yet - is told apart from an update below, where the existence
+	// of its target is known.
+	if c.Request.Method == http.MethodPost && resourceID == "" && createNeedsTeam(scope, resourceType, path) {
+		refuse(c, http.StatusBadRequest, teamRequiredMsg, teamRequiredCode)
+		return
+	}
+
 	if !isAdmin {
 		if ownershipChecked(c.Request.Method, resourceID) {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
@@ -661,7 +686,12 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 					c.Abort()
 					return
 				}
-			} else if !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+				// A create, then. It needs one team to belong to.
+				if createNeedsTeam(scope, resourceType, path) {
+					refuse(c, http.StatusBadRequest, teamRequiredMsg, teamRequiredCode)
+					return
+				}
+			} else if !scope.mayAccess(ownerTeamID) {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error":     otherTeamMsg,
 					"error_msg": otherTeamMsg,
@@ -1055,7 +1085,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						// Filter for non-admin users. Unowned resources are
 						// admin-only, so they are hidden here too — the same
 						// rule the write guard above applies.
-						if !isAdmin && !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+						//
+						// Every team the caller works for, or the one they
+						// named: see teamScope.lists (#301).
+						if !isAdmin && !scope.lists(ownerTeamID) {
 							continue
 						}
 
@@ -1104,7 +1137,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			}
 		} else {
 			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
-			if !isAdmin && !nonAdminMayAccess(ownerTeamID, effectiveTeamID) {
+			// Any of the caller's teams, whichever one they named: the team
+			// named narrows a list, not what they may open.
+			if !isAdmin && !scope.mayAccess(ownerTeamID) {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error":     accessDeniedMsg,
 					"error_msg": accessDeniedMsg,
@@ -1200,7 +1235,7 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 	}
 
 	// Detaching leaves the resource unowned, which puts it out of reach of
-	// every non-admin until an admin assigns it again — see nonAdminMayAccess.
+	// every non-admin until an admin assigns it again — see teamScope.mayAccess.
 	if action == ownershipDetach {
 		if err := h.ownershipService.DeleteOwner(
 			c.Request.Context(), instanceID, resourceType, resourceID,
