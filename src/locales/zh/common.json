@@ -1069,7 +1069,9 @@
     "updated": "团队更新成功",
     "updateFailed": "更新团队失败",
     "deleted": "团队删除成功",
-    "deleteFailed": "删除团队失败"
+    "deleteFailed": "删除团队失败",
+    "deleteOwnsResources": "该团队仍拥有 {{count}} 个资源。请先重新分配或删除它们。",
+    "deleteHasMembers": "仍有 {{count}} 个用户分配指向该团队。请先将这些用户移到其他团队。"
   },
   "labelFilter": {
     "add": "添加到筛选",

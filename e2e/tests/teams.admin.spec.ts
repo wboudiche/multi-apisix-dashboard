@@ -15,16 +15,26 @@
  * limitations under the License.
  */
 import { adminPom } from '@e2e/pom/admin';
-import { adminToken, deleteTeamsByPrefix } from '@e2e/utils/admin-api';
+import { adminToken, deleteTeamsByPrefix, deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
-import { ensureTeam } from '@e2e/utils/seed-client';
+import { getFixtures } from '@e2e/utils/fixtures';
+import {
+  apiFetch,
+  ensureTeam,
+  ensureUser,
+  ensureUserInstanceRole,
+  HttpError,
+} from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
+import { i18n } from '@e2e/utils/ui/i18n';
 import { expect } from '@playwright/test';
 
 const PREFIX = randomId('adm-team');
 
 test.afterAll(async () => {
+  // Users first: a team an assignment names is not deleted.
+  await deleteUsersByPrefix(PREFIX);
   await deleteTeamsByPrefix(PREFIX);
 });
 
@@ -72,4 +82,52 @@ test('rejects creating a team with an empty name', async ({ page }) => {
   await uiHasToastMsg(page, { hasText: 'Team name is required' });
   // The modal stays open — nothing was created.
   await expect(page.getByText('Add New Team')).toBeVisible();
+});
+
+test('a team an assignment names is not deleted, and the page says why', async ({ page }) => {
+  // Deleting a team looked at what it owned and at nothing else, so the
+  // assignments that named it went on naming it once it was gone: an account
+  // that saw nothing, or - with several teams - one told to choose a team its
+  // header no longer offered (#375).
+  const teamName = `${PREFIX}-has-member`;
+  const token = await adminToken();
+  const team = await ensureTeam(token, { name: teamName });
+  const other = await ensureTeam(token, { name: `${PREFIX}-other` });
+  const user = await ensureUser(token, {
+    username: `${PREFIX}-member`,
+    password: 'e2e-Team-m3mber!pass',
+  });
+  const assign = (teamIds: string[]) =>
+    ensureUserInstanceRole(token, user.id, getFixtures().localInstanceId, {
+      role: 'developer',
+      team_ids: teamIds,
+    });
+  await assign([team.id, other.id]);
+
+  // The API refuses it, and says which refusal it is and how many stand in
+  // the way.
+  let refused: HttpError | undefined;
+  await apiFetch(`/api/v1/teams/${team.id}`, token, { method: 'DELETE' }).catch((err) => {
+    refused = err as HttpError;
+  });
+  expect(refused?.status).toBe(409);
+  expect(refused?.message).toContain('"code":"team_has_members"');
+  expect(refused?.message).toContain('"count":1');
+
+  await adminPom.toTeams(page);
+  await adminPom.isTeamsPage(page);
+  const row = adminPom.rowByText(page, teamName);
+  await expect(row).toBeVisible();
+  page.on('dialog', (dialog) => void dialog.accept());
+  await row.getByRole('button', { name: 'Delete' }).click();
+
+  // In the reader's language, with what to do - not "Failed to delete team".
+  await uiHasToastMsg(page, { hasText: i18n.t('teams.deleteHasMembers', { count: 1 }) });
+  await expect(adminPom.rowByText(page, teamName)).toBeVisible();
+
+  // The operator moves the user off the team; then it goes.
+  await assign([other.id]);
+  await row.getByRole('button', { name: 'Delete' }).click();
+  await uiHasToastMsg(page, { hasText: 'Team deleted successfully' });
+  await expect(adminPom.rowByText(page, teamName)).toHaveCount(0);
 });

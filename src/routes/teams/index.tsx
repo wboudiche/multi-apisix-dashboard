@@ -31,6 +31,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
+import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -152,12 +153,21 @@ const TeamsPage = () => {
         color: 'green',
       });
       loadTeams();
-    } catch {
-      notifications.show({
-        title: t('teams.errorTitle'),
-        message: t('teams.deleteFailed'),
-        color: 'red',
-      });
+    } catch (err) {
+      // Why, when the backend says: a team is not deleted while it owns
+      // resources or while an assignment names it (#375), and "Failed to
+      // delete team" left the operator to guess which, and what to do.
+      const refusal = axios.isAxiosError(err)
+        ? (err.response?.data as { code?: string; count?: number } | undefined)
+        : undefined;
+      const count = refusal?.count ?? 0;
+      const message =
+        refusal?.code === 'team_owns_resources'
+          ? t('teams.deleteOwnsResources', { count })
+          : refusal?.code === 'team_has_members'
+            ? t('teams.deleteHasMembers', { count })
+            : t('teams.deleteFailed');
+      notifications.show({ title: t('teams.errorTitle'), message, color: 'red' });
     }
   };
 

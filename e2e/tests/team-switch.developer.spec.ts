@@ -18,6 +18,7 @@ import { consumersPom } from '@e2e/pom/consumers';
 import { headerTeamSelect, permission } from '@e2e/pom/permission';
 import { deleteTeamsByPrefix, deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { randomId } from '@e2e/utils/common';
+import { etcdDelete } from '@e2e/utils/etcd';
 import { getFixtures } from '@e2e/utils/fixtures';
 import {
   apiFetch,
@@ -220,8 +221,9 @@ test('a developer with one team is shown its name, and has nothing to choose', a
 test('a developer whose other team was deleted can still create, for the team that is left', async ({
   browser,
 }) => {
-  // Deleting a team does not look at the assignments that name it (#375). To
-  // the backend this account still has two teams, and a create has to say
+  // Deleting a team did not look at the assignments that named it, until
+  // #375 - and the assignments it left behind are still in etcd. To the
+  // backend such an account still has two teams, and a create has to say
   // which; to the header it has one, and nothing to choose. The one that is
   // left is sent, or every create would be refused with "choose a team" under
   // a header offering none.
@@ -235,7 +237,9 @@ test('a developer whose other team was deleted can still create, for the team th
     role: 'developer',
     team_ids: [gone.id, kept.id],
   });
-  await apiFetch(`/api/v1/teams/${gone.id}`, admin, { method: 'DELETE' });
+  // Straight out of etcd, as an older version left it: the API refuses to
+  // delete a team an assignment names.
+  await etcdDelete(`/teams/${gone.id}`);
   const consumer = `e2e_dev_gone_${Date.now().toString(36)}`;
   const context = await browser.newContext({ storageState: undefined });
 
