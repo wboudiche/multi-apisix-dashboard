@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { notifications } from '@mantine/notifications';
 import {
   AxiosError,
   type AxiosResponse,
@@ -26,6 +27,7 @@ type ReqModule = typeof import('./req');
 type InstanceModule = typeof import('@/stores/instance');
 type ProxyErrorModule = typeof import('@/stores/proxyError');
 type AuthModule = typeof import('@/stores/auth');
+type I18nModule = typeof import('./i18n');
 
 // req and the stores it reads touch localStorage as their modules load, and
 // this suite runs in node: a Map stands in for it, installed before they are
@@ -47,6 +49,7 @@ let reqFor: ReqModule['reqFor'];
 let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
 let currentUserAtom: AuthModule['currentUserAtom'];
 let proxyErrorAtom: ProxyErrorModule['proxyErrorAtom'];
+let i18n: I18nModule['default'];
 
 // What the gateway answers, and every request that reached it.
 type Answer = (config: InternalAxiosRequestConfig) => Promise<AxiosResponse>;
@@ -78,6 +81,7 @@ beforeAll(async () => {
   ({ currentInstanceIdAtom } = await import('@/stores/instance'));
   ({ currentUserAtom } = await import('@/stores/auth'));
   ({ proxyErrorAtom } = await import('@/stores/proxyError'));
+  ({ default: i18n } = await import('./i18n'));
   req.defaults.adapter = (config) => {
     sent.push(config);
     return answer(config);
@@ -157,5 +161,49 @@ describe('the proxy error banner', () => {
     store().set(proxyErrorAtom, { instanceId: 'B', status: 502, message: '' });
     await reqFor('B').get('/routes');
     expect(store().get(proxyErrorAtom)).toBeNull();
+  });
+});
+
+// The proxy's refusals about teams (#301) come with a code and an English
+// sentence. One of them - "choose a team" - is something the reader can act
+// on, in the header, if they can read it.
+describe('a refusal the backend names by a code', () => {
+  const refusedWith = (status: number, data: Record<string, string>): Answer => (config) =>
+    Promise.reject(
+      new AxiosError('refused', AxiosError.ERR_BAD_REQUEST, config, null, {
+        data,
+        status,
+        statusText: 'refused',
+        headers: {},
+        config,
+      })
+    );
+  const shownAfter = async (refusal: Answer) => {
+    const show = vi.spyOn(notifications, 'show').mockReturnValue('');
+    answer = refusal;
+    await expect(req.post('/routes', {})).rejects.toBeInstanceOf(AxiosError);
+    const message = show.mock.calls[show.mock.calls.length - 1]?.[0].message;
+    show.mockRestore();
+    return message;
+  };
+
+  it.each([
+    ['team_required', 400, 'error.teamRequired'],
+    ['team_not_assigned', 403, 'error.teamNotAssigned'],
+  ] as const)('%s is said in the reader’s language', async (code, status, key) => {
+    const sentence = 'The backend’s own English sentence';
+    const message = await shownAfter(
+      refusedWith(status, { error: sentence, error_msg: sentence, code })
+    );
+    expect(message).toBe(i18n.t(key));
+    expect(message).not.toBe(sentence);
+  });
+
+  it('one with no name of its own keeps the backend’s sentence', async () => {
+    const sentence = 'Resource owned by another team';
+    const message = await shownAfter(
+      refusedWith(403, { error: sentence, error_msg: sentence, code: 'something_else' })
+    );
+    expect(message).toBe(sentence);
   });
 });

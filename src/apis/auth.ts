@@ -17,6 +17,7 @@
 
 import axios from 'axios';
 
+import { parseRecordList } from '@/utils/list-shape';
 import { assertJsonBody } from '@/utils/response-shape';
 
 import { apiClient } from './client';
@@ -45,6 +46,12 @@ export type User = {
   must_change_password?: boolean;
   // null for a record the backend has no date for (#321).
   created_at: string | null;
+};
+
+/** A team of the signed-in account on an instance, as `/user` names it. */
+export type MyTeam = {
+  id: string;
+  name: string;
 };
 
 // Unauthenticated client for login/refresh/logout.
@@ -86,6 +93,17 @@ export const authApi = {
   getCurrentUser: async (): Promise<User> => {
     const response = await apiClient.get<User>('/api/v1/user');
     return response.data;
+  },
+
+  // The account's own teams on an instance, with their names. The team
+  // catalogue is an admin's to read, so this is the only place a developer or
+  // a viewer with several teams can learn what to call them (#301).
+  myTeams: async (instanceId: string): Promise<MyTeam[]> => {
+    const response = await apiClient.get<{ teams?: unknown }>('/api/v1/user', {
+      headers: { 'X-Instance-ID': instanceId },
+    });
+    // Absent for an account with no team there, and from a backend before it.
+    return parseRecordList<MyTeam>(response.data.teams ?? [], '/api/v1/user');
   },
 
   changePassword: async (oldPassword: string, newPassword: string) => {

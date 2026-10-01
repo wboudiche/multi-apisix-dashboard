@@ -46,6 +46,7 @@ let currentTeamIdAtom: TeamModule['currentTeamIdAtom'];
 let clearTeamPicks: TeamModule['clearTeamPicks'];
 let currentInstanceIdAtom: InstanceModule['currentInstanceIdAtom'];
 let currentUserAtom: AuthModule['currentUserAtom'];
+let userInstancesAtom: AuthModule['userInstancesAtom'];
 let req: ReqModule['req'];
 let reqFor: ReqModule['reqFor'];
 let apiClient: ClientModule['apiClient'];
@@ -65,7 +66,7 @@ const answer = async (config: InternalAxiosRequestConfig) => {
 beforeAll(async () => {
   ({ currentTeamIdAtom, clearTeamPicks } = await import('./team'));
   ({ currentInstanceIdAtom } = await import('./instance'));
-  ({ currentUserAtom } = await import('./auth'));
+  ({ currentUserAtom, userInstancesAtom } = await import('./auth'));
   ({ req, reqFor } = await import('@/config/req'));
   ({ apiClient } = await import('@/apis/client'));
   req.defaults.adapter = answer;
@@ -95,6 +96,7 @@ beforeEach(() => {
   storage.clear();
   sent.length = 0;
   store().set(currentUserAtom, account('super_admin'));
+  store().set(userInstancesAtom, []);
   // A fresh instance id per test: the team atom keeps what it read for an
   // instance, so reusing one would carry a test's choice into the next.
   n += 1;
@@ -199,5 +201,96 @@ describe('the team this tab works with', () => {
 
     await reqFor(other).get('/routes');
     expect(lastTeam()).toBe('T-other');
+  });
+});
+
+// A developer or a viewer can work for several teams on one instance (#301).
+// The backend reads their X-Team-ID as which of those teams a request is for,
+// and refuses one that is not theirs on every proxied request - so what this
+// tab sends for them is a team of their assignment, or nothing.
+describe('the team a developer with several sends', () => {
+  const assigned = (role: 'developer' | 'viewer' | 'instance_admin', teams: string[]) => {
+    store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [
+      {
+        user_id: 'user-none',
+        instance_id: here(),
+        role,
+        team_ids: teams,
+        team_id: teams[0] ?? '',
+      },
+    ]);
+  };
+
+  it('is the one of their teams they picked', async () => {
+    assigned('developer', ['T1', 'T2']);
+    store().set(currentTeamIdAtom, 'T2');
+
+    await req.get('/routes');
+    await apiClient.get('/api/v1/labels');
+    expect(sent.map((c) => c.headers.get('X-Team-ID'))).toEqual(['T2', 'T2']);
+  });
+
+  it('is none until they pick: every team of theirs', async () => {
+    assigned('viewer', ['T1', 'T2']);
+
+    await req.get('/routes');
+    expect(lastTeam()).toBeUndefined();
+  });
+
+  it('is none for a pick that is not one of their teams', async () => {
+    // A team left in storage by another tab, or one they were taken off since:
+    // sent, it would have every request refused, and nothing on screen to say
+    // which team was asked for.
+    assigned('developer', ['T1', 'T2']);
+    anotherTabPicks(here(), 'T9');
+
+    await req.get('/routes');
+    expect(lastTeam()).toBeUndefined();
+  });
+
+  it('is none with one team: there is nothing to say', async () => {
+    assigned('developer', ['T1']);
+    store().set(currentTeamIdAtom, 'T1');
+
+    await req.get('/routes');
+    expect(lastTeam()).toBeUndefined();
+  });
+
+  it('reads an assignment from before the list as its one team', async () => {
+    store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [
+      { user_id: 'user-none', instance_id: here(), role: 'developer', team_id: 'T1' },
+    ]);
+    store().set(currentTeamIdAtom, 'T1');
+
+    await req.get('/routes');
+    expect(lastTeam()).toBeUndefined();
+  });
+
+  it('is none for an instance admin, whatever teams the assignment holds', async () => {
+    // Still #203: an admin to the proxy, whose header would become the owner
+    // of what it creates, and who has no switcher to see it in.
+    assigned('instance_admin', ['T1', 'T2']);
+    store().set(currentTeamIdAtom, 'T1');
+
+    await req.get('/routes');
+    expect(lastTeam()).toBeUndefined();
+  });
+
+  it('is the pick for the instance a request names, when it is theirs there', async () => {
+    const other = `${here()}-other`;
+    store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [
+      { user_id: 'user-none', instance_id: here(), role: 'developer', team_ids: ['T1', 'T2'], team_id: 'T1' },
+      { user_id: 'user-none', instance_id: other, role: 'developer', team_ids: ['T3', 'T4'], team_id: 'T3' },
+    ]);
+    store().set(currentTeamIdAtom, 'T1');
+    anotherTabPicks(other, 'T4');
+
+    await reqFor(other).get('/routes');
+    expect(lastTeam()).toBe('T4');
+    await req.get('/routes');
+    expect(lastTeam()).toBe('T1');
   });
 });

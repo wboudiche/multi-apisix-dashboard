@@ -41,7 +41,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
-import { teamsQueryOptions } from '@/apis/queries';
+import { myTeamsQueryOptions, teamsQueryOptions } from '@/apis/queries';
 import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
@@ -113,11 +113,20 @@ export const RouteList = (props: RouteListProps) => {
 
   const currentUser = useAtomValue(currentUserAtom);
   const { data: teams } = useQuery(teamsQueryOptions(currentUser?.id));
+  // The catalogue is an admin's to read. A developer or a viewer gets the
+  // names of their own teams instead - which, with several of them (#301), is
+  // what tells one team's routes from another's in this list. Without it the
+  // Team column showed them an id.
+  const { data: myTeams } = useQuery({
+    ...myTeamsQueryOptions(currentUser?.id, currentInstanceId),
+    enabled: !!currentUser && !!currentInstanceId && !isAdmin,
+  });
   const teamMap = useMemo(() => {
     const map = new Map<string, string>();
+    myTeams?.forEach((tm) => map.set(tm.id, tm.name));
     teams?.forEach((tm) => map.set(tm.id, tm.name));
     return map;
-  }, [teams]);
+  }, [teams, myTeams]);
 
   // A route reaches its upstream directly, through a service, or inline with no
   // id at all. All three have to render as something an operator can read: an

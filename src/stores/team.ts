@@ -17,7 +17,8 @@
 
 import { atom, getDefaultStore } from 'jotai';
 
-import { currentUserAtom } from '@/stores/auth';
+import type { UserInstanceRole } from '@/apis/instances';
+import { currentUserAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 
 // Custom storage helper to avoid JSON.stringify adding quotes to strings
@@ -71,18 +72,45 @@ export const currentTeamIdAtom = atom(
 );
 
 /**
+ * The teams of an assignment: the list, or the one team of an answer from
+ * before the list. As `teamsOf` in `@/apis/instances`, which this module
+ * cannot import: that one loads the API client, and the client loads this.
+ */
+const assignedTeams = (assignment: UserInstanceRole | undefined): string[] =>
+  assignment?.team_ids ?? (assignment?.team_id ? [assignment.team_id] : []);
+
+/**
+ * The teams this account may choose between on `instanceId`: the teams of its
+ * assignment there, when there are several and it is a developer or a viewer.
+ * Empty otherwise - for one team there is nothing to choose, and an instance
+ * admin is not tied to a team.
+ */
+export const choosableTeamIds = (
+  assignments: UserInstanceRole[],
+  instanceId: string
+): string[] => {
+  const assignment = assignments.find((a) => a.instance_id === instanceId);
+  if (!assignment || assignment.role === 'instance_admin') return [];
+  const teams = assignedTeams(assignment);
+  return teams.length > 1 ? teams : [];
+};
+
+/**
  * The team this tab sends for `instanceId`, for the request interceptors.
  *
- * None unless the account is a super admin. The proxy records an admin's team
- * as the owner of whatever it creates or edits, but only a super admin gets
- * the teams list, and so a switcher to see and change the team: an instance
- * admin, an admin to the proxy too, sent a team it could not see (#203).
+ * For a super admin, the team its switcher shows. The proxy records an
+ * admin's team as the owner of whatever it creates, but only a super admin
+ * gets the teams list, and so a switcher to see and change the team: an
+ * instance admin, an admin to the proxy too, sent a team it could not see
+ * (#203), and sends none.
  *
- * The other roles send none either, and must not send a stale pick: since
- * #301 the backend no longer ignores their header. It reads it as which of
- * the account's own teams a request is for, and refuses a team that is not
- * one of them (`team_not_assigned`) on every proxied request. With none sent,
- * a list shows all of their teams and a create goes to their only one.
+ * For a developer or a viewer with several teams on the instance (#301), the
+ * one of them it picked: the backend reads their header as which of their
+ * teams a request is for. Never a team that is not in the assignment - a pick
+ * left in storage by another tab, or a team they were taken off since - since
+ * the backend refuses that (`team_not_assigned`) on every proxied request.
+ * With none sent, a list shows all of their teams. With one team there is
+ * nothing to say, and nothing is sent.
  *
  * For the selected instance, exactly the team the header shows. For another
  * one — a request can name its instance — this tab's pick for it, or the
@@ -91,14 +119,19 @@ export const currentTeamIdAtom = atom(
  */
 export const selectedTeamId = (instanceId: string): string => {
   const store = getDefaultStore();
-  if (!instanceId || store.get(currentUserAtom)?.role !== 'super_admin') {
-    return '';
-  }
-  if (instanceId === store.get(currentInstanceIdAtom)) {
-    return store.get(currentTeamIdAtom);
-  }
+  const user = store.get(currentUserAtom);
+  if (!instanceId || !user) return '';
+
   const picked = store.get(_pickedTeamAtom);
-  return instanceId in picked ? picked[instanceId] : storedTeam(instanceId);
+  const pick =
+    instanceId === store.get(currentInstanceIdAtom)
+      ? store.get(currentTeamIdAtom)
+      : instanceId in picked
+        ? picked[instanceId]
+        : storedTeam(instanceId);
+
+  if (user.role === 'super_admin') return pick;
+  return choosableTeamIds(store.get(userInstancesAtom), instanceId).includes(pick) ? pick : '';
 };
 
 /**

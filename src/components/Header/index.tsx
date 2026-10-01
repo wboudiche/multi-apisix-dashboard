@@ -39,6 +39,7 @@ import { useTranslation } from 'react-i18next';
 import { instanceApi, type InstanceHealth } from '@/apis/instances';
 import {
   instancesQueryOptions,
+  myTeamsQueryOptions,
   teamsQueryOptions,
   userInstancesQueryOptions,
 } from '@/apis/queries';
@@ -110,7 +111,9 @@ const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
 };
 
 type TeamSwitcherProps = {
-  teams: Team[];
+  // An admin's: the whole catalogue. A developer's or a viewer's: their own
+  // teams on the instance, which is all they may choose between.
+  teams: Pick<Team, 'id' | 'name'>[];
   isAdmin: boolean;
 };
 
@@ -121,6 +124,12 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   const handleTeamChange = (value: string | null) => {
     const newTeamId = value ?? '';
     setCurrentTeamId(newTeamId);
+    if (!isAdmin) {
+      // For a developer or a viewer the team narrows every list a team can
+      // own, and none of them is keyed by it: all of them are asked again.
+      queryClient.invalidateQueries();
+      return;
+    }
     queryClient.invalidateQueries({ queryKey: ['routes'] });
     queryClient.invalidateQueries({ queryKey: ['services'] });
     queryClient.invalidateQueries({ queryKey: ['upstreams'] });
@@ -148,14 +157,35 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
     );
   }
 
-  // developer / viewer — read-only badge showing their team
-  const currentTeam = teams.find((team) => team.id === currentTeamId);
-  if (!currentTeam) return null;
+  // A developer or a viewer. With one team there is nothing to choose: its
+  // name, so that they know whose resources they are looking at.
+  if (teams.length === 1) {
+    return (
+      <Badge data-testid="team-badge" variant="outline" color="apisix-red" size="sm" radius="sm">
+        {teams[0].name}
+      </Badge>
+    );
+  }
 
+  // With several (#301), which of them the lists show and a new resource goes
+  // to. None picked shows all of theirs. A pick that is not one of their teams
+  // - left by another tab, or a team they were taken off - reads as none,
+  // which is also what is sent for it (see selectedTeamId).
+  const mine = currentTeamId && teams.some((team) => team.id === currentTeamId) ? currentTeamId : '';
   return (
-    <Badge variant="outline" color="apisix-red" size="sm" radius="sm">
-      {currentTeam.name}
-    </Badge>
+    <Select
+      data-testid="team-switcher"
+      aria-label={t('header.teamSwitcher')}
+      data={[
+        { value: '', label: t('header.allMyTeams') },
+        ...teams.map((team) => ({ value: team.id, label: team.name })),
+      ]}
+      value={mine}
+      onChange={handleTeamChange}
+      style={{ width: 180 }}
+      clearable={false}
+      allowDeselect={false}
+    />
   );
 };
 
@@ -323,6 +353,15 @@ export const Header: FC<HeaderProps> = (props) => {
 
   const { isAdmin, role: effectiveRole } = usePermission();
 
+  // A developer's or a viewer's own teams on this instance, by name: the
+  // catalogue above answers them 403, and their assignment holds only ids.
+  const { data: myTeams = [] } = useQuery({
+    ...myTeamsQueryOptions(currentUser?.id, currentInstanceId),
+    enabled: !!currentUser && !!currentInstanceId
+      && (effectiveRole === 'developer' || effectiveRole === 'viewer'),
+  });
+  const switcherTeams = isAdmin ? teams : myTeams;
+
   return (
     <AppShell.Header>
       <Group h="100%" px="md" justify="space-between">
@@ -363,8 +402,8 @@ export const Header: FC<HeaderProps> = (props) => {
           )}
 
           {/* Team Switcher */}
-          {teams.length > 0 && currentInstanceId && (
-            <TeamSwitcher teams={teams} isAdmin={isAdmin} />
+          {switcherTeams.length > 0 && currentInstanceId && (
+            <TeamSwitcher teams={switcherTeams} isAdmin={isAdmin} />
           )}
 
           <LanguageMenu />

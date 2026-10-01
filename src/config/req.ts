@@ -184,6 +184,8 @@ export type APISIXRespErr = {
    * the APISIX-shaped fields left every such response with nothing to show.
    */
   error?: string;
+  /** Names a refusal of the dashboard's own, where it has a name. */
+  code?: string;
 };
 
 /**
@@ -193,6 +195,19 @@ export type APISIXRespErr = {
  * explains nothing — worse, it looks like a rendering fault. Every failure gets
  * something readable, even if only the status.
  */
+/**
+ * The proxy's refusals about teams, by the code it sends with them.
+ *
+ * `team_required`: a developer or a viewer with several teams created
+ * something without saying which team it is for. `team_not_assigned`: a
+ * request named a team that is not theirs on the instance.
+ */
+const codedRefusal = (code: string | undefined): string | undefined => {
+  if (code === 'team_required') return i18n.t('error.teamRequired');
+  if (code === 'team_not_assigned') return i18n.t('error.teamNotAssigned');
+  return undefined;
+};
+
 const fallbackMessage = (status?: number): string => {
   switch (status) {
     case HttpStatusCode.Forbidden:
@@ -360,8 +375,12 @@ req.interceptors.response.use(
 
 
       const d = res.data;
+      // A refusal the dashboard's own backend names by a code is said in the
+      // reader's language: its sentence is English, and one of these - "choose
+      // a team" - is something they can act on only if they can read it (#301).
       const message =
-        d?.error_msg || d?.message || d?.error || fallbackMessage(status);
+        codedRefusal(d?.code)
+        || d?.error_msg || d?.message || d?.error || fallbackMessage(status);
       notifications.show({
         // A stable id is what makes repeats collapse into one notification.
         // Deriving it from the message left it undefined whenever the payload
