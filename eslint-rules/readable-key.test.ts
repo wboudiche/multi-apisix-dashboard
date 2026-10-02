@@ -72,6 +72,8 @@ tester.run('readable-key', rule, {
     'try { run() } catch (t) { handlers.forEach(t) }',
     'function t(x) { return x } ; list.map(t)',
     'points.map(({ t, v }) => series.find(t))',
+    'handlers.forEach((t) => t(event))',
+    'for (const t of timers) t(arg)',
     // The key is written, after the spread: it is the one that counts.
     '<Trans {...rest} i18nKey="a.b" />',
   ],
@@ -128,6 +130,10 @@ tester.run('readable-key', rule, {
     { code: 'const f = (t: typeof i18n.t) => keys.map(t)', errors: variable },
     { code: 'const f = (t = i18n.t) => keys.map(t)', errors: variable },
     { code: 'keys.map(i18next.t)', errors: variable },
+    { code: 'const t = i18n.getFixedT(lng); keys.map(t)', errors: variable },
+    { code: 'const t = i18n.getFixedT(lng); t(key)', errors: variable },
+    { code: 'const { t } = useTranslation(); t(key)', errors: variable },
+    { code: 'const f = (t: TFunction) => t(key)', errors: variable },
     { code: "import { t } from 'i18next'; keys.map(t)", errors: variable },
     // A spread after the key may hold the key that counts.
     { code: '<Trans i18nKey="a.b" {...rest} />', errors: variable },

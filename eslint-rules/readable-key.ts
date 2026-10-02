@@ -160,9 +160,12 @@ const rule: Rule.RuleModule = {
       if (node?.type === 'MemberExpression' && !node.computed) {
         return (node.property as Node).name === functionName && isSource(node.object as Node);
       }
-      // i18n.t.bind(i18n)
-      if (node?.type === 'CallExpression' && calledName(node.callee as Node) === 'bind') {
-        return isTranslate((node.callee as Node).object as Node, depth);
+      // i18n.t.bind(i18n), i18n.getFixedT(lng)
+      if (node?.type === 'CallExpression' && (node.callee as Node).type === 'MemberExpression') {
+        const method = calledName(node.callee as Node);
+        const object = (node.callee as Node).object as Node;
+        if (method === 'bind') return isTranslate(object, depth);
+        if (method === 'getFixedT') return isSource(object);
       }
       if (node?.type !== 'Identifier') return false;
       const definition = definitionOf(node);
@@ -193,6 +196,8 @@ const rule: Rule.RuleModule = {
         }
         const [first] = args;
         if (calledName(callee) !== functionName || !first) return;
+        // handlers.forEach((t) => t(event)): a `t` that is something else.
+        if (callee.type === 'Identifier' && !isTranslate(callee)) return;
         if (keysOf(first).partial) report(first, 'variable');
       },
 
