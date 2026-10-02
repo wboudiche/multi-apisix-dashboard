@@ -18,7 +18,7 @@ import { sslsPom } from '@e2e/pom/ssls';
 import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { genTLS } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCellsStartingWith, uiHasToastMsg } from '@e2e/utils/ui';
 import { uiFillSSLRequiredFields } from '@e2e/utils/ui/ssls';
 import { expect } from '@playwright/test';
 
@@ -181,7 +181,7 @@ test('should CRUD SSL with all fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete SSL Successfully',
     });
-    await expect(page.getByRole('cell', { name: firstSni })).toBeHidden();
+    await expect(uiCellsStartingWith(page, firstSni)).toBeHidden();
 
     // Final verification: Reload the page and check again
     await page.reload();
@@ -189,6 +189,6 @@ test('should CRUD SSL with all fields', async ({ page }) => {
     await sslsPom.isIndexPage(page);
 
     // After reload, the SSL should still be gone
-    await expect(page.getByRole('cell', { name: firstSni })).toBeHidden();
+    await expect(uiCellsStartingWith(page, firstSni)).toBeHidden();
   });
 });

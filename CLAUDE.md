@@ -213,6 +213,8 @@ Two authoring quirks worth knowing:
 
 Specs in `e2e/tests/*.spec.ts`. POM pattern: each resource has `e2e/pom/<resource>.ts` with `locator` / `assert` / `goto` helpers. Worker-scoped auth fixture in `e2e/utils/test.ts` logs in once per worker.
 
+A table cell is addressed with `uiCell` / `uiCellsStartingWith` (`e2e/utils/ui`), not `getByRole('cell', { name })`: a row's name is also in the name of the checkbox that selects it, so a name matched by substring is two cells. ESLint refuses the latter in specs and POMs (#372).
+
 Multi-tenant tests of note: `multi-instance.spec.ts`, `route-test.spec.ts`, `routes.reassign-team.spec.ts`, `routes.request-override.spec.ts`, `routes.proxy-e2e.spec.ts`. Some need a second APISIX (the e2e compose's `apisix2` service, which shares `e2e/server/apisix_conf.yml` with the first gateway) or the Go backend running on `:8086`.
 
 Default target is the dev server, `http://localhost:5173/ui/`; override via `E2E_TARGET_URL`. The e2e stack serves no UI: `:9180` is the Admin API only.

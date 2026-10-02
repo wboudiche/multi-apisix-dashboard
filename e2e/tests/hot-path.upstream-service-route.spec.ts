@@ -21,11 +21,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import {
-  uiFillMonacoEditor,
-  uiGetMonacoEditor,
-  uiHasToastMsg,
-} from '@e2e/utils/ui';
+import { uiCell, uiFillMonacoEditor, uiGetMonacoEditor, uiHasToastMsg } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
 import { getRouteReq } from '@/apis/routes';
@@ -250,15 +246,15 @@ test('can create upstream -> service -> route', async ({ page }) => {
     // Lists show all three resources
     await upstreamsPom.toIndex(page);
     await upstreamsPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: upstream.name })).toBeVisible();
+    await expect(uiCell(page, upstream.name)).toBeVisible();
 
     await servicesPom.toIndex(page);
     await servicesPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: service.name })).toBeVisible();
+    await expect(uiCell(page, service.name)).toBeVisible();
 
     await routesPom.toIndex(page);
     await routesPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: route.name, exact: true })).toBeVisible();
+    await expect(uiCell(page, route.name)).toBeVisible();
 
     // Verify the chain through the Admin API
     const routeData = await getRouteReq(e2eReq, route.id!);

@@ -30,7 +30,7 @@ import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMERS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
-import { useRowSelection } from '@/hooks/useRowSelection';
+import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
@@ -39,9 +39,11 @@ function ConsumersList() {
   const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useConsumerList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.username),
-    listKey
+  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+    data.list,
+    listKey,
+    (record) => record.value.username,
+    (record) => record.value.username
   );
 
   const columns = useMemo<ProColumns<APISIXType['RespConsumerItem']>[]>(() => {
@@ -116,10 +118,7 @@ function ConsumersList() {
         search={false}
         options={false}
         pagination={pagination}
-        rowSelection={{
-          selectedRowKeys: selectedIds,
-          onChange: (keys) => setSelectedIds(keys as string[]),
-        }}
+        rowSelection={rowSelection}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {

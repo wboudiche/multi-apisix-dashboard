@@ -18,7 +18,7 @@ import { routesPom } from '@e2e/pom/routes';
 import { deleteRoutesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiHasToastMsg } from '@e2e/utils/ui';
 import {
   ROUTE_STEP_API_INFO,
   uiCreateRouteWithCustomUpstream,
@@ -159,7 +159,7 @@ test('should CRUD route with required fields', async ({ page }) => {
   await test.step('route should exist in list page', async () => {
     await routesPom.getRouteNavBtn(page).click();
     await routesPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeVisible();
+    await expect(uiCell(page, routeName)).toBeVisible();
 
     await page
       .getByRole('row', { name: routeName })
@@ -180,6 +180,6 @@ test('should CRUD route with required fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete Route Successfully',
     });
-    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeHidden();
+    await expect(uiCell(page, routeName)).toBeHidden();
   });
 });

@@ -18,6 +18,7 @@
 import { protosPom } from '@e2e/pom/protos';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
+import { uiCell } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { API_PROTOS } from '@/config/constant';
@@ -196,7 +197,7 @@ message UpdatedTestMessage {
       await protosPom.isIndexPage(page);
 
       // Verify proto is not in the list (check in table cells specifically)
-      await expect(page.getByRole('cell', { name: createdProtoId })).toBeHidden();
+      await expect(uiCell(page, createdProtoId)).toBeHidden();
     });
 
     await test.step('verify proto was deleted via API', async () => {

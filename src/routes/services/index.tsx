@@ -35,7 +35,7 @@ import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SERVICES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
-import { useRowSelection } from '@/hooks/useRowSelection';
+import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 /**
@@ -63,9 +63,11 @@ const ServiceList = () => {
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id),
-    listKey
+  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+    data.list,
+    listKey,
+    (record) => record.value.id,
+    (record) => record.value.name || record.value.id
   );
 
   // The proxy says so when it could not count: without this the table and the
@@ -228,10 +230,7 @@ const ServiceList = () => {
         search={false}
         options={false}
         pagination={pagination}
-        rowSelection={{
-          selectedRowKeys: selectedIds,
-          onChange: (keys) => setSelectedIds(keys as string[]),
-        }}
+        rowSelection={rowSelection}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {

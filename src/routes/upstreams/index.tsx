@@ -34,7 +34,7 @@ import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_UPSTREAMS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
-import { useRowSelection } from '@/hooks/useRowSelection';
+import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import type { HealthNode } from '@/utils/upstream-health';
 import { summarizeHealth } from '@/utils/upstream-health';
@@ -44,9 +44,11 @@ function RouteComponent() {
   const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useUpstreamList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id),
-    listKey
+  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+    data.list as UpstreamRow[],
+    listKey,
+    (record) => record.value.id,
+    (record) => record.value.name || record.value.id
   );
 
   // The proxy says so when it could not count: a page that showed nothing
@@ -255,10 +257,7 @@ function RouteComponent() {
           search={false}
           options={false}
           pagination={pagination}
-          rowSelection={{
-            selectedRowKeys: selectedIds,
-            onChange: (keys) => setSelectedIds(keys as string[]),
-          }}
+          rowSelection={rowSelection}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{
             menu: {

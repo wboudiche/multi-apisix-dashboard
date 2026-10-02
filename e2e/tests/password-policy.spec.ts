@@ -156,7 +156,7 @@ test('the create-user form rejects a policy-violating password and accepts a com
   await expect(page.getByText('Add New User')).toBeHidden();
   // The username cell's accessible name also includes the email, so match the
   // username as a substring rather than exactly.
-  await expect(page.getByRole('cell', { name: TEST_USER })).toBeVisible();
+  await expect(page.getByRole('cell').filter({ hasText: TEST_USER })).toBeVisible();
 });
 
 test('a saved policy persists across a Settings page reload', async ({ page }) => {

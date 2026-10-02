@@ -18,11 +18,7 @@ import { pluginConfigsPom } from '@e2e/pom/plugin_configs';
 import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import {
-  uiFillMonacoEditor,
-  uiGetMonacoEditor,
-  uiHasToastMsg,
-} from '@e2e/utils/ui';
+import { uiCell, uiFillMonacoEditor, uiGetMonacoEditor, uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
@@ -248,7 +244,7 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
       hasText: 'Delete Plugin Config Successfully',
     });
     await expect(
-      page.getByRole('cell', { name: pluginConfigNameWithAllFields })
+      uiCell(page, pluginConfigNameWithAllFields)
     ).toBeHidden();
 
     // Final verification: Reload the page and check again to ensure it's really gone
@@ -257,7 +253,7 @@ test('should CRUD plugin config with all fields', async ({ page }) => {
 
     // After reload, the plugin config should still be gone
     await expect(
-      page.getByRole('cell', { name: pluginConfigNameWithAllFields })
+      uiCell(page, pluginConfigNameWithAllFields)
     ).toBeHidden();
   });
 });

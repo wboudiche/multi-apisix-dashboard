@@ -20,7 +20,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiHasToastMsg } from '@e2e/utils/ui';
 import {
   ROUTE_STEP_API_INFO,
   ROUTE_STEP_UPSTREAM,
@@ -184,7 +184,7 @@ test('should CRUD route under service with required fields', async ({
     await servicesPom.toServiceRoutes(page, testServiceId);
     await servicesPom.isServiceRoutesPage(page);
 
-    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeVisible();
+    await expect(uiCell(page, routeName)).toBeVisible();
 
     await page
       .getByRole('row', { name: routeName })
@@ -211,6 +211,6 @@ test('should CRUD route under service with required fields', async ({
     // The route is gone from the nested service routes list too
     await servicesPom.toServiceRoutes(page, serviceId);
     await servicesPom.isServiceRoutesPage(page);
-    await expect(page.getByRole('cell', { name: routeName, exact: true })).toBeHidden();
+    await expect(uiCell(page, routeName)).toBeHidden();
   });
 });

@@ -125,7 +125,7 @@ test('and offers a retry that fills the table once the list can be read', async 
   // The table first: the block stays on screen while the retry is in flight,
   // so asserting its absence on its own would pass during that window whether
   // the retry worked or not.
-  await expect(page.getByRole('cell', { name: 'Local APISIX' })).toBeVisible({
+  await expect(page.getByRole('cell').filter({ hasText: 'Local APISIX' })).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByText('Instance list unavailable')).toHaveCount(0);

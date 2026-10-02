@@ -109,7 +109,7 @@ const remaining = async () => {
   return kept;
 };
 
-const selectLabel = (name: string) => i18n.t('routes.list.selectRow', { name });
+const selectLabel = (name: string) => i18n.t('table.selectRow', { name });
 const rowBox = (page: Page, name: string) =>
   page.getByRole('checkbox', { name: selectLabel(name), exact: true });
 const rowBoxes = (page: Page) =>

@@ -17,6 +17,7 @@
 import { secretsPom } from '@e2e/pom/secrets';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
+import { uiCell } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { API_SECRETS } from '@/config/constant';
@@ -135,7 +136,7 @@ test.describe('CRUD secret with required fields only (Vault)', () => {
 
     await test.step('verify deletion and redirect', async () => {
       await secretsPom.isIndexPage(page);
-      await expect(page.getByRole('cell', { name: createdSecretId })).toBeHidden();
+      await expect(uiCell(page, createdSecretId)).toBeHidden();
     });
 
     await test.step('verify secret was deleted via API', async () => {

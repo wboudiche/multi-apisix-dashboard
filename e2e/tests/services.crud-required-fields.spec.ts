@@ -18,7 +18,7 @@ import { servicesPom } from '@e2e/pom/services';
 import { deleteServicesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiHasToastMsg } from '@e2e/utils/ui';
 import {
   uiCheckServiceRequiredFields,
   uiFillServiceRequiredFields,
@@ -74,7 +74,7 @@ test('should CRUD service with required fields', async ({ page }) => {
 
   await test.step('can see service in list page', async () => {
     await servicesPom.getServiceNavBtn(page).click();
-    await expect(page.getByRole('cell', { name: serviceName })).toBeVisible();
+    await expect(uiCell(page, serviceName)).toBeVisible();
   });
 
   await test.step('navigate to service detail page', async () => {
@@ -147,6 +147,6 @@ test('should CRUD service with required fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete Service Successfully',
     });
-    await expect(page.getByRole('cell', { name: serviceName })).toBeHidden();
+    await expect(uiCell(page, serviceName)).toBeHidden();
   });
 });

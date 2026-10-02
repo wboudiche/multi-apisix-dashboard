@@ -100,6 +100,23 @@ const e2eRules = tseslint.config(
   {
     files: ['e2e/**/*.spec.ts'],
     ...playwright.configs['flat/recommended'],
+  },
+  {
+    // A name is matched by substring, and a row's name is also in the name of
+    // the checkbox that selects it - so a cell asked for by name is two cells
+    // (#372). The helpers say which one, once.
+    files: ['e2e/tests/**/*.ts', 'e2e/pom/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.property.name='getByRole'][arguments.0.value='cell'] > ObjectExpression > Property[key.name='name']",
+          message:
+            'A cell asked for by name also matches the cell of the row checkbox - use uiCell or uiCellsStartingWith from @e2e/utils/ui.',
+        },
+      ],
+    },
   }
 );
 

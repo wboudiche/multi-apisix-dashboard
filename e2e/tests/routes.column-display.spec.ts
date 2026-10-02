@@ -137,7 +137,7 @@ test('names each row’s checkbox after its route, or its id when it has none', 
   for (const name of [ROUTE_NAME, NAMELESS_ID]) {
     await expect(
       page.getByRole('checkbox', {
-        name: i18n.t('routes.list.selectRow', { name }),
+        name: i18n.t('table.selectRow', { name }),
         exact: true,
       })
     ).toBeVisible();

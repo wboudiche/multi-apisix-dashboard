@@ -17,11 +17,7 @@
 import { consumerGroupsPom } from '@e2e/pom/consumer_groups';
 import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { test } from '@e2e/utils/test';
-import {
-  uiFillMonacoEditor,
-  uiGetMonacoEditor,
-  uiHasToastMsg,
-} from '@e2e/utils/ui';
+import { uiCell, uiFillMonacoEditor, uiGetMonacoEditor, uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { API_CONSUMER_GROUPS } from '@/config/constant';
@@ -103,7 +99,7 @@ test('should CRUD Consumer Group with required fields', async ({ page }) => {
 
     // Verify consumer group exists in list
     await expect(
-      page.getByRole('cell', { name: testId, exact: true })
+      uiCell(page, testId)
     ).toBeVisible();
   });
 
@@ -150,7 +146,7 @@ test('should CRUD Consumer Group with required fields', async ({ page }) => {
 
     // Verify consumer group is deleted
     await expect(
-      page.getByRole('cell', { name: testId, exact: true })
+      uiCell(page, testId)
     ).toBeHidden();
   });
 });

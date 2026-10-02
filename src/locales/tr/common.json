@@ -849,8 +849,6 @@
       "filterTeamPlaceholder": "Herhangi bir takım",
       "filterTeamUnassigned": "Atanmamış",
       "headerId": "ID",
-      "selectAll": "Tümünü seç",
-      "selectRow": "{{name}} seç",
       "duplicateFailed": "Çoğaltılamadı",
       "updateFailed": "Güncellenemedi",
       "columnsFixed": "Sabit",
@@ -929,7 +927,9 @@
   "table": {
     "actions": "İşlemler",
     "disabled": "Pasif",
-    "enabled": "Aktif"
+    "enabled": "Aktif",
+    "selectAll": "Tümünü seç",
+    "selectRow": "{{name}} seç"
   },
   "upstreams": {
     "health": "Durum",

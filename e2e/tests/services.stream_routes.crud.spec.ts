@@ -19,7 +19,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { postServiceReq } from '@/apis/services';
@@ -184,10 +184,10 @@ test('should CRUD stream route under service', async ({ page }) => {
 
     // Verify the stream route appears in the list with updated values
     await expect(
-      page.getByRole('cell', { name: updatedStreamRouteServerAddr })
+      uiCell(page, updatedStreamRouteServerAddr)
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: updatedStreamRouteServerPort.toString() })
+      uiCell(page, updatedStreamRouteServerPort.toString())
     ).toBeVisible();
 
     // Click on the stream route to go to the detail page
@@ -217,7 +217,7 @@ test('should CRUD stream route under service', async ({ page }) => {
 
     // Verify the stream route is no longer in the list
     await expect(
-      page.getByRole('cell', { name: updatedStreamRouteServerAddr })
+      uiCell(page, updatedStreamRouteServerAddr)
     ).toBeHidden();
   });
 

@@ -19,7 +19,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiGoto, uiShowAllRows } from '@e2e/utils/ui';
+import { uiCell, uiGoto, uiShowAllRows } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { postServiceReq } from '@/apis/services';
@@ -147,16 +147,16 @@ test('should only show stream routes with current service_id', async ({
 
     // Stream routes from another service should not be visible
     await expect(
-      page.getByRole('cell', { name: anotherServiceStreamRoute.server_addr })
+      uiCell(page, anotherServiceStreamRoute.server_addr)
     ).toBeHidden();
     // Upstream stream route (without service_id) should not be visible
     await expect(
-      page.getByRole('cell', { name: upstreamStreamRoute.server_addr })
+      uiCell(page, upstreamStreamRoute.server_addr)
     ).toBeHidden();
     // Only stream routes belonging to current service should be visible
     for (const streamRoute of streamRoutes) {
       await expect(
-        page.getByRole('cell', { name: streamRoute.server_addr })
+        uiCell(page, streamRoute.server_addr)
       ).toBeVisible();
     }
   });
@@ -174,14 +174,14 @@ test('should only show stream routes with current service_id', async ({
 
     // All stream routes should be visible in the global stream routes list
     await expect(
-      page.getByRole('cell', { name: upstreamStreamRoute.server_addr })
+      uiCell(page, upstreamStreamRoute.server_addr)
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: anotherServiceStreamRoute.server_addr })
+      uiCell(page, anotherServiceStreamRoute.server_addr)
     ).toBeVisible();
     for (const streamRoute of streamRoutes) {
       await expect(
-        page.getByRole('cell', { name: streamRoute.server_addr, exact: true })
+        uiCell(page, streamRoute.server_addr)
       ).toBeVisible();
     }
   });
@@ -208,10 +208,10 @@ test('should display stream routes list under service', async ({ page }) => {
     // Verify all created stream routes are displayed
     for (const streamRoute of streamRoutes) {
       await expect(
-        page.getByRole('cell', { name: streamRoute.server_addr })
+        uiCell(page, streamRoute.server_addr)
       ).toBeVisible({ timeout: 30000 });
       await expect(
-        page.getByRole('cell', { name: streamRoute.server_port.toString() })
+        uiCell(page, streamRoute.server_port.toString())
       ).toBeVisible({ timeout: 30000 });
     }
   });

@@ -34,7 +34,7 @@ import { API_SSLS, PAGE_SIZE_MAX } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import i18n from '@/config/i18n';
 import { reqFor } from '@/config/req';
-import { useRowSelection } from '@/hooks/useRowSelection';
+import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
@@ -53,13 +53,23 @@ type SSLRow = APISIXType['RespSSLItem'] & {
   value: { __cert_not_after?: string; __cert_issuer?: string };
 };
 
+/** What the list calls a certificate: its SNI, or all of them. */
+const sslSni = (record: SSLRow) => {
+  const { sni, snis } = record.value;
+  if (sni) return sni;
+  if (snis && snis.length > 0) return snis.join(', ');
+  return undefined;
+};
+
 function RouteComponent() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination, listKey } = useSSLList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id),
-    listKey
+  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+    data.list,
+    listKey,
+    (record) => record.value.id,
+    (record) => sslSni(record) ?? record.value.id
   );
   const currentInstanceId = useAtomValue(currentInstanceIdAtom);
 
@@ -97,14 +107,7 @@ function RouteComponent() {
         title: 'SNI',
         key: 'sni',
         valueType: 'text',
-        render: (_, record) => {
-          // Show sni if available, otherwise show the first snis entry
-          const sni = record.value.sni;
-          const snis = record.value.snis;
-          if (sni) return sni;
-          if (snis && snis.length > 0) return snis.join(', ');
-          return '-';
-        },
+        render: (_, record) => sslSni(record) ?? '-',
       },
       {
         dataIndex: ['value', 'status'],
@@ -213,10 +216,7 @@ function RouteComponent() {
           search={false}
           options={false}
           pagination={pagination}
-          rowSelection={{
-            selectedRowKeys: selectedIds,
-            onChange: (keys) => setSelectedIds(keys as string[]),
-          }}
+          rowSelection={rowSelection}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{
             menu: {

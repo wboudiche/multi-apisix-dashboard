@@ -782,8 +782,6 @@
       "upstreamInline": "inline",
       "upstreamNone": "—",
       "headerId": "ID",
-      "selectAll": "Select all",
-      "selectRow": "Select {{name}}",
       "duplicateFailed": "Failed to duplicate",
       "updateFailed": "Failed to update",
       "headerTeam": "Team"
@@ -859,7 +857,9 @@
   "table": {
     "actions": "Actions",
     "disabled": "Disabled",
-    "enabled": "Enabled"
+    "enabled": "Enabled",
+    "selectAll": "Select all",
+    "selectRow": "Select {{name}}"
   },
   "upstreams": {
     "health": "Health",

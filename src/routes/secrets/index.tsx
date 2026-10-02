@@ -28,7 +28,7 @@ import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SECRETS } from '@/config/constant';
 import { queryClient } from '@/config/global';
-import { useRowSelection } from '@/hooks/useRowSelection';
+import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
@@ -47,7 +47,12 @@ function SecretList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination, listKey } = useSecretList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(data.list.map(secretPath), listKey);
+  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+    data.list,
+    listKey,
+    secretPath,
+    secretPath
+  );
 
   const columns = useMemo<
     ProColumns<APISIXType['RespSecretList']['data']['list'][number]>[]
@@ -104,10 +109,7 @@ function SecretList() {
         search={false}
         options={false}
         pagination={pagination}
-        rowSelection={{
-          selectedRowKeys: selectedIds,
-          onChange: (keys) => setSelectedIds(keys as string[]),
-        }}
+        rowSelection={rowSelection}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {

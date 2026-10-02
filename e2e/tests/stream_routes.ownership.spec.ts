@@ -19,7 +19,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiHasToastMsg } from '@e2e/utils/ui';
 import {
   uiFillStreamRouteRequiredFields,
   uiSelectStreamRouteUpstream,
@@ -51,12 +51,9 @@ ownershipMatrixSuite({
       rowByName: (page, name) =>
         page
           .getByRole('row')
-          .filter({ has: page.getByRole('cell', { name: SERVER_ADDR, exact: true }) })
+          .filter({ has: uiCell(page, SERVER_ADDR) })
           .filter({
-            has: page.getByRole('cell', {
-              name: String(portFromName(name)),
-              exact: true,
-            }),
+            has: uiCell(page, String(portFromName(name))),
           }),
     },
   },

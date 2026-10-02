@@ -338,7 +338,7 @@ export const RouteList = (props: RouteListProps) => {
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: 40 }}><Checkbox aria-label={t('routes.list.selectAll')} checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll} /></Table.Th>
+            <Table.Th style={{ width: 40 }}><Checkbox aria-label={t('table.selectAll')} checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll} /></Table.Th>
             {isVisible('name') && <Table.Th>{t('form.basic.name')}</Table.Th>}
             {isVisible('id') && <Table.Th>{t('routes.list.headerId')}</Table.Th>}
             {isVisible('host') && <Table.Th>{t('routes.list.headerHost')}</Table.Th>}
@@ -368,8 +368,8 @@ export const RouteList = (props: RouteListProps) => {
                   // same name on every row had a screen reader select rows for
                   // a batch delete blind (#348). The name also lands in this
                   // cell's accessible name, so a spec addresses the name cell
-                  // with `exact: true`.
-                  aria-label={t('routes.list.selectRow', {
+                  // through `uiCell`, which asks for it exactly.
+                  aria-label={t('table.selectRow', {
                     name: record.value.name || record.value.id,
                   })}
                   checked={selectedIds.includes(record.value.id)}

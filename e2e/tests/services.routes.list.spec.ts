@@ -20,6 +20,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
+import { uiCell } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { postRouteReq } from '@/apis/routes';
@@ -141,15 +142,15 @@ test('should only show routes with current service_id', async ({ page }) => {
 
     // Routes from another service should not be visible
     await expect(
-      page.getByRole('cell', { name: anotherServiceRoute.name, exact: true })
+      uiCell(page, anotherServiceRoute.name)
     ).toBeHidden();
     // Upstream route (without service_id) should not be visible
     await expect(
-      page.getByRole('cell', { name: upstreamRoute.name, exact: true })
+      uiCell(page, upstreamRoute.name)
     ).toBeHidden();
     // Only routes belonging to current service should be visible
     for (const route of routes) {
-      await expect(page.getByRole('cell', { name: route.name, exact: true })).toBeVisible();
+      await expect(uiCell(page, route.name)).toBeVisible();
     }
   });
 
@@ -159,13 +160,13 @@ test('should only show routes with current service_id', async ({ page }) => {
 
     // All routes should be visible in the global routes list
     await expect(
-      page.getByRole('cell', { name: upstreamRoute.name, exact: true })
+      uiCell(page, upstreamRoute.name)
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: anotherServiceRoute.name, exact: true })
+      uiCell(page, anotherServiceRoute.name)
     ).toBeVisible();
     for (const route of routes) {
-      await expect(page.getByRole('cell', { name: route.name, exact: true })).toBeVisible();
+      await expect(uiCell(page, route.name)).toBeVisible();
     }
   });
 });
@@ -190,8 +191,8 @@ test('should display routes list under service', async ({ page }) => {
   await test.step('should display all routes under service', async () => {
     // Verify all created routes are displayed
     for (const route of routes) {
-      await expect(page.getByRole('cell', { name: route.name, exact: true })).toBeVisible();
-      await expect(page.getByRole('cell', { name: route.uri })).toBeVisible();
+      await expect(uiCell(page, route.name)).toBeVisible();
+      await expect(uiCell(page, route.uri)).toBeVisible();
     }
   });
 

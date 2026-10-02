@@ -19,6 +19,7 @@ import { pluginConfigsPom } from '@e2e/pom/plugin_configs';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
+import { uiCell, uiCellsStartingWith } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
 import { putPluginConfigReq } from '@/apis/plugin_configs';
@@ -83,9 +84,7 @@ test.describe('page and page_size should work correctly', () => {
   const filterItemsNotInPage = async (page: Page) => {
     // filter the item which not in the current page
     // it should be random, so we need get all items in the table
-    const itemsInPage = await page
-      .getByRole('cell', { name: /plugin_config_name_/ })
-      .all();
+    const itemsInPage = await uiCellsStartingWith(page, 'plugin_config_name_').all();
     const names = await Promise.all(itemsInPage.map((v) => v.textContent()));
     return pluginConfigs.filter((d) => !names.includes(d.name));
   };
@@ -94,6 +93,6 @@ test.describe('page and page_size should work correctly', () => {
     pom: pluginConfigsPom,
     filterItemsNotInPage,
     getCell: (page, item) =>
-      page.getByRole('cell', { name: item.name }).first(),
+      uiCell(page, item.name).first(),
   });
 });

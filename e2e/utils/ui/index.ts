@@ -47,6 +47,28 @@ export const uiHasToastMsg = async (
   await expect(alertMsg).not.toBeVisible();
 };
 
+/**
+ * The cell that reads exactly `name`.
+ *
+ * Playwright matches a name by substring unless told otherwise, and a row's
+ * name is in two of its cells: the one that shows it, and the one holding the
+ * checkbox that selects it, which is named "Select <name>" (#348, #372). So
+ * `getByRole('cell', { name })` resolves to both - what turned five specs red
+ * in #347 - and ESLint sends a spec here instead.
+ */
+export const uiCell = (scope: Page | Locator, name: string) =>
+  scope.getByRole('cell', { name, exact: true });
+
+/**
+ * Every cell that begins with `prefix`: a spec's own fixtures on a list, by
+ * the prefix it named them with. From the start, for the reason above - the
+ * checkbox cell begins with "Select".
+ */
+export const uiCellsStartingWith = (scope: Page | Locator, prefix: string) =>
+  scope.getByRole('cell', {
+    name: new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+  });
+
 export async function uiCannotSubmitEmptyForm(page: Page, pom: CommonPOM) {
   await pom.getAddBtn(page).click();
   await pom.isAddPage(page);
