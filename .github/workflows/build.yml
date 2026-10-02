@@ -67,12 +67,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The version api/go.mod declares, not a number written here: a bump of
+      # The Go minor api/go.mod declares, not a number written here: a bump of
       # the directive moves this job with it, in the same pull request.
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: api/go.mod
-          cache-dependency-path: api/go.sum
+      - uses: ./.github/actions/go-version
 
       - name: Vet
         run: go vet ./...

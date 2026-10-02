@@ -24,6 +24,9 @@
 # JWT_SECRET is deliberately not defaulted: the backend refuses to start
 # without a strong one.
 
+# The golang image of the backend stage: see there.
+ARG GO_TAG=alpine
+
 # ---- 1. frontend --------------------------------------------------------
 FROM --platform=$BUILDPLATFORM node:22-alpine AS ui
 WORKDIR /app
@@ -48,14 +51,15 @@ RUN pnpm build
 # GOOS/GOARCH, so a multi-arch build never emulates the pnpm/tsc/vite or Go
 # toolchains under QEMU.
 #
-# The tag is a floor, not the version: the official image sets
-# GOTOOLCHAIN=local, under which a go.mod asking for a newer Go than the tag is
-# refused, and a dependency bump that raises the directive cannot build until
-# the tag is moved by hand (#368). With `auto`, go fetches the toolchain the
-# directive names when the tag is older, and uses the image's own - the
-# latest patch of its minor - when it is not.
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS api
-ENV GOTOOLCHAIN=auto
+# Which golang image is not written here. The official image runs with
+# GOTOOLCHAIN=local, so one older than the `go` directive in api/go.mod
+# refuses to build, and a tag written here went stale each time a dependency
+# raised the directive (#368). The workflows pass the minor the directive
+# declares (GO_TAG=1.26-alpine): its latest patch, and the Go the tests ran
+# with. A build that passes nothing - `docker build .`, the deploy compose -
+# gets the newest Go there is, which builds any directive; if it is refused
+# all the same, the local golang:alpine is an old one: build with --pull.
+FROM --platform=$BUILDPLATFORM golang:${GO_TAG} AS api
 WORKDIR /src
 COPY api/go.mod api/go.sum ./
 RUN go mod download

@@ -11,7 +11,7 @@ Two moving parts in this repo:
 - **`api/`** — Gin-based Go backend. Persists users/teams/instances/roles/labels/ownership in etcd under the `/apisix-dashboard` prefix. Proxies `/api/v1/apisix/admin/*` to whichever APISIX instance the request targets, attaching that instance's admin key server-side.
 - **`src/`** — React SPA (TanStack Router + Mantine + Ant Design Pro). The browser never sees an APISIX admin key — only JWTs from the Go backend.
 
-Package manager is **pnpm@10.10.0** (pinned). Node 22, Go 1.22+ (the toolchain auto-fetches the version `api/go.mod` declares; the workflows read it from there, and the image's `golang` tag is only a floor - `GOTOOLCHAIN=auto` fetches a newer one when `go.mod` asks).
+Package manager is **pnpm@10.10.0** (pinned). Node 22, Go 1.22+ (the toolchain auto-fetches the version `api/go.mod` declares; the workflows and the published image take the latest patch of the minor it declares, through `.github/actions/go-version`; nothing else writes the version down).
 
 ## Commands
 
