@@ -5,23 +5,27 @@
 
 version: 2
 updates:
-  # commit-message, on each entry: Dependabot's own header is `chore(deps):`,
-  # a type and a scope the commit convention has not got (CONTRIBUTING.md), and
-  # every dependency pull request was reviewed into the same finding (#369).
-  # The prefix is the header's type and scope; the colon is added.
+  # commit-message, on each entry: left to itself Dependabot writes
+  # `chore(deps):`, and `chore` is not a type the commit convention has
+  # (CONTRIBUTING.md) - every dependency pull request was reviewed into the
+  # same finding (#369). The prefix is the type; `include: scope` adds
+  # `(deps)` or `(deps-dev)`, which says whether what ships changed, and the
+  # colon. An entry added without it goes back to `chore`.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
     commit-message:
       prefix: "ci"
+      include: "scope"
 
   - package-ecosystem: "npm"  # See documentation for possible values
     directory: "/"  # Location of package manifests
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "build(common)"
+      prefix: "build"
+      include: "scope"
     groups:
       # react and react-dom are separate npm packages, so Dependabot bumps them
       # in separate PRs — and React refuses to run when the two versions differ
@@ -87,4 +91,5 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "build(api)"
+      prefix: "build"
+      include: "scope"
