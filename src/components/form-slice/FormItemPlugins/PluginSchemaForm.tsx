@@ -27,6 +27,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import IconAdd from '~icons/material-symbols/add';
 import IconDelete from '~icons/material-symbols/delete-outline';
@@ -109,6 +110,7 @@ const ArrayOfObjectsField = ({
   required?: boolean;
   disabled?: boolean;
 }) => {
+  const { t } = useTranslation();
   const props = itemSchema.properties || {};
   const propKeys = Object.keys(props);
 
@@ -159,7 +161,12 @@ const ArrayOfObjectsField = ({
             );
           })}
           {!disabled && (
-            <ActionIcon color="red" variant="subtle" onClick={() => onChange(value.filter((_, i) => i !== idx))}>
+            <ActionIcon
+              color="red"
+              variant="subtle"
+              onClick={() => onChange(value.filter((_, i) => i !== idx))}
+              aria-label={t('form.plugins.removeItem')}
+            >
               <IconDelete width="16" height="16" />
             </ActionIcon>
           )}
@@ -169,6 +176,7 @@ const ArrayOfObjectsField = ({
         <Group>
           <ActionIcon
             variant="light"
+            aria-label={t('form.plugins.addItem')}
             onClick={() => {
               const defaults: Record<string, unknown> = {};
               for (const [k, v] of Object.entries(props)) {

@@ -101,6 +101,7 @@ export const FormItemHostsList = () => {
                   size="lg"
                   mt={1}
                   onClick={() => handleRemove(idx)}
+                  aria-label={t('form.btn.delete')}
                   disabled={displayHosts.length === 1 && hostValue === ''}
                 >
                   <IconDelete width="16" height="16" />

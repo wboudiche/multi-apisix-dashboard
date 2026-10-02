@@ -48,7 +48,10 @@
     "healthUnknown": "Desconocido",
     "healthUnknownWhy": "Desconocido: {{reason}}",
     "healthChecking": "Comprobando…",
-    "noUsername": "Usuario"
+    "noUsername": "Usuario",
+    "language": "Idioma",
+    "openNavigation": "Abrir navegación",
+    "closeNavigation": "Cerrar navegación"
   },
   "instanceGuard": {
     "noInstances": {
@@ -303,7 +306,10 @@
       "editorMode": {
         "form": "Formulario",
         "json": "JSON"
-      }
+      },
+      "addItem": "Añadir elemento",
+      "removeItem": "Quitar elemento",
+      "clearSearch": "Borrar búsqueda"
     },
     "protos": {
       "content": "Contenido",
@@ -384,7 +390,8 @@
       "headerKey": "Nombre de Cabecera",
       "headerValue": "Valor de Cabecera",
       "addHeader": "Agregar Cabecera",
-      "syncNotice": "Configura el plugin proxy-rewrite automáticamente"
+      "syncNotice": "Configura el plugin proxy-rewrite automáticamente",
+      "removeHeader": "Quitar cabecera"
     },
     "search": "Buscar",
     "secrets": {
@@ -678,7 +685,9 @@
       "response": "Respuesta",
       "header": "Cabecera",
       "value": "Valor",
-      "emptyResponse": "Envía una petición para ver la respuesta"
+      "emptyResponse": "Envía una petición para ver la respuesta",
+      "removeHeader": "Quitar cabecera",
+      "removeParameter": "Quitar parámetro"
     },
     "import": {
       "title": "Importar rutas",
@@ -893,7 +902,8 @@
       "columnsFixed": "Fijo",
       "columnsNameAlwaysShown": "Siempre visible, para que cada fila pueda identificarse",
       "emptyOwnershipHint": "Las rutas que pertenecen a otro equipo, o que aún no están asignadas a ninguno, no se muestran aquí. Si esperabas ver una ruta, pide a un administrador que la asigne a tu equipo.",
-      "headerTeam": "Equipo"
+      "headerTeam": "Equipo",
+      "refresh": "Actualizar"
     },
     "createFailed": "No se pudo crear la ruta",
     "updateFailed": "No se pudo actualizar la ruta"
@@ -1124,7 +1134,8 @@
     "loading": "Cargando etiquetas…",
     "loadFailed": "No se ha podido cargar el catálogo de etiquetas, así que el filtro por etiqueta no está disponible.",
     "noKeys": "Aún no hay ninguna clave de etiqueta definida",
-    "noValues": "Esta clave aún no tiene valores definidos"
+    "noValues": "Esta clave aún no tiene valores definidos",
+    "remove": "Quitar {{label}} del filtro"
   },
   "pageError": {
     "retry": "Reintentar",

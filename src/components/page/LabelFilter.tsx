@@ -159,6 +159,7 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
               variant="transparent"
               size="xs"
               onClick={() => handleRemove(tag)}
+              aria-label={t('labelFilter.remove', { label: tag })}
             >
               <IconClose width="10" height="10" />
             </ActionIcon>
