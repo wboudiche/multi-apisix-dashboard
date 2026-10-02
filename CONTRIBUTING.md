@@ -82,6 +82,7 @@ This fork extends the upstream scope list with the multi-tenant additions. Use o
 
 - Upstream resource scopes: `route`, `upstream`, `consumer`, `ssl`, `plugin`, `common`
 - Multi-tenant scopes: `auth`, `user`, `team`, `instance`, `role`, `label`, `overview`, `api` (Go backend, not a specific feature)
+- Dependency updates: `deps` (what ships), `deps-dev` (what only builds or tests it)
 
 Or omit the scope if the change is cross-cutting (`refactor:` across many areas, `docs:` not tied to one feature).
 
@@ -95,6 +96,10 @@ Or omit the scope if the change is cross-cutting (`refactor:` across many areas,
 ### Body
 
 Imperative, present tense. Explains **why** — the motivation, the alternative considered, the trade-off. Not what the code does (the diff already shows that).
+
+### Dependency updates
+
+Dependabot writes its own commits, with the type and scope `.github/dependabot.yml` gives it: `build(deps): bump …`, `build(deps-dev): bump …`, `ci(deps): bump …` for an action. Two rules above do not hold for what it writes, and only for what it writes: its body is the release notes it attaches rather than a why, and neither that body nor a long module path is kept to 100 characters. A dependency update written by hand takes the same header and is held to the rest.
 
 ### Footer
 

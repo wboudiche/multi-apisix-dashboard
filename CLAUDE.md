@@ -239,10 +239,12 @@ Conventional Commits, extended for this fork's scope:
 ```
 
 - type ∈ `build | ci | docs | feat | fix | perf | refactor | test`
-- scope ∈ upstream (`route | upstream | consumer | ssl | plugin | common`) **or** multi-tenant (`auth | user | team | instance | role | label | overview | api`)
+- scope ∈ upstream (`route | upstream | consumer | ssl | plugin | common`) **or** multi-tenant (`auth | user | team | instance | role | label | overview | api`) **or** a dependency update (`deps | deps-dev`)
 - summary: imperative, lowercase, no trailing period, ≤100 chars/line
 
 Body required for everything except `docs:` and must explain *why*. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full spec including breaking-change footers.
+
+A pull request opened by Dependabot takes its header from `.github/dependabot.yml` (`build(deps)`, `build(deps-dev)`, `ci(deps)`) and is excused two rules, the body that explains why and the 100 characters — see CONTRIBUTING.md. Don't raise those two on it in review; the bump itself is reviewed like any change.
 
 ## Things to watch for when working in this code
 
