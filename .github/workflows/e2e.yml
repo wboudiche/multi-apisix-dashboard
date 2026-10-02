@@ -104,9 +104,11 @@ jobs:
         run: |
           pnpm exec playwright install-deps chromium
 
+      # The newest Go, as the image is built with: see the backend job in
+      # build.yml.
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version: stable
           cache-dependency-path: api/go.sum
 
       - name: Build Go backend

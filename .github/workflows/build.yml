@@ -67,12 +67,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The version api/go.mod declares, not a number written here: a bump of
-      # the directive moves this job with it, in the same pull request.
+      # The newest Go, as the image is built with (see the Dockerfile): the
+      # `go` line of api/go.mod is the least the code needs, not the toolchain
+      # to use. A number written here was refused by the first go.mod that
+      # asked for more - setup-go runs with GOTOOLCHAIN=local (#368).
       - uses: actions/setup-go@v7
         with:
-          go-version-file: api/go.mod
+          go-version: stable
           cache-dependency-path: api/go.sum
+
+      # And the least it needs still builds it. That is the Go a developer's
+      # own go fetches for this module, and no other step compiles with it.
+      - name: Build with the Go that go.mod declares
+        run: GOTOOLCHAIN="go$(go mod edit -json | jq -r .Go)" go build ./...
 
       - name: Vet
         run: go vet ./...
