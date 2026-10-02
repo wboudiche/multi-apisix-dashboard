@@ -49,6 +49,10 @@ export type WithId = (name: string, id: string) => string;
  * Until every row is called something of its own: a row can be named exactly
  * what another became once its id was added, "billing (1)" beside two rows
  * called "billing".
+ *
+ * Ids and names are compared as text. A gateway keeps the type an id was
+ * written with, and a row whose id is the number 7 is called the same as one
+ * named "7".
  */
 export const rowNames = <T>(
   rows: readonly T[],
@@ -56,23 +60,21 @@ export const rowNames = <T>(
   nameOf: (row: T) => string,
   withId: WithId
 ): Map<string, string> => {
-  const told = new Set<string>();
-  const called = (row: T) => {
-    const id = idOf(row);
-    return told.has(id) ? withId(nameOf(row), id) : nameOf(row);
-  };
+  const named = rows.map((row) => ({ id: String(idOf(row)), name: String(nameOf(row)) }));
+  // The rows told apart by their id so far, each with what that makes it.
+  const told = new Map<string, string>();
+  const called = ({ id, name }: { id: string; name: string }) => told.get(id) ?? name;
   for (;;) {
     const rowsCalled = new Map<string, number>();
-    for (const row of rows) rowsCalled.set(called(row), (rowsCalled.get(called(row)) ?? 0) + 1);
+    for (const row of named) rowsCalled.set(called(row), (rowsCalled.get(called(row)) ?? 0) + 1);
     // A row called by its id already says it.
-    const alike = rows.filter(
-      (row) =>
-        !told.has(idOf(row)) && nameOf(row) !== idOf(row) && (rowsCalled.get(called(row)) ?? 0) > 1
+    const alike = named.filter(
+      (row) => !told.has(row.id) && row.name !== row.id && (rowsCalled.get(row.name) ?? 0) > 1
     );
     if (alike.length === 0) break;
-    for (const row of alike) told.add(idOf(row));
+    for (const { id, name } of alike) told.set(id, withId(name, id));
   }
-  return new Map(rows.map((row) => [idOf(row), called(row)]));
+  return new Map(named.map((row) => [row.id, called(row)]));
 };
 
 /** The checkbox names of a list, in the page's language: see rowNames. */
@@ -84,8 +86,7 @@ export const checkboxNames = <T>(
 ) => rowNames(rows, idOf, nameOf, (name, id) => t('table.nameWithId', { name, id }));
 
 /**
- * The `rowSelection` of an antd list: what is ticked, and a name for every
- * checkbox.
+ * A name for every checkbox of an antd list's selection.
  *
  * antd gives a row's checkbox no name at all - a screen reader read "checkbox,
  * unchecked" once per row, and rows were ticked for a batch delete blind - and
@@ -93,14 +94,10 @@ export const checkboxNames = <T>(
  * (#372). A row's is named after what the row is called on screen, as on the
  * routes list (#348).
  */
-export const tableRowSelection = <T>(
+export const checkboxNaming = <T>(
   t: TFunction,
-  selectedIds: string[],
-  setSelectedIds: (ids: string[]) => void,
   nameOf: (row: T) => string
-): RowSelection<T> => ({
-  selectedRowKeys: selectedIds,
-  onChange: (keys) => setSelectedIds(keys as string[]),
+): Pick<RowSelection<T>, 'getCheckboxProps' | 'getTitleCheckboxProps'> => ({
   getCheckboxProps: (row) => named(t('table.selectRow', { name: nameOf(row) })),
   getTitleCheckboxProps: () => named(t('table.selectAll')),
 });
@@ -114,13 +111,13 @@ export type RowNaming<T> = {
 
 /**
  * The selection of an antd list page: see useRowSelection for what is
- * selected, and tableRowSelection for what the table is given.
+ * selected, and checkboxNaming for what its checkboxes are called.
  *
  * `tableProps` is spread on the table, and holds its `rowKey` with its
  * `rowSelection`: the selection is a list of row keys, so a table keyed by
  * one function and selecting by another would tick nothing, or delete
  * something else. ESLint refuses a `rowSelection` given to a table any other
- * way.
+ * way, and a `rowKey` written beside the spread.
  *
  * `idOf` and `nameOf` are best given as functions that do not change between
  * renders - the ones above, or the page's own at module level: antd works out
@@ -135,18 +132,23 @@ export const useTableRowSelection = <T>(
   const { t } = useTranslation();
   const [selectedIds, setSelectedIds] = useRowSelection(rows.map(idOf), listKey);
   // Apart from what is ticked: antd keeps what it worked out for each row's
-  // checkbox for as long as this function is the same one, and a tick is no
-  // reason to name five hundred rows again.
-  const nameRow = useMemo(() => {
+  // checkbox for as long as `getCheckboxProps` is the same function, and a
+  // tick is no reason to name five hundred rows again.
+  const naming = useMemo(() => {
     const names = checkboxNames(t, rows, idOf, nameOf);
-    return (row: T) => names.get(idOf(row)) ?? nameOf(row);
+    return checkboxNaming<T>(t, (row) => names.get(String(idOf(row))) ?? nameOf(row));
   }, [t, rows, idOf, nameOf]);
   const tableProps = useMemo(
     () => ({
       rowKey: idOf,
-      rowSelection: tableRowSelection<T>(t, selectedIds, setSelectedIds, nameRow),
+      // eslint-disable-next-line no-restricted-syntax -- the one place a rowSelection is made
+      rowSelection: {
+        ...naming,
+        selectedRowKeys: selectedIds,
+        onChange: (keys) => setSelectedIds(keys as string[]),
+      } satisfies RowSelection<T>,
     }),
-    [t, idOf, selectedIds, setSelectedIds, nameRow]
+    [idOf, naming, selectedIds, setSelectedIds]
   );
   return { selectedIds, setSelectedIds, tableProps };
 };

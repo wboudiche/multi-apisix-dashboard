@@ -329,17 +329,26 @@ const srcRules = tseslint.config({
       // antd names no row checkbox, and the header's in English whatever
       // the language (#372). The hook hands a table its selection with both
       // named, and its row key with it, as props to spread; a rowSelection
-      // given any other way - written out, built above, behind a condition -
-      // has neither.
+      // that reaches a table any other way - written out on it, built above
+      // it, behind a condition - has neither.
       {
         selector: "JSXAttribute[name.name='rowSelection']",
         message:
           'A rowSelection given to a table by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
       },
       {
-        selector: "Property[key.name='rowSelection'] > ObjectExpression",
+        selector:
+          "ObjectExpression > Property[key.name='rowSelection'], ObjectExpression > Property[key.value='rowSelection'], VariableDeclarator[id.name='rowSelection']",
         message:
           'A rowSelection built by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
+      },
+      // The selection is a list of row keys: a table keyed otherwise than it
+      // selects by ticks nothing, or deletes something else.
+      {
+        selector:
+          "JSXOpeningElement:has(JSXSpreadAttribute[argument.name='tableProps']) > JSXAttribute[name.name='rowKey']",
+        message:
+          'tableProps holds the rowKey the selection goes by - a rowKey beside it replaces it or is replaced.',
       },
     ],
     'react-refresh/only-export-components': [

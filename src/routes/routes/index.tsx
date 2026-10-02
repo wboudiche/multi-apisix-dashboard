@@ -383,7 +383,7 @@ export const RouteList = (props: RouteListProps) => {
                   // cell's accessible name, so a spec addresses the name cell
                   // through `uiCell`, which asks for it exactly.
                   aria-label={t('table.selectRow', {
-                    name: rowCheckboxNames.get(record.value.id) ?? rowNameOrId(record),
+                    name: rowCheckboxNames.get(String(record.value.id)) ?? rowNameOrId(record),
                   })}
                   checked={selectedIds.includes(record.value.id)}
                   onChange={() => toggleSelect(record.value.id)}

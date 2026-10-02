@@ -19,10 +19,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkboxNames,
+  checkboxNaming,
   rowId,
   rowNameOrId,
   rowNames,
-  tableRowSelection,
 } from './useTableRowSelection';
 
 type Row = { value: { id: string; name?: string } };
@@ -32,35 +32,25 @@ type Row = { value: { id: string; name?: string } };
 const t = ((key: string, options?: { name?: string }) =>
   options?.name === undefined ? key : `${key}(${options.name})`) as unknown as TFunction;
 
-const selection = (selected: string[] = [], set: (ids: string[]) => void = () => undefined) =>
-  tableRowSelection<Row>(t, selected, set, rowNameOrId);
+const naming = checkboxNaming<Row>(t, rowNameOrId);
 
 // antd names no row checkbox, and names the header's 'Select all' in English
 // whatever the language (#372).
 describe('the selection checkboxes of an antd list', () => {
   it('names a row after what the list calls it', () => {
-    const props = selection().getCheckboxProps?.({ value: { id: '1', name: 'billing' } });
+    const props = naming.getCheckboxProps?.({ value: { id: '1', name: 'billing' } });
 
     expect(props).toEqual({ 'aria-label': 'table.selectRow(billing)' });
   });
 
   it('names a row with no name after its id', () => {
-    const props = selection().getCheckboxProps?.({ value: { id: '1' } });
+    const props = naming.getCheckboxProps?.({ value: { id: '1' } });
 
     expect(props).toEqual({ 'aria-label': 'table.selectRow(1)' });
   });
 
   it('names the header in the language of the page, not in antd’s', () => {
-    expect(selection().getTitleCheckboxProps?.()).toEqual({ 'aria-label': 'table.selectAll' });
-  });
-
-  it('hands the table what is ticked, and the page what the table ticks', () => {
-    const calls: string[][] = [];
-    const given = selection(['a'], (ids) => calls.push(ids));
-
-    expect(given.selectedRowKeys).toEqual(['a']);
-    given.onChange?.(['a', 'b'], [], { type: 'multiple' });
-    expect(calls).toEqual([['a', 'b']]);
+    expect(naming.getTitleCheckboxProps?.()).toEqual({ 'aria-label': 'table.selectAll' });
   });
 });
 
@@ -106,6 +96,12 @@ describe('what the rows of a list are called', () => {
 
     expect(names).toEqual(['billing (1)', 'billing (2)', 'billing (1) (3)']);
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('compares ids and names as text: a gateway keeps the type an id was written with', () => {
+    const rows = [{ value: { id: 7 } }, { value: { id: '8', name: '7' } }] as unknown as Row[];
+
+    expect(called(rows)).toEqual(['7', '7 (8)']);
   });
 
   it('puts the id beside the name in the words of the page', () => {
