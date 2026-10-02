@@ -18,7 +18,7 @@ import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { Group, Pagination, SegmentedControl, Stack, Text } from '@mantine/core';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
@@ -35,6 +35,7 @@ import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SERVICES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
+import { useRowSelection } from '@/hooks/useRowSelection';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 /**
@@ -49,7 +50,7 @@ const servicesSearchSchema = pageSearchSchema.extend({
 });
 
 const ServiceList = () => {
-  const { data, isLoading, refetch, pagination } = useServiceList();
+  const { data, isLoading, refetch, pagination, listKey } = useServiceList();
   const { view } = Route.useSearch();
   const navigate = useNavigate({ from: '/services/' });
   const setView = (next: 'table' | 'cards') => {
@@ -61,7 +62,11 @@ const ServiceList = () => {
   };
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Never more than the rows on screen: see useRowSelection (#371).
+  const [selectedIds, setSelectedIds] = useRowSelection(
+    data.list.map((record) => record.value.id),
+    listKey
+  );
 
   // The proxy says so when it could not count: without this the table and the
   // cards would show a service with no dependants and one whose dependants
@@ -256,7 +261,9 @@ const ServiceList = () => {
                     apiBase={API_SERVICES}
                     resourceName={t('services.singular')}
                     onSuccess={refetch}
-                    onClearSelection={() => setSelectedIds([])}
+                    onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                   />
                 ),
               },

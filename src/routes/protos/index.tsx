@@ -17,7 +17,7 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getProtoListQueryOptions, useProtoList } from '@/apis/hooks';
@@ -28,14 +28,19 @@ import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_PROTOS } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { useRowSelection } from '@/hooks/useRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 function RouteComponent() {
   const { t } = useTranslation();
 
-  const { data, isLoading, refetch, pagination } = useProtoList();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { data, isLoading, refetch, pagination, listKey } = useProtoList();
+  // Never more than the rows on screen: see useRowSelection (#371).
+  const [selectedIds, setSelectedIds] = useRowSelection(
+    data.list.map((record) => record.value.id),
+    listKey
+  );
 
   const columns = useMemo<
     ProColumns<APISIXType['RespProtoList']['data']['list'][number]>[]
@@ -112,7 +117,9 @@ function RouteComponent() {
                       apiBase={API_PROTOS}
                       resourceName={t('protos.singular')}
                       onSuccess={refetch}
-                      onClearSelection={() => setSelectedIds([])}
+                      onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                     />
                   ),
                 },

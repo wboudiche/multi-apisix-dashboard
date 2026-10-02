@@ -59,6 +59,7 @@ import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
 import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
+import { useRowSelection } from '@/hooks/useRowSelection';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { ownTeamsAtom } from '@/stores/team';
@@ -88,13 +89,15 @@ export type RouteListProps = {
   refetch: () => void;
   setParams: (params: any) => void;
   visibleColumns: string[];
+  /** Which list `data` is, as the list hook names it: the selection is kept under it. */
+  listKey: string;
   defaultParams?: Record<string, any>;
   ToDetailBtn?: React.ComponentType<{ record: any }>;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const RouteList = (props: RouteListProps) => {
-  const { routeKey, data, isLoading, refetch, setParams, visibleColumns } = props;
+  const { routeKey, data, isLoading, refetch, setParams, visibleColumns, listKey } = props;
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
@@ -111,7 +114,6 @@ export const RouteList = (props: RouteListProps) => {
     host?: string;
     soapAction?: string;
   } | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const currentUser = useAtomValue(currentUserAtom);
   const { data: teams } = useQuery(teamsQueryOptions(currentUser?.id));
@@ -158,24 +160,22 @@ export const RouteList = (props: RouteListProps) => {
     listWarning === 'service_upstream_unresolved' && !wantsUpstreams ? undefined : listWarning;
 
   const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
-  const allSelected = allIds.length > 0 && allIds.every((id: string) => selectedIds.has(id));
-  const someSelected = allIds.some((id: string) => selectedIds.has(id));
+  // The rows ticked on this very list, and still on it. Kept for the life of
+  // the page, the ticks of page one were still selected on page two: the bar
+  // came back at the first row ticked there counting them, and Batch Delete
+  // took routes nobody could see (#371).
+  const [selectedIds, setSelectedIds] = useRowSelection(allIds, listKey);
+  const allSelected = allIds.length > 0 && selectedIds.length === allIds.length;
+  const someSelected = selectedIds.length > 0;
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelectedIds((selected) =>
+      selected.includes(id) ? selected.filter((other) => other !== id) : [...selected, id]
+    );
   };
 
   const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(allIds));
-    }
+    setSelectedIds(allSelected ? [] : allIds);
   };
 
   const handleExportOpenAPI = (routes: Record<string, unknown>[]) => {
@@ -185,7 +185,7 @@ export const RouteList = (props: RouteListProps) => {
 
   const handleExportSelected = () => {
     const selected = data?.list
-      ?.filter((r: { value: { id: string } }) => selectedIds.has(r.value.id))
+      ?.filter((r: { value: { id: string } }) => selectedIds.includes(r.value.id))
       .map((r: { value: Record<string, unknown> }) => r.value) || [];
     if (selected.length > 0) handleExportOpenAPI(selected);
   };
@@ -312,14 +312,16 @@ export const RouteList = (props: RouteListProps) => {
     <Paper className="Card-root" p={0}>
       {someSelected && (
         <Group justify="space-between" px="lg" py="xs" style={{ background: 'var(--mantine-color-blue-0, #e7f5ff)', borderBottom: '1px solid #eee' }}>
-          <Text size="sm" fw={500}>{t('form.json.selectedCount', { count: selectedIds.size })}</Text>
+          <Text size="sm" fw={500}>{t('form.json.selectedCount', { count: selectedIds.length })}</Text>
           <Group gap="xs">
             <BatchDeleteBtn
-              ids={Array.from(selectedIds)}
+              ids={selectedIds}
               apiBase={API_ROUTES}
               resourceName={t('routes.singular')}
               onSuccess={refetch}
-              onClearSelection={() => setSelectedIds(new Set())}
+              onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
             />
             <Button
               size="compact-sm"
@@ -370,7 +372,7 @@ export const RouteList = (props: RouteListProps) => {
                   aria-label={t('routes.list.selectRow', {
                     name: record.value.name || record.value.id,
                   })}
-                  checked={selectedIds.has(record.value.id)}
+                  checked={selectedIds.includes(record.value.id)}
                   onChange={() => toggleSelect(record.value.id)}
                 />
               </Table.Td>
@@ -707,7 +709,7 @@ function RouteComponent() {
   const { t } = useTranslation();
   const { canEdit, isAdmin } = usePermission();
   const { params, setParams, resetParams } = useSearchParams('/routes/');
-  const { data, isLoading, refetch, setParams: setRouteParams } = useRouteList('/routes/');
+  const { data, isLoading, refetch, setParams: setRouteParams, listKey } = useRouteList('/routes/');
   // Options for the bar. Teams are admin-only; upstreams are what the new
   // filter narrows by, and the same list the table resolves names from.
   const currentUser = useAtomValue(currentUserAtom);
@@ -883,6 +885,7 @@ function RouteComponent() {
           refetch={refetch}
           setParams={setRouteParams}
           visibleColumns={visibleColumns}
+          listKey={listKey}
         />
       </Paper>
 

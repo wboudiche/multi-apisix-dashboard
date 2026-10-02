@@ -20,7 +20,7 @@ import { Alert, Badge } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getSSLListQueryOptions, useSSLList } from '@/apis/hooks';
@@ -34,6 +34,7 @@ import { API_SSLS, PAGE_SIZE_MAX } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import i18n from '@/config/i18n';
 import { reqFor } from '@/config/req';
+import { useRowSelection } from '@/hooks/useRowSelection';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
@@ -54,8 +55,12 @@ type SSLRow = APISIXType['RespSSLItem'] & {
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { data, isLoading, refetch, pagination } = useSSLList();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { data, isLoading, refetch, pagination, listKey } = useSSLList();
+  // Never more than the rows on screen: see useRowSelection (#371).
+  const [selectedIds, setSelectedIds] = useRowSelection(
+    data.list.map((record) => record.value.id),
+    listKey
+  );
   const currentInstanceId = useAtomValue(currentInstanceIdAtom);
 
   // The whole list, not the page being shown. A banner counted over ten rows
@@ -235,7 +240,9 @@ function RouteComponent() {
                       apiBase={API_SSLS}
                       resourceName={t('ssls.singular')}
                       onSuccess={refetch}
-                      onClearSelection={() => setSelectedIds([])}
+                      onDeleted={(gone) =>
+                      setSelectedIds((selected) => selected.filter((id) => !gone.includes(id)))
+                    }
                     />
                   ),
                 },

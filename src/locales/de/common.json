@@ -760,6 +760,7 @@
     "delete": {
       "content": "Möchten Sie {{name}} löschen?",
       "success": "{{name}} erfolgreich gelöscht",
+      "partial": "{{deleted}} {{name}} gelöscht, {{failed}} konnten nicht gelöscht werden",
       "title": "{{name}} löschen"
     },
     "detail": {

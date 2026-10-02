@@ -192,13 +192,20 @@ export const genUseList = <
     // And the team that narrows it, for the same reason: picking one in the
     // header changes the key, and the list of that team is fetched.
     const teamId = useAtomValue(listTeamIdAtom);
-    const listQuery = useSuspenseQuery(
-      listQueryOptions({ ...defaultParams, ...params } as P, currentInstanceId, teamId)
+    const options = listQueryOptions(
+      { ...defaultParams, ...params } as P,
+      currentInstanceId,
+      teamId
     );
+    const listQuery = useSuspenseQuery(options);
     const { data, isLoading, refetch } = listQuery;
     const opts = { data, setParams, params };
     const pagination = useTablePagination(opts);
-    return { data, isLoading, refetch, pagination, setParams };
+    // Which list this is - the instance, the page, the filters, the team - as
+    // one string: what belongs to the list it was made on, a selection for
+    // one, is kept under it (see useRowSelection).
+    const listKey = JSON.stringify(options.queryKey);
+    return { data, isLoading, refetch, pagination, setParams, listKey };
   };
 };
 

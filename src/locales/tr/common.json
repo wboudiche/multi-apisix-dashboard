@@ -760,6 +760,7 @@
     "delete": {
       "content": "{{name}} öğesini silmek istediğinizden emin misiniz?",
       "success": "{{name}} başarıyla silindi",
+      "partial": "{{deleted}} {{name}} silindi, {{failed}} silinemedi",
       "title": "{{name}} Sil"
     },
     "detail": {
