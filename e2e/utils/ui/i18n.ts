@@ -31,20 +31,31 @@ import i18next from 'i18next';
 // Read rather than imported: this runs in node, where a JSON import needs an
 // attribute the rest of the suite does not use, and the whole run fails to load
 // the module without it.
-const en = JSON.parse(
-  readFileSync(
-    new URL('../../../src/locales/en/common.json', import.meta.url),
-    'utf8'
-  )
-) as Record<string, unknown>;
+const bundle = (lng: string) =>
+  JSON.parse(
+    readFileSync(new URL(`../../../src/locales/${lng}/common.json`, import.meta.url), 'utf8')
+  ) as Record<string, unknown>;
 
-export const i18n = i18next.createInstance();
-void i18n.init({
-  lng: 'en',
-  defaultNS: 'common',
-  resources: { en: { common: en } },
-  // As src/config/i18n.ts has it since #341. Left at i18next's default, an
-  // apostrophe in an interpolated value came out as &#39; here and as itself on
-  // the page, and the spec comparing the two failed on a page that was right.
-  interpolation: { escapeValue: false },
-});
+const instanceFor = (lng: string) => {
+  const instance = i18next.createInstance();
+  void instance.init({
+    lng,
+    defaultNS: 'common',
+    resources: { [lng]: { common: bundle(lng) } },
+    // As src/config/i18n.ts has it since #341. Left at i18next's default, an
+    // apostrophe in an interpolated value came out as &#39; here and as itself on
+    // the page, and the spec comparing the two failed on a page that was right.
+    interpolation: { escapeValue: false },
+  });
+  return instance;
+};
+
+export const i18n = instanceFor('en');
+
+/**
+ * The same over another language's bundle, for a spec that has to tell a page
+ * reading its keys from one with the sentences written in: in English the two
+ * read alike. With no fallback to English, so a key the language lacks comes
+ * back as the key and fails the assertion.
+ */
+export const i18nIn = (lng: 'de' | 'es' | 'tr' | 'zh') => instanceFor(lng);

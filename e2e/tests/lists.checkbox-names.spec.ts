@@ -14,13 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { readFileSync } from 'node:fs';
-
 import { genTLS, randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
-import { i18n } from '@e2e/utils/ui/i18n';
+import { uiSwitchLanguage } from '@e2e/utils/ui';
+import { i18n, i18nIn } from '@e2e/utils/ui/i18n';
 import { expect, type Page } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
@@ -35,9 +34,7 @@ import { PAGE_SIZE_MAX } from '@/config/constant';
 const PROXY = '/api/v1/apisix/admin';
 const onLocal = () => ({ 'X-Instance-ID': getFixtures().localInstanceId });
 
-const german = JSON.parse(
-  readFileSync(new URL('../../src/locales/de/common.json', import.meta.url), 'utf8')
-) as { table: { selectAll: string; selectRow: string } };
+const de = i18nIn('de');
 
 const box = (page: Page, name: string) => page.getByRole('checkbox', { name, exact: true });
 const rowBox = (page: Page, name: string) => box(page, i18n.t('table.selectRow', { name }));
@@ -52,11 +49,6 @@ const unnamed = (page: Page) =>
 /** The list with every row on one page: a shared gateway holds more than ten. */
 const openList = (page: Page, list: string) =>
   page.goto(`/ui/${list}?page=1&page_size=${PAGE_SIZE_MAX}`);
-
-const switchToGerman = async (page: Page) => {
-  await page.locator('header .mantine-ActionIcon-root[aria-haspopup="menu"]').click();
-  await page.getByRole('menuitem', { name: 'Deutsch' }).click();
-};
 
 test.describe('the rows', () => {
   const PREFIX = randomId('e2e-names');
@@ -163,9 +155,9 @@ test.describe('the rows', () => {
     await openList(page, 'upstreams');
     await expect(rowBox(page, NAMED)).toBeVisible({ timeout: 30000 });
 
-    await switchToGerman(page);
+    await uiSwitchLanguage(page, 'Deutsch');
 
-    await expect(box(page, german.table.selectRow.replace('{{name}}', NAMED))).toBeVisible();
+    await expect(box(page, de.t('table.selectRow', { name: NAMED }))).toBeVisible();
     await expect(rowBox(page, NAMED)).toHaveCount(0);
   });
 });
@@ -194,9 +186,9 @@ for (const list of LISTS) {
     await page.goto(`/ui/${list}`);
     await expect(headerBox(page)).toBeVisible({ timeout: 30000 });
 
-    await switchToGerman(page);
+    await uiSwitchLanguage(page, 'Deutsch');
 
-    await expect(box(page, german.table.selectAll)).toBeVisible();
+    await expect(box(page, de.t('table.selectAll'))).toBeVisible();
     await expect(headerBox(page)).toHaveCount(0);
     await expect(unnamed(page)).toHaveCount(0);
   });

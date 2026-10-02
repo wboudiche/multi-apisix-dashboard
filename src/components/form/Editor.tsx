@@ -26,6 +26,7 @@ import {
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { errorText } from '@/utils/error-text';
 import { monaco, setupMonacoEditor } from '@/utils/monaco';
 
 import { genControllerProps } from './util';
@@ -127,7 +128,7 @@ export const FormItemEditor = <T extends FieldValues>(
 
   return (
     <InputWrapper
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       id="editor-wrapper"
       {...wrapperProps}
     >

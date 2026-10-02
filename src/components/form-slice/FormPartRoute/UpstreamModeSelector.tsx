@@ -35,6 +35,7 @@ import {
   useListTeamId,
 } from '@/apis/hooks';
 import { FormItemSelect } from '@/components/form/Select';
+import { errorText } from '@/utils/error-text';
 import { useFormReadOnlyFields } from '@/utils/form-context';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 import IconCloud from '~icons/material-symbols/cloud-outline';
@@ -191,7 +192,7 @@ export const UpstreamModeSelector = () => {
 
   const serviceId = useWatch({ control, name: 'service_id' });
   const upstreamId = useWatch({ control, name: 'upstream_id' });
-  const upstreamIdError = errors.upstream_id?.message;
+  const upstreamIdError = errorText(errors.upstream_id?.message);
   // On a service's route add page the route is for that service, and a bound
   // service provides the upstream, as the route edit form has it. Another mode
   // would clear service_id and create the route outside the service (#231).

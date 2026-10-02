@@ -30,6 +30,7 @@ import {
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { errorText } from '@/utils/error-text';
 import IconUpload from '~icons/material-symbols/upload';
 
 import { genControllerProps } from './util';
@@ -126,7 +127,7 @@ export const FormItemTextareaWithUpload = <T extends FieldValues>(
           />
         </Group>
       )}
-      <Input.Error>{fieldState.error?.message || fileError}</Input.Error>
+      <Input.Error>{errorText(fieldState.error?.message) || fileError}</Input.Error>
     </Box>
   );
 };

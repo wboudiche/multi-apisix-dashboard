@@ -38,6 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { FormItemNumberInput } from '@/components/form/NumberInput';
 import { FormItemTextInput } from '@/components/form/TextInput';
 import type { APISIXType } from '@/types/schema/apisix';
+import { errorText } from '@/utils/error-text';
 
 import { genControllerProps } from '../../form/util';
 import { genRecord, parseToNodes } from './node-rows';
@@ -105,7 +106,7 @@ export const FormItemNodes = <T extends FieldValues>(
 
   return (
     <InputWrapper
-      error={error?.message ?? error?.root?.message}
+      error={errorText(error?.message ?? error?.root?.message)}
       label={label}
       description={description}
       required={required}
@@ -162,7 +163,7 @@ export const FormItemNodes = <T extends FieldValues>(
                 variant="subtle"
                 color="gray"
                 radius="xl"
-                aria-label={t('form.upstreams.nodes.remove', 'Remove node')}
+                aria-label={t('form.upstreams.nodes.remove')}
                 onClick={() => remove(index)}
               >
                 <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>-</span>
@@ -181,7 +182,7 @@ export const FormItemNodes = <T extends FieldValues>(
           }
           onClick={() => append(genRecord() as never)}
         >
-          {t('form.upstreams.nodes.add', 'Add a Node')}
+          {t('form.upstreams.nodes.add')}
         </Button>
       )}
     </InputWrapper>

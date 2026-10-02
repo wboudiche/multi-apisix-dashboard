@@ -44,8 +44,8 @@ export const StreamRoutePostSchema = APISIXStreamRoutes.StreamRoute.omit({
     if (!hasService && !hasExistingUpstream && !hasCustomUpstream) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          'Select an upstream, bind a service, or configure a custom upstream with at least one node',
+        // A key: the field shows what it says (see errorText).
+        message: 'form.validation.upstreamSourceRequired',
         path: ['upstream_id'],
       });
     }

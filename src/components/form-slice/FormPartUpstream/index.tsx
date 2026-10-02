@@ -315,10 +315,13 @@ export const FormSectionConnection = ({ simplified }: { simplified?: boolean }) 
   );
 };
 
+// What the algorithms are called, in every language: names, not sentences.
 const BALANCER_LABELS: Record<(typeof APISIX.UpstreamBalancer.options)[number]['value'], string> = {
+  // eslint-disable-next-line local/no-prose-literal -- the algorithm's name
   roundrobin: 'Round Robin',
   chash: 'CHash',
   ewma: 'EWMA',
+  // eslint-disable-next-line local/no-prose-literal -- the algorithm's name
   least_conn: 'Least Conn',
 };
 

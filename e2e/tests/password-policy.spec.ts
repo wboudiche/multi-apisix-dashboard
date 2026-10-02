@@ -144,7 +144,11 @@ test('the create-user form rejects a policy-violating password and accepts a com
   await page.getByRole('textbox', { name: 'Password' }).fill('weak');
   await page.getByRole('button', { name: 'Create User' }).click();
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Password does not meet policy' })
+    // The rule it broke, in the page's words - not the backend's one sentence
+    // for every refusal.
+    page.getByRole('alert').filter({
+      hasText: i18n.t('passwordRules.min_length', { min: KNOWN_POLICY.min_length }),
+    })
   ).toBeVisible();
   // Modal is still open (creation was blocked).
   await expect(page.getByText('Add New User')).toBeVisible();

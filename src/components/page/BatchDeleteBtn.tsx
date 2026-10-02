@@ -58,6 +58,7 @@ type Refused = { response?: { status?: number; data?: Record<string, string | un
  * which is the mistake to prefer.
  */
 const goneFromGateway = (failure: unknown) =>
+  // eslint-disable-next-line local/no-prose-literal -- APISIX's own words, compared and not shown
   isNotFound(failure) && (failure as Refused).response?.data?.message === 'Key not found';
 
 /**

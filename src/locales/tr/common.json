@@ -264,7 +264,8 @@
       "unsaved": "Kaydedilmedi",
       "copy": "Kopyala",
       "copied": "Kopyalandı",
-      "format": "Biçimlendir"
+      "format": "Biçimlendir",
+      "saveFailed": "Kaydedilemedi"
     },
     "plugins": {
       "addPlugin": "Plugin Ekle",
@@ -347,7 +348,22 @@
       "duplicateReasonName": "\"{{- name}}\" aynı adı kullanıyor",
       "duplicateReasonPath": "\"{{- name}}\" zaten {{- uri}} üzerinde yanıt veriyor",
       "duplicateReasonBoth": "\"{{- name}}\" aynı adı kullanıyor ve zaten {{- uri}} üzerinde yanıt veriyor",
-      "duplicateConfirmAction": "Yine de oluştur"
+      "duplicateConfirmAction": "Yine de oluştur",
+      "steps": {
+        "apiInfo": "API Bilgilerini Tanımla",
+        "apiInfoDesc": "Protokol, host, yol vb.",
+        "upstream": "Upstream Tanımla",
+        "upstreamDesc": "Hedef yapılandırması",
+        "plugins": "Plugin Yapılandırması",
+        "pluginsDesc": "Plugin ekle ve yapılandır",
+        "preview": "Önizleme",
+        "previewDesc": "Gözden geçir ve bitir",
+        "summaryBoundToService": "Servise bağlı",
+        "summaryCustomNodes": "Özel: {{count}} node",
+        "summaryCustom": "Özel upstream",
+        "summaryExisting": "Mevcut upstream",
+        "summaryPluginConfig": "Plugin yapılandırması: {{- id}}"
+      }
     },
     "requestOverride": {
       "title": "İstek Geçersiz Kılma",
@@ -675,7 +691,9 @@
       "duplicateTitle": "Bunlardan {{count}} tanesi bu ağ geçidinde zaten var",
       "duplicateItem": "\"{{- name}}\", {{- existing}} ile çakışıyor",
       "duplicateHint": "APISIX aynı yolda birden fazla rotaya izin verir; yeniden içe aktarmak bir şeyi güncellemek yerine kopyalar ekler. Devam etmek için yeniden içe aktarın.",
-      "duplicateCheckFailed": "Mevcut rotalar denetlenemedi. Denetim olmadan devam etmek için yeniden içe aktarın."
+      "duplicateCheckFailed": "Mevcut rotalar denetlenemedi. Denetim olmadan devam etmek için yeniden içe aktarın.",
+      "unknownError": "Bilinmeyen hata",
+      "unrecognized": "Tanınmayan biçim. OpenAPI tanımı, APISIX rota JSON'u veya rota dizisi bekleniyordu."
     },
     "importWsdl": {
       "title": "WSDL'den içe aktar",
@@ -704,7 +722,16 @@
       "readError": "Dosya okunamadı",
       "fetchError": "WSDL getirilemedi",
       "upstreamRequired": "Mevcut bir upstream ID'si girin veya WSDL adresinden otomatik oluşturmayı seçin",
-      "unknownError": "Bilinmeyen hata"
+      "noEndpoint": "WSDL içinde SOAP servis uç noktası (<service>/<soap:address>) bulunamadı.",
+      "zipEmpty": "ZIP arşivinde WSDL/XML dosyası bulunamadı.",
+      "zipTooManyFiles": "ZIP çok fazla dosya içeriyor (>{{max}}).",
+      "zipTooLarge": "ZIP açıldığında çok fazla veri çıkıyor; zip bombasını önlemek için iptal edildi.",
+      "warnUnresolvedImport": "Çözümlenemeyen wsdl:import '{{- location}}' — ZIP/URL paketine ekleyin.",
+      "warnSoap12": "WSDL, SOAP 1.2 kullanıyor; SOAPAction başlığı bulunmayabilir, bu nedenle işlem bazlı yönlendirme eşleşmeyebilir. Passthrough modunu düşünün.",
+      "warnBadEndpoint": "Servis '{{- service}}': uç nokta URL'si '{{- location}}' çözümlenemedi.",
+      "warnBindingMissing": "Servis '{{- service}}': '{{- binding}}' binding'i bulunamadı.",
+      "warnEmptyAction": "Servis '{{- service}}': '{{- operation}}' işleminin SOAPAction değeri boş ve işlem bazında eşleştirilemiyor; atlandı (dahil etmek için passthrough modunu kullanın).",
+      "warnDuplicateAction": "Servis '{{- service}}': yinelenen SOAPAction '{{- action}}' — oluşturulan rotalar aynı URI üzerinde çakışacak."
     },
     "loadingConfiguration": "Yapılandırma yükleniyor…",
     "unsavedChanges": {
@@ -746,6 +773,14 @@
       "serviceFixed": "Buraya eklenen rotalar bu servise aittir ve upstream'lerini bu servis sağlar",
       "pluginsCount": "{{count}} plugin",
       "scheme": "Şema"
+    },
+    "validation": {
+      "nameRequired": "Ad zorunludur",
+      "uriRequired": "URI zorunludur",
+      "hostEmpty": "Host boş olamaz",
+      "nodeRequired": "En az bir node gereklidir",
+      "upstreamSourceRequired": "Bir upstream seçin, bir servise bağlayın veya en az bir node içeren özel bir upstream yapılandırın",
+      "required": "Zorunlu"
     }
   },
   "globalRules": {
@@ -787,7 +822,9 @@
     "missing_uppercase": "Bir büyük harf içermeli",
     "missing_lowercase": "Bir küçük harf içermeli",
     "missing_digit": "Bir rakam içermeli",
-    "missing_symbol": "Bir sembol içermeli"
+    "missing_symbol": "Bir sembol içermeli",
+    "max_length": "En fazla {{max}} bayt uzunluğunda olmalı (aksanlı veya Latin olmayan bir karakter birden fazla bayt tutar)",
+    "unmet": "Parola şunları karşılamalı: {{- rules}}"
   },
   "pluginConfigs": {
     "singular": "Plugin Config"
@@ -855,7 +892,9 @@
       "columnsNameAlwaysShown": "Her satır tanınabilsin diye her zaman gösterilir",
       "emptyOwnershipHint": "Başka bir ekibe ait olan ya da henüz hiçbir ekibe atanmamış rotalar burada gösterilmez. Bir rotayı görmeyi bekliyorduysanız, bir yöneticiden onu ekibinize atamasını isteyin.",
       "headerTeam": "Ekip"
-    }
+    },
+    "createFailed": "Rota oluşturulamadı",
+    "updateFailed": "Rota güncellenemedi"
   },
   "secrets": {
     "singular": "Secret"
@@ -1087,7 +1126,9 @@
   },
   "pageError": {
     "retry": "Yeniden dene",
-    "goHome": "Ana Sayfaya Git"
+    "goHome": "Ana Sayfaya Git",
+    "title": "Bir şeyler ters gitti",
+    "message": "Bu sayfa yüklenirken beklenmeyen bir hata oluştu."
   },
   "overview": {
     "title": "Dashboard Genel Bakış",

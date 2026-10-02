@@ -50,6 +50,7 @@ import { globalRoleLabel, INSTANCE_ROLES, roleColor, roleLabel } from '@/config/
 import { currentUserAtom } from '@/stores/auth';
 import { instancesAtom } from '@/stores/instance';
 import { describeError } from '@/utils/api-error';
+import { policyRefusal } from '@/utils/policy-refusal';
 import { recordDate } from '@/utils/record-date';
 import IconPlus from '~icons/material-symbols/add';
 import IconInstance from '~icons/material-symbols/dns-outline';
@@ -241,7 +242,7 @@ const UsersPage = () => {
         } catch (err) {
           notifications.show({
             title: t('users.errorTitle'),
-            message: describeError(err, t('users.createFailed')),
+            message: policyRefusal(t, err) ?? describeError(err, t('users.createFailed')),
             color: 'red',
           });
           return;
@@ -369,7 +370,7 @@ const UsersPage = () => {
     } catch (err) {
       notifications.show({
         title: t('users.resetFailed'),
-        message: describeError(err, t('users.resetFailed')),
+        message: policyRefusal(t, err) ?? describeError(err, t('users.resetFailed')),
         color: 'red',
       });
     } finally {

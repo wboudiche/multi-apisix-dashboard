@@ -14,6 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import i18n from '@/config/i18n';
+
 
 type OpenAPIOperation = {
   summary?: string;
@@ -182,5 +184,5 @@ export const parseImportData = (content: string): ParseResult => {
     };
   }
 
-  throw new Error('Unrecognized format. Expected OpenAPI spec, APISIX route JSON, or array of routes.');
+  throw new Error(i18n.t('form.import.unrecognized'));
 };

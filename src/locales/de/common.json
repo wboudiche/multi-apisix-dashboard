@@ -264,7 +264,8 @@
       "unsaved": "Nicht gespeichert",
       "copy": "Kopieren",
       "copied": "Kopiert",
-      "format": "Formatieren"
+      "format": "Formatieren",
+      "saveFailed": "Speichern fehlgeschlagen"
     },
     "plugins": {
       "addPlugin": "Plugin hinzufügen",
@@ -347,7 +348,22 @@
       "duplicateReasonName": "„{{- name}}“ trägt denselben Namen",
       "duplicateReasonPath": "„{{- name}}“ antwortet bereits auf {{- uri}}",
       "duplicateReasonBoth": "„{{- name}}“ trägt denselben Namen und antwortet bereits auf {{- uri}}",
-      "duplicateConfirmAction": "Trotzdem anlegen"
+      "duplicateConfirmAction": "Trotzdem anlegen",
+      "steps": {
+        "apiInfo": "API-Informationen festlegen",
+        "apiInfoDesc": "Protokoll, Host, Pfad usw.",
+        "upstream": "Upstream festlegen",
+        "upstreamDesc": "Konfiguration des Zielsystems",
+        "plugins": "Plugin-Konfiguration",
+        "pluginsDesc": "Plugins hinzufügen und konfigurieren",
+        "preview": "Vorschau",
+        "previewDesc": "Prüfen und abschließen",
+        "summaryBoundToService": "An Service gebunden",
+        "summaryCustomNodes": "Eigener: {{count}} Node(s)",
+        "summaryCustom": "Eigener Upstream",
+        "summaryExisting": "Vorhandener Upstream",
+        "summaryPluginConfig": "Plugin-Konfiguration: {{- id}}"
+      }
     },
     "requestOverride": {
       "title": "Request Override",
@@ -675,7 +691,9 @@
       "duplicateTitle": "{{count}} davon gibt es auf diesem Gateway bereits",
       "duplicateItem": "„{{- name}}“ kollidiert mit {{- existing}}",
       "duplicateHint": "APISIX erlaubt mehrere Routen auf demselben Pfad, ein erneuter Import legt also Kopien an, statt etwas zu aktualisieren. Importieren Sie erneut, um fortzufahren.",
-      "duplicateCheckFailed": "Vorhandene Routen konnten nicht geprüft werden. Importieren Sie erneut, um ohne diese Prüfung fortzufahren."
+      "duplicateCheckFailed": "Vorhandene Routen konnten nicht geprüft werden. Importieren Sie erneut, um ohne diese Prüfung fortzufahren.",
+      "unknownError": "Unbekannter Fehler",
+      "unrecognized": "Unbekanntes Format. Erwartet wird eine OpenAPI-Spezifikation, APISIX-Routen-JSON oder ein Array von Routen."
     },
     "importWsdl": {
       "title": "Aus WSDL importieren",
@@ -704,7 +722,16 @@
       "readError": "Datei konnte nicht gelesen werden",
       "fetchError": "WSDL konnte nicht abgerufen werden",
       "upstreamRequired": "Geben Sie eine vorhandene Upstream-ID an oder wählen Sie das automatische Anlegen aus der WSDL-Adresse",
-      "unknownError": "Unbekannter Fehler"
+      "noEndpoint": "Im WSDL wurde kein SOAP-Service-Endpunkt (<service>/<soap:address>) gefunden.",
+      "zipEmpty": "Im ZIP-Archiv wurden keine WSDL/XML-Dateien gefunden.",
+      "zipTooManyFiles": "Das ZIP enthält zu viele Dateien (>{{max}}).",
+      "zipTooLarge": "Das ZIP entpackt zu viele Daten; Abbruch, um eine ZIP-Bombe zu vermeiden.",
+      "warnUnresolvedImport": "Nicht aufgelöster wsdl:import '{{- location}}' — bitte im ZIP/URL-Paket mitliefern.",
+      "warnSoap12": "Das WSDL verwendet SOAP 1.2; der SOAPAction-Header kann fehlen, sodass das Routing pro Operation möglicherweise nicht greift. Erwägen Sie den Passthrough-Modus.",
+      "warnBadEndpoint": "Service '{{- service}}': Endpunkt-URL '{{- location}}' konnte nicht gelesen werden.",
+      "warnBindingMissing": "Service '{{- service}}': Binding '{{- binding}}' nicht gefunden.",
+      "warnEmptyAction": "Service '{{- service}}': Operation '{{- operation}}' hat eine leere SOAPAction und kann nicht pro Operation zugeordnet werden; sie wurde übersprungen (im Passthrough-Modus ist sie enthalten).",
+      "warnDuplicateAction": "Service '{{- service}}': doppelte SOAPAction '{{- action}}' — die erzeugten Routen kollidieren auf derselben URI."
     },
     "loadingConfiguration": "Konfiguration wird geladen…",
     "unsavedChanges": {
@@ -746,6 +773,14 @@
       "serviceFixed": "Hier angelegte Routen gehören zu diesem Service, der ihren Upstream liefert",
       "pluginsCount": "{{count}} Plugin(s)",
       "scheme": "Schema"
+    },
+    "validation": {
+      "nameRequired": "Name ist erforderlich",
+      "uriRequired": "URI ist erforderlich",
+      "hostEmpty": "Host darf nicht leer sein",
+      "nodeRequired": "Mindestens ein Node ist erforderlich",
+      "upstreamSourceRequired": "Wählen Sie einen Upstream, binden Sie einen Service oder konfigurieren Sie einen eigenen Upstream mit mindestens einem Node",
+      "required": "Erforderlich"
     }
   },
   "globalRules": {
@@ -787,7 +822,9 @@
     "missing_uppercase": "Einen Großbuchstaben enthalten",
     "missing_lowercase": "Einen Kleinbuchstaben enthalten",
     "missing_digit": "Eine Ziffer enthalten",
-    "missing_symbol": "Ein Sonderzeichen enthalten"
+    "missing_symbol": "Ein Sonderzeichen enthalten",
+    "max_length": "Höchstens {{max}} Bytes lang sein (ein Zeichen mit Akzent oder ein nicht lateinisches Zeichen belegt mehr als eines)",
+    "unmet": "Das Passwort muss: {{- rules}}"
   },
   "pluginConfigs": {
     "singular": "Plugin Konfiguration"
@@ -855,7 +892,9 @@
       "columnsNameAlwaysShown": "Immer sichtbar, damit jede Zeile erkennbar bleibt",
       "emptyOwnershipHint": "Routen, die einem anderen Team gehören oder noch keinem Team zugewiesen sind, werden hier nicht angezeigt. Falls Sie eine Route erwartet haben, bitten Sie Ihren Administrator, sie Ihrem Team zuzuweisen.",
       "headerTeam": "Team"
-    }
+    },
+    "createFailed": "Route konnte nicht erstellt werden",
+    "updateFailed": "Route konnte nicht aktualisiert werden"
   },
   "secrets": {
     "singular": "Secret"
@@ -1087,7 +1126,9 @@
   },
   "pageError": {
     "retry": "Erneut versuchen",
-    "goHome": "Zur Startseite"
+    "goHome": "Zur Startseite",
+    "title": "Etwas ist schiefgelaufen",
+    "message": "Beim Laden dieser Seite ist ein unerwarteter Fehler aufgetreten."
   },
   "overview": {
     "title": "Dashboard-Übersicht",

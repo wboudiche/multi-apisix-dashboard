@@ -17,6 +17,8 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import './styles/global.css';
+// zod's own "Required", as a key the forms translate: see the file.
+import './config/zod-errors';
 
 import { createTheme, MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';

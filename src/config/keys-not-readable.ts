@@ -46,6 +46,8 @@ export const KEYS_BUILT_FROM_VARIABLES = [
   'src/components/page/RouteTestDrawer.tsx', // the key is in a variable, `named`
   'src/config/role-labels.ts', // the key is a parameter; the keys it can be are `roleLabelKeys`, checked on their own
   'src/routes/instances/index.tsx', // the key is in a field of a table row, `entry.label`
+  'src/utils/error-text.ts', // the key is the message a schema wrote, checked where the schema spells it
+  'src/utils/policy-refusal.ts', // the key is looked up in a table, by the backend's code
 ];
 
 /**

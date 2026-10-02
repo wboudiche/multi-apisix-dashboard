@@ -195,7 +195,8 @@
       "duplicate": "Duplicate",
       "exportOpenAPI": "Export OpenAPI",
       "selectedCount": "{{count}} selected",
-      "saveSuccess": "JSON saved successfully"
+      "saveSuccess": "JSON saved successfully",
+      "saveFailed": "Failed to save"
     },
     "unsavedChanges": {
       "title": "Unsaved Changes",
@@ -224,7 +225,9 @@
       "duplicateTitle": "{{count}} of these already exist on this gateway",
       "duplicateItem": "\"{{- name}}\" clashes with {{- existing}}",
       "duplicateHint": "APISIX allows several routes on the same path, so importing again will add copies rather than update anything. Import again to go ahead.",
-      "duplicateCheckFailed": "Could not check for existing routes. Import again to go ahead without the check."
+      "duplicateCheckFailed": "Could not check for existing routes. Import again to go ahead without the check.",
+      "unknownError": "Unknown error",
+      "unrecognized": "Unrecognized format. Expected OpenAPI spec, APISIX route JSON, or array of routes."
     },
     "importWsdl": {
       "title": "Import from WSDL",
@@ -253,7 +256,16 @@
       "readError": "Failed to read file",
       "fetchError": "Failed to fetch WSDL",
       "upstreamRequired": "Enter an existing upstream ID, or choose auto-create from the WSDL address",
-      "unknownError": "Unknown error"
+      "noEndpoint": "No SOAP service endpoint (<service>/<soap:address>) found in the WSDL.",
+      "zipEmpty": "No WSDL/XML files found in the ZIP archive.",
+      "zipTooManyFiles": "ZIP contains too many files (>{{max}}).",
+      "zipTooLarge": "ZIP expands to too much data; aborting to avoid a zip bomb.",
+      "warnUnresolvedImport": "Unresolved wsdl:import '{{- location}}' — supply it in the ZIP/URL bundle.",
+      "warnSoap12": "WSDL uses SOAP 1.2; the SOAPAction header may be absent, so per-operation routing may not match. Consider passthrough mode.",
+      "warnBadEndpoint": "Service '{{- service}}': could not parse endpoint URL '{{- location}}'.",
+      "warnBindingMissing": "Service '{{- service}}': binding '{{- binding}}' not found.",
+      "warnEmptyAction": "Service '{{- service}}': operation '{{- operation}}' has an empty SOAPAction and cannot be matched per-operation; it was skipped (use passthrough mode to include it).",
+      "warnDuplicateAction": "Service '{{- service}}': duplicate SOAPAction '{{- action}}' — generated routes will collide on the same URI."
     },
     "routeTest": {
       "title": "Test Route",
@@ -355,7 +367,22 @@
       "duplicateReasonName": "\"{{- name}}\" uses the same name",
       "duplicateReasonPath": "\"{{- name}}\" already answers on {{- uri}}",
       "duplicateReasonBoth": "\"{{- name}}\" uses the same name and already answers on {{- uri}}",
-      "duplicateConfirmAction": "Create anyway"
+      "duplicateConfirmAction": "Create anyway",
+      "steps": {
+        "apiInfo": "Define API Information",
+        "apiInfoDesc": "Protocol, Host, Path, etc.",
+        "upstream": "Define Upstream",
+        "upstreamDesc": "Target gateway configuration",
+        "plugins": "Plugins Config",
+        "pluginsDesc": "Add and configure plugins",
+        "preview": "Preview",
+        "previewDesc": "Review and finish",
+        "summaryBoundToService": "Bound to service",
+        "summaryCustomNodes": "Custom: {{count}} node(s)",
+        "summaryCustom": "Custom upstream",
+        "summaryExisting": "Existing upstream",
+        "summaryPluginConfig": "Plugin config: {{- id}}"
+      }
     },
     "reassignTeam": {
       "title": "Reassign Team",
@@ -676,6 +703,14 @@
         "passiveChecks": "Passive Checks",
         "healthCheckSummary": "Path: {{path}}, Interval: {{interval}}s"
       }
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "uriRequired": "URI is required",
+      "hostEmpty": "Host cannot be empty",
+      "nodeRequired": "At least one node is required",
+      "upstreamSourceRequired": "Select an upstream, bind a service, or configure a custom upstream with at least one node",
+      "required": "Required"
     }
   },
   "globalRules": {
@@ -717,7 +752,9 @@
     "missing_uppercase": "Contain an uppercase letter",
     "missing_lowercase": "Contain a lowercase letter",
     "missing_digit": "Contain a digit",
-    "missing_symbol": "Contain a symbol"
+    "missing_symbol": "Contain a symbol",
+    "max_length": "Be at most {{max}} bytes long (an accented or non-Latin character takes more than one)",
+    "unmet": "The password must: {{- rules}}"
   },
   "pluginConfigs": {
     "singular": "Plugin Config"
@@ -785,7 +822,9 @@
       "duplicateFailed": "Failed to duplicate",
       "updateFailed": "Failed to update",
       "headerTeam": "Team"
-    }
+    },
+    "createFailed": "Failed to create route",
+    "updateFailed": "Failed to update route"
   },
   "secrets": {
     "singular": "Secret"
@@ -1087,7 +1126,9 @@
   },
   "pageError": {
     "retry": "Retry",
-    "goHome": "Go Home"
+    "goHome": "Go Home",
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred while loading this page."
   },
   "overview": {
     "title": "Dashboard Overview",
