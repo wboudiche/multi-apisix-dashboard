@@ -97,23 +97,38 @@ func TestTeamHoldersRefusesWithNoUsers(t *testing.T) {
 	}
 }
 
-// Where two records answer to one id, the same one names it every time: read
-// in map order, the refusal named one account on one call and another on the
-// next.
-func TestLivingUsersNamesAnIdTheSameWayTwice(t *testing.T) {
+// Where several records answer to one id, the same one names it every time -
+// read in map order, the refusal named one account on one call and another on
+// the next - and it is the record stored under that id, before an alias.
+func TestLivingUsersNamesAnId(t *testing.T) {
 	users := map[string][]byte{
-		"/users/u-bob":    []byte(`{"id":"u-bob","username":"bob"}`),
-		`/users/"u-bob"`:  []byte(`{"id":"\"u-bob\"","username":"bob-old"}`),
-		"/users/legacy":   []byte(`{"id":"u-carol","username":"carol"}`),
-		"/users/u-carol":  []byte(`{"id":"u-carol","username":"carol-new"}`),
+		// A stale duplicate under a quoted key, beside the record itself.
+		`/users/"u-bob"`: []byte(`{"id":"\"u-bob\"","username":"bob-old"}`),
+		"/users/u-bob":   []byte(`{"id":"u-bob","username":"bob"}`),
+		// A record kept under another key answers to its id as well, until the
+		// id has a record of its own.
+		"/users/legacy":  []byte(`{"id":"u-carol","username":"carol"}`),
+		"/users/u-carol": []byte(`{"id":"u-carol","username":"carol-new"}`),
+		"/users/old-key": []byte(`{"id":"u-frank","username":"frank"}`),
+		// No username: the id being asked about, not the key of the record.
+		"/users/stored-as": []byte(`{"id":"u-nameless"}`),
+		// A record that does not parse does not take the name from one that does.
+		`/users/"u-gina"`: []byte(`not json`),
+		"/users/u-gina":   []byte(`{"id":"u-gina","username":"gina"}`),
 		"/users/u-broken": []byte(`not json`),
+		// No id at all is nobody.
+		"/users/": []byte(`{}`),
 	}
 	want := map[string]string{
-		// `/users/"u-bob"` sorts before `/users/u-bob`.
-		"u-bob":    "bob-old",
-		"legacy":   "carol",
-		"u-carol":  "carol",
-		"u-broken": "u-broken",
+		"u-bob":      "bob",
+		"legacy":     "carol",
+		"u-carol":    "carol-new",
+		"old-key":    "frank",
+		"u-frank":    "frank",
+		"stored-as":  "stored-as",
+		"u-nameless": "u-nameless",
+		"u-gina":     "gina",
+		"u-broken":   "u-broken",
 	}
 	for i := 0; i < 20; i++ {
 		if got := livingUsers(users); !reflect.DeepEqual(got, want) {

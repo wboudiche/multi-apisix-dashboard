@@ -218,9 +218,12 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 // one (#375). Two readings had already come apart on the record that does not
 // parse.
 //
-// The name is the username, or the id for want of one. Where two records
-// answer to the same id, the one whose key sorts first names it, so that the
-// same question gets the same answer twice.
+// The name is the username, or the id itself for want of one - never a blank,
+// and never the key of some other record. Where several records answer to one
+// id, the record stored under that very id names it before one that answers
+// to it by an alias - a key in quotes, or an id written in a record kept
+// under another key - and among equals the one whose key sorts first, so that
+// the same question gets the same answer twice.
 func livingUsers(users map[string][]byte) map[string]string {
 	keys := make([]string, 0, len(users))
 	for key := range users {
@@ -228,25 +231,51 @@ func livingUsers(users map[string][]byte) map[string]string {
 	}
 	sort.Strings(keys)
 
-	names := make(map[string]string, len(users))
+	const (
+		byItsOwnRecord = iota
+		byAnAlias
+		byItsID
+	)
+	type named struct {
+		name string
+		rank int
+	}
+	best := make(map[string]named, len(users))
+	offer := func(id, name string, rank int) {
+		if id == "" {
+			return
+		}
+		if current, known := best[id]; !known || rank < current.rank {
+			best[id] = named{name, rank}
+		}
+	}
 	for _, key := range keys {
-		keyID := unquoteID(strings.TrimPrefix(key, models.KeyPrefixUsers))
-		ids := []string{keyID}
-		name := keyID
+		written := strings.TrimPrefix(key, models.KeyPrefixUsers)
+		keyID := unquoteID(written)
+		offer(keyID, keyID, byItsID)
+
 		var user models.User
-		if json.Unmarshal(users[key], &user) == nil {
-			if recordID := unquoteID(user.ID); recordID != "" && recordID != keyID {
-				ids = append(ids, recordID)
-			}
-			if user.Username != "" {
-				name = user.Username
-			}
+		if json.Unmarshal(users[key], &user) != nil {
+			continue
 		}
-		for _, id := range ids {
-			if _, taken := names[id]; !taken {
-				names[id] = name
-			}
+		recordID := unquoteID(user.ID)
+		offer(recordID, recordID, byItsID)
+		if user.Username == "" {
+			continue
 		}
+		if written == keyID {
+			offer(keyID, user.Username, byItsOwnRecord)
+		} else {
+			offer(keyID, user.Username, byAnAlias)
+		}
+		if recordID != keyID {
+			offer(recordID, user.Username, byAnAlias)
+		}
+	}
+
+	names := make(map[string]string, len(best))
+	for id, found := range best {
+		names[id] = found.name
 	}
 	return names
 }
