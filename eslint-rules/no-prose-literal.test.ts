@@ -45,6 +45,12 @@ tester.run('no-prose-literal', rule, {
     "const body = { fontFamily: 'DM Sans, sans-serif' }",
     "const method = 'GET /apisix/admin/routes'",
     "const protocols = 'TLSv1.2 TLSv1.3'",
+    // One capital and a space are not a word and a sentence: a path, a date
+    // format, a grid.
+    "const d = 'M 4 12 L 20 12'",
+    "const day = dayjs(at).format('D MMM YYYY')",
+    "const other = dayjs(at).format('MMM d, yyyy')",
+    "const grid = { gridTemplateAreas: 'A b' }",
   ],
   invalid: [
     { code: "z.string().min(1, 'Name is required')", errors: [{ messageId: 'prose' }] },
@@ -64,6 +70,7 @@ tester.run('no-prose-literal', rule, {
       errors: [{ messageId: 'prose' }],
     },
     { code: "setError('A node is required')", errors: [{ messageId: 'prose' }] },
+    { code: "setError('I cannot save this')", errors: [{ messageId: 'prose' }] },
     { code: 'setError("Can\'t save")', errors: [{ messageId: 'prose' }] },
     {
       code: 'warnings.push(`Service \'${name}\': binding not found.`)',

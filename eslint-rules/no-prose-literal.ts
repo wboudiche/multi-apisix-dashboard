@@ -31,7 +31,8 @@ import type { Rule } from 'eslint';
  * begins with a capitalised word and goes on - "Name is required", "Define
  * Upstream", "A node is required", "Service '…" - or with an acronym and a
  * word in lower case, "URI is required". Not a constant, a path, a class
- * name, a key, or a font ("DM Sans"). What it misses, it misses: a sentence
+ * name, a key, a font ("DM Sans"), the data of an SVG path ("M 4 12") or a
+ * date format ("D MMM YYYY"). What it misses, it misses: a sentence
  * that begins in lower case, with a value, or with an acronym and a
  * capitalised word. It is a net, not a proof - that every key exists in
  * every language is held by src/config/locale-keys.test.ts.
@@ -40,7 +41,7 @@ import type { Rule } from 'eslint';
  * sentence compared with a gateway's - says so on its own line, with the
  * reason.
  */
-const SENTENCE = /^(?:[A-Z][a-z']* [\w'"(<]|[A-Z]{2,}[a-z]* [a-z])/;
+const SENTENCE = /^(?:[A-Z][a-z']+ [\w'"(<]|[AI] [a-z]{2}|[A-Z]{2,}[a-z]* [a-z]{2})/;
 
 const rule: Rule.RuleModule = {
   meta: {
