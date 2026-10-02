@@ -66,18 +66,9 @@ jobs:
           flavor: |
             latest=auto
 
-      # Which golang image the backend is compiled in: the minor api/go.mod
-      # declares, at its latest patch.
-      - id: go
-        uses: ./.github/actions/go-version
-        with:
-          install: "false"
-
       - uses: docker/build-push-action@v7
         with:
           context: .
-          build-args: |
-            GO_TAG=${{ steps.go.outputs.minor }}-alpine
           platforms: ${{ github.event_name == 'push' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}

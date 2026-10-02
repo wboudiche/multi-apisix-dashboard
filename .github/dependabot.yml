@@ -6,11 +6,7 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
-    # "/" is the workflows; an action of our own is looked for only where it
-    # is said to be.
-    directories:
-      - "/"
-      - "/.github/actions/go-version"
+    directory: "/"
     schedule:
       interval: "daily"
 

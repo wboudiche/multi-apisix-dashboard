@@ -17,15 +17,12 @@
 
 # Official image: Go backend + built SPA in one container.
 #
-#   docker build -t ghcr.io/wboudiche/multi-apisix-dashboard:dev .
+#   docker build --pull -t ghcr.io/wboudiche/multi-apisix-dashboard:dev .
 #   docker run -p 8080:8080 -e ETCD_ENDPOINTS=http://etcd:2379 \
 #     -e JWT_SECRET="$(openssl rand -hex 32)" ghcr.io/wboudiche/multi-apisix-dashboard:dev
 #
 # JWT_SECRET is deliberately not defaulted: the backend refuses to start
 # without a strong one.
-
-# The golang image of the backend stage: see there.
-ARG GO_TAG=alpine
 
 # ---- 1. frontend --------------------------------------------------------
 FROM --platform=$BUILDPLATFORM node:22-alpine AS ui
@@ -51,15 +48,17 @@ RUN pnpm build
 # GOOS/GOARCH, so a multi-arch build never emulates the pnpm/tsc/vite or Go
 # toolchains under QEMU.
 #
-# Which golang image is not written here. The official image runs with
-# GOTOOLCHAIN=local, so one older than the `go` directive in api/go.mod
-# refuses to build, and a tag written here went stale each time a dependency
-# raised the directive (#368). The workflows pass the minor the directive
-# declares (GO_TAG=1.26-alpine): its latest patch, and the Go the tests ran
-# with. A build that passes nothing - `docker build .`, the deploy compose -
-# gets the newest Go there is, which builds any directive; if it is refused
-# all the same, the local golang:alpine is an old one: build with --pull.
-FROM --platform=$BUILDPLATFORM golang:${GO_TAG} AS api
+# No Go version is written here. The `go` line of api/go.mod is the least the
+# code needs - and what its behaviour is held to, whatever compiles it - not
+# the toolchain to use, and the official image runs with GOTOOLCHAIN=local:
+# a tag written here refused to build the day a dependency raised that line,
+# until the tag was moved by hand (#368). The newest Go builds any of them,
+# and is the one with every fix. The workflows test with the same.
+#
+# Docker does not look for a newer golang:alpine than the one it already
+# holds: build with --pull (the deploy compose does), or an old local copy
+# is refused in go's own words, "go.mod requires go >= ...".
+FROM --platform=$BUILDPLATFORM golang:alpine AS api
 WORKDIR /src
 COPY api/go.mod api/go.sum ./
 RUN go mod download
