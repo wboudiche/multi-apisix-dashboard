@@ -16,11 +16,12 @@
  */
 import { readdirSync, readFileSync } from 'node:fs';
 
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { defaultNS, resources } from './i18n';
-import { KEY_PREFIXES_BUILT, KEYS_BUILT_FROM_VARIABLES } from './keys-not-readable';
 import { placeholdersIn } from './placeholders';
+import { PLURAL_SUFFIX } from './plural-forms';
 import { roleLabelKeys } from './role-labels';
 
 /**
@@ -63,8 +64,7 @@ const flatten = (node: unknown, prefix = ''): Map<string, string> => {
 
 const placeholders = (value: string) => placeholdersIn(value).sort();
 
-const PLURAL_FORM = /_(zero|one|two|few|many|other)$/;
-const base = (key: string) => key.replace(PLURAL_FORM, '');
+const base = (key: string) => key.replace(PLURAL_SUFFIX, '');
 const filled = (value: string | undefined) => typeof value === 'string' && value.trim() !== '';
 
 /**
@@ -190,21 +190,22 @@ describe.each(LANGUAGES)('%s', (lang) => {
 });
 
 /**
- * What every file spells out is a key `en` holds, every key it reads is
- * spelled out, and every key `en` holds is read by some file. The keys
- * themselves are held above; this holds the source that names them, for every
- * file under src/. Where a key is handed to t() in a variable by design,
- * src/config/keys-not-readable.ts names the file, with the reason, and the
- * prefixes such a file can reach.
+ * What every file spells out is a key `en` holds, and every key `en` holds is
+ * read by some file. The keys themselves are held above; this holds the
+ * source that names them, for every file under src/.
+ *
+ * That a key is spelled where it is asked for - not handed to t() in a
+ * variable, where nothing here could read it - is eslint's
+ * local/readable-key. It was this test's, by scanning the source as text, and
+ * each review found ordinary code the scan misread (#365).
  *
  * Read out of the source rather than enumerated: a list of keys goes stale, and
  * the first attempt at this test listed 11 of the 48 these files read.
  */
 
 /**
- * Every source file, as a path from the repository root - the form the
- * exclusion list spells - but the tests, the bundles and the generated route
- * tree.
+ * Every source file, as a path from the repository root, but the tests, the
+ * bundles and the generated route tree.
  */
 const sourceFiles = (dir = 'src'): string[] =>
   readdirSync(new URL(`../../${dir}`, import.meta.url), { withFileTypes: true }).flatMap((entry) => {
@@ -215,128 +216,121 @@ const sourceFiles = (dir = 'src'): string[] =>
       : [];
   });
 
-const files = sourceFiles();
-const sources = new Map(files.map((file) => [file, readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8')]));
-
-/**
- * The keys a file asks for: every dotted name it spells out under one of
- * `en`'s namespaces.
- *
- * Matching `t('...` instead would read the first argument of a call and stop
- * there, which missed `t(published ? 'info.publish.success' : 'info.unpublish.success')`
- * on the routes list - two keys, in no language but English, on a screen the
- * list of that time called translated.
- *
- * Nothing under a namespace is dropped for not being a key: `reads only keys
- * en holds` below is the check that a name here is one, and filtering on the
- * catalogue first made it vacuous - a key mistyped inside a ternary is
- * invisible to eslint's i18n/no-unknown-key, which does not descend into one,
- * so this is the only thing that would say so. The namespace is what tells a
- * key from a field path (`tls.verify`, `checks.active.timeout`) or a protocol
- * name (`TLSv1.2`): a typo in a key's first segment is the one shape this
- * cannot see, and a literal key that eslint sees anyway.
- */
 const namespaces = new Set([...en.keys()].map((key) => key.split('.')[0]));
-// Single quotes in code, double in a JSX attribute (`<Trans i18nKey="…">`). A
-// name with no dot - `or`, `noData` - is a key only when `en` spells it so.
-const keysRead = (source: string) =>
-  [...source.matchAll(/(['"])([a-zA-Z][\w-]*(?:\.[\w-]+)*)\1/g)]
-    .map((m) => m[2])
-    .filter((key) => (key.includes('.') ? namespaces.has(key.split('.')[0]) : en.has(key)));
+
+/** `t(…)` and `i18n.t(…)`. */
+const isTranslate = (callee: ts.Expression) =>
+  (ts.isIdentifier(callee) && callee.text === 't') ||
+  (ts.isPropertyAccessExpression(callee) && callee.name.text === 't');
 
 /**
- * The first argument of each t() call in a source, as text: from the opening
- * parenthesis to the comma or parenthesis that closes it, whatever nests
- * inside.
+ * What a source reads of the bundles, out of its syntax tree.
+ *
+ * `keys`: every string it spells that is a dotted name under one of `en`'s
+ * namespaces, wherever it stands - an argument of t(), a branch of a ternary,
+ * a row of a table the key is looked up in, a JSX attribute. Nothing under a
+ * namespace is dropped for not being a key: `reads only keys en holds` below
+ * is the check that a name here is one, and filtering on the catalogue first
+ * made it vacuous - a key mistyped inside a ternary is invisible to eslint's
+ * i18n/no-unknown-key, which does not descend into one, so this is the only
+ * thing that would say so. The namespace is what tells a key from a field
+ * path (`tls.verify`, `checks.active.timeout`) or a protocol name
+ * (`TLSv1.2`). A name with no dot - `or`, `noData` - is a key only when `en`
+ * spells it so.
+ *
+ * `prefixes`: what a call builds its key from - ``t(`sources.${label}`)``
+ * reaches every key under `sources.`, and none of them is dead for being
+ * spelled by no file. Read off the call rather than listed beside it: a
+ * listed prefix outlived the call that built from it, and sheltered every key
+ * under it from the dead-key check for good.
+ *
+ * A comment is not source: a key quoted in one is not read, and sheltered a
+ * dead key when the source was matched as text.
  */
-const firstArguments = (source: string) => {
-  const found: string[] = [];
-  for (const match of source.matchAll(/\bt\(/g)) {
-    let depth = 0;
-    let quote: string | undefined;
-    for (let at = match.index + match[0].length; at < source.length; at++) {
-      const c = source[at];
-      if (quote) {
-        if (c === '\\') at++;
-        else if (c === quote) quote = undefined;
-      } else if (c === "'" || c === '"' || c === '`') quote = c;
-      else if ('([{'.includes(c)) depth++;
-      else if (')]}'.includes(c)) {
-        if (depth === 0) {
-          found.push(source.slice(match.index + match[0].length, at));
-          break;
-        }
-        depth--;
-      } else if (c === ',' && depth === 0) {
-        found.push(source.slice(match.index + match[0].length, at));
-        break;
+const readOf = (file: string, source: string) => {
+  const keys: string[] = [];
+  const prefixes: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      const { text } = node;
+      if (/^[a-zA-Z][\w-]*(?:\.[\w-]+)*$/.test(text)) {
+        if (text.includes('.') ? namespaces.has(text.split('.')[0]) : en.has(text)) keys.push(text);
       }
     }
-  }
-  return found;
+    if (ts.isCallExpression(node) && isTranslate(node.expression)) {
+      const [key] = node.arguments;
+      if (key && ts.isTemplateExpression(key) && key.head.text !== '') prefixes.push(key.head.text);
+    }
+    node.forEachChild(visit);
+  };
+  visit(
+    ts.createSourceFile(
+      file,
+      source,
+      ts.ScriptTarget.Latest,
+      false,
+      file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+    )
+  );
+  return { keys, prefixes };
 };
 
-/**
- * Whether a key expression can be read: a string literal, or a ternary whose
- * branches can. Anything else - a variable, a field, a lookup, a template -
- * cannot, and the file is held to writing the key out.
- */
-const spelled = (expression: string): boolean => {
-  const text = expression.trim();
-  if (/^'[^']*'$/.test(text)) return true;
-  // The first `?` at depth zero that is not `??` or `?.` opens a ternary; its
-  // `:` is the one at depth zero after it, skipping the `?`s nested in its
-  // branches. Parentheses around the whole of it say nothing: the closing one
-  // that brings the depth back to zero is the last character.
-  let depth = 0;
-  let wrapped = text[0] === '(';
-  let quote: string | undefined;
-  let question = -1;
-  let nested = 0;
-  for (let at = 0; at < text.length; at++) {
-    const c = text[at];
-    if (quote) {
-      if (c === '\\') at++;
-      else if (c === quote) quote = undefined;
-      continue;
-    }
-    if (c === "'" || c === '"' || c === '`') quote = c;
-    else if ('([{'.includes(c)) depth++;
-    else if (')]}'.includes(c)) {
-      depth--;
-      if (depth === 0 && wrapped) {
-        if (at === text.length - 1) return spelled(text.slice(1, -1));
-        wrapped = false;
-      }
-    } else if (depth === 0 && c === '?' && !['?', '.'].includes(text[at + 1]) && text[at - 1] !== '?') {
-      if (question === -1) question = at;
-      else nested++;
-    } else if (depth === 0 && c === ':' && question !== -1) {
-      if (nested === 0) return spelled(text.slice(question + 1, at)) && spelled(text.slice(at + 1));
-      nested--;
-    }
-  }
-  return false;
-};
+const files = sourceFiles();
+const reads = new Map(
+  files.map((file) => [
+    file,
+    readOf(file, readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8')),
+  ])
+);
 
-// `user?.isAdmin ? 'a' : 'b'` was refused as a variable key: the `?` of the
-// chain was taken for the ternary's, and the only ways out were to contort the
-// condition or to list the file, which lifts the check for all of it.
-it.each([
-  ["'a.b'", true],
-  ["cond ? 'a.b' : 'c.d'", true],
-  ["user?.isAdmin ? 'a.b' : 'c.d'", true],
-  ["a?.b?.c ? 'a.b' : 'c.d'", true],
-  ["a ? 'a.b' : b?.c ? 'c.d' : 'e.f'", true],
-  ["(cond ? 'a.b' : 'c.d')", true],
-  ["a ? (b ? 'a.b' : 'c.d') : 'e.f'", true],
-  ["(a) ? 'a.b' : (b)", false],
-  ['(pick)(entry)', false],
-  ["cond ? entry?.label : 'c.d'", false],
-  ["table[x] ?? 'a.b'", false],
-  ['entry?.label', false],
-])('reads %s as spelled: %s', (expression, expected) => {
-  expect(spelled(expression)).toBe(expected);
+describe('what a source reads of the bundles', () => {
+  const read = (source: string) => readOf('probe.tsx', source);
+
+  it('is every key it spells, wherever it stands', () => {
+    const { keys } = read(`
+      const a = t('info.add.success');
+      const b = t(published ? 'info.publish.success' : 'info.unpublish.success');
+      const table = { viewer: 'roles.viewer' } as const;
+      const c = <Trans i18nKey="form.btn.next" />;
+      const d = t(\`form.btn.save\`);
+    `);
+
+    expect(keys).toEqual([
+      'info.add.success',
+      'info.publish.success',
+      'info.unpublish.success',
+      'roles.viewer',
+      'form.btn.next',
+      'form.btn.save',
+    ]);
+  });
+
+  it('is not a field path, a protocol, or a word en does not spell as a key', () => {
+    expect(read("const a = ['tls.verify', 'TLSv1.2', 'upstream', 'x.y'];").keys).toEqual([]);
+    expect(read("const a = ['or', 'noData'];").keys).toEqual(['or', 'noData']);
+  });
+
+  it('is not a key quoted in a comment', () => {
+    const { keys } = read(`
+      // 'info.add.success' was read here once
+      /** and \`t('info.delete.success')\` there */
+      const a = 1;
+    `);
+
+    expect(keys).toEqual([]);
+  });
+
+  it('is the prefix a call builds its key from', () => {
+    const { keys, prefixes } = read(`
+      const a = t(\`sources.\${route.label}\`);
+      const b = i18n.t(\`form.plugins.category.\${category}\`, { count });
+      const c = other(\`routes.\${x}\`);
+      const d = t(\`\${whole}\`);
+    `);
+
+    expect(prefixes).toEqual(['sources.', 'form.plugins.category.']);
+    expect(keys).toEqual([]);
+  });
 });
 
 // `en` writes no key in plural forms today, so nothing in the bundles would
@@ -349,42 +343,36 @@ it('resolves a key from its plural forms, and not a plural form from its key', (
   expect(resolves(plural, 'y')).toBe(false);
 });
 
-it('excludes only files that exist', () => {
-  expect(KEYS_BUILT_FROM_VARIABLES.filter((file) => !files.includes(file))).toEqual([]);
-});
-
 describe.each(files)('%s', (file) => {
-  const source = sources.get(file)!;
-
   it('reads only keys en holds', () => {
     // A screen asking for a key no bundle has renders the key itself. A key
     // `en` writes in plural forms is asked for by its base, and resolves: the
     // other way round - `t('x_one')` where `en` holds `x` - does not.
-    const keys = [...new Set(keysRead(source))].sort();
+    const keys = [...new Set(reads.get(file)!.keys)].sort();
     expect(keys.filter((key) => !resolves(en, key))).toEqual([]);
   });
-
-  // What the harvest above cannot see: a key held in a variable or built from
-  // one. The check above would pass on the keys it does see and say nothing
-  // about that one, so the file is held to writing them out - unless that is
-  // its design, and the list says so.
-  if (!KEYS_BUILT_FROM_VARIABLES.includes(file)) {
-    it('spells out every key it reads', () => {
-      expect(firstArguments(source).filter((argument) => !spelled(argument))).toEqual([]);
-    });
-  }
 });
 
 /**
- * The other direction: a key `en` holds that no file spells, and no prefix a
- * variable-key file reaches covers, is dead - and costs four translations
- * every time one is added. Eighteen sat in `en` when this was written (#362).
+ * The other direction: a key `en` holds that no file spells, and no call
+ * builds a key towards, is dead - and costs four translations every time one
+ * is added. Eighteen sat in `en` when this was written (#362).
  */
 it('holds no key en has that nothing reads', () => {
-  const read = new Set([...sources.values()].flatMap(keysRead));
+  const all = [...reads.values()];
+  const read = new Set(all.flatMap(({ keys }) => keys));
+  const prefixes = [...new Set(all.flatMap(({ prefixes }) => prefixes))];
   const dead = [...en.keys()].filter(
     (key) =>
-      !read.has(key) && !read.has(base(key)) && !KEY_PREFIXES_BUILT.some((prefix) => key.startsWith(prefix))
+      !read.has(key) && !read.has(base(key)) && !prefixes.some((prefix) => key.startsWith(prefix))
   );
   expect(dead).toEqual([]);
+});
+
+// A prefix nothing under it answers to is a call building keys no bundle
+// holds - or one whose keys were all removed and that should go with them.
+it('builds no key towards a prefix en holds nothing under', () => {
+  const prefixes = [...new Set([...reads.values()].flatMap(({ prefixes }) => prefixes))];
+  const empty = prefixes.filter((prefix) => ![...en.keys()].some((key) => key.startsWith(prefix)));
+  expect(empty).toEqual([]);
 });

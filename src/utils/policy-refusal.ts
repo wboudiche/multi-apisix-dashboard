@@ -45,8 +45,10 @@ const known = (code: unknown): code is keyof typeof RULES =>
 const ruleText = (t: TFunction, violation: PolicyViolation | undefined) => {
   if (!known(violation?.code)) return undefined;
   const { key, param } = RULES[violation.code];
+  // eslint-disable-next-line local/readable-key -- spelled in RULES, above
   if (param === undefined) return t(key);
   const value = violation.params?.[param];
+  // eslint-disable-next-line local/readable-key -- spelled in RULES, above
   return typeof value === 'number' ? t(key, { [param]: value }) : undefined;
 };
 

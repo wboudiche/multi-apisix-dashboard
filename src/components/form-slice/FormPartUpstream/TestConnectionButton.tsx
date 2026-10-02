@@ -97,6 +97,7 @@ export const TestConnectionButton = () => {
       const limited = probeLimitKey(err);
       setError(
         limited
+          // eslint-disable-next-line local/readable-key -- one of the two keys probeLimitKey spells
           ? t(limited)
           : describeError(err, t('form.upstreams.testConnection.failure'))
       );

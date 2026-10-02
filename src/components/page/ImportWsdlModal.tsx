@@ -193,6 +193,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
       setSourceUrl(undefined);
       setParseError(
         limited
+          // eslint-disable-next-line local/readable-key -- one of the two keys probeLimitKey spells
           ? t(limited)
           : (e?.response?.data?.error ?? e?.message ?? t('form.importWsdl.fetchError'))
       );

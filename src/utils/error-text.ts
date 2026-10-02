@@ -34,4 +34,5 @@ const KEYS = 'form.validation.';
  * locale-keys.test.ts, which reads the schemas like any other source.
  */
 export const errorText = (message: string | undefined) =>
+  // eslint-disable-next-line local/readable-key -- spelled by the schema that wrote the message
   message?.startsWith(KEYS) && i18n.exists(message) ? i18n.t(message as never) : message;

@@ -39,6 +39,7 @@ const FormItemStatus = () => {
     (): ComboboxItem[] =>
       APISIXCommon.Status.options.map((v) => ({
         value: String(v.value),
+        // eslint-disable-next-line local/readable-key -- one key per status the schema has
         label: t(`form.basic.statusOption.${v.value}`),
       })),
     [t]

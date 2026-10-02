@@ -121,6 +121,7 @@ export const Navbar = ({ collapsed, onCollapseToggle }: { collapsed: boolean; on
               {...route}
               key={route.to}
               collapsed={collapsed}
+              // eslint-disable-next-line local/readable-key -- one key per entry of navRoutes, all under sources.
               label={t(`sources.${route.label}`)}
               leftSection={
                 <div

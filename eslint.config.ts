@@ -34,6 +34,7 @@ import tseslint from 'typescript-eslint'
 
 import interpolationData from './eslint-rules/interpolation-data';
 import noProseLiteral from './eslint-rules/no-prose-literal';
+import readableKey from './eslint-rules/readable-key';
 
 const importRules = tseslint.config({
   plugins: {
@@ -255,7 +256,11 @@ const fieldKeysAreNotProse = tseslint.config({
 // One object for every block that names it: ESLint refuses a plugin defined
 // twice under one name.
 const local = {
-  rules: { 'interpolation-data': interpolationData, 'no-prose-literal': noProseLiteral },
+  rules: {
+    'interpolation-data': interpolationData,
+    'no-prose-literal': noProseLiteral,
+    'readable-key': readableKey,
+  },
 };
 
 /**
@@ -275,6 +280,21 @@ const proseHasAKey = tseslint.config({
   ],
   plugins: { local },
   rules: { 'local/no-prose-literal': 'error' },
+});
+
+/**
+ * A key in a variable is one nothing can check: see
+ * eslint-rules/readable-key.ts. Where that is the design, the line says where
+ * the keys it can be are spelled.
+ *
+ * Not in the tests: one that runs over a table of keys hands `t` each of
+ * them, and the table is the test.
+ */
+const keysAreSpelled = tseslint.config({
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: ['src/**/*.test.{ts,tsx}'],
+  plugins: { local },
+  rules: { 'local/readable-key': 'error' },
 });
 
 const i18nRules = tseslint.config({
@@ -420,5 +440,6 @@ export default tseslint.config(
   listPredicatesAreNotProse,
   fieldKeysAreNotProse,
   proseHasAKey,
+  keysAreSpelled,
   srcRules
 );

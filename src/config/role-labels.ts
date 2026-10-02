@@ -77,6 +77,7 @@ export const roleColor = (role?: string | null) => {
  */
 export const roleLabel = (t: TFunction, role?: string | null) => {
   const key = roleLabelKey(role);
+  // eslint-disable-next-line local/readable-key -- spelled in ROLES, above, and held by roleLabelKeys
   return key ? t(key) : (role ?? '').replace(/_/g, ' ');
 };
 
@@ -88,6 +89,7 @@ export const roleLabel = (t: TFunction, role?: string | null) => {
  * every one of them a badge with a shield and no text (#300).
  */
 export const globalRoleLabel = (t: TFunction, role?: string | null) =>
+  // eslint-disable-next-line local/readable-key -- spelled once, above, for roleLabelKeys too
   role ? roleLabel(t, role) : t(GLOBAL_USER_LABEL_KEY);
 
 /**

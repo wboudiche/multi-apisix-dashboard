@@ -190,6 +190,7 @@ export const RouteTestDrawer = ({
           : undefined);
       setError(
         named
+          // eslint-disable-next-line local/readable-key -- spelled where `named` is worked out, above
           ? t(named)
           : (e?.response?.data?.error || e?.message || t('form.routeTest.requestFailed'))
       );
