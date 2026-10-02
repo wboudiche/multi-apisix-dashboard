@@ -56,13 +56,18 @@ RUN pnpm build
 # and is the one with every fix. The workflows test with the same.
 #
 # Docker does not look for a newer golang:alpine than the one it already
-# holds: build with --pull (the deploy compose does), or an old local copy
-# is refused in go's own words, "go.mod requires go >= ...".
+# holds, and builds with that: with --pull it asks. A local copy older than
+# the `go` line is refused in go's own words, "go.mod requires go >= ...";
+# one that is merely not the latest is used without a word.
 FROM --platform=$BUILDPLATFORM golang:alpine AS api
 WORKDIR /src
 COPY api/go.mod api/go.sum ./
 RUN go mod download
 COPY api/ ./
+# With the Go that compiles what is published, whichever it is today: a tag
+# builds this image and runs no other job, so the tests elsewhere may have
+# last run under an older one. Natively, before the target is named.
+RUN go vet ./... && go test ./...
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /out/api ./cmd
 

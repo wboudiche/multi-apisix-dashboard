@@ -46,6 +46,11 @@ docker compose up -d --build
 The `build` context is the repository root, so the `Dockerfile` there is
 used instead of pulling from GHCR.
 
+The `Dockerfile` names no Go version and builds with `golang:alpine`, the
+newest. Docker reuses the copy it already holds: if the build stops on
+`go.mod requires go >= ...`, that copy is older than the code needs, and
+`docker compose build --pull` fetches the current one.
+
 ## Reset
 
 ```sh

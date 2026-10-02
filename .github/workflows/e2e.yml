@@ -105,17 +105,11 @@ jobs:
           pnpm exec playwright install-deps chromium
 
       # The newest Go, as the image is built with: see the backend job in
-      # build.yml. This file is in the cache key so that the key is not that
-      # job's: same Go, same go.sum, and whichever saved first would hand the
-      # other a cache of the wrong build - vet and -race there, a plain build
-      # here - that it could then never replace.
+      # build.yml.
       - uses: actions/setup-go@v7
         with:
           go-version: stable
-          check-latest: true
-          cache-dependency-path: |
-            api/go.sum
-            .github/workflows/e2e.yml
+          cache-dependency-path: api/go.sum
 
       - name: Build Go backend
         run: |

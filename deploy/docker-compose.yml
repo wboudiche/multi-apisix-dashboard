@@ -30,9 +30,6 @@ services:
     image: ghcr.io/wboudiche/multi-apisix-dashboard:latest
     build:
       context: ..
-      # The Dockerfile names no Go version, and takes the newest: without
-      # this, an old golang:alpine already on the machine is used as it is.
-      pull: true
     restart: unless-stopped
     environment:
       ETCD_ENDPOINTS: http://etcd:2379

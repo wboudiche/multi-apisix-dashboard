@@ -71,12 +71,15 @@ jobs:
       # `go` line of api/go.mod is the least the code needs, not the toolchain
       # to use. A number written here was refused by the first go.mod that
       # asked for more - setup-go runs with GOTOOLCHAIN=local (#368).
-      # check-latest, or it is whatever patch the runner happens to hold.
       - uses: actions/setup-go@v7
         with:
           go-version: stable
-          check-latest: true
           cache-dependency-path: api/go.sum
+
+      # And the least it needs still builds it. That is the Go a developer's
+      # own go fetches for this module, and no other step compiles with it.
+      - name: Build with the Go that go.mod declares
+        run: GOTOOLCHAIN="go$(go mod edit -json | jq -r .Go)" go build ./...
 
       - name: Vet
         run: go vet ./...
