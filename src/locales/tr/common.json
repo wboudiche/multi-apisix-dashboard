@@ -929,7 +929,8 @@
     "disabled": "Pasif",
     "enabled": "Aktif",
     "selectAll": "Tümünü seç",
-    "selectRow": "{{name}} seç"
+    "selectRow": "{{name}} seç",
+    "nameWithId": "{{name}} ({{id}})"
   },
   "upstreams": {
     "health": "Durum",

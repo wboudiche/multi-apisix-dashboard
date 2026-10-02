@@ -36,7 +36,7 @@ function PluginConfigsList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination, listKey } = usePluginConfigList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
     listKey,
     { idOf: rowId, nameOf: rowNameOrId }
@@ -104,12 +104,11 @@ function PluginConfigsList() {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey={rowKey}
+        {...tableProps}
         loading={isLoading}
         search={false}
         options={false}
         pagination={pagination}
-        rowSelection={rowSelection}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {

@@ -44,7 +44,7 @@ function RouteComponent() {
   const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useUpstreamList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list as UpstreamRow[],
     listKey,
     { idOf: rowId, nameOf: rowNameOrId }
@@ -251,12 +251,11 @@ function RouteComponent() {
         <ProTable
           columns={columns}
           dataSource={data?.list as UpstreamRow[]}
-          rowKey={rowKey}
+          {...tableProps}
           loading={isLoading}
           search={false}
           options={false}
           pagination={pagination}
-          rowSelection={rowSelection}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{
             menu: {

@@ -17,7 +17,13 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { rowId, rowNameOrId, rowNames, tableRowSelection } from './useTableRowSelection';
+import {
+  checkboxNames,
+  rowId,
+  rowNameOrId,
+  rowNames,
+  tableRowSelection,
+} from './useTableRowSelection';
 
 type Row = { value: { id: string; name?: string } };
 
@@ -61,35 +67,56 @@ describe('the selection checkboxes of an antd list', () => {
 // Two certificates for one SNI are the ordinary way to serve RSA and ECDSA,
 // and two checkboxes named alike are no better than two with no name.
 describe('what the rows of a list are called', () => {
-  const rows: Row[] = [
-    { value: { id: '1', name: 'billing' } },
-    { value: { id: '2', name: 'billing' } },
-    { value: { id: '3', name: 'search' } },
-    { value: { id: '4' } },
-  ];
-  const names = rowNames(rows, rowId, rowNameOrId);
+  const withId = (name: string, id: string) => `${name} (${id})`;
+  const called = (rows: Row[]) => [...rowNames(rows, rowId, rowNameOrId, withId).values()];
 
   it('is its name, where no other row on the list has it', () => {
-    expect(names.get('3')).toBe('search');
+    expect(called([{ value: { id: '1', name: 'billing' } }, { value: { id: '3', name: 'search' } }]))
+      .toEqual(['billing', 'search']);
   });
 
   it('is its name and its id, where another row has the name', () => {
-    expect(names.get('1')).toBe('billing (1)');
-    expect(names.get('2')).toBe('billing (2)');
+    expect(
+      called([
+        { value: { id: '1', name: 'billing' } },
+        { value: { id: '2', name: 'billing' } },
+        { value: { id: '3', name: 'search' } },
+      ])
+    ).toEqual(['billing (1)', 'billing (2)', 'search']);
   });
 
   it('is its id, once, where it has no name', () => {
-    expect(names.get('4')).toBe('4');
+    expect(called([{ value: { id: '4' } }, { value: { id: '5' } }])).toEqual(['4', '5']);
   });
 
   it('tells apart a row named after another row’s id', () => {
-    const called = rowNames(
-      [{ value: { id: '7' } }, { value: { id: '8', name: '7' } }],
+    expect(called([{ value: { id: '7' } }, { value: { id: '8', name: '7' } }])).toEqual([
+      '7',
+      '7 (8)',
+    ]);
+  });
+
+  it('tells apart a row named what another became with its id', () => {
+    // "Copy of X (1)" is how such names come about.
+    const names = called([
+      { value: { id: '1', name: 'billing' } },
+      { value: { id: '2', name: 'billing' } },
+      { value: { id: '3', name: 'billing (1)' } },
+    ]);
+
+    expect(names).toEqual(['billing (1)', 'billing (2)', 'billing (1) (3)']);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('puts the id beside the name in the words of the page', () => {
+    const names = checkboxNames(
+      ((key: string, options: { name: string; id: string }) =>
+        `${key}:${options.name}/${options.id}`) as unknown as TFunction,
+      [{ value: { id: '1', name: 'billing' } }, { value: { id: '2', name: 'billing' } }],
       rowId,
       rowNameOrId
     );
 
-    expect(called.get('7')).toBe('7');
-    expect(called.get('8')).toBe('7 (8)');
+    expect([...names.values()]).toEqual(['table.nameWithId:billing/1', 'table.nameWithId:billing/2']);
   });
 });

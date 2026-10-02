@@ -929,7 +929,8 @@
     "disabled": "Deaktiviert",
     "enabled": "Aktiviert",
     "selectAll": "Alle auswählen",
-    "selectRow": "{{name}} auswählen"
+    "selectRow": "{{name}} auswählen",
+    "nameWithId": "{{name}} ({{id}})"
   },
   "upstreams": {
     "health": "Zustand",

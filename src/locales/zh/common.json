@@ -929,7 +929,8 @@
     "disabled": "已禁用",
     "enabled": "已启用",
     "selectAll": "全选",
-    "selectRow": "选择 {{name}}"
+    "selectRow": "选择 {{name}}",
+    "nameWithId": "{{name}}（{{id}}）"
   },
   "upstreams": {
     "health": "健康状态",

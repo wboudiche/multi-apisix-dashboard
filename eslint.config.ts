@@ -106,8 +106,6 @@ const e2eRules = tseslint.config(
     // the checkbox that selects it - so a cell asked for by name is two cells
     // (#372). The helpers say which one, once.
     files: ['e2e/**/*.ts'],
-    // Where the helpers themselves are written.
-    ignores: ['e2e/utils/ui/index.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -328,13 +326,20 @@ const srcRules = tseslint.config({
         message:
           'i18n/no-unknown-key cannot see options behind a spread (#343) - write them out.',
       },
+      // antd names no row checkbox, and the header's in English whatever
+      // the language (#372). The hook hands a table its selection with both
+      // named, and its row key with it, as props to spread; a rowSelection
+      // given any other way - written out, built above, behind a condition -
+      // has neither.
       {
-        // antd names no row checkbox, and the header's in English whatever
-        // the language (#372). The hook gives a table its selection with
-        // both named; one written out on the table has neither.
-        selector: "JSXAttribute[name.name='rowSelection'] > JSXExpressionContainer > ObjectExpression",
+        selector: "JSXAttribute[name.name='rowSelection']",
         message:
-          'A rowSelection written out has checkboxes with no name (#372) - take it from useTableRowSelection.',
+          'A rowSelection given to a table by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
+      },
+      {
+        selector: "Property[key.name='rowSelection'] > ObjectExpression",
+        message:
+          'A rowSelection built by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
       },
     ],
     'react-refresh/only-export-components': [

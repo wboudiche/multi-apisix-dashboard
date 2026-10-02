@@ -859,7 +859,8 @@
     "disabled": "Disabled",
     "enabled": "Enabled",
     "selectAll": "Select all",
-    "selectRow": "Select {{name}}"
+    "selectRow": "Select {{name}}",
+    "nameWithId": "{{name}} ({{id}})"
   },
   "upstreams": {
     "health": "Health",

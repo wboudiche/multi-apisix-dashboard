@@ -60,7 +60,7 @@ import { req } from '@/config/req';
 import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { useRowSelection } from '@/hooks/useRowSelection';
-import { rowId, rowNameOrId, rowNames } from '@/hooks/useTableRowSelection';
+import { checkboxNames, rowId, rowNameOrId } from '@/hooks/useTableRowSelection';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { ownTeamsAtom } from '@/stores/team';
@@ -168,10 +168,15 @@ export const RouteList = (props: RouteListProps) => {
   const [selectedIds, setSelectedIds] = useRowSelection(allIds, listKey);
   // What each row's checkbox is called: its route, with the id beside it
   // where two routes on the list share a name (see rowNames).
-  const checkboxNames = useMemo(
+  const rowCheckboxNames = useMemo(
     () =>
-      rowNames<{ value: { id: string; name?: string } }>(data?.list ?? [], rowId, rowNameOrId),
-    [data?.list]
+      checkboxNames<{ value: { id: string; name?: string } }>(
+        t,
+        data?.list ?? [],
+        rowId,
+        rowNameOrId
+      ),
+    [t, data?.list]
   );
   const allSelected = allIds.length > 0 && selectedIds.length === allIds.length;
   const someSelected = selectedIds.length > 0;
@@ -378,7 +383,7 @@ export const RouteList = (props: RouteListProps) => {
                   // cell's accessible name, so a spec addresses the name cell
                   // through `uiCell`, which asks for it exactly.
                   aria-label={t('table.selectRow', {
-                    name: checkboxNames.get(record.value.id) ?? record.value.id,
+                    name: rowCheckboxNames.get(record.value.id) ?? rowNameOrId(record),
                   })}
                   checked={selectedIds.includes(record.value.id)}
                   onChange={() => toggleSelect(record.value.id)}

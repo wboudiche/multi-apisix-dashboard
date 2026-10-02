@@ -57,6 +57,7 @@ export const uiHasToastMsg = async (
  * in #347 - and ESLint sends a spec here, or to uiCellsShowing, instead.
  */
 export const uiCell = (scope: Page | Locator, name: string) =>
+  // eslint-disable-next-line no-restricted-syntax -- the one place that may: it asks exactly
   scope.getByRole('cell', { name, exact: true });
 
 /**

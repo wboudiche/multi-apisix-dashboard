@@ -63,7 +63,7 @@ const ServiceList = () => {
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
     listKey,
     { idOf: rowId, nameOf: rowNameOrId }
@@ -224,12 +224,11 @@ const ServiceList = () => {
       <ProTable
         columns={columns}
         dataSource={data.list as ServiceRow[]}
-        rowKey={rowKey}
+        {...tableProps}
         loading={isLoading}
         search={false}
         options={false}
         pagination={pagination}
-        rowSelection={rowSelection}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {
