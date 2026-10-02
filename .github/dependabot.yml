@@ -5,15 +5,23 @@
 
 version: 2
 updates:
+  # commit-message, on each entry: Dependabot's own header is `chore(deps):`,
+  # a type and a scope the commit convention has not got (CONTRIBUTING.md), and
+  # every dependency pull request was reviewed into the same finding (#369).
+  # The prefix is the header's type and scope; the colon is added.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
+    commit-message:
+      prefix: "ci"
 
   - package-ecosystem: "npm"  # See documentation for possible values
     directory: "/"  # Location of package manifests
     schedule:
       interval: "daily"
+    commit-message:
+      prefix: "build(common)"
     groups:
       # react and react-dom are separate npm packages, so Dependabot bumps them
       # in separate PRs — and React refuses to run when the two versions differ
@@ -78,3 +86,5 @@ updates:
     directory: "/api"  # Go module lives in api/, not repo root
     schedule:
       interval: "daily"
+    commit-message:
+      prefix: "build(api)"

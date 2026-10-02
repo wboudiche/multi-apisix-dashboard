@@ -96,6 +96,8 @@ Or omit the scope if the change is cross-cutting (`refactor:` across many areas,
 
 Imperative, present tense. Explains **why** — the motivation, the alternative considered, the trade-off. Not what the code does (the diff already shows that).
 
+Dependabot's commits are the one exception. Their header follows the convention — `build(common):` for npm, `build(api):` for the Go module, `ci:` for GitHub Actions, set in `.github/dependabot.yml` — and their body is the release notes Dependabot attaches: the why of a dependency bump is that a newer version exists.
+
 ### Footer
 
 - `BREAKING CHANGE: <summary>` followed by a blank line and migration instructions, when applicable.

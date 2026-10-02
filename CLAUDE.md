@@ -242,6 +242,8 @@ Conventional Commits, extended for this fork's scope:
 
 Body required for everything except `docs:` and must explain *why*. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full spec including breaking-change footers.
 
+Dependabot's commits are the exception to the body rule, not to the header: `.github/dependabot.yml` gives them `build(common):`, `build(api):` or `ci:`, and their body is the generated release notes. A dependency PR titled that way is conforming — don't flag it in review.
+
 ## Things to watch for when working in this code
 
 - **Debug logging in the backend is loud and unconditional** (`auth.go`, `rbac.go` log JWT secret prefixes, token prefixes, every validation and RBAC decision via `log.Printf("[DEBUG ...")`). Gate behind a log level before deploying to anything non-local.
