@@ -102,6 +102,17 @@ export const checkboxNaming = <T>(
   getTitleCheckboxProps: () => named(t('table.selectAll')),
 });
 
+/** A list's selection as its table takes it: the names, and what is ticked. */
+export const namedRowSelection = <T>(
+  naming: ReturnType<typeof checkboxNaming<T>>,
+  selectedIds: string[],
+  setSelectedIds: (ids: string[]) => void
+): RowSelection<T> => ({
+  ...naming,
+  selectedRowKeys: selectedIds,
+  onChange: (keys) => setSelectedIds(keys as string[]),
+});
+
 export type RowNaming<T> = {
   /** The id a row is keyed, ticked and deleted by. */
   idOf: (row: T) => string;
@@ -141,12 +152,7 @@ export const useTableRowSelection = <T>(
   const tableProps = useMemo(
     () => ({
       rowKey: idOf,
-      // eslint-disable-next-line no-restricted-syntax -- the one place a rowSelection is made
-      rowSelection: {
-        ...naming,
-        selectedRowKeys: selectedIds,
-        onChange: (keys) => setSelectedIds(keys as string[]),
-      } satisfies RowSelection<T>,
+      rowSelection: namedRowSelection(naming, selectedIds, setSelectedIds),
     }),
     [idOf, naming, selectedIds, setSelectedIds]
   );

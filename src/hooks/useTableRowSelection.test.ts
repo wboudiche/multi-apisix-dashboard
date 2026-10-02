@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkboxNames,
   checkboxNaming,
+  namedRowSelection,
   rowId,
   rowNameOrId,
   rowNames,
@@ -51,6 +52,17 @@ describe('the selection checkboxes of an antd list', () => {
 
   it('names the header in the language of the page, not in antd’s', () => {
     expect(naming.getTitleCheckboxProps?.()).toEqual({ 'aria-label': 'table.selectAll' });
+  });
+
+  it('hands the table what is ticked, and the page what the table ticks, with the names', () => {
+    const calls: string[][] = [];
+    const given = namedRowSelection(naming, ['a'], (ids) => calls.push(ids));
+
+    expect(given.selectedRowKeys).toEqual(['a']);
+    given.onChange?.(['a', 'b'], [], { type: 'multiple' });
+    expect(calls).toEqual([['a', 'b']]);
+    expect(given.getCheckboxProps).toBe(naming.getCheckboxProps);
+    expect(given.getTitleCheckboxProps).toBe(naming.getTitleCheckboxProps);
   });
 });
 

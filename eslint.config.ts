@@ -337,8 +337,10 @@ const srcRules = tseslint.config({
           'A rowSelection given to a table by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
       },
       {
+        // Built, not read: `const rowSelection = tableProps.rowSelection`
+        // is the hook's own.
         selector:
-          "ObjectExpression > Property[key.name='rowSelection'], ObjectExpression > Property[key.value='rowSelection'], VariableDeclarator[id.name='rowSelection']",
+          ":matches(ObjectExpression > Property[key.name='rowSelection'], ObjectExpression > Property[key.value='rowSelection'], VariableDeclarator[id.name='rowSelection']) > :matches(ObjectExpression, ConditionalExpression)",
         message:
           'A rowSelection built by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
       },
@@ -346,7 +348,7 @@ const srcRules = tseslint.config({
       // selects by ticks nothing, or deletes something else.
       {
         selector:
-          "JSXOpeningElement:has(JSXSpreadAttribute[argument.name='tableProps']) > JSXAttribute[name.name='rowKey']",
+          "JSXOpeningElement:has(> JSXSpreadAttribute[argument.name='tableProps']) > JSXAttribute[name.name='rowKey']",
         message:
           'tableProps holds the rowKey the selection goes by - a rowKey beside it replaces it or is replaced.',
       },
