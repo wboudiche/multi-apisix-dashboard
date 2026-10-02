@@ -20,8 +20,10 @@ import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
+import { uiShowAllRows } from '@e2e/utils/ui';
 import { i18n } from '@e2e/utils/ui/i18n';
 import { expect, type Page } from '@playwright/test';
+import { customAlphabet } from 'nanoid';
 
 /**
  * The ten antd lists had row checkboxes with no accessible name - a screen
@@ -33,8 +35,13 @@ const PROXY = '/api/v1/apisix/admin';
 const PREFIX = randomId('e2e-names');
 const NAMED = `${PREFIX}-named`;
 const NAMELESS = `${PREFIX}-nameless`;
-// A consumer's name takes letters, digits and underscores.
-const CONSUMER = `e2e_names_${Date.now().toString(36)}`;
+// Two upstreams under one name: nothing stops it, and each has to be told
+// from the other.
+const TWIN = `${PREFIX}-twin`;
+const TWINS = [`${TWIN}-a`, `${TWIN}-b`];
+// A consumer's name takes letters and digits, and the workers of a parallel
+// run each need their own.
+const CONSUMER = `e2enames${customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 10)()}`;
 const SECRET = `${PREFIX}-secret`;
 const onLocal = () => ({ 'X-Instance-ID': getFixtures().localInstanceId });
 
@@ -42,6 +49,10 @@ const upstream = { type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } };
 const SEEDED: [path: string, body: Record<string, unknown>][] = [
   [`upstreams/${NAMED}`, { ...upstream, name: NAMED }],
   [`upstreams/${NAMELESS}`, upstream],
+  ...TWINS.map((id): [string, Record<string, unknown>] => [
+    `upstreams/${id}`,
+    { ...upstream, name: TWIN },
+  ]),
   [`consumers/${CONSUMER}`, { username: CONSUMER }],
   [
     `secrets/vault/${SECRET}`,
@@ -78,12 +89,22 @@ const headerBox = (page: Page) => box(page, i18n.t('table.selectAll'));
 const unnamed = (page: Page) =>
   page.locator('table input[type="checkbox"]:not([aria-label]), table input[aria-label=""]');
 
-test('a row is selected by its name, or by its id when it has none', async ({ page }) => {
-  await page.goto('/ui/upstreams?page=1&page_size=100');
+/** The list with every row on one page: a shared gateway holds more than ten. */
+const openList = async (page: Page, list: string) => {
+  await page.goto(`/ui/${list}`);
+  await uiShowAllRows(page);
+};
 
-  await expect(rowBox(page, NAMED)).toBeVisible({ timeout: 30000 });
+const switchToGerman = async (page: Page) => {
+  await page.locator('header .mantine-ActionIcon-root[aria-haspopup="menu"]').click();
+  await page.getByRole('menuitem', { name: 'Deutsch' }).click();
+};
+
+test('a row is selected by its name, or by its id when it has none', async ({ page }) => {
+  await openList(page, 'upstreams');
+
+  await expect(rowBox(page, NAMED)).toBeVisible();
   await expect(rowBox(page, NAMELESS)).toBeVisible();
-  await expect(headerBox(page)).toBeVisible();
   await expect(unnamed(page)).toHaveCount(0);
 
   // And it is the row's own: ticked by name, it is that row that is selected.
@@ -94,33 +115,40 @@ test('a row is selected by its name, or by its id when it has none', async ({ pa
   await expect(rowBox(page, NAMELESS)).not.toBeChecked();
 });
 
+test('two rows under one name are told apart by their ids', async ({ page }) => {
+  await openList(page, 'upstreams');
+
+  for (const id of TWINS) {
+    await expect(rowBox(page, `${TWIN} (${id})`)).toBeVisible();
+  }
+  await expect(rowBox(page, TWIN)).toHaveCount(0);
+});
+
 test('a consumer by its username, a secret by its manager and id', async ({ page }) => {
-  await page.goto('/ui/consumers?page=1&page_size=100');
-  await expect(rowBox(page, CONSUMER)).toBeVisible({ timeout: 30000 });
+  await openList(page, 'consumers');
+  await expect(rowBox(page, CONSUMER)).toBeVisible();
   await expect(unnamed(page)).toHaveCount(0);
 
   // Two managers can hold the same id: the id alone would name two rows alike.
-  await page.goto('/ui/secrets?page=1&page_size=100');
-  await expect(rowBox(page, `vault/${SECRET}`)).toBeVisible({ timeout: 30000 });
+  await openList(page, 'secrets');
+  await expect(rowBox(page, `vault/${SECRET}`)).toBeVisible();
   await expect(unnamed(page)).toHaveCount(0);
 });
 
-test('in the language of the page, the header’s too', async ({ page }) => {
-  await page.goto('/ui/upstreams?page=1&page_size=100');
-  await expect(rowBox(page, NAMED)).toBeVisible({ timeout: 30000 });
+test('a row is named in the language of the page', async ({ page }) => {
+  await openList(page, 'upstreams');
+  await expect(rowBox(page, NAMED)).toBeVisible();
 
-  await page.locator('header .mantine-ActionIcon-root[aria-haspopup="menu"]').click();
-  await page.getByRole('menuitem', { name: 'Deutsch' }).click();
+  await switchToGerman(page);
 
-  // antd's own name for it is 'Select all', whatever the language: in English
-  // the two cannot be told apart.
-  await expect(box(page, german.table.selectAll)).toBeVisible();
   await expect(box(page, german.table.selectRow.replace('{{name}}', NAMED))).toBeVisible();
-  await expect(box(page, 'Select all')).toHaveCount(0);
+  await expect(rowBox(page, NAMED)).toHaveCount(0);
 });
 
 // Every list that has the checkboxes, as it stands: no row is seeded on most,
-// and the header's is there on an empty list too.
+// and the header's checkbox is there on an empty list too. In German, because
+// in English it proves nothing: antd's own name for it is 'Select all', the
+// same words as ours.
 const LISTS = [
   'services',
   'upstreams',
@@ -135,10 +163,16 @@ const LISTS = [
 ];
 
 for (const list of LISTS) {
-  test(`no checkbox of the ${list} list is without a name`, async ({ page }) => {
+  test(`the header checkbox of the ${list} list is named by the page, not by antd`, async ({
+    page,
+  }) => {
     await page.goto(`/ui/${list}`);
-
     await expect(headerBox(page)).toBeVisible({ timeout: 30000 });
+
+    await switchToGerman(page);
+
+    await expect(box(page, german.table.selectAll)).toBeVisible();
+    await expect(headerBox(page)).toHaveCount(0);
     await expect(unnamed(page)).toHaveCount(0);
   });
 }

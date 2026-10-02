@@ -34,16 +34,18 @@ import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
+/** A consumer has no id: it is keyed, and called, by its username. */
+const consumerName = (record: APISIXType['RespConsumerItem']) => record.value.username;
+
 function ConsumersList() {
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useConsumerList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
     data.list,
     listKey,
-    (record) => record.value.username,
-    (record) => record.value.username
+    { idOf: consumerName }
   );
 
   const columns = useMemo<ProColumns<APISIXType['RespConsumerItem']>[]>(() => {
@@ -113,7 +115,7 @@ function ConsumersList() {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey={(record) => record.value.username}
+        rowKey={rowKey}
         loading={isLoading}
         search={false}
         options={false}

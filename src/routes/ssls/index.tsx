@@ -34,7 +34,7 @@ import { API_SSLS, PAGE_SIZE_MAX } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import i18n from '@/config/i18n';
 import { reqFor } from '@/config/req';
-import { useTableRowSelection } from '@/hooks/useTableRowSelection';
+import { rowId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
@@ -61,15 +61,16 @@ const sslSni = (record: SSLRow) => {
   return undefined;
 };
 
+const sslName = (record: SSLRow) => sslSni(record) ?? record.value.id;
+
 function RouteComponent() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination, listKey } = useSSLList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
     data.list,
     listKey,
-    (record) => record.value.id,
-    (record) => sslSni(record) ?? record.value.id
+    { idOf: rowId, nameOf: sslName }
   );
   const currentInstanceId = useAtomValue(currentInstanceIdAtom);
 
@@ -211,7 +212,7 @@ function RouteComponent() {
         <ProTable
           columns={columns}
           dataSource={data?.list}
-          rowKey={(record) => record.value.id}
+          rowKey={rowKey}
           loading={isLoading}
           search={false}
           options={false}

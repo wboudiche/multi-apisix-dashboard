@@ -28,7 +28,7 @@ import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMER_GROUPS } from '@/config/constant';
 import { queryClient } from '@/config/global';
-import { useTableRowSelection } from '@/hooks/useTableRowSelection';
+import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
@@ -36,11 +36,10 @@ function ConsumerGroupsList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination, listKey } = useConsumerGroupList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
     data.list,
     listKey,
-    (record) => record.value.id,
-    (record) => record.value.name || record.value.id
+    { idOf: rowId, nameOf: rowNameOrId }
   );
 
   const columns = useMemo<
@@ -105,7 +104,7 @@ function ConsumerGroupsList() {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey={(record) => record.value.id}
+        rowKey={rowKey}
         loading={isLoading}
         search={false}
         options={false}

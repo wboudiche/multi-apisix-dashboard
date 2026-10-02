@@ -14,12 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { readdirSync, readFileSync } from 'node:fs';
-
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { tableRowSelection } from './useTableRowSelection';
+import { rowId, rowNameOrId, rowNames, tableRowSelection } from './useTableRowSelection';
 
 type Row = { value: { id: string; name?: string } };
 
@@ -28,9 +26,8 @@ type Row = { value: { id: string; name?: string } };
 const t = ((key: string, options?: { name?: string }) =>
   options?.name === undefined ? key : `${key}(${options.name})`) as unknown as TFunction;
 
-const nameOf = (row: Row) => row.value.name || row.value.id;
 const selection = (selected: string[] = [], set: (ids: string[]) => void = () => undefined) =>
-  tableRowSelection<Row>(t, selected, set, nameOf);
+  tableRowSelection<Row>(t, selected, set, rowNameOrId);
 
 // antd names no row checkbox, and names the header's 'Select all' in English
 // whatever the language (#372).
@@ -61,23 +58,38 @@ describe('the selection checkboxes of an antd list', () => {
   });
 });
 
-// A list that builds its own `rowSelection` has checkboxes with no name, and
-// nothing on screen says so.
-describe('the list pages', () => {
-  const ROUTES = new URL('../routes/', import.meta.url);
-  const pages = readdirSync(ROUTES, { recursive: true, encoding: 'utf8' })
-    .filter((file) => file.endsWith('.tsx'))
-    .map((file) => ({ file, source: readFileSync(new URL(file, ROUTES), 'utf8') }))
-    .filter(({ source }) => /\browSelection\b/.test(source));
+// Two certificates for one SNI are the ordinary way to serve RSA and ECDSA,
+// and two checkboxes named alike are no better than two with no name.
+describe('what the rows of a list are called', () => {
+  const rows: Row[] = [
+    { value: { id: '1', name: 'billing' } },
+    { value: { id: '2', name: 'billing' } },
+    { value: { id: '3', name: 'search' } },
+    { value: { id: '4' } },
+  ];
+  const names = rowNames(rows, rowId, rowNameOrId);
 
-  it('are found', () => {
-    expect(pages.length).toBeGreaterThanOrEqual(10);
+  it('is its name, where no other row on the list has it', () => {
+    expect(names.get('3')).toBe('search');
   });
 
-  it.each(pages)('$file takes its row selection from useTableRowSelection', ({ source }) => {
-    const given = [...source.matchAll(/\browSelection=\{([^}]*)\}?/g)].map((m) => m[1]);
+  it('is its name and its id, where another row has the name', () => {
+    expect(names.get('1')).toBe('billing (1)');
+    expect(names.get('2')).toBe('billing (2)');
+  });
 
-    expect(given).toEqual(['rowSelection']);
-    expect(source).toContain('useTableRowSelection(');
+  it('is its id, once, where it has no name', () => {
+    expect(names.get('4')).toBe('4');
+  });
+
+  it('tells apart a row named after another row’s id', () => {
+    const called = rowNames(
+      [{ value: { id: '7' } }, { value: { id: '8', name: '7' } }],
+      rowId,
+      rowNameOrId
+    );
+
+    expect(called.get('7')).toBe('7');
+    expect(called.get('8')).toBe('7 (8)');
   });
 });

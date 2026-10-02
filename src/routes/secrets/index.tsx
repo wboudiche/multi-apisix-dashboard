@@ -47,11 +47,10 @@ function SecretList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination, listKey } = useSecretList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
     data.list,
     listKey,
-    secretPath,
-    secretPath
+    { idOf: secretPath }
   );
 
   const columns = useMemo<
@@ -104,7 +103,7 @@ function SecretList() {
       <ProTable
         columns={columns}
         dataSource={data?.list || []}
-        rowKey={secretPath}
+        rowKey={rowKey}
         loading={isLoading}
         search={false}
         options={false}

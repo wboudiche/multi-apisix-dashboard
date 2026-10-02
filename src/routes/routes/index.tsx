@@ -60,6 +60,7 @@ import { req } from '@/config/req';
 import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { useRowSelection } from '@/hooks/useRowSelection';
+import { rowId, rowNameOrId, rowNames } from '@/hooks/useTableRowSelection';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { ownTeamsAtom } from '@/stores/team';
@@ -165,6 +166,13 @@ export const RouteList = (props: RouteListProps) => {
   // came back at the first row ticked there counting them, and Batch Delete
   // took routes nobody could see (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(allIds, listKey);
+  // What each row's checkbox is called: its route, with the id beside it
+  // where two routes on the list share a name (see rowNames).
+  const checkboxNames = useMemo(
+    () =>
+      rowNames<{ value: { id: string; name?: string } }>(data?.list ?? [], rowId, rowNameOrId),
+    [data?.list]
+  );
   const allSelected = allIds.length > 0 && selectedIds.length === allIds.length;
   const someSelected = selectedIds.length > 0;
 
@@ -370,7 +378,7 @@ export const RouteList = (props: RouteListProps) => {
                   // cell's accessible name, so a spec addresses the name cell
                   // through `uiCell`, which asks for it exactly.
                   aria-label={t('table.selectRow', {
-                    name: record.value.name || record.value.id,
+                    name: checkboxNames.get(record.value.id) ?? record.value.id,
                   })}
                   checked={selectedIds.includes(record.value.id)}
                   onChange={() => toggleSelect(record.value.id)}

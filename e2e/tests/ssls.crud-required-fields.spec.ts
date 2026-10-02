@@ -25,7 +25,9 @@ import { expect } from '@playwright/test';
 import { API_SSLS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
-const snis = ['test.example.com', 'www.test.example.com'];
+// Not a name another spec's fixture contains: cells are found by what they
+// show, and `test.example.com` is also shown by `full-test.example.com`.
+const snis = ['ssl-required.example.com', 'www.ssl-required.example.com'];
 
 // Only the certificates this spec created. SSLs carry no name, so they
 // are matched on their snis.

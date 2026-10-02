@@ -31,7 +31,7 @@ import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_route
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_STREAM_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
-import { useTableRowSelection } from '@/hooks/useTableRowSelection';
+import { rowId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import type { ListPageKeys } from '@/utils/useTablePagination';
@@ -53,11 +53,10 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
   );
   const { t } = useTranslation();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const { selectedIds, setSelectedIds, rowSelection } = useTableRowSelection(
+  const { selectedIds, setSelectedIds, rowSelection, rowKey } = useTableRowSelection(
     data.list,
     listKey,
-    (record) => record.value.id,
-    (record) => record.value.id
+    { idOf: rowId }
   );
 
   const columns = useMemo<
@@ -112,7 +111,7 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey={(record) => record.value.id}
+        rowKey={rowKey}
         loading={isLoading}
         search={false}
         options={false}
