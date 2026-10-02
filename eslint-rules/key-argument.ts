@@ -35,8 +35,9 @@ export const literalOf = (wrapped: Node | undefined) => {
 };
 
 /**
- * What a key argument names: the keys it spells - a literal, or the literals
- * of a ternary, `'a.b' as const` being the literal it wraps - the templates it
+ * What a key argument names: the keys it spells - a literal, the literals of
+ * a ternary or of a `??` fallback, `'a.b' as const` being the literal it
+ * wraps - the templates it
  * builds a key from, each as the texts around its values, and whether any of
  * it could not be read.
  *
@@ -50,6 +51,16 @@ export const readingOf = (wrapped: Node | undefined): KeyReading => {
   const node = unwrapped(wrapped);
   if (node?.type === 'ConditionalExpression') {
     const [a, b] = [readingOf(node.consequent as Node), readingOf(node.alternate as Node)];
+    return {
+      keys: [...a.keys, ...b.keys],
+      templates: [...a.templates, ...b.templates],
+      partial: a.partial || b.partial,
+    };
+  }
+  // `table[x] ?? 'a.b'`: the fallback is a key the call can ask for, whatever
+  // the other side is.
+  if (node?.type === 'LogicalExpression' && (node.operator === '??' || node.operator === '||')) {
+    const [a, b] = [readingOf(node.left as Node), readingOf(node.right as Node)];
     return {
       keys: [...a.keys, ...b.keys],
       templates: [...a.templates, ...b.templates],
@@ -71,12 +82,6 @@ export const keysOf = (node: Node | undefined): { keys: string[]; partial: boole
   return { keys, partial };
 };
 
-/** Whether an expression is the translate function itself: `t`, `i18n.t`, either under a cast. */
-export const isTranslate = (wrapped: Node | undefined, functionName: string) => {
-  const node = unwrapped(wrapped);
-  return node !== undefined && node.type !== 'CallExpression' && calledName(node) === functionName;
-};
-
 /** The name a call calls: `t` for `t(…)` and for `i18n.t(…)`. */
 export const calledName = (callee: Node): string | undefined =>
   callee.type === 'Identifier'
@@ -90,3 +95,6 @@ export const attributeExpression = (attribute: Node) => {
   const value = attribute.value as Node | null;
   return value?.type === 'JSXExpressionContainer' ? (value.expression as Node) : (value ?? undefined);
 };
+
+/** The expression under any cast: `t as never` is `t`. */
+export const underCasts = unwrapped;

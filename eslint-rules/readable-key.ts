@@ -19,9 +19,9 @@ import type { Rule } from 'eslint';
 import {
   attributeExpression,
   calledName,
-  isTranslate,
   keysOf,
   type Node,
+  underCasts,
 } from './key-argument';
 
 /**
@@ -47,19 +47,11 @@ import {
  * The function name is the i18n plugin's own setting, `settings.i18n`.
  */
 
-/** Methods that call what they are given with each element of a list. */
-const EACH = new Set([
-  'map',
-  'flatMap',
-  'forEach',
-  'filter',
-  'some',
-  'every',
-  'find',
-  'findIndex',
-  'findLast',
-  'from',
-]);
+/** Methods that call their first argument with each element of a list. */
+const EACH = new Set(['map', 'flatMap', 'forEach', 'filter', 'some', 'every', 'find', 'findIndex', 'findLast']);
+
+type Definition = { type: string; node: Node; name: Node };
+type Scope = { set: Map<string, { defs: Definition[] }>; upper: Scope | null };
 
 const rule: Rule.RuleModule = {
   meta: {
@@ -80,6 +72,41 @@ const rule: Rule.RuleModule = {
     const report = (node: Node, messageId: 'variable' | 'alias') =>
       context.report({ node: node as unknown as Rule.Node, messageId, data: { name: functionName } });
 
+    /** `useTranslation()`, with or without a namespace. */
+    const isHook = (node: Node | null | undefined) =>
+      node?.type === 'CallExpression' && calledName(node.callee as Node) === 'useTranslation';
+    /** `i18n.t`: the instance's own. */
+    const isInstanceMember = (node: Node | undefined) =>
+      node?.type === 'MemberExpression' &&
+      !node.computed &&
+      (node.object as Node).type === 'Identifier' &&
+      (node.object as Node).name === 'i18n' &&
+      (node.property as Node).name === functionName;
+
+    /**
+     * Whether an expression handed somewhere is the translate function: the
+     * instance's, or a `t` that is not something else of that name. A `t`
+     * that is the parameter of a callback - a token, a team, a tab - is not
+     * one; a parameter typed as the translate function is, and so is one this
+     * file does not define.
+     */
+    const isTranslate = (wrapped: Node | undefined) => {
+      const node = underCasts(wrapped);
+      if (isInstanceMember(node)) return true;
+      if (node?.type !== 'Identifier' || node.name !== functionName) return false;
+      let scope = context.sourceCode.getScope(node as unknown as Rule.Node) as unknown as Scope | null;
+      for (; scope; scope = scope.upper) {
+        const [definition] = scope.set.get(functionName)?.defs ?? [];
+        if (!definition) continue;
+        if (definition.type !== 'Parameter') return true;
+        const annotation = (definition.name.typeAnnotation as Node | undefined)?.typeAnnotation as
+          | Node
+          | undefined;
+        return ((annotation?.typeName as Node | undefined)?.name as string | undefined) === 'TFunction';
+      }
+      return true;
+    };
+
     return {
       CallExpression(node) {
         const callee = node.callee as unknown as Node;
@@ -87,10 +114,11 @@ const rule: Rule.RuleModule = {
         // keys.map(t), Array.from(keys, i18n.t): every element is a key, and
         // none is written here. Said on the argument, which is the line that
         // hands it over, however long the chain before it.
-        if (callee.type === 'MemberExpression' && EACH.has(calledName(callee) ?? '')) {
-          const handed = args.find((argument) => isTranslate(argument, functionName));
-          if (handed) {
-            report(handed, 'variable');
+        if (callee.type === 'MemberExpression') {
+          const method = calledName(callee) ?? '';
+          const callback = EACH.has(method) ? args[0] : method === 'from' ? args[1] : undefined;
+          if (isTranslate(callback)) {
+            report(callback!, 'variable');
             return;
           }
         }
@@ -99,13 +127,13 @@ const rule: Rule.RuleModule = {
         if (keysOf(first).partial) report(first, 'variable');
       },
 
-      // const translate = t; const { t: tr } = useTranslation()
+      // const translate = i18n.t; const { t: tr } = useTranslation()
       VariableDeclarator(node) {
         const { id, init } = node as unknown as { id: Node; init: Node | null };
-        if (id.type === 'Identifier' && id.name !== functionName && isTranslate(init ?? undefined, functionName)) {
+        if (id.type === 'Identifier' && id.name !== functionName && isInstanceMember(underCasts(init ?? undefined))) {
           report(id, 'alias');
         }
-        if (id.type !== 'ObjectPattern') return;
+        if (id.type !== 'ObjectPattern' || !isHook(init)) return;
         for (const property of id.properties as Node[]) {
           if (property.type !== 'Property' || property.computed) continue;
           const value = property.value as Node;
@@ -123,13 +151,16 @@ const rule: Rule.RuleModule = {
         const opening = node as unknown as Node;
         if ((opening.name as Node).name !== 'Trans') return;
         const attributes = opening.attributes as Node[];
-        // <Trans {...props}>: the key is in there, or nowhere.
-        const spread = attributes.find((a) => a.type === 'JSXSpreadAttribute');
-        if (spread) report(spread, 'variable');
         const key = attributes.find(
           (a) => a.type === 'JSXAttribute' && (a.name as Node).name === 'i18nKey'
         );
-        if (key && keysOf(attributeExpression(key)).partial) report(key, 'variable');
+        if (key) {
+          if (keysOf(attributeExpression(key)).partial) report(key, 'variable');
+          return;
+        }
+        // <Trans {...props}>: the key is in there, or nowhere.
+        const spread = attributes.find((a) => a.type === 'JSXSpreadAttribute');
+        if (spread) report(spread, 'variable');
       },
     };
   },

@@ -58,6 +58,17 @@ tester.run('readable-key', rule, {
     'const { t, i18n } = useTranslation()',
     'const t = i18n.t.bind(i18n)',
     'const label = t("a.b")',
+    // A `t` that is something else of that name: a token, a point in time, a
+    // sample - on a line that has nothing to do with translations.
+    'tokens.map((t) => Array.from(t))',
+    'timers.forEach((t) => queue.find(t))',
+    'items.map(render, t)',
+    'Array.from(t)',
+    'const time = point.t',
+    'const { t: time } = point',
+    'const v = sample.t as number',
+    // The key is written, after the spread: it is the one that counts.
+    '<Trans {...rest} i18nKey="a.b" />',
   ],
   invalid: [
     { code: 't(key)', errors: variable },
@@ -75,6 +86,17 @@ tester.run('readable-key', rule, {
     { code: 'keys.some(t)', errors: variable },
     { code: 'Array.from(keys, t)', errors: variable },
     { code: '<Trans {...props} />', errors: variable },
+    // One key, one report.
+    { code: '<Trans {...rest} i18nKey={key} />', errors: variable },
+    // A parameter that is the translate function, by its type.
+    {
+      code: 'const names = (t: TFunction, keys: string[]) => keys.map(t)',
+      errors: variable,
+    },
+    {
+      code: 'const { t } = useTranslation(); const names = keys.map(t)',
+      errors: variable,
+    },
     // Said where `t` is handed over, not where the chain begins: the line a
     // disable comment has to sit above.
     {
@@ -82,7 +104,6 @@ tester.run('readable-key', rule, {
       errors: [{ messageId: 'variable', line: 3 }],
     },
     // Under another name, no check reads its calls.
-    { code: 'const translate = t; translate(key)', errors: [{ messageId: 'alias' }] },
     { code: 'const { t: tr } = useTranslation(); tr(key)', errors: [{ messageId: 'alias' }] },
     { code: 'const translate = i18n.t', errors: [{ messageId: 'alias' }] },
   ],

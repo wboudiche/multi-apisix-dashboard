@@ -27,7 +27,7 @@ import {
 } from '../../eslint-rules/key-argument';
 import { defaultNS, resources } from './i18n';
 import { placeholdersIn } from './placeholders';
-import { PLURAL_FORMS, PLURAL_SUFFIX } from './plural-forms';
+import { PLURAL_FORM, PLURAL_SUFFIX } from './plural-forms';
 import { roleLabelKeys } from './role-labels';
 
 /**
@@ -73,16 +73,21 @@ const placeholders = (value: string) => placeholdersIn(value).sort();
 /** The key a call asks for: `routes` for `routes_one`, `place` for `place_ordinal_two`. */
 const base = (key: string) => key.replace(PLURAL_SUFFIX, '');
 /** The family a form belongs to: `routes` for `routes_one`, `place_ordinal` for `place_ordinal_two`. */
-const family = (key: string) => key.replace(new RegExp(`_(?:${PLURAL_FORMS.join('|')})$`), '');
+const family = (key: string) => key.replace(PLURAL_FORM, '');
 const filled = (value: string | undefined) => typeof value === 'string' && value.trim() !== '';
 
 /**
  * Whether a call on `key` resolves from a catalogue: the key as written, or
  * the plural forms written for it. Not the other way round - `t('x_one')`
  * does not resolve from an `x`.
+ *
+ * Not from its ordinal forms: i18next reads those only for a call that passes
+ * `ordinal`, which is not known here. A key written in ordinal forms alone
+ * will fail this, loudly, where accepting it would pass a call that renders
+ * the key itself.
  */
 const resolves = (catalogue: { has(key: string): boolean }, key: string) =>
-  catalogue.has(key) || catalogue.has(`${key}_other`) || catalogue.has(`${key}_ordinal_other`);
+  catalogue.has(key) || catalogue.has(`${key}_other`);
 
 const en = flatten(bundle(BASE));
 // What `en` writes, each plural family under its base: a translation belongs
@@ -311,13 +316,15 @@ const readOf = (file: string, source: string, catalogue: Catalogue) => {
       );
       if (key) ask(attributeExpression(key));
     }
+    // A tagged template with an escape that is not one - String.raw`\\w` - has
+    // no cooked text at all.
     const text =
-      node.type === 'Literal' && typeof node.value === 'string'
+      node.type === 'Literal'
         ? node.value
         : node.type === 'TemplateElement'
-          ? (node.value as { cooked: string }).cooked
+          ? (node.value as { cooked: string | null }).cooked
           : undefined;
-    if (text !== undefined && KEY_SHAPE.test(text)) {
+    if (typeof text === 'string' && KEY_SHAPE.test(text)) {
       if (text.includes('.') ? catalogue.namespaces.has(text.split('.')[0]) : catalogue.has(text)) {
         spelled.push(text);
       }
@@ -327,12 +334,14 @@ const readOf = (file: string, source: string, catalogue: Catalogue) => {
 };
 
 /**
- * The keys a template reaches: the texts around its values, with anything
- * between them. ``t(`form.${section}.title`)`` reaches `form.x.title` and
- * not the rest of `form.`.
+ * The keys a template reaches: the texts around its values, with one segment
+ * for each value. ``t(`form.${section}.title`)`` reaches `form.x.title` - not
+ * the rest of `form.`, and nothing deeper.
  */
 const reach = (texts: string[]) =>
-  new RegExp(`^${texts.map((text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.+')}$`);
+  new RegExp(
+    `^${texts.map((text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^.]+')}$`
+  );
 
 describe('what a source reads of the bundles', () => {
   const fixture = catalogueOf(['info.add.success', 'roles.viewer', 'form.btn.next', 'or', 'noData']);
@@ -346,6 +355,7 @@ describe('what a source reads of the bundles', () => {
       const d = i18n.t(\`form.btn.save\`);
       const e = t('fomr.btn.save' as never);
       const f = t(ok ? 'noDatta' : 'noData');
+      const h = t(TABLE[code] ?? 'listWarnin.title');
       const g = <Trans i18nKey={ok ? 'a.b' : 'c.d'} />;
     `);
 
@@ -358,6 +368,7 @@ describe('what a source reads of the bundles', () => {
       'fomr.btn.save',
       'noDatta',
       'noData',
+      'listWarnin.title',
       'a.b',
       'c.d',
     ]);
@@ -376,6 +387,12 @@ describe('what a source reads of the bundles', () => {
   it('is not a field path, a protocol, or a word the bundle does not spell as a key', () => {
     expect(read("const a = ['tls.verify', 'TLSv1.2', 'upstream', 'x.y'];").spelled).toEqual([]);
     expect(read("const a = ['or', 'noData'];").spelled).toEqual(['or', 'noData']);
+  });
+
+  it('reads past a template with no text of its own', () => {
+    expect(read('const a = String.raw`(\\w+)\\1`; const b = t(\'form.btn.next\');').asked).toEqual([
+      'form.btn.next',
+    ]);
   });
 
   it('is not a key quoted in a comment', () => {
@@ -411,6 +428,9 @@ describe('what a source reads of the bundles', () => {
     expect(reach(['form.', '.title']).test('form.basic.title')).toBe(true);
     expect(reach(['form.', '.title']).test('form.basic.name')).toBe(false);
     expect(reach(['a.b.', '']).test('axb.c')).toBe(false);
+    // One segment for a value: a key deeper under the head is not reached.
+    expect(reach(['sources.', '']).test('sources.a.b')).toBe(false);
+    expect(reach(['form.', '.title']).test('form.basic.sub.title')).toBe(false);
   });
 });
 
@@ -432,9 +452,9 @@ it('resolves a key from its plural forms, and not a plural form from its key', (
   expect(resolves(new Map([['x', '']]), 'x')).toBe(true);
   expect(resolves(new Map([['x', '']]), 'x_one')).toBe(false);
   expect(resolves(plural, 'y')).toBe(false);
-  // An ordinal family answers the key it is asked for by, and is one family.
+  // An ordinal family is one family, and is not what a plain call resolves from.
   const ordinal = new Map([['place_ordinal_one', ''], ['place_ordinal_other', '']]);
-  expect(resolves(ordinal, 'place')).toBe(true);
+  expect(resolves(ordinal, 'place')).toBe(false);
   expect(base('place_ordinal_two')).toBe('place');
   expect(family('place_ordinal_two')).toBe('place_ordinal');
   expect(family('routes_one')).toBe('routes');
@@ -475,7 +495,13 @@ it('holds no key en has that nothing reads', () => {
 it('builds a key only from a whole segment on, towards keys en holds', () => {
   const shown = (texts: string[]) => texts.join('${…}');
   expect(templates.filter(([head]) => !head.endsWith('.')).map(shown)).toEqual([]);
+  const keys = [...en.keys()];
   expect(
-    templates.filter((texts) => ![...en.keys()].some((key) => reach(texts).test(key))).map(shown)
+    templates
+      .filter((texts) => {
+        const shape = reach(texts);
+        return !keys.some((key) => shape.test(key));
+      })
+      .map(shown)
   ).toEqual([]);
 });

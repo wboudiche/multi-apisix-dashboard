@@ -26,3 +26,6 @@ export const PLURAL_FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
 
 /** A plural suffix, cardinal or ordinal, at the end of a key. */
 export const PLURAL_SUFFIX = new RegExp(`_(?:ordinal_)?(?:${PLURAL_FORMS.join('|')})$`);
+
+/** The form alone, at the end of a key: what is left is the family, `place_ordinal`. */
+export const PLURAL_FORM = new RegExp(`_(?:${PLURAL_FORMS.join('|')})$`);
