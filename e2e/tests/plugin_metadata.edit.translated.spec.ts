@@ -23,15 +23,17 @@ import { expect } from '@playwright/test';
 import { API_PLUGIN_METADATA } from '@/config/constant';
 
 /**
- * Saving plugin metadata said "Plugin Metadaten of tcp-logger erfolgreich
+ * Saving plugin metadata said "Plugin Metadaten of rocketmq-logger erfolgreich
  * bearbeitet": the "of" between the resource and the plugin was written in
  * the code, in English, where no lint rule looks - the string begins with a
  * value.
  */
 const de = i18nIn('de');
 
-// A plugin no other spec gives metadata to.
-const PLUGIN = 'tcp-logger';
+// A plugin no other spec names. Not one another spec only reads either: the
+// viewer spec picks tcp-logger in Select Plugins, which lists only the plugins
+// that have no metadata yet, and this entry would take it out of the list.
+const PLUGIN = 'rocketmq-logger';
 
 test.beforeAll(async () => {
   await e2eReq.put(`${API_PLUGIN_METADATA}/${PLUGIN}`, { log_format: { host: '$host' } });
