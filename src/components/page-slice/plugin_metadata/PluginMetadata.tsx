@@ -52,7 +52,7 @@ export const PluginMetadata = () => {
     onSuccess(_, variables) {
       notifications.show({
         message: t('info.edit.success', {
-          name: `${t('pluginMetadata.singular')} of ${variables.name}`,
+          name: t('pluginMetadata.of', { plugin: variables.name }),
         }),
         color: 'green',
       });
@@ -64,7 +64,7 @@ export const PluginMetadata = () => {
     onSuccess(_, name) {
       notifications.show({
         message: t('info.delete.success', {
-          name: `${t('pluginMetadata.singular')} of ${name}`,
+          name: t('pluginMetadata.of', { plugin: name }),
         }),
         color: 'green',
       });

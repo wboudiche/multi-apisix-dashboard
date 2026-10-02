@@ -978,8 +978,8 @@
   },
   "pluginMetadata": {
     "search": "Buscar Metadatos de Plugin",
-    "singular": "Metadatos de Plugin",
-    "forbidden": "Tu rol en esta instancia no permite leer los metadatos de plugins. Pide acceso a un administrador si lo necesitas."
+    "forbidden": "Tu rol en esta instancia no permite leer los metadatos de plugins. Pide acceso a un administrador si lo necesitas.",
+    "of": "Metadatos del plugin {{plugin}}"
   },
   "protos": {
     "singular": "Proto"

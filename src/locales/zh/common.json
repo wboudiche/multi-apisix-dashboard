@@ -970,8 +970,8 @@
   },
   "pluginMetadata": {
     "search": "搜索插件元数据",
-    "singular": "插件元数据",
-    "forbidden": "您在此实例上的角色无法读取插件元数据。如需访问，请联系管理员。"
+    "forbidden": "您在此实例上的角色无法读取插件元数据。如需访问，请联系管理员。",
+    "of": "{{plugin}} 的插件元数据"
   },
   "protos": {
     "singular": "Proto"
