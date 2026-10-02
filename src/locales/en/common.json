@@ -897,8 +897,8 @@
   },
   "pluginMetadata": {
     "search": "Search Plugin Metadata",
-    "singular": "Plugin Metadata",
-    "forbidden": "Your role on this instance may not read plugin metadata. Ask an admin if you need access."
+    "forbidden": "Your role on this instance may not read plugin metadata. Ask an admin if you need access.",
+    "of": "Plugin Metadata of {{plugin}}"
   },
   "protos": {
     "singular": "Proto"

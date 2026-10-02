@@ -976,8 +976,8 @@
   },
   "pluginMetadata": {
     "search": "Plugin Metadata Ara",
-    "singular": "Plugin Metadata",
-    "forbidden": "Bu örnekteki rolünüz plugin meta verilerini okuyamaz. Erişim gerekiyorsa bir yöneticiye başvurun."
+    "forbidden": "Bu örnekteki rolünüz plugin meta verilerini okuyamaz. Erişim gerekiyorsa bir yöneticiye başvurun.",
+    "of": "{{plugin}} için Plugin Metadata"
   },
   "protos": {
     "singular": "Proto"
