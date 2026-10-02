@@ -268,18 +268,11 @@ const local = {
 /**
  * A sentence outside JSX has a key too: see eslint-rules/no-prose-literal.ts.
  *
- * Not in the tests, whose sentences are what they feed the code. And not in
- * the plugin catalogue - two tables of about a hundred names and
- * descriptions each, shown in the plugin picker in English in every language:
- * that is two hundred sentences to translate four times, and its own change.
+ * Not in the tests, whose sentences are what they feed the code.
  */
 const proseHasAKey = tseslint.config({
   files: ['src/**/*.{ts,tsx}'],
-  ignores: [
-    'src/**/*.test.{ts,tsx}',
-    'src/components/form-slice/FormItemPlugins/pluginTemplates.ts',
-    'src/components/form-slice/FormItemPlugins/pluginMetadata.ts',
-  ],
+  ignores: ['src/**/*.test.{ts,tsx}'],
   plugins: { local },
   rules: { 'local/no-prose-literal': 'error' },
 });

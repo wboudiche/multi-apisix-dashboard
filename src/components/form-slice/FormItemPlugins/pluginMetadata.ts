@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import i18n from '@/config/i18n';
+
 export type PluginCategory =
   | 'authentication'
   | 'traffic-control'
@@ -29,7 +31,8 @@ export type PluginCategory =
 
 export type PluginMeta = {
   category: PluginCategory;
-  description: string;
+  /** What the plugin does, as a key: the picker shows it in the page's language. */
+  descriptionKey?: string;
 };
 
 export const CATEGORY_COLORS: Record<PluginCategory, string> = {
@@ -60,134 +63,141 @@ export const CATEGORY_ORDER: PluginCategory[] = [
 
 const PLUGIN_METADATA_MAP: Record<string, PluginMeta> = {
   // --- Authentication ---
-  'key-auth': { category: 'authentication', description: 'Authenticates requests using an API key header' },
-  'basic-auth': { category: 'authentication', description: 'HTTP Basic Authentication' },
-  'jwt-auth': { category: 'authentication', description: 'Authenticates requests using JSON Web Tokens' },
-  'hmac-auth': { category: 'authentication', description: 'HMAC-based authentication ensuring request integrity' },
-  'ldap-auth': { category: 'authentication', description: 'Authenticates requests against an LDAP directory' },
-  'cas-auth': { category: 'authentication', description: 'Authentication via CAS 2.0 identity provider' },
-  'openid-connect': { category: 'authentication', description: 'Integrates with OIDC identity providers' },
-  'forward-auth': { category: 'authentication', description: 'Delegates authentication to an external service' },
-  'wolf-rbac': { category: 'authentication', description: 'Role-based access control using Wolf server' },
-  'authz-keycloak': { category: 'authentication', description: 'Enforces authorization policies via Keycloak' },
-  'authz-casbin': { category: 'authentication', description: 'Authorization based on Casbin access control models' },
-  'authz-casdoor': { category: 'authentication', description: 'Centralized authentication via Casdoor with OAuth2' },
-  'opa': { category: 'authentication', description: 'Policy-based authorization via Open Policy Agent' },
-  'multi-auth': { category: 'authentication', description: 'Enables multiple authentication methods on a route' },
-  'jwe-decrypt': { category: 'authentication', description: 'Decrypts JWE-encrypted authorization headers' },
+  'key-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.key-auth' },
+  'basic-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.basic-auth' },
+  'jwt-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.jwt-auth' },
+  'hmac-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.hmac-auth' },
+  'ldap-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.ldap-auth' },
+  'cas-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.cas-auth' },
+  'openid-connect': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.openid-connect' },
+  'forward-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.forward-auth' },
+  'wolf-rbac': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.wolf-rbac' },
+  'authz-keycloak': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.authz-keycloak' },
+  'authz-casbin': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.authz-casbin' },
+  'authz-casdoor': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.authz-casdoor' },
+  'opa': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.opa' },
+  'multi-auth': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.multi-auth' },
+  'jwe-decrypt': { category: 'authentication', descriptionKey: 'form.plugins.descriptions.jwe-decrypt' },
 
   // --- Traffic Control ---
-  'limit-req': { category: 'traffic-control', description: 'Rate limits using the leaky bucket algorithm' },
-  'limit-count': { category: 'traffic-control', description: 'Rate limits by request count within a fixed time window' },
-  'limit-conn': { category: 'traffic-control', description: 'Limits concurrent connections per key' },
-  'traffic-split': { category: 'traffic-control', description: 'Splits traffic across multiple upstreams for canary releases' },
-  'api-breaker': { category: 'traffic-control', description: 'Circuit breaker to protect upstream from cascading failures' },
-  'proxy-mirror': { category: 'traffic-control', description: 'Duplicates traffic to a mirror server' },
-  'proxy-cache': { category: 'traffic-control', description: 'Caches upstream responses based on configurable TTL' },
+  'limit-req': { category: 'traffic-control', descriptionKey: 'form.plugins.descriptions.limit-req' },
+  'limit-count': { category: 'traffic-control', descriptionKey: 'form.plugins.descriptions.limit-count' },
+  'limit-conn': { category: 'traffic-control', descriptionKey: 'form.plugins.descriptions.limit-conn' },
+  'traffic-split': { category: 'traffic-control', descriptionKey: 'form.plugins.descriptions.traffic-split' },
+  'api-breaker': { category: 'traffic-control', descriptionKey: 'form.plugins.descriptions.api-breaker' },
+  'proxy-mirror': { category: 'traffic-control', descriptionKey: 'form.plugins.descriptions.proxy-mirror' },
+  'proxy-cache': { category: 'traffic-control', descriptionKey: 'form.plugins.descriptions.proxy-cache' },
 
   // --- Security ---
-  'cors': { category: 'security', description: 'Enable Cross-Origin Resource Sharing' },
-  'ip-restriction': { category: 'security', description: 'Allow or deny access by client IP address' },
-  'ua-restriction': { category: 'security', description: 'Restricts access based on User-Agent patterns' },
-  'referer-restriction': { category: 'security', description: 'Restricts access based on the Referer header' },
-  'consumer-restriction': { category: 'security', description: 'Restricts route access to specific consumers' },
-  'csrf': { category: 'security', description: 'Protects against cross-site request forgery' },
-  'uri-blocker': { category: 'security', description: 'Blocks requests matching URI regex patterns' },
-  'request-validation': { category: 'security', description: 'Validates request body against JSON Schema' },
-  'chaitin-waf': { category: 'security', description: 'Web application firewall via Chaitin SafeLine' },
+  'cors': { category: 'security', descriptionKey: 'form.plugins.descriptions.cors' },
+  'ip-restriction': { category: 'security', descriptionKey: 'form.plugins.descriptions.ip-restriction' },
+  'ua-restriction': { category: 'security', descriptionKey: 'form.plugins.descriptions.ua-restriction' },
+  'referer-restriction': { category: 'security', descriptionKey: 'form.plugins.descriptions.referer-restriction' },
+  'consumer-restriction': { category: 'security', descriptionKey: 'form.plugins.descriptions.consumer-restriction' },
+  'csrf': { category: 'security', descriptionKey: 'form.plugins.descriptions.csrf' },
+  'uri-blocker': { category: 'security', descriptionKey: 'form.plugins.descriptions.uri-blocker' },
+  'request-validation': { category: 'security', descriptionKey: 'form.plugins.descriptions.request-validation' },
+  'chaitin-waf': { category: 'security', descriptionKey: 'form.plugins.descriptions.chaitin-waf' },
 
   // --- Transformation ---
-  'proxy-rewrite': { category: 'transformation', description: 'Rewrite URI before proxying to upstream' },
-  'response-rewrite': { category: 'transformation', description: 'Modify response headers or body' },
-  'redirect': { category: 'transformation', description: 'Configures HTTP redirects with status codes' },
-  'gzip': { category: 'transformation', description: 'Dynamically compresses responses using gzip' },
-  'body-transformer': { category: 'transformation', description: 'Transforms request/response bodies using templates' },
-  'fault-injection': { category: 'transformation', description: 'Injects faults for testing' },
-  'mocking': { category: 'transformation', description: 'Returns mock responses without forwarding to upstream' },
-  'degraphql': { category: 'transformation', description: 'Exposes GraphQL queries as RESTful endpoints' },
+  'proxy-rewrite': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.proxy-rewrite' },
+  'response-rewrite': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.response-rewrite' },
+  'redirect': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.redirect' },
+  'gzip': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.gzip' },
+  'body-transformer': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.body-transformer' },
+  'fault-injection': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.fault-injection' },
+  'mocking': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.mocking' },
+  'degraphql': { category: 'transformation', descriptionKey: 'form.plugins.descriptions.degraphql' },
 
   // --- Observability ---
-  'prometheus': { category: 'observability', description: 'Exposes metrics in Prometheus format' },
-  'zipkin': { category: 'observability', description: 'Distributed tracing via Zipkin' },
-  'datadog': { category: 'observability', description: 'Pushes custom metrics to Datadog via DogStatsD' },
-  'request-id': { category: 'observability', description: 'Adds a unique ID to each request for tracing' },
-  'skywalking': { category: 'observability', description: 'Distributed tracing via Apache SkyWalking' },
+  'prometheus': { category: 'observability', descriptionKey: 'form.plugins.descriptions.prometheus' },
+  'zipkin': { category: 'observability', descriptionKey: 'form.plugins.descriptions.zipkin' },
+  'datadog': { category: 'observability', descriptionKey: 'form.plugins.descriptions.datadog' },
+  'request-id': { category: 'observability', descriptionKey: 'form.plugins.descriptions.request-id' },
+  'skywalking': { category: 'observability', descriptionKey: 'form.plugins.descriptions.skywalking' },
 
   // --- Logging ---
-  'http-logger': { category: 'logging', description: 'Pushes access logs to HTTP/HTTPS endpoints' },
-  'kafka-logger': { category: 'logging', description: 'Pushes access logs to Apache Kafka' },
-  'tcp-logger': { category: 'logging', description: 'Pushes access logs to a TCP server' },
-  'udp-logger': { category: 'logging', description: 'Pushes access logs to a UDP server' },
-  'syslog': { category: 'logging', description: 'Pushes access logs to a Syslog server' },
-  'file-logger': { category: 'logging', description: 'Writes access logs to a local file' },
-  'elasticsearch-logger': { category: 'logging', description: 'Pushes logs to Elasticsearch' },
-  'loki-logger': { category: 'logging', description: 'Pushes logs to Grafana Loki' },
-  'clickhouse-logger': { category: 'logging', description: 'Pushes logs to ClickHouse database' },
-  'skywalking-logger': { category: 'logging', description: 'Pushes logs to Apache SkyWalking OAP server' },
-  'splunk-hec-logging': { category: 'logging', description: 'Forwards logs to Splunk via HTTP Event Collector' },
-  'rocketmq-logger': { category: 'logging', description: 'Pushes logs to Apache RocketMQ' },
-  'loggly': { category: 'logging', description: 'Forwards logs to SolarWinds Loggly' },
-  'google-cloud-logging': { category: 'logging', description: 'Sends logs to Google Cloud Logging' },
-  'sls-logger': { category: 'logging', description: 'Pushes logs to Alibaba Cloud Log Service' },
-  'tencent-cloud-cls': { category: 'logging', description: 'Forwards logs to Tencent Cloud Log Service' },
-  'lago': { category: 'logging', description: 'API monetization and billing via Lago' },
+  'http-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.http-logger' },
+  'kafka-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.kafka-logger' },
+  'tcp-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.tcp-logger' },
+  'udp-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.udp-logger' },
+  'syslog': { category: 'logging', descriptionKey: 'form.plugins.descriptions.syslog' },
+  'file-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.file-logger' },
+  'elasticsearch-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.elasticsearch-logger' },
+  'loki-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.loki-logger' },
+  'clickhouse-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.clickhouse-logger' },
+  'skywalking-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.skywalking-logger' },
+  'splunk-hec-logging': { category: 'logging', descriptionKey: 'form.plugins.descriptions.splunk-hec-logging' },
+  'rocketmq-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.rocketmq-logger' },
+  'loggly': { category: 'logging', descriptionKey: 'form.plugins.descriptions.loggly' },
+  'google-cloud-logging': { category: 'logging', descriptionKey: 'form.plugins.descriptions.google-cloud-logging' },
+  'sls-logger': { category: 'logging', descriptionKey: 'form.plugins.descriptions.sls-logger' },
+  'tencent-cloud-cls': { category: 'logging', descriptionKey: 'form.plugins.descriptions.tencent-cloud-cls' },
+  'lago': { category: 'logging', descriptionKey: 'form.plugins.descriptions.lago' },
 
   // --- Protocol Conversion ---
-  'grpc-transcode': { category: 'protocol', description: 'Converts HTTP requests to gRPC calls' },
-  'grpc-web': { category: 'protocol', description: 'Enables gRPC-Web protocol support for browsers' },
-  'http-dubbo': { category: 'protocol', description: 'Converts HTTP requests to Dubbo protocol calls' },
-  'kafka-proxy': { category: 'protocol', description: 'Configures Kafka upstream connections with SASL auth' },
+  'grpc-transcode': { category: 'protocol', descriptionKey: 'form.plugins.descriptions.grpc-transcode' },
+  'grpc-web': { category: 'protocol', descriptionKey: 'form.plugins.descriptions.grpc-web' },
+  'http-dubbo': { category: 'protocol', descriptionKey: 'form.plugins.descriptions.http-dubbo' },
+  'kafka-proxy': { category: 'protocol', descriptionKey: 'form.plugins.descriptions.kafka-proxy' },
 
   // --- Serverless ---
-  'aws-lambda': { category: 'serverless', description: 'Proxies requests to AWS Lambda functions' },
-  'azure-functions': { category: 'serverless', description: 'Proxies requests to Azure Functions' },
-  'openwhisk': { category: 'serverless', description: 'Proxies requests to Apache OpenWhisk actions' },
-  'openfunction': { category: 'serverless', description: 'Proxies requests to CNCF OpenFunction endpoints' },
-  'serverless-pre-function': { category: 'serverless', description: 'Runs custom Lua functions before other plugins' },
-  'serverless-post-function': { category: 'serverless', description: 'Runs custom Lua functions after other plugins' },
+  'aws-lambda': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.aws-lambda' },
+  'azure-functions': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.azure-functions' },
+  'openwhisk': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.openwhisk' },
+  'openfunction': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.openfunction' },
+  'serverless-pre-function': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.serverless-pre-function' },
+  'serverless-post-function': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.serverless-post-function' },
 
   // --- External Plugins ---
-  'ext-plugin-pre-req': { category: 'serverless', description: 'Executes external plugins before built-in plugins' },
-  'ext-plugin-post-req': { category: 'serverless', description: 'Executes external plugins after built-in plugins' },
-  'ext-plugin-post-resp': { category: 'serverless', description: 'Executes external plugins after upstream response' },
+  'ext-plugin-pre-req': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.ext-plugin-pre-req' },
+  'ext-plugin-post-req': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.ext-plugin-post-req' },
+  'ext-plugin-post-resp': { category: 'serverless', descriptionKey: 'form.plugins.descriptions.ext-plugin-post-resp' },
 
   // --- AI ---
-  'ai-proxy': { category: 'ai', description: 'Proxies requests to LLM providers' },
-  'ai-proxy-multi': { category: 'ai', description: 'Load-balanced proxy to multiple LLM providers' },
-  'ai-prompt-template': { category: 'ai', description: 'Pre-configured prompt templates with variable substitution' },
-  'ai-prompt-decorator': { category: 'ai', description: 'Prepends or appends system prompts to LLM requests' },
-  'ai-prompt-guard': { category: 'ai', description: 'Validates LLM prompts against allow/deny patterns' },
-  'ai-rate-limiting': { category: 'ai', description: 'Token-based rate limiting for LLM requests' },
-  'ai-request-rewrite': { category: 'ai', description: 'Uses an LLM to transform request bodies' },
-  'ai': { category: 'ai', description: 'Base AI plugin for common AI functionality' },
-  'ai-rag': { category: 'ai', description: 'Retrieval-Augmented Generation for LLM requests' },
-  'ai-aliyun-content-moderation': { category: 'ai', description: 'Content moderation via Alibaba Cloud AI' },
-  'ai-aws-content-moderation': { category: 'ai', description: 'Content moderation via AWS Comprehend' },
+  'ai-proxy': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-proxy' },
+  'ai-proxy-multi': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-proxy-multi' },
+  'ai-prompt-template': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-prompt-template' },
+  'ai-prompt-decorator': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-prompt-decorator' },
+  'ai-prompt-guard': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-prompt-guard' },
+  'ai-rate-limiting': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-rate-limiting' },
+  'ai-request-rewrite': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-request-rewrite' },
+  'ai': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai' },
+  'ai-rag': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-rag' },
+  'ai-aliyun-content-moderation': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-aliyun-content-moderation' },
+  'ai-aws-content-moderation': { category: 'ai', descriptionKey: 'form.plugins.descriptions.ai-aws-content-moderation' },
 
   // --- Misc ---
-  'example-plugin': { category: 'other', description: 'Example plugin for development and testing' },
-  'inspect': { category: 'other', description: 'Dynamic debugging plugin for Lua code inspection' },
-  'real-ip': { category: 'other', description: 'Sets client real IP from a request header' },
-  'client-control': { category: 'other', description: 'Controls client request behavior such as body size limits' },
-  'proxy-control': { category: 'other', description: 'Controls proxy behavior such as request buffering' },
-  'public-api': { category: 'other', description: 'Exposes internal APISIX API endpoints publicly' },
-  'workflow': { category: 'other', description: 'Conditionally executes actions based on request matching' },
-  'attach-consumer-label': { category: 'other', description: 'Attaches consumer labels as headers to requests' },
-  'echo': { category: 'other', description: 'Debug plugin that modifies response body' },
-  'mcp-bridge': { category: 'other', description: 'Bridges Model Context Protocol requests for AI tools' },
+  'example-plugin': { category: 'other', descriptionKey: 'form.plugins.descriptions.example-plugin' },
+  'inspect': { category: 'other', descriptionKey: 'form.plugins.descriptions.inspect' },
+  'real-ip': { category: 'other', descriptionKey: 'form.plugins.descriptions.real-ip' },
+  'client-control': { category: 'other', descriptionKey: 'form.plugins.descriptions.client-control' },
+  'proxy-control': { category: 'other', descriptionKey: 'form.plugins.descriptions.proxy-control' },
+  'public-api': { category: 'other', descriptionKey: 'form.plugins.descriptions.public-api' },
+  'workflow': { category: 'other', descriptionKey: 'form.plugins.descriptions.workflow' },
+  'attach-consumer-label': { category: 'other', descriptionKey: 'form.plugins.descriptions.attach-consumer-label' },
+  'echo': { category: 'other', descriptionKey: 'form.plugins.descriptions.echo' },
+  'mcp-bridge': { category: 'other', descriptionKey: 'form.plugins.descriptions.mcp-bridge' },
 };
 
 export const getPluginMeta = (name: string): PluginMeta => {
-  return PLUGIN_METADATA_MAP[name] || { category: 'other' as PluginCategory, description: '' };
+  return PLUGIN_METADATA_MAP[name] || { category: 'other' as PluginCategory };
 };
 
 export const getPluginCategory = (name: string): PluginCategory => {
   return getPluginMeta(name).category;
 };
 
+/**
+ * What a plugin does, in the language of the page: the catalogue's words for
+ * a plugin it knows, the gateway's schema's - English, and not ours to
+ * translate - for one it does not.
+ */
 export const getPluginDescription = (name: string, schemaDescription?: string): string => {
-  if (schemaDescription) return schemaDescription;
-  return getPluginMeta(name).description;
+  const key = getPluginMeta(name).descriptionKey;
+  // eslint-disable-next-line local/readable-key -- spelled in PLUGIN_METADATA_MAP
+  if (key) return i18n.t(key as never);
+  return schemaDescription ?? '';
 };
 
 export const groupPluginsByCategory = (plugins: string[]): Record<PluginCategory, string[]> => {
@@ -226,9 +236,9 @@ export const summarizePluginConfig = (name: string, config: object): string => {
 
   if (cat === 'security') {
     const c = config as Record<string, unknown>;
-    if (c.whitelist) return `${(c.whitelist as unknown[]).length} allowed`;
-    if (c.denylist) return `${(c.denylist as unknown[]).length} denied`;
-    if (c.blacklist) return `${(c.blacklist as unknown[]).length} denied`;
+    if (c.whitelist) return i18n.t('form.plugins.summary.allowed', { number: (c.whitelist as unknown[]).length });
+    if (c.denylist) return i18n.t('form.plugins.summary.denied', { number: (c.denylist as unknown[]).length });
+    if (c.blacklist) return i18n.t('form.plugins.summary.denied', { number: (c.blacklist as unknown[]).length });
     if (c.allow_origins) return `origins: ${c.allow_origins}`;
   }
 
@@ -243,8 +253,10 @@ export const summarizePluginConfig = (name: string, config: object): string => {
     const c = config as Record<string, unknown>;
     if (c.uri) return `→ ${c.uri}`;
     if (c.host) return `→ ${c.host}:${c.port ?? ''}`;
-    if (c.brokers) return `${(c.brokers as unknown[]).length} broker(s)`;
-    if (c.endpoint_addrs) return `${(c.endpoint_addrs as unknown[]).length} endpoint(s)`;
+    if (c.brokers) return i18n.t('form.plugins.summary.brokers', { number: (c.brokers as unknown[]).length });
+    if (c.endpoint_addrs) {
+      return i18n.t('form.plugins.summary.endpoints', { number: (c.endpoint_addrs as unknown[]).length });
+    }
   }
 
   if (entries.length <= 3) {
@@ -256,5 +268,5 @@ export const summarizePluginConfig = (name: string, config: object): string => {
       .join(', ');
   }
 
-  return `${entries.length} fields configured`;
+  return i18n.t('form.plugins.summary.fieldsConfigured', { number: entries.length });
 };
