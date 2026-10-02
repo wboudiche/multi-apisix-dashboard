@@ -16,12 +16,18 @@
  */
 import { readdirSync, readFileSync } from 'node:fs';
 
-import ts from 'typescript';
+import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeExpression,
+  calledName,
+  type Node,
+  readingOf,
+} from '../../eslint-rules/key-argument';
 import { defaultNS, resources } from './i18n';
 import { placeholdersIn } from './placeholders';
-import { PLURAL_SUFFIX } from './plural-forms';
+import { PLURAL_FORMS, PLURAL_SUFFIX } from './plural-forms';
 import { roleLabelKeys } from './role-labels';
 
 /**
@@ -64,7 +70,10 @@ const flatten = (node: unknown, prefix = ''): Map<string, string> => {
 
 const placeholders = (value: string) => placeholdersIn(value).sort();
 
+/** The key a call asks for: `routes` for `routes_one`, `place` for `place_ordinal_two`. */
 const base = (key: string) => key.replace(PLURAL_SUFFIX, '');
+/** The family a form belongs to: `routes` for `routes_one`, `place_ordinal` for `place_ordinal_two`. */
+const family = (key: string) => key.replace(new RegExp(`_(?:${PLURAL_FORMS.join('|')})$`), '');
 const filled = (value: string | undefined) => typeof value === 'string' && value.trim() !== '';
 
 /**
@@ -72,8 +81,8 @@ const filled = (value: string | undefined) => typeof value === 'string' && value
  * the plural forms written for it. Not the other way round - `t('x_one')`
  * does not resolve from an `x`.
  */
-const resolves = (catalogue: Map<string, string>, key: string) =>
-  catalogue.has(key) || catalogue.has(`${key}_other`);
+const resolves = (catalogue: { has(key: string): boolean }, key: string) =>
+  catalogue.has(key) || catalogue.has(`${key}_other`) || catalogue.has(`${key}_ordinal_other`);
 
 const en = flatten(bundle(BASE));
 // What `en` writes, each plural family under its base: a translation belongs
@@ -171,19 +180,28 @@ describe.each(LANGUAGES)('%s', (lang) => {
  * language that writes a key in plural forms must write every form it
  * resolves - a missing `_one` renders English for a count of one, which is the
  * failure this check ends. What English does not distinguish (`many`, in
- * Spanish) is not asked for.
+ * Spanish) is not asked for. An ordinal family - `place_ordinal_one` - is
+ * held to the ordinal forms of the language, not to the cardinal ones.
  */
 describe.each(LANGUAGES)('%s', (lang) => {
   const translated = translations.get(lang)!;
-  const forms = new Intl.PluralRules(lang)
-    .resolvedOptions()
-    .pluralCategories.filter((form) => ['one', 'other'].includes(form));
+  // The forms this language has, among the ones English tells apart.
+  const formsOf = (ordinal: boolean) =>
+    new Intl.PluralRules(lang, { type: ordinal ? 'ordinal' : 'cardinal' })
+      .resolvedOptions()
+      .pluralCategories.filter((form) =>
+        (ordinal ? ['one', 'two', 'few', 'other'] : ['one', 'other']).includes(form)
+      );
 
   it('has every key en has', () => {
     const missing = [...en.keys()].filter((key) => {
       if (filled(translated.get(key))) return false;
-      const pluralised = [...translated.keys()].some((k) => k !== key && base(k) === base(key));
-      return !pluralised || !forms.every((form) => filled(translated.get(`${base(key)}_${form}`)));
+      const of = family(key);
+      const pluralised = [...translated.keys()].some((k) => k !== key && family(k) === of);
+      return (
+        !pluralised ||
+        !formsOf(of.endsWith('_ordinal')).every((form) => filled(translated.get(`${of}_${form}`)))
+      );
     });
     expect(missing).toEqual([]);
   });
@@ -216,122 +234,195 @@ const sourceFiles = (dir = 'src'): string[] =>
       : [];
   });
 
-const namespaces = new Set([...en.keys()].map((key) => key.split('.')[0]));
+/** What the reader needs of a bundle: its keys, and the namespaces they are under. */
+type Catalogue = { has(key: string): boolean; namespaces: Set<string> };
 
-/** `t(…)` and `i18n.t(…)`. */
-const isTranslate = (callee: ts.Expression) =>
-  (ts.isIdentifier(callee) && callee.text === 't') ||
-  (ts.isPropertyAccessExpression(callee) && callee.name.text === 't');
+const catalogueOf = (keys: Iterable<string>): Catalogue => {
+  const all = new Set(keys);
+  return { has: (key) => all.has(key), namespaces: new Set([...all].map((key) => key.split('.')[0])) };
+};
+
+const KEY_SHAPE = /^[a-zA-Z][\w-]*(?:\.[\w-]+)*$/;
+
+/** The syntax tree eslint's rules are given: the same parser, the same nodes. */
+const parse = (file: string, source: string) => {
+  const parser = tseslint.parser as unknown as {
+    parseForESLint(source: string, options: object): { ast: Node };
+  };
+  return parser.parseForESLint(source, { ecmaFeatures: { jsx: file.endsWith('x') } }).ast;
+};
+
+/** Every node of a tree, the root first. */
+const walk = (node: Node, visit: (node: Node) => void) => {
+  visit(node);
+  for (const value of Object.values(node)) {
+    for (const child of Array.isArray(value) ? value : [value]) {
+      if (child && typeof child === 'object' && typeof (child as Node).type === 'string') {
+        walk(child as Node, visit);
+      }
+    }
+  }
+};
 
 /**
  * What a source reads of the bundles, out of its syntax tree.
  *
- * `keys`: every string it spells that is a dotted name under one of `en`'s
- * namespaces, wherever it stands - an argument of t(), a branch of a ternary,
- * a row of a table the key is looked up in, a JSX attribute. Nothing under a
- * namespace is dropped for not being a key: `reads only keys en holds` below
- * is the check that a name here is one, and filtering on the catalogue first
- * made it vacuous - a key mistyped inside a ternary is invisible to eslint's
- * i18n/no-unknown-key, which does not descend into one, so this is the only
- * thing that would say so. The namespace is what tells a key from a field
- * path (`tls.verify`, `checks.active.timeout`) or a protocol name
- * (`TLSv1.2`). A name with no dot - `or`, `noData` - is a key only when `en`
- * spells it so.
+ * `asked`: the keys it hands to t(), to i18n.t() or to a `<Trans i18nKey>`,
+ * read as eslint's rules read a key argument (eslint-rules/key-argument.ts) -
+ * through a ternary, through a cast. Each is held to being a key `en` holds,
+ * whatever it looks like: `t('fomr.btn.save' as never)` is seen by no lint
+ * rule, and was dropped here too for not being under a namespace.
  *
- * `prefixes`: what a call builds its key from - ``t(`sources.${label}`)``
- * reaches every key under `sources.`, and none of them is dead for being
- * spelled by no file. Read off the call rather than listed beside it: a
- * listed prefix outlived the call that built from it, and sheltered every key
- * under it from the dead-key check for good.
+ * `spelled`: every other string that is a dotted name under one of `en`'s
+ * namespaces, wherever it stands - a row of a table a key is looked up in, a
+ * message a schema writes. Nothing under a namespace is dropped for not
+ * being a key: `reads only keys en holds` below is the check that a name
+ * here is one. The namespace is what tells a key from a field path
+ * (`tls.verify`, `checks.active.timeout`) or a protocol name (`TLSv1.2`); a
+ * name with no dot - `or`, `noData` - is a key only when `en` spells it so.
+ * A typo in the first segment of a key that is in a table and not in a call
+ * is the one shape nothing sees.
+ *
+ * `templates`: what a call builds its key from, as the texts around its
+ * values - ``t(`sources.${label}`)`` is `['sources.', '']`, and reaches every
+ * key of that shape. Read off the call rather than listed beside it: a listed
+ * prefix outlived the call that built from it, and sheltered every key under
+ * it from the dead-key check for good.
  *
  * A comment is not source: a key quoted in one is not read, and sheltered a
  * dead key when the source was matched as text.
  */
-const readOf = (file: string, source: string) => {
-  const keys: string[] = [];
-  const prefixes: string[] = [];
-  const visit = (node: ts.Node) => {
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      const { text } = node;
-      if (/^[a-zA-Z][\w-]*(?:\.[\w-]+)*$/.test(text)) {
-        if (text.includes('.') ? namespaces.has(text.split('.')[0]) : en.has(text)) keys.push(text);
+const readOf = (file: string, source: string, catalogue: Catalogue) => {
+  const asked: string[] = [];
+  const spelled: string[] = [];
+  const templates: string[][] = [];
+  const ask = (argument: Node | undefined) => {
+    const reading = readingOf(argument);
+    asked.push(...reading.keys);
+    templates.push(...reading.templates);
+  };
+  walk(parse(file, source), (node) => {
+    if (node.type === 'CallExpression' && calledName(node.callee as Node) === 't') {
+      ask((node.arguments as Node[])[0]);
+    }
+    if (node.type === 'JSXOpeningElement' && (node.name as Node).name === 'Trans') {
+      const key = (node.attributes as Node[]).find(
+        (a) => a.type === 'JSXAttribute' && (a.name as Node).name === 'i18nKey'
+      );
+      if (key) ask(attributeExpression(key));
+    }
+    const text =
+      node.type === 'Literal' && typeof node.value === 'string'
+        ? node.value
+        : node.type === 'TemplateElement'
+          ? (node.value as { cooked: string }).cooked
+          : undefined;
+    if (text !== undefined && KEY_SHAPE.test(text)) {
+      if (text.includes('.') ? catalogue.namespaces.has(text.split('.')[0]) : catalogue.has(text)) {
+        spelled.push(text);
       }
     }
-    if (ts.isCallExpression(node) && isTranslate(node.expression)) {
-      const [key] = node.arguments;
-      if (key && ts.isTemplateExpression(key) && key.head.text !== '') prefixes.push(key.head.text);
-    }
-    node.forEachChild(visit);
-  };
-  visit(
-    ts.createSourceFile(
-      file,
-      source,
-      ts.ScriptTarget.Latest,
-      false,
-      file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-    )
-  );
-  return { keys, prefixes };
+  });
+  return { asked, spelled, templates };
 };
 
-const files = sourceFiles();
-const reads = new Map(
-  files.map((file) => [
-    file,
-    readOf(file, readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8')),
-  ])
-);
+/**
+ * The keys a template reaches: the texts around its values, with anything
+ * between them. ``t(`form.${section}.title`)`` reaches `form.x.title` and
+ * not the rest of `form.`.
+ */
+const reach = (texts: string[]) =>
+  new RegExp(`^${texts.map((text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.+')}$`);
 
 describe('what a source reads of the bundles', () => {
-  const read = (source: string) => readOf('probe.tsx', source);
+  const fixture = catalogueOf(['info.add.success', 'roles.viewer', 'form.btn.next', 'or', 'noData']);
+  const read = (source: string) => readOf('probe.tsx', source, fixture);
 
-  it('is every key it spells, wherever it stands', () => {
-    const { keys } = read(`
+  it('is every key it hands to a translation, whatever the key looks like', () => {
+    const { asked } = read(`
       const a = t('info.add.success');
       const b = t(published ? 'info.publish.success' : 'info.unpublish.success');
-      const table = { viewer: 'roles.viewer' } as const;
       const c = <Trans i18nKey="form.btn.next" />;
-      const d = t(\`form.btn.save\`);
+      const d = i18n.t(\`form.btn.save\`);
+      const e = t('fomr.btn.save' as never);
+      const f = t(ok ? 'noDatta' : 'noData');
+      const g = <Trans i18nKey={ok ? 'a.b' : 'c.d'} />;
     `);
 
-    expect(keys).toEqual([
+    expect(asked).toEqual([
       'info.add.success',
       'info.publish.success',
       'info.unpublish.success',
-      'roles.viewer',
       'form.btn.next',
       'form.btn.save',
+      'fomr.btn.save',
+      'noDatta',
+      'noData',
+      'a.b',
+      'c.d',
     ]);
   });
 
-  it('is not a field path, a protocol, or a word en does not spell as a key', () => {
-    expect(read("const a = ['tls.verify', 'TLSv1.2', 'upstream', 'x.y'];").keys).toEqual([]);
-    expect(read("const a = ['or', 'noData'];").keys).toEqual(['or', 'noData']);
+  it('is every key it spells elsewhere, under a namespace of the bundle', () => {
+    const { spelled, asked } = read(`
+      const table = { viewer: 'roles.viewer', unknown: 'roles.nobody' } as const;
+      const schema = z.string().min(1, 'form.validation.nameRequired');
+    `);
+
+    expect(spelled).toEqual(['roles.viewer', 'roles.nobody', 'form.validation.nameRequired']);
+    expect(asked).toEqual([]);
+  });
+
+  it('is not a field path, a protocol, or a word the bundle does not spell as a key', () => {
+    expect(read("const a = ['tls.verify', 'TLSv1.2', 'upstream', 'x.y'];").spelled).toEqual([]);
+    expect(read("const a = ['or', 'noData'];").spelled).toEqual(['or', 'noData']);
   });
 
   it('is not a key quoted in a comment', () => {
-    const { keys } = read(`
+    const { asked, spelled } = read(`
       // 'info.add.success' was read here once
       /** and \`t('info.delete.success')\` there */
       const a = 1;
     `);
 
-    expect(keys).toEqual([]);
+    expect([...asked, ...spelled]).toEqual([]);
   });
 
-  it('is the prefix a call builds its key from', () => {
-    const { keys, prefixes } = read(`
+  it('is what a call builds its key from, read as the lint rules read the call', () => {
+    const { templates } = read(`
       const a = t(\`sources.\${route.label}\`);
-      const b = i18n.t(\`form.plugins.category.\${category}\`, { count });
-      const c = other(\`routes.\${x}\`);
-      const d = t(\`\${whole}\`);
+      const b = i18n.t(\`form.plugins.category.\${category}\` as never, { count });
+      const c = t(cond ? \`form.\${section}.title\` : 'form.btn.next');
+      const d = <Trans i18nKey={\`roles.\${role}\`} />;
+      const e = other(\`routes.\${x}\`);
     `);
 
-    expect(prefixes).toEqual(['sources.', 'form.plugins.category.']);
-    expect(keys).toEqual([]);
+    expect(templates).toEqual([
+      ['sources.', ''],
+      ['form.plugins.category.', ''],
+      ['form.', '.title'],
+      ['roles.', ''],
+    ]);
+  });
+
+  it('reaches the keys of a template’s shape, and no others under its prefix', () => {
+    expect(reach(['sources.', '']).test('sources.routes')).toBe(true);
+    expect(reach(['sources.', '']).test('sources.')).toBe(false);
+    expect(reach(['form.', '.title']).test('form.basic.title')).toBe(true);
+    expect(reach(['form.', '.title']).test('form.basic.name')).toBe(false);
+    expect(reach(['a.b.', '']).test('axb.c')).toBe(false);
   });
 });
+
+const catalogue = catalogueOf(en.keys());
+const files = sourceFiles();
+const reads = new Map(
+  files.map((file) => [
+    file,
+    readOf(file, readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'), catalogue),
+  ])
+);
+const templates = [...reads.values()].flatMap((read) => read.templates);
 
 // `en` writes no key in plural forms today, so nothing in the bundles would
 // say if this went back to stripping the suffix off the key the source spells.
@@ -341,6 +432,12 @@ it('resolves a key from its plural forms, and not a plural form from its key', (
   expect(resolves(new Map([['x', '']]), 'x')).toBe(true);
   expect(resolves(new Map([['x', '']]), 'x_one')).toBe(false);
   expect(resolves(plural, 'y')).toBe(false);
+  // An ordinal family answers the key it is asked for by, and is one family.
+  const ordinal = new Map([['place_ordinal_one', ''], ['place_ordinal_other', '']]);
+  expect(resolves(ordinal, 'place')).toBe(true);
+  expect(base('place_ordinal_two')).toBe('place');
+  expect(family('place_ordinal_two')).toBe('place_ordinal');
+  expect(family('routes_one')).toBe('routes');
 });
 
 describe.each(files)('%s', (file) => {
@@ -348,7 +445,8 @@ describe.each(files)('%s', (file) => {
     // A screen asking for a key no bundle has renders the key itself. A key
     // `en` writes in plural forms is asked for by its base, and resolves: the
     // other way round - `t('x_one')` where `en` holds `x` - does not.
-    const keys = [...new Set(reads.get(file)!.keys)].sort();
+    const { asked, spelled } = reads.get(file)!;
+    const keys = [...new Set([...asked, ...spelled])].sort();
     expect(keys.filter((key) => !resolves(en, key))).toEqual([]);
   });
 });
@@ -359,20 +457,25 @@ describe.each(files)('%s', (file) => {
  * is added. Eighteen sat in `en` when this was written (#362).
  */
 it('holds no key en has that nothing reads', () => {
-  const all = [...reads.values()];
-  const read = new Set(all.flatMap(({ keys }) => keys));
-  const prefixes = [...new Set(all.flatMap(({ prefixes }) => prefixes))];
+  const read = new Set([...reads.values()].flatMap(({ asked, spelled }) => [...asked, ...spelled]));
+  const reached = templates.map(reach);
   const dead = [...en.keys()].filter(
-    (key) =>
-      !read.has(key) && !read.has(base(key)) && !prefixes.some((prefix) => key.startsWith(prefix))
+    (key) => !read.has(key) && !read.has(base(key)) && !reached.some((shape) => shape.test(key))
   );
   expect(dead).toEqual([]);
 });
 
-// A prefix nothing under it answers to is a call building keys no bundle
-// holds - or one whose keys were all removed and that should go with them.
-it('builds no key towards a prefix en holds nothing under', () => {
-  const prefixes = [...new Set([...reads.values()].flatMap(({ prefixes }) => prefixes))];
-  const empty = prefixes.filter((prefix) => ![...en.keys()].some((key) => key.startsWith(prefix)));
-  expect(empty).toEqual([]);
+/**
+ * A key is built from a whole segment on - `sources.${label}` - and towards
+ * keys that exist. A template that begins with a value, or in the middle of
+ * a segment, reaches keys by accident of spelling and shelters them from the
+ * check above; one that reaches nothing builds keys no bundle holds, or is
+ * what is left of keys that were removed.
+ */
+it('builds a key only from a whole segment on, towards keys en holds', () => {
+  const shown = (texts: string[]) => texts.join('${…}');
+  expect(templates.filter(([head]) => !head.endsWith('.')).map(shown)).toEqual([]);
+  expect(
+    templates.filter((texts) => ![...en.keys()].some((key) => reach(texts).test(key))).map(shown)
+  ).toEqual([]);
 });

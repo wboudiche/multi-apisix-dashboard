@@ -19,6 +19,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { RuleTester } from 'eslint';
+import tseslint from 'typescript-eslint';
 import { afterAll, describe, it } from 'vitest';
 
 import rule from './interpolation-data';
@@ -325,6 +326,38 @@ new RuleTester({
       code: "<Trans i18nKey='routes' values={{ name }} />",
       settings,
       errors: [{ messageId: 'missing', data: { key: 'routes', placeholder: '{{count}}' } }],
+    },
+  ],
+});
+
+// A cast is not a variable: `'greeting' as const` is the key it wraps, and
+// is held to what that key interpolates - where it used to be read as a key
+// that could not be, and left alone (#365).
+new RuleTester({
+  languageOptions: { parser: tseslint.parser },
+}).run('interpolation-data, under a cast', rule, {
+  valid: [
+    { code: "t('greeting' as const, { name })", settings },
+    { code: "t('plain' as never)", settings },
+    { code: "t('friend', { context: 'male' as const, name })", settings },
+    // A key held in a variable is still not this rule's to judge.
+    { code: 't(key as never, { anything })', settings },
+  ],
+  invalid: [
+    {
+      code: "t('greeting' as const)",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'greeting', placeholder: '{{name}}' } }],
+    },
+    {
+      code: "t('plain' as never, { name })",
+      settings,
+      errors: [{ messageId: 'unused', data: { key: 'plain', name: '{{name}}' } }],
+    },
+    {
+      code: "t('friend', { context: 'female' as const })",
+      settings,
+      errors: [{ messageId: 'missing', data: { key: 'friend', placeholder: '{{surname}}' } }],
     },
   ],
 });

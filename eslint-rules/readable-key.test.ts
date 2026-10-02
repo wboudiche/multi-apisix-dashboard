@@ -54,6 +54,10 @@ tester.run('readable-key', rule, {
     // t handed to a helper that takes it: the helper's own call is what is read.
     'roleLabel(t, role)',
     'other(key)',
+    'const { t } = useTranslation()',
+    'const { t, i18n } = useTranslation()',
+    'const t = i18n.t.bind(i18n)',
+    'const label = t("a.b")',
   ],
   invalid: [
     { code: 't(key)', errors: variable },
@@ -66,5 +70,20 @@ tester.run('readable-key', rule, {
     // What does not look like `t(`.
     { code: '<Trans i18nKey={key} />', errors: variable },
     { code: 'keys.map(t)', errors: variable },
+    { code: 'keys.map(i18n.t)', errors: variable },
+    { code: 'keys.map(t as never)', errors: variable },
+    { code: 'keys.some(t)', errors: variable },
+    { code: 'Array.from(keys, t)', errors: variable },
+    { code: '<Trans {...props} />', errors: variable },
+    // Said where `t` is handed over, not where the chain begins: the line a
+    // disable comment has to sit above.
+    {
+      code: 'keys\n  .filter(Boolean)\n  .map(t)',
+      errors: [{ messageId: 'variable', line: 3 }],
+    },
+    // Under another name, no check reads its calls.
+    { code: 'const translate = t; translate(key)', errors: [{ messageId: 'alias' }] },
+    { code: 'const { t: tr } = useTranslation(); tr(key)', errors: [{ messageId: 'alias' }] },
+    { code: 'const translate = i18n.t', errors: [{ messageId: 'alias' }] },
   ],
 });

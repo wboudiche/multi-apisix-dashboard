@@ -35,18 +35,46 @@ export const literalOf = (wrapped: Node | undefined) => {
 };
 
 /**
- * The keys a first argument can name - a literal, or the literals of a ternary
- * - and whether a branch could not be read. `'a.b' as const` is the literal it
- * wraps.
+ * What a key argument names: the keys it spells - a literal, or the literals
+ * of a ternary, `'a.b' as const` being the literal it wraps - the templates it
+ * builds a key from, each as the texts around its values, and whether any of
+ * it could not be read.
+ *
+ * One reading for everything that asks what a call asks i18next for: the two
+ * rules here, and locale-keys.test.ts, whose own narrower reading took
+ * ``t(`sources.${label}` as never)`` for a call that reaches nothing (#365).
  */
-export const keysOf = (wrapped: Node | undefined): { keys: string[]; partial: boolean } => {
+export type KeyReading = { keys: string[]; templates: string[][]; partial: boolean };
+
+export const readingOf = (wrapped: Node | undefined): KeyReading => {
   const node = unwrapped(wrapped);
   if (node?.type === 'ConditionalExpression') {
-    const [a, b] = [keysOf(node.consequent as Node), keysOf(node.alternate as Node)];
-    return { keys: [...a.keys, ...b.keys], partial: a.partial || b.partial };
+    const [a, b] = [readingOf(node.consequent as Node), readingOf(node.alternate as Node)];
+    return {
+      keys: [...a.keys, ...b.keys],
+      templates: [...a.templates, ...b.templates],
+      partial: a.partial || b.partial,
+    };
   }
   const key = literalOf(node);
-  return key === undefined ? { keys: [], partial: true } : { keys: [key], partial: false };
+  if (key !== undefined) return { keys: [key], templates: [], partial: false };
+  if (node?.type === 'TemplateLiteral') {
+    const texts = (node.quasis as { value: { cooked: string } }[]).map((q) => q.value.cooked);
+    return { keys: [], templates: [texts], partial: true };
+  }
+  return { keys: [], templates: [], partial: true };
+};
+
+/** The keys a first argument can name, and whether a branch could not be read. */
+export const keysOf = (node: Node | undefined): { keys: string[]; partial: boolean } => {
+  const { keys, partial } = readingOf(node);
+  return { keys, partial };
+};
+
+/** Whether an expression is the translate function itself: `t`, `i18n.t`, either under a cast. */
+export const isTranslate = (wrapped: Node | undefined, functionName: string) => {
+  const node = unwrapped(wrapped);
+  return node !== undefined && node.type !== 'CallExpression' && calledName(node) === functionName;
 };
 
 /** The name a call calls: `t` for `t(…)` and for `i18n.t(…)`. */

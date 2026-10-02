@@ -320,7 +320,6 @@ const rule: Rule.RuleModule = {
         const element = node as unknown as Node;
         const opening = element.openingElement as Node;
         if ((opening.name as Node).name !== 'Trans') return;
-        const expressionOf = attributeExpression;
         const key = (opening.attributes as Node[]).find(
           (a) => a.type === 'JSXAttribute' && (a.name as Node).name === 'i18nKey'
         );
@@ -329,8 +328,8 @@ const rule: Rule.RuleModule = {
           for (const attribute of opening.attributes as Node[]) {
             if (attribute.type !== 'JSXAttribute') return undefined; // {...props}
             const name = (attribute.name as Node).name as string;
-            if (name === 'count' || name === 'context') into.set(name, expressionOf(attribute));
-            else if ((name === 'values' || name === 'tOptions') && !passedBy(expressionOf(attribute), into)) {
+            if (name === 'count' || name === 'context') into.set(name, attributeExpression(attribute));
+            else if ((name === 'values' || name === 'tOptions') && !passedBy(attributeExpression(attribute), into)) {
               return undefined;
             }
           }
@@ -349,7 +348,7 @@ const rule: Rule.RuleModule = {
             });
           return fromChildren(element.children as Node[]) ? into : undefined;
         };
-        check(node, key && expressionOf(key), passed());
+        check(node, key && attributeExpression(key), passed());
       },
     };
   },

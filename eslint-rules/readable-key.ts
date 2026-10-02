@@ -16,7 +16,13 @@
  */
 import type { Rule } from 'eslint';
 
-import { attributeExpression, calledName, keysOf, type Node } from './key-argument';
+import {
+  attributeExpression,
+  calledName,
+  isTranslate,
+  keysOf,
+  type Node,
+} from './key-argument';
 
 /**
  * A translation key is written where it is asked for.
@@ -30,7 +36,7 @@ import { attributeExpression, calledName, keysOf, type Node } from './key-argume
  * review found a shape of ordinary code that misread: a condition using `?.`,
  * a ternary in parentheses, `t()` in a comment, `'a.b' as const`. And it let
  * through what does not look like `t(`: `<Trans i18nKey={key}>`, `keys.map(t)`,
- * `t<T>(key)`. Where a variable key was the design, the exemption was the
+ * `t<T>(key)`, or `t` under another name. Where a variable key was the design, the exemption was the
  * whole file, so the next one on the same screen passed too (#365).
  *
  * Read from the syntax tree, there is nothing to count. A literal, or a
@@ -41,8 +47,19 @@ import { attributeExpression, calledName, keysOf, type Node } from './key-argume
  * The function name is the i18n plugin's own setting, `settings.i18n`.
  */
 
-/** Array methods that call what they are given with each element. */
-const EACH = new Set(['map', 'flatMap', 'forEach']);
+/** Methods that call what they are given with each element of a list. */
+const EACH = new Set([
+  'map',
+  'flatMap',
+  'forEach',
+  'filter',
+  'some',
+  'every',
+  'find',
+  'findIndex',
+  'findLast',
+  'from',
+]);
 
 const rule: Rule.RuleModule = {
   meta: {
@@ -52,40 +69,67 @@ const rule: Rule.RuleModule = {
     messages: {
       variable:
         'This key cannot be read: nothing checks that the bundles hold it. Spell it - a literal, or a ternary of literals - or say on this line where the keys it can be are spelled.',
+      alias:
+        'Under another name, the calls on this are not read as translations: no check sees their keys. Call it {{name}}.',
     },
   },
 
   create(context) {
     const i18n = context.settings.i18n as { functionName?: string } | undefined;
     const functionName = i18n?.functionName ?? 't';
+    const report = (node: Node, messageId: 'variable' | 'alias') =>
+      context.report({ node: node as unknown as Rule.Node, messageId, data: { name: functionName } });
 
     return {
       CallExpression(node) {
         const callee = node.callee as unknown as Node;
-        const [first] = node.arguments as unknown as Node[];
-        // keys.map(t): every element is a key, and none is written here.
-        if (
-          callee.type === 'MemberExpression' &&
-          EACH.has(calledName(callee) ?? '') &&
-          first?.type === 'Identifier' &&
-          first.name === functionName
-        ) {
-          context.report({ node, messageId: 'variable' });
-          return;
+        const args = node.arguments as unknown as Node[];
+        // keys.map(t), Array.from(keys, i18n.t): every element is a key, and
+        // none is written here. Said on the argument, which is the line that
+        // hands it over, however long the chain before it.
+        if (callee.type === 'MemberExpression' && EACH.has(calledName(callee) ?? '')) {
+          const handed = args.find((argument) => isTranslate(argument, functionName));
+          if (handed) {
+            report(handed, 'variable');
+            return;
+          }
         }
+        const [first] = args;
         if (calledName(callee) !== functionName || !first) return;
-        if (keysOf(first).partial) context.report({ node: first as unknown as Rule.Node, messageId: 'variable' });
+        if (keysOf(first).partial) report(first, 'variable');
+      },
+
+      // const translate = t; const { t: tr } = useTranslation()
+      VariableDeclarator(node) {
+        const { id, init } = node as unknown as { id: Node; init: Node | null };
+        if (id.type === 'Identifier' && id.name !== functionName && isTranslate(init ?? undefined, functionName)) {
+          report(id, 'alias');
+        }
+        if (id.type !== 'ObjectPattern') return;
+        for (const property of id.properties as Node[]) {
+          if (property.type !== 'Property' || property.computed) continue;
+          const value = property.value as Node;
+          if (
+            (property.key as Node).name === functionName &&
+            value.type === 'Identifier' &&
+            value.name !== functionName
+          ) {
+            report(value, 'alias');
+          }
+        }
       },
 
       JSXOpeningElement(node: Rule.Node) {
         const opening = node as unknown as Node;
         if ((opening.name as Node).name !== 'Trans') return;
-        const key = (opening.attributes as Node[]).find(
+        const attributes = opening.attributes as Node[];
+        // <Trans {...props}>: the key is in there, or nowhere.
+        const spread = attributes.find((a) => a.type === 'JSXSpreadAttribute');
+        if (spread) report(spread, 'variable');
+        const key = attributes.find(
           (a) => a.type === 'JSXAttribute' && (a.name as Node).name === 'i18nKey'
         );
-        if (key && keysOf(attributeExpression(key)).partial) {
-          context.report({ node: key as unknown as Rule.Node, messageId: 'variable' });
-        }
+        if (key && keysOf(attributeExpression(key)).partial) report(key, 'variable');
       },
     };
   },
