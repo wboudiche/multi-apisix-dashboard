@@ -329,6 +329,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
         </Title>
         {name && (
           <Badge size="sm" variant="light" color={categoryColor}>
+            {/* eslint-disable-next-line local/readable-key -- one key per plugin category */}
             {t(`form.plugins.category.${category}`)}
           </Badge>
         )}

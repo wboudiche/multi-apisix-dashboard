@@ -179,6 +179,7 @@ const DeleteImpact = ({ dependencies }: { dependencies: InstanceDependencies }) 
     <List size="sm" spacing={4} withPadding>
       {entries.map((entry) => (
         <List.Item key={entry.label}>
+          {/* eslint-disable-next-line local/readable-key -- spelled in the entries built above */}
           {entry.count} {t(entry.label)}
         </List.Item>
       ))}

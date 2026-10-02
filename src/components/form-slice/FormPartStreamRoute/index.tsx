@@ -174,6 +174,7 @@ const FormSectionStreamRouteProtocol = () => {
       {confHelp && hasProtocol && (
         <Stack gap={4} mt={-8}>
           <Text size="xs" c="dimmed">
+            {/* eslint-disable-next-line local/readable-key -- spelled in the table of conf help above */}
             {t(confHelp.noteKey)}
           </Text>
           {confHelp.example && !formState.disabled && (

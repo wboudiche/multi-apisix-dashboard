@@ -20,6 +20,8 @@ import path from 'node:path';
 import type { Rule } from 'eslint';
 
 import { placeholdersIn } from '../src/config/placeholders';
+import { PLURAL_FORMS, PLURAL_SUFFIX } from '../src/config/plural-forms';
+import { attributeExpression, calledName, keysOf, literalOf, type Node } from './key-argument';
 
 /**
  * A call site passes what its translation interpolates, and nothing else.
@@ -68,8 +70,6 @@ const OPTIONS = new Set([
   'skipInterpolation',
 ]);
 
-const PLURAL_FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
-
 /**
  * `$t(other.key)`: the other key's placeholders count too - unless the nested
  * call carries values of its own, `$t(other.key, {"name": "x"})`, which is
@@ -90,9 +90,6 @@ const flatten = (node: unknown, prefix = '', out: Catalogue = new Map()) => {
   }
   return out;
 };
-
-/** A plural suffix, cardinal or ordinal, at the end of a key. */
-const PLURAL_SUFFIX = new RegExp(`_(?:ordinal_)?(?:${PLURAL_FORMS.join('|')})$`);
 
 /**
  * The context siblings of each key: `key_<context>`, one more segment that is
@@ -185,33 +182,6 @@ const placeholdersOf = (
     }
   }
   return names;
-};
-
-// The estree types are not resolvable from here, and JSX has none in estree
-// anyway, so a node is read by its `type` and whatever fields that type has.
-type Node = { type: string; [field: string]: unknown };
-
-const literalOf = (node: Node | undefined) => {
-  if (!node) return undefined;
-  if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
-  if (node.type === 'TemplateLiteral' && (node.expressions as unknown[]).length === 0) {
-    return (node.quasis as { value: { cooked: string } }[])[0].value.cooked;
-  }
-  return undefined;
-};
-
-/**
- * The keys a first argument can name - a literal, or the literals of a ternary
- * - and whether a branch could not be read. The keys it does name are still
- * held to what they interpolate; what the whole call may pass is not known.
- */
-const keysOf = (node: Node | undefined): { keys: string[]; partial: boolean } => {
-  if (node?.type === 'ConditionalExpression') {
-    const [a, b] = [keysOf(node.consequent as Node), keysOf(node.alternate as Node)];
-    return { keys: [...a.keys, ...b.keys], partial: a.partial || b.partial };
-  }
-  const key = literalOf(node);
-  return key === undefined ? { keys: [], partial: true } : { keys: [key], partial: false };
 };
 
 /** What a call passes: each name, with its value where the rule wants to read one. */
@@ -340,14 +310,7 @@ const rule: Rule.RuleModule = {
     return {
       // t(key, options) and t(key, 'default text', options)
       CallExpression(node) {
-        const callee = node.callee as unknown as Node;
-        const called =
-          callee.type === 'Identifier'
-            ? callee.name
-            : callee.type === 'MemberExpression' && !callee.computed
-              ? (callee.property as Node).name
-              : undefined;
-        if (called !== functionName) return;
+        if (calledName(node.callee as unknown as Node) !== functionName) return;
         const [keyNode, second, third] = node.arguments as unknown as Node[];
         check(node, keyNode, passedBy(literalOf(second) === undefined ? second : third));
       },
@@ -357,10 +320,6 @@ const rule: Rule.RuleModule = {
         const element = node as unknown as Node;
         const opening = element.openingElement as Node;
         if ((opening.name as Node).name !== 'Trans') return;
-        const expressionOf = (attribute: Node) => {
-          const value = attribute.value as Node | null;
-          return value?.type === 'JSXExpressionContainer' ? (value.expression as Node) : (value ?? undefined);
-        };
         const key = (opening.attributes as Node[]).find(
           (a) => a.type === 'JSXAttribute' && (a.name as Node).name === 'i18nKey'
         );
@@ -369,8 +328,8 @@ const rule: Rule.RuleModule = {
           for (const attribute of opening.attributes as Node[]) {
             if (attribute.type !== 'JSXAttribute') return undefined; // {...props}
             const name = (attribute.name as Node).name as string;
-            if (name === 'count' || name === 'context') into.set(name, expressionOf(attribute));
-            else if ((name === 'values' || name === 'tOptions') && !passedBy(expressionOf(attribute), into)) {
+            if (name === 'count' || name === 'context') into.set(name, attributeExpression(attribute));
+            else if ((name === 'values' || name === 'tOptions') && !passedBy(attributeExpression(attribute), into)) {
               return undefined;
             }
           }
@@ -389,7 +348,7 @@ const rule: Rule.RuleModule = {
             });
           return fromChildren(element.children as Node[]) ? into : undefined;
         };
-        check(node, key && expressionOf(key), passed());
+        check(node, key && attributeExpression(key), passed());
       },
     };
   },

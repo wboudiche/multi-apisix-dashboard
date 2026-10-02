@@ -91,6 +91,7 @@ export const SelectPluginsDrawer = (props: SelectPluginsDrawerProps) => {
                 <Stack key={cat} gap="xs">
                   <Group gap={6}>
                     <Badge size="sm" variant="light" color={CATEGORY_COLORS[cat]}>
+                      {/* eslint-disable-next-line local/readable-key -- one key per plugin category */}
                       {t(`form.plugins.category.${cat}`)}
                     </Badge>
                     <Text size="xs" c="dimmed">

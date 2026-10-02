@@ -80,6 +80,7 @@ export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
   return (
     <Alert
       icon={<IconWarning width="18" height="18" />}
+      // eslint-disable-next-line local/readable-key -- spelled in WARNING_TITLES, above
       title={t(WARNING_TITLES[warning as keyof typeof WARNING_MESSAGES] ?? 'listWarning.title')}
       color="yellow"
       variant="light"
@@ -87,6 +88,7 @@ export const ListWarningBanner: FC<ListWarningBannerProps> = ({ warning }) => {
     >
       {/* An unrecognised code still has to read as something: a newer backend
           may name a caveat this build has never heard of. */}
+      {/* eslint-disable-next-line local/readable-key -- spelled in WARNING_MESSAGES, above */}
       {t(WARNING_MESSAGES[warning as keyof typeof WARNING_MESSAGES] ?? 'listWarning.unknown')}
     </Alert>
   );

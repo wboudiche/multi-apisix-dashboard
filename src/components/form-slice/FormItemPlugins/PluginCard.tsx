@@ -76,6 +76,7 @@ export const PluginCard = (props: PluginCardProps) => {
                 color={categoryColor}
                 style={{ flexShrink: 0 }}
               >
+                {/* eslint-disable-next-line local/readable-key -- one key per plugin category */}
                 {t(`form.plugins.category.${category}`)}
               </Badge>
               {/* The number that decides what runs before what. Shown on the
