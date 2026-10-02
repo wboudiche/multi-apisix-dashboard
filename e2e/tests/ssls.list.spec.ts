@@ -20,7 +20,7 @@ import { genTLS, randomId } from '@e2e/utils/common';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiCellsStartingWith } from '@e2e/utils/ui';
+import { uiCellsShowing } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
 import { putSSLReq } from '@/apis/ssls';
@@ -76,7 +76,7 @@ test.describe('page and page_size should work correctly', () => {
   const filterItemsNotInPage = async (page: Page) => {
     // filter the item which not in the current page
     // it should be random, so we need get all items in the table
-    const itemsInPage = await uiCellsStartingWith(page, 'ssl-').all();
+    const itemsInPage = await uiCellsShowing(page, 'ssl-').all();
     const sniTexts = await Promise.all(itemsInPage.map((v) => v.textContent()));
     return ssls.filter((d) => {
       const firstSni = d.snis?.[0] || d.sni;
@@ -88,7 +88,7 @@ test.describe('page and page_size should work correctly', () => {
     pom: sslsPom,
     filterItemsNotInPage,
     getCell: (page, item) =>
-      uiCellsStartingWith(page, item.snis?.[0] || item.sni || '')
+      uiCellsShowing(page, item.snis?.[0] || item.sni || '')
         .first(),
   });
 });

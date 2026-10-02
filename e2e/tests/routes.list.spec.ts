@@ -20,7 +20,7 @@ import { env } from '@e2e/utils/env';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiCell, uiCellsStartingWith } from '@e2e/utils/ui';
+import { uiCell, uiCellsShowing } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
 import { putRouteReq } from '@/apis/routes';
@@ -84,7 +84,7 @@ test.describe('page and page_size should work correctly', () => {
   const filterItemsNotInPage = async (page: Page) => {
     // filter the item which not in the current page
     // it should be random, so we need get all items in the table
-    const itemsInPage = await uiCellsStartingWith(page, FIXTURE_PREFIX).all();
+    const itemsInPage = await uiCellsShowing(page, FIXTURE_PREFIX).all();
     const names = await Promise.all(itemsInPage.map((v) => v.textContent()));
     return routes.filter((d) => !names.includes(d.name));
   };

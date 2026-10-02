@@ -113,7 +113,7 @@ const e2eRules = tseslint.config(
           selector:
             "CallExpression[callee.property.name='getByRole'][arguments.0.value='cell'] > ObjectExpression > Property[key.name='name']",
           message:
-            'A cell asked for by name also matches the cell of the row checkbox - use uiCell or uiCellsStartingWith from @e2e/utils/ui.',
+            'A cell asked for by name also matches the cell of the row checkbox - use uiCell or uiCellsShowing from @e2e/utils/ui.',
         },
       ],
     },

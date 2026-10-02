@@ -18,7 +18,7 @@ import { sslsPom } from '@e2e/pom/ssls';
 import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { genTLS } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import { uiCellsStartingWith, uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCellsShowing, uiHasToastMsg } from '@e2e/utils/ui';
 import { uiFillSSLRequiredFields } from '@e2e/utils/ui/ssls';
 import { expect } from '@playwright/test';
 
@@ -65,7 +65,7 @@ test('should CRUD SSL with required fields', async ({ page }) => {
   await test.step('SSL should exist in list page and navigate to detail', async () => {
     // Verify SSL exists in list
     const firstSni = snis[0];
-    await expect(uiCellsStartingWith(page, firstSni)).toBeVisible();
+    await expect(uiCellsShowing(page, firstSni)).toBeVisible();
 
     // Click on the View button to go to the detail page
     await page
@@ -156,6 +156,6 @@ test('should CRUD SSL with required fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete SSL Successfully',
     });
-    await expect(uiCellsStartingWith(page, snis[0])).toBeHidden();
+    await expect(uiCellsShowing(page, snis[0])).toBeHidden();
   });
 });

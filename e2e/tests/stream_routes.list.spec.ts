@@ -18,7 +18,7 @@ import { streamRoutesPom } from '@e2e/pom/stream_routes';
 import { setupPaginationTests } from '@e2e/utils/pagination-test-helper';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiCell, uiCellsStartingWith } from '@e2e/utils/ui';
+import { uiCell, uiCellsShowing } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
 import { API_STREAM_ROUTES } from '@/config/constant';
@@ -81,7 +81,7 @@ test.describe('page and page_size should work correctly', () => {
   const filterItemsNotInPage = async (page: Page) => {
     // filter the item which not in the current page
     // it should be random, so we need get all items in the table
-    const itemsInPage = await uiCellsStartingWith(page, 'stream_route_id_').all();
+    const itemsInPage = await uiCellsShowing(page, 'stream_route_id_').all();
     const ids = await Promise.all(itemsInPage.map((v) => v.textContent()));
     return streamRoutes.filter((d) => !ids.includes(d.id));
   };
