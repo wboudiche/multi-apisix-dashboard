@@ -42,6 +42,7 @@ import {
 import { genControllerProps } from '@/components/form/util';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
+import { errorText } from '@/utils/error-text';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { effectivePriority, inExecutionOrder } from '@/utils/plugin-priority';
 
@@ -224,7 +225,7 @@ export const FormItemPlugins = <T extends FieldValues>(
   }, [pluginsOb, pluginsListReq.data]);
 
   return (
-    <InputWrapper error={fieldState.error?.message} {...restProps}>
+    <InputWrapper error={errorText(fieldState.error?.message)} {...restProps}>
       <input name={fName} type="hidden" />
       <Drawer.Stack>
         {!isView && (

@@ -33,6 +33,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 import interpolationData from './eslint-rules/interpolation-data';
+import noProseLiteral from './eslint-rules/no-prose-literal';
 
 const importRules = tseslint.config({
   plugins: {
@@ -251,12 +252,37 @@ const fieldKeysAreNotProse = tseslint.config({
   },
 });
 
+// One object for every block that names it: ESLint refuses a plugin defined
+// twice under one name.
+const local = {
+  rules: { 'interpolation-data': interpolationData, 'no-prose-literal': noProseLiteral },
+};
+
+/**
+ * A sentence outside JSX has a key too: see eslint-rules/no-prose-literal.ts.
+ *
+ * Not in the tests, whose sentences are what they feed the code. And not in
+ * the plugin catalogue - two tables of about a hundred names and
+ * descriptions each, shown in the plugin picker in English in every language:
+ * that is two hundred sentences to translate four times, and its own change.
+ */
+const proseHasAKey = tseslint.config({
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: [
+    'src/**/*.test.{ts,tsx}',
+    'src/components/form-slice/FormItemPlugins/pluginTemplates.ts',
+    'src/components/form-slice/FormItemPlugins/pluginMetadata.ts',
+  ],
+  plugins: { local },
+  rules: { 'local/no-prose-literal': 'error' },
+});
+
 const i18nRules = tseslint.config({
   files: ['src/**/*.{ts,tsx,js}'],
   plugins: {
     i18next: i18next,
     i18n: i18n,
-    local: { rules: { 'interpolation-data': interpolationData } },
+    local,
   },
   rules: {
     ...i18next.configs['flat/recommended'].rules,
@@ -393,5 +419,6 @@ export default tseslint.config(
   attributesTranslated,
   listPredicatesAreNotProse,
   fieldKeysAreNotProse,
+  proseHasAKey,
   srcRules
 );

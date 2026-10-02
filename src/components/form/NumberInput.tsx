@@ -21,6 +21,8 @@ import {
   type UseControllerProps,
 } from 'react-hook-form';
 
+import { errorText } from '@/utils/error-text';
+
 import { genControllerProps } from './util';
 
 export type FormItemNumberInputProps<T extends FieldValues> =
@@ -37,7 +39,7 @@ export const FormItemNumberInput = <T extends FieldValues>(
   return (
     <NumberInput
       value={value}
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       onChange={(e) => {
         restProps.onChange?.(e);
         // Mantine's NumberInput returns a string when the value is empty

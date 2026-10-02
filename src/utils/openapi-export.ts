@@ -92,6 +92,7 @@ export const routesToOpenAPI = (routes: Record<string, unknown>[], title?: strin
           description: routeDesc,
           operationId: sanitizeOperationId(routeName || uri, method),
           responses: {
+            // eslint-disable-next-line local/no-prose-literal -- written into the exported document
             '200': { description: 'Successful response' },
           },
         };
@@ -135,6 +136,7 @@ export const routesToOpenAPI = (routes: Record<string, unknown>[], title?: strin
     info: {
       title: title || 'APISIX Routes Export',
       version: '1.0.0',
+      // eslint-disable-next-line local/no-prose-literal -- written into the exported document
       description: 'Exported from Apache APISIX Dashboard',
     },
     paths,

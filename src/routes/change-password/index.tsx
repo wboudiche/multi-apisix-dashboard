@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { authApi } from '@/apis/auth';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 import { currentUserAtom, logoutActionAtom } from '@/stores/auth';
+import { policyRefusal } from '@/utils/policy-refusal';
 
 const ChangePassword = () => {
   const { t } = useTranslation();
@@ -79,7 +80,7 @@ const ChangePassword = () => {
       if (isAxiosError(err) && err.response?.status === 400) {
         setError(t('changePassword.invalidOld'));
       } else if (isAxiosError(err) && err.response?.status === 422) {
-        setError(t('changePassword.policyNotMet'));
+        setError(policyRefusal(t, err) ?? t('changePassword.policyNotMet'));
       } else {
         setError(err instanceof Error ? err.message : t('changePassword.failed'));
       }

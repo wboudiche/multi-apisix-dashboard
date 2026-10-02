@@ -21,6 +21,8 @@ import {
   type UseControllerProps,
 } from 'react-hook-form';
 
+import { errorText } from '@/utils/error-text';
+
 import { genControllerProps } from './util';
 
 export type FormItemSelectProps<T extends FieldValues, R> = UseControllerProps<T> &
@@ -44,7 +46,7 @@ export const FormItemSelect = <T extends FieldValues, R>(
   return (
     <Select
       value={from ? from(value) : value}
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       onChange={(value, option) => {
         const val = to && value ? to(value) : value;
         fOnChange(val);

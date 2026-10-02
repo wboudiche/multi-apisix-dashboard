@@ -158,7 +158,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
       } catch (err: unknown) {
         failed++;
         const name = route.name || route.uri;
-        const msg = proxyFailureText(err) || 'Unknown error';
+        const msg = proxyFailureText(err) || t('form.import.unknownError');
         errors.push(`${name}: ${msg}`);
       }
     }

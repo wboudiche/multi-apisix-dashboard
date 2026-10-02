@@ -21,8 +21,11 @@ import { APISIXServices } from '@/types/schema/apisix/services';
 import { parseToNodes } from '../FormPartUpstream/node-rows';
 
 export const ServicePostSchema = APISIXServices.ServicePost.extend({
-    name: z.string().min(1, { message: 'Name is required' }),
-    hosts: z.array(z.string().min(1, { message: 'Host cannot be empty' })).optional(),
+    // Keys, not sentences: the field shows what the key says (see errorText).
+    name: z
+        .string({ required_error: 'form.validation.nameRequired' })
+        .min(1, { message: 'form.validation.nameRequired' }),
+    hosts: z.array(z.string().min(1, { message: 'form.validation.hostEmpty' })).optional(),
 }).superRefine((data, ctx) => {
     if (
         (!data.upstream_id || data.upstream_id === 'custom') &&
@@ -30,7 +33,7 @@ export const ServicePostSchema = APISIXServices.ServicePost.extend({
     ) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'At least one node is required',
+            message: 'form.validation.nodeRequired',
             path: ['upstream', 'nodes'],
         });
     }

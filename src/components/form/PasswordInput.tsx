@@ -21,6 +21,8 @@ import {
   type UseControllerProps,
 } from 'react-hook-form';
 
+import { errorText } from '@/utils/error-text';
+
 import { genControllerProps } from './util';
 
 export type FormItemPasswordInputProps<T extends FieldValues> =
@@ -41,7 +43,7 @@ export const FormItemPasswordInput = <T extends FieldValues>(
   return (
     <PasswordInput
       value={value}
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       onChange={(e) => {
         fOnChange(e);
         restProps.onChange?.(e);

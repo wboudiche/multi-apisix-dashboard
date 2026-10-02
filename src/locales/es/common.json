@@ -266,7 +266,8 @@
       "unsaved": "Sin guardar",
       "copy": "Copiar",
       "copied": "Copiado",
-      "format": "Formatear"
+      "format": "Formatear",
+      "saveFailed": "No se pudo guardar"
     },
     "plugins": {
       "addPlugin": "Añadir Plugin",
@@ -677,7 +678,9 @@
       "duplicateTitle": "{{count}} de ellas ya existen en esta pasarela",
       "duplicateItem": "«{{- name}}» choca con {{- existing}}",
       "duplicateHint": "APISIX permite varias rutas en el mismo path, así que importar de nuevo añadirá copias en lugar de actualizar nada. Importa de nuevo para continuar.",
-      "duplicateCheckFailed": "No se han podido comprobar las rutas existentes. Importa de nuevo para continuar sin esa comprobación."
+      "duplicateCheckFailed": "No se han podido comprobar las rutas existentes. Importa de nuevo para continuar sin esa comprobación.",
+      "unknownError": "Error desconocido",
+      "unrecognized": "Formato no reconocido. Se esperaba una especificación OpenAPI, un JSON de ruta de APISIX o un array de rutas."
     },
     "importWsdl": {
       "title": "Importar desde WSDL",
@@ -706,7 +709,17 @@
       "readError": "No se ha podido leer el archivo",
       "fetchError": "No se ha podido descargar el WSDL",
       "upstreamRequired": "Introduce el ID de un upstream existente o elige crearlo automáticamente a partir de la dirección del WSDL",
-      "unknownError": "Error desconocido"
+      "unknownError": "Error desconocido",
+      "noEndpoint": "No se encontró ningún endpoint de servicio SOAP (<service>/<soap:address>) en el WSDL.",
+      "zipEmpty": "No se encontraron archivos WSDL/XML en el archivo ZIP.",
+      "zipTooManyFiles": "El ZIP contiene demasiados archivos (>{{max}}).",
+      "zipTooLarge": "El ZIP se expande a demasiados datos; se cancela para evitar una bomba ZIP.",
+      "warnUnresolvedImport": "wsdl:import '{{- location}}' sin resolver — inclúyalo en el paquete ZIP/URL.",
+      "warnSoap12": "El WSDL usa SOAP 1.2; la cabecera SOAPAction puede faltar, por lo que el enrutamiento por operación puede no coincidir. Considere el modo passthrough.",
+      "warnBadEndpoint": "Servicio '{{- service}}': no se pudo interpretar la URL del endpoint '{{- location}}'.",
+      "warnBindingMissing": "Servicio '{{- service}}': no se encontró el binding '{{- binding}}'.",
+      "warnEmptyAction": "Servicio '{{- service}}': la operación '{{- operation}}' tiene un SOAPAction vacío y no puede asociarse por operación; se omitió (use el modo passthrough para incluirla).",
+      "warnDuplicateAction": "Servicio '{{- service}}': SOAPAction duplicado '{{- action}}' — las rutas generadas colisionarán en la misma URI."
     },
     "loadingConfiguration": "Cargando la configuración…",
     "unsavedChanges": {
@@ -748,6 +761,33 @@
       "serviceFixed": "Las rutas añadidas aquí pertenecen a este servicio, que proporciona su upstream",
       "pluginsCount": "{{count}} plugin(s)",
       "scheme": "Esquema"
+    },
+    "validation": {
+      "nameRequired": "El nombre es obligatorio",
+      "uriRequired": "La URI es obligatoria",
+      "hostEmpty": "El host no puede estar vacío",
+      "nodeRequired": "Se requiere al menos un nodo",
+      "upstreamSourceRequired": "Seleccione un upstream, vincule un servicio o configure un upstream personalizado con al menos un nodo"
+    },
+    "steps": {
+      "apiInfo": "Definir la información de la API",
+      "apiInfoDesc": "Protocolo, host, ruta, etc.",
+      "upstream": "Definir el upstream",
+      "upstreamDesc": "Configuración del destino",
+      "plugins": "Configuración de plugins",
+      "pluginsDesc": "Añadir y configurar plugins",
+      "preview": "Vista previa",
+      "previewDesc": "Revisar y finalizar",
+      "serviceBasicDesc": "Configuración básica del servicio",
+      "serviceUpstream": "Upstream",
+      "serviceUpstreamDesc": "Configurar el upstream",
+      "servicePlugins": "Plugin",
+      "servicePluginsDesc": "Configurar plugins",
+      "summaryBoundToService": "Vinculado a un servicio",
+      "summaryCustomNodes": "Personalizado: {{count}} nodo(s)",
+      "summaryCustom": "Upstream personalizado",
+      "summaryExisting": "Upstream existente",
+      "summaryPluginConfig": "Configuración de plugins: {{- id}}"
     }
   },
   "globalRules": {
@@ -789,7 +829,9 @@
     "missing_uppercase": "Contener una letra mayúscula",
     "missing_lowercase": "Contener una letra minúscula",
     "missing_digit": "Contener un dígito",
-    "missing_symbol": "Contener un símbolo"
+    "missing_symbol": "Contener un símbolo",
+    "max_length": "Tener como máximo {{max}} caracteres",
+    "unmet": "La contraseña debe: {{- rules}}"
   },
   "pluginConfigs": {
     "singular": "Configuración de Plugin"
@@ -857,7 +899,9 @@
       "columnsNameAlwaysShown": "Siempre visible, para que cada fila pueda identificarse",
       "emptyOwnershipHint": "Las rutas que pertenecen a otro equipo, o que aún no están asignadas a ninguno, no se muestran aquí. Si esperabas ver una ruta, pide a un administrador que la asigne a tu equipo.",
       "headerTeam": "Equipo"
-    }
+    },
+    "createFailed": "No se pudo crear la ruta",
+    "updateFailed": "No se pudo actualizar la ruta"
   },
   "secrets": {
     "singular": "Secreto"
@@ -1089,7 +1133,9 @@
   },
   "pageError": {
     "retry": "Reintentar",
-    "goHome": "Ir al inicio"
+    "goHome": "Ir al inicio",
+    "title": "Algo salió mal",
+    "message": "Se produjo un error inesperado al cargar esta página."
   },
   "overview": {
     "title": "Resumen del panel",

@@ -80,9 +80,9 @@ export const RawJsonDrawer = ({ opened, onClose, title, json, onSave, loading }:
       const parsed = JSON.parse(value);
       await onSave(parsed);
     } catch (err: unknown) {
-      setSaveError(proxyFailureText(err) || 'Failed to save');
+      setSaveError(proxyFailureText(err) || t('form.json.saveFailed'));
     }
-  }, [value, onSave]);
+  }, [value, onSave, t]);
 
   const handleFormat = useCallback(() => {
     try {

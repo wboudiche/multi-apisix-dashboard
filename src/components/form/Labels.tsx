@@ -24,6 +24,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import type { APISIXType } from '@/types/schema/apisix';
+import { errorText } from '@/utils/error-text';
 
 import { genControllerProps } from './util';
 
@@ -91,7 +92,7 @@ export const FormItemLabels = <T extends FieldValues>(
         splitChars={[',']}
         label={t('form.basic.labels.title')}
         placeholder={t('form.basic.labels.placeholder')}
-        error={internalError || fieldState.error?.message}
+        error={internalError || errorText(fieldState.error?.message)}
         {...restField}
         {...restProps}
         onChange={handleChange}

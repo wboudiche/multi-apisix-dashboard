@@ -18,6 +18,7 @@ import { ActionIcon, Button, Group, InputWrapper, Stack, Text, TextInput, Toolti
 import { useController, useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { errorText } from '@/utils/error-text';
 import IconAdd from '~icons/material-symbols/add';
 import IconDelete from '~icons/material-symbols/close-rounded';
 
@@ -67,7 +68,7 @@ export const FormItemHostsList = () => {
     }
   };
 
-  const rootError = fieldState.error?.message;
+  const rootError = errorText(fieldState.error?.message);
   const arrayErrors = Array.isArray(fieldState.error) ? fieldState.error : [];
 
   return (
@@ -78,7 +79,7 @@ export const FormItemHostsList = () => {
     >
       <Stack gap="xs" mt={6}>
         {displayHosts.map((hostValue, idx) => {
-          const itemError = arrayErrors[idx]?.message;
+          const itemError = errorText(arrayErrors[idx]?.message);
           return (
             <Group key={idx} gap="xs" align="flex-start" wrap="nowrap">
               <TextInput

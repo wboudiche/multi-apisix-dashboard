@@ -24,6 +24,8 @@ import {
   type UseControllerProps,
 } from 'react-hook-form';
 
+import { errorText } from '@/utils/error-text';
+
 import { genControllerProps } from './util';
 
 export type FormItemTextareaProps<T extends FieldValues> =
@@ -40,7 +42,7 @@ export const FormItemTextarea = <T extends FieldValues>(
   return (
     <MTextarea
       value={value}
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       onChange={(e) => {
         fOnChange(e);
         restProps.onChange?.(e);

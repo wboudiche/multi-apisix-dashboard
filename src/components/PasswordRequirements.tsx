@@ -34,6 +34,17 @@ export const PasswordRequirements = ({ password }: { password: string }) => {
 
   const rules: { ok: boolean; text: string }[] = [
     { ok: password.length >= policy.min_length, text: t('passwordRules.min_length', { min: policy.min_length }) },
+    // The one rule this list did not show, and so the one a refusal could not
+    // be traced to (#364). In bytes, as the backend counts it: bcrypt hashes
+    // no more than that many, whatever the characters.
+    ...(policy.max_length > 0
+      ? [
+          {
+            ok: new TextEncoder().encode(password).length <= policy.max_length,
+            text: t('passwordRules.max_length', { max: policy.max_length }),
+          },
+        ]
+      : []),
     ...(policy.require_uppercase ? [{ ok: hasUpper(password), text: t('passwordRules.missing_uppercase') }] : []),
     ...(policy.require_lowercase ? [{ ok: hasLower(password), text: t('passwordRules.missing_lowercase') }] : []),
     ...(policy.require_digit ? [{ ok: hasDigit(password), text: t('passwordRules.missing_digit') }] : []),

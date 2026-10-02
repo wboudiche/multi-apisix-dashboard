@@ -22,6 +22,8 @@ import {
   type UseControllerProps,
 } from 'react-hook-form';
 
+import { errorText } from '@/utils/error-text';
+
 import { genControllerProps } from './util';
 
 export type FormItemJsonInputProps<T extends FieldValues> = UseControllerProps<T> &
@@ -56,7 +58,7 @@ export const FormItemJsonInput = <T extends FieldValues>(
   return (
     <JsonInput
       value={value}
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       onChange={(val) => {
         let res: unknown;
         if (toObject) {

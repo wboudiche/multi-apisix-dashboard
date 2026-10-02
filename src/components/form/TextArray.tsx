@@ -21,6 +21,8 @@ import {
   type UseControllerProps,
 } from 'react-hook-form';
 
+import { errorText } from '@/utils/error-text';
+
 import { genControllerProps } from './util';
 
 export type FormItemTextArrayProps<T extends FieldValues> =
@@ -38,7 +40,7 @@ export const FormItemTextArray = <T extends FieldValues>(
   return (
     <TagsInput
       value={value}
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       onChange={(value) => {
         fOnChange(value);
         restProps?.onChange?.(value);

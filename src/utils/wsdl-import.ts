@@ -17,6 +17,7 @@
 
 import { XMLParser } from 'fast-xml-parser';
 
+import i18n from '@/config/i18n';
 import { SOAP_ACTION_VAR } from '@/utils/soap-route';
 
 export type WsdlImportMode = 'per-operation' | 'passthrough';
@@ -129,7 +130,7 @@ export const parseWsdlBundle = (
       if (!location) continue;
       const resolved = resolveImport(location);
       if (resolved) queue.push(resolved);
-      else warnings.push(`Unresolved wsdl:import '${location}' — supply it in the ZIP/URL bundle.`);
+      else warnings.push(i18n.t('form.importWsdl.warnUnresolvedImport', { location }));
     }
   }
   const soapVersion = detectSoapVersion(rawDocs);
@@ -181,13 +182,11 @@ export const parseWsdlBundle = (
   }
 
   if (services.length === 0) {
-    throw new Error('No SOAP service endpoint (<service>/<soap:address>) found in the WSDL.');
+    throw new Error(i18n.t('form.importWsdl.noEndpoint'));
   }
 
   if (soapVersion === '1.2' || soapVersion === 'mixed') {
-    warnings.push(
-      'WSDL uses SOAP 1.2; the SOAPAction header may be absent, so per-operation routing may not match. Consider passthrough mode.',
-    );
+    warnings.push(i18n.t('form.importWsdl.warnSoap12'));
   }
 
   const sourceHash = fnv1a(bundle.docs[bundle.entry] ?? rawDocs[0] ?? '');
@@ -203,7 +202,9 @@ export const parseWsdlBundle = (
       }
     })();
     if (!url) {
-      warnings.push(`Service '${svc.name}': could not parse endpoint URL '${svc.location}'.`);
+      warnings.push(
+        i18n.t('form.importWsdl.warnBadEndpoint', { service: svc.name, location: svc.location })
+      );
       continue;
     }
     const uri = url.pathname || '/';
@@ -249,7 +250,9 @@ export const parseWsdlBundle = (
 
     const binding = bindings.get(svc.bindingLocal);
     if (!binding) {
-      warnings.push(`Service '${svc.name}': binding '${svc.bindingLocal}' not found.`);
+      warnings.push(
+        i18n.t('form.importWsdl.warnBindingMissing', { service: svc.name, binding: svc.bindingLocal })
+      );
       continue;
     }
     const seenActions = new Set<string>();
@@ -257,13 +260,13 @@ export const parseWsdlBundle = (
       operationCount++;
       if (!op.soapAction) {
         warnings.push(
-          `Service '${svc.name}': operation '${op.name}' has an empty SOAPAction and cannot be matched per-operation; it was skipped (use passthrough mode to include it).`,
+          i18n.t('form.importWsdl.warnEmptyAction', { service: svc.name, operation: op.name })
         );
         continue;
       }
       if (seenActions.has(op.soapAction)) {
         warnings.push(
-          `Service '${svc.name}': duplicate SOAPAction '${op.soapAction}' — generated routes will collide on the same URI.`,
+          i18n.t('form.importWsdl.warnDuplicateAction', { service: svc.name, action: op.soapAction })
         );
       }
       seenActions.add(op.soapAction);

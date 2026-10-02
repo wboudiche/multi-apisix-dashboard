@@ -34,8 +34,8 @@ type PageErrorProps = {
 
 export const PageError: FC<PageErrorProps> = ({
     error,
-    title = 'Something went wrong',
-    message = 'An unexpected error occurred while loading this page.',
+    title,
+    message,
     showRetry = true,
     showHome = true,
     onRetry,
@@ -94,7 +94,7 @@ export const PageError: FC<PageErrorProps> = ({
                                 color: 'var(--text-primary)',
                             }}
                         >
-                            {title}
+                            {title ?? t('pageError.title')}
                         </Title>
                         <Text
                             size="sm"
@@ -104,7 +104,7 @@ export const PageError: FC<PageErrorProps> = ({
                                 lineHeight: 1.6,
                             }}
                         >
-                            {message}
+                            {message ?? t('pageError.message')}
                         </Text>
                     </Stack>
 

@@ -264,7 +264,8 @@
       "unsaved": "未保存",
       "copy": "复制",
       "copied": "已复制",
-      "format": "格式化"
+      "format": "格式化",
+      "saveFailed": "保存失败"
     },
     "plugins": {
       "addPlugin": "添加插件",
@@ -675,7 +676,9 @@
       "duplicateTitle": "其中 {{count}} 条在此网关上已经存在",
       "duplicateItem": "“{{- name}}”与 {{- existing}} 冲突",
       "duplicateHint": "APISIX 允许同一路径上存在多条路由，因此再次导入会添加副本，而不会更新任何内容。要继续，请再次导入。",
-      "duplicateCheckFailed": "无法检查已有路由。要跳过检查继续，请再次导入。"
+      "duplicateCheckFailed": "无法检查已有路由。要跳过检查继续，请再次导入。",
+      "unknownError": "未知错误",
+      "unrecognized": "无法识别的格式。应为 OpenAPI 规范、APISIX 路由 JSON 或路由数组。"
     },
     "importWsdl": {
       "title": "从 WSDL 导入",
@@ -704,7 +707,17 @@
       "readError": "读取文件失败",
       "fetchError": "获取 WSDL 失败",
       "upstreamRequired": "请输入已有上游的 ID，或选择根据 WSDL 地址自动创建",
-      "unknownError": "未知错误"
+      "unknownError": "未知错误",
+      "noEndpoint": "在 WSDL 中未找到 SOAP 服务端点（<service>/<soap:address>）。",
+      "zipEmpty": "ZIP 压缩包中未找到 WSDL/XML 文件。",
+      "zipTooManyFiles": "ZIP 包含的文件过多（>{{max}}）。",
+      "zipTooLarge": "ZIP 解压后数据过大；为避免 zip 炸弹已中止。",
+      "warnUnresolvedImport": "未解析的 wsdl:import '{{- location}}' — 请在 ZIP/URL 包中提供。",
+      "warnSoap12": "WSDL 使用 SOAP 1.2；SOAPAction 头可能不存在，因此按操作路由可能无法匹配。请考虑使用透传模式。",
+      "warnBadEndpoint": "服务 '{{- service}}'：无法解析端点 URL '{{- location}}'。",
+      "warnBindingMissing": "服务 '{{- service}}'：未找到绑定 '{{- binding}}'。",
+      "warnEmptyAction": "服务 '{{- service}}'：操作 '{{- operation}}' 的 SOAPAction 为空，无法按操作匹配；已跳过（使用透传模式可包含它）。",
+      "warnDuplicateAction": "服务 '{{- service}}'：重复的 SOAPAction '{{- action}}' — 生成的路由将在同一 URI 上冲突。"
     },
     "loadingConfiguration": "正在加载配置…",
     "unsavedChanges": {
@@ -746,6 +759,33 @@
       "serviceFixed": "在此添加的路由属于此服务，其上游由该服务提供",
       "pluginsCount": "{{count}} 个插件",
       "scheme": "协议"
+    },
+    "validation": {
+      "nameRequired": "名称为必填项",
+      "uriRequired": "URI 为必填项",
+      "hostEmpty": "主机不能为空",
+      "nodeRequired": "至少需要一个节点",
+      "upstreamSourceRequired": "请选择一个上游、绑定一个服务，或配置至少包含一个节点的自定义上游"
+    },
+    "steps": {
+      "apiInfo": "定义 API 信息",
+      "apiInfoDesc": "协议、主机、路径等",
+      "upstream": "定义上游",
+      "upstreamDesc": "目标配置",
+      "plugins": "插件配置",
+      "pluginsDesc": "添加并配置插件",
+      "preview": "预览",
+      "previewDesc": "检查并完成",
+      "serviceBasicDesc": "服务基本配置",
+      "serviceUpstream": "上游",
+      "serviceUpstreamDesc": "配置上游",
+      "servicePlugins": "插件",
+      "servicePluginsDesc": "配置插件",
+      "summaryBoundToService": "已绑定服务",
+      "summaryCustomNodes": "自定义：{{count}} 个节点",
+      "summaryCustom": "自定义上游",
+      "summaryExisting": "已有上游",
+      "summaryPluginConfig": "插件配置：{{- id}}"
     }
   },
   "globalRules": {
@@ -787,7 +827,9 @@
     "missing_uppercase": "包含一个大写字母",
     "missing_lowercase": "包含一个小写字母",
     "missing_digit": "包含一个数字",
-    "missing_symbol": "包含一个符号"
+    "missing_symbol": "包含一个符号",
+    "max_length": "最多 {{max}} 个字符",
+    "unmet": "密码必须满足：{{- rules}}"
   },
   "pluginConfigs": {
     "singular": "插件配置"
@@ -855,7 +897,9 @@
       "columnsNameAlwaysShown": "始终显示，以便识别每一行",
       "emptyOwnershipHint": "属于其他团队、或尚未分配给任何团队的路由不会显示在这里。如果你期望看到某条路由，请让管理员把它分配给你的团队。",
       "headerTeam": "团队"
-    }
+    },
+    "createFailed": "创建路由失败",
+    "updateFailed": "更新路由失败"
   },
   "secrets": {
     "singular": "Secret"
@@ -1087,7 +1131,9 @@
   },
   "pageError": {
     "retry": "重试",
-    "goHome": "返回首页"
+    "goHome": "返回首页",
+    "title": "出错了",
+    "message": "加载此页面时发生意外错误。"
   },
   "overview": {
     "title": "Dashboard 概览",

@@ -21,6 +21,8 @@ import {
   type UseControllerProps,
 } from 'react-hook-form';
 
+import { errorText } from '@/utils/error-text';
+
 import { genControllerProps } from './util';
 
 export type FormItemSwitchProps<T extends FieldValues> = Omit<
@@ -41,7 +43,7 @@ export const FormItemSwitch = <T extends FieldValues>(
       labelPosition="left"
       value={value}
       checked={value}
-      error={fieldState.error?.message}
+      error={errorText(fieldState.error?.message)}
       onChange={(e) => {
         fOnChange(e);
         restProps.onChange?.(e);

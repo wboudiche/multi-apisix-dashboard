@@ -16,6 +16,8 @@
  */
 import JSZip from 'jszip';
 
+import i18n from '@/config/i18n';
+
 export const WSDL_ZIP_MAX_FILES = 200;
 export const WSDL_ZIP_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 
@@ -29,10 +31,10 @@ export const expandWsdlZip = async (
   const entries = Object.values(zip.files).filter((f) => !f.dir && isWsdlLike(f.name));
 
   if (entries.length === 0) {
-    throw new Error('No WSDL/XML files found in the ZIP archive.');
+    throw new Error(i18n.t('form.importWsdl.zipEmpty'));
   }
   if (entries.length > WSDL_ZIP_MAX_FILES) {
-    throw new Error(`ZIP contains too many files (>${WSDL_ZIP_MAX_FILES}).`);
+    throw new Error(i18n.t('form.importWsdl.zipTooManyFiles', { max: WSDL_ZIP_MAX_FILES }));
   }
 
   const docs: Record<string, string> = {};
@@ -41,7 +43,7 @@ export const expandWsdlZip = async (
     const text = await f.async('string');
     total += text.length;
     if (total > WSDL_ZIP_MAX_TOTAL_BYTES) {
-      throw new Error('ZIP expands to too much data; aborting to avoid a zip bomb.');
+      throw new Error(i18n.t('form.importWsdl.zipTooLarge'));
     }
     docs[f.name] = text;
   }

@@ -45,8 +45,13 @@ const DRAFT_KEY = 'apisix-upstream-draft';
 const PostUpstreamSchema = FormPartUpstreamSchema.omit({
   id: true,
 }).extend({
-  name: z.string().min(1, 'Name is required'),
-  nodes: z.array(APISIX.UpstreamNode).min(1, 'At least one node is required'),
+  // Keys, not sentences: the field shows what the key says (see errorText).
+  name: z
+    .string({ required_error: 'form.validation.nameRequired' })
+    .min(1, 'form.validation.nameRequired'),
+  nodes: z
+    .array(APISIX.UpstreamNode, { required_error: 'form.validation.nodeRequired' })
+    .min(1, 'form.validation.nodeRequired'),
 });
 
 type PostUpstreamType = z.infer<typeof PostUpstreamSchema>;

@@ -30,8 +30,15 @@ export const RoutePostSchema = APISIX.Route.omit({
   // and passing the original schema of `vars` for validation
   // is not in line with this usage.
   vars: z.string().optional(),
-  name: z.string().min(1, 'Name is required'),
-  uri: z.string().min(1, 'URI is required'),
+  // Keys, not sentences: the field shows what the key says (see errorText).
+  // Both ways of being empty: a field never typed in is undefined, and zod
+  // answers that with its own "Required" before `min` is asked.
+  name: z
+    .string({ required_error: 'form.validation.nameRequired' })
+    .min(1, 'form.validation.nameRequired'),
+  uri: z
+    .string({ required_error: 'form.validation.uriRequired' })
+    .min(1, 'form.validation.uriRequired'),
 }).superRefine((data, ctx) => {
   const hasService = data.service_id && data.service_id !== SERVICE_NONE;
   const hasExistingUpstream = data.upstream_id && data.upstream_id !== UPSTREAM_CUSTOM;
@@ -41,7 +48,7 @@ export const RoutePostSchema = APISIX.Route.omit({
   if (!hasService && !hasExistingUpstream && !hasCustomUpstream) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Select an upstream, bind a service, or configure a custom upstream with at least one node',
+      message: 'form.validation.upstreamSourceRequired',
       path: ['upstream_id'],
     });
   }

@@ -116,15 +116,15 @@ const RouteDetailForm = (props: Props) => {
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError(err: any) {
-      const msg = proxyFailureText(err) || 'Failed to update route';
+      const msg = proxyFailureText(err) || t('routes.updateFailed');
       setSubmitError(msg);
     },
   });
 
   const steps = [
     {
-      label: 'Define API Information',
-      description: 'Protocol, Host, Path, etc.',
+      label: t('form.steps.apiInfo'),
+      description: t('form.steps.apiInfoDesc'),
       content: (
         <>
           <FormSectionGeneral readOnly />
@@ -135,8 +135,8 @@ const RouteDetailForm = (props: Props) => {
       fields: ['name', 'uri', 'uris', 'methods', 'priority', 'vars'],
     },
     {
-      label: 'Define Upstream',
-      description: 'Target gateway configuration',
+      label: t('form.steps.upstream'),
+      description: t('form.steps.upstreamDesc'),
       content: (
         <>
           <FormSectionService />
@@ -152,14 +152,14 @@ const RouteDetailForm = (props: Props) => {
       fields: [],
     },
     {
-      label: 'Plugins Config',
-      description: 'Add and configure plugins',
+      label: t('form.steps.plugins'),
+      description: t('form.steps.pluginsDesc'),
       content: <FormSectionPlugins />,
       fields: ['plugins', 'plugin_config_id'],
     },
     {
-      label: 'Preview',
-      description: 'Review and finish',
+      label: t('form.steps.preview'),
+      description: t('form.steps.previewDesc'),
       content: <RoutePreviewSummary data={readOnly ? routeData?.value : undefined} />,
     },
   ];
