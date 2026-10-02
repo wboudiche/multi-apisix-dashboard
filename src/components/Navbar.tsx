@@ -141,10 +141,11 @@ export const Navbar = ({ collapsed, onCollapseToggle }: { collapsed: boolean; on
       </Box>
 
       <Box p="xs" style={{ borderTop: '1px solid #eee' }}>
-        <Tooltip label={collapsed ? t('common.expand') : t('common.collapse')} position="right">
+        <Tooltip label={collapsed ? t('header.expandNavigation') : t('header.collapseNavigation')} position="right">
           <Center
             component="button"
             onClick={onCollapseToggle}
+            aria-label={collapsed ? t('header.expandNavigation') : t('header.collapseNavigation')}
             style={{
               width: '100%',
               height: '40px',

@@ -30,13 +30,15 @@ test('the icon buttons of the header and the routes list have names, translated'
   await page.goto('/ui/routes');
   const language = page.getByRole('button', { name: i18n.t('header.language'), exact: true });
   await expect(language).toBeVisible({ timeout: 30000 });
-  await expect(page.getByRole('button', { name: i18n.t('common.collapse'), exact: true })).toBeVisible();
+  // The navbar has a toggle of the same name at its foot.
+  const header = page.getByRole('banner');
+  await expect(header.getByRole('button', { name: i18n.t('header.collapseNavigation'), exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: i18n.t('routes.list.refresh'), exact: true })).toBeVisible();
 
   await uiSwitchLanguage(page, 'Deutsch');
 
   await expect(page.getByRole('button', { name: de.t('header.language'), exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: de.t('common.collapse'), exact: true })).toBeVisible();
+  await expect(header.getByRole('button', { name: de.t('header.collapseNavigation'), exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: de.t('routes.list.refresh'), exact: true })).toBeVisible();
   await expect(language).toHaveCount(0);
 });

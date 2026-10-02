@@ -130,10 +130,6 @@
   "consumers": {
     "singular": "Consumer"
   },
-  "common": {
-    "collapse": "Collapse",
-    "expand": "Expand"
-  },
   "credentials": {
     "singular": "Credential"
   },
@@ -477,7 +473,8 @@
         "upstream": "Upstream Configuration",
         "plugins": "Plugins",
         "noPlugins": "No plugins configured"
-      }
+      },
+      "removeHost": "Remove host"
     },
     "ssls": {
       "cert": "Certificate",
@@ -1011,7 +1008,9 @@
     "noUsername": "User",
     "language": "Language",
     "openNavigation": "Open navigation",
-    "closeNavigation": "Close navigation"
+    "closeNavigation": "Close navigation",
+    "collapseNavigation": "Collapse navigation",
+    "expandNavigation": "Expand navigation"
   },
   "teams": {
     "title": "Teams",

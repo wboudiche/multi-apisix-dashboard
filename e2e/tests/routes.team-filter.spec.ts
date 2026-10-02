@@ -58,7 +58,7 @@ const rowFor = (page: Page, id: string) =>
   page.getByRole('row').filter({ hasText: id });
 
 const filterByTeam = async (page: Page, label: string) => {
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await page.getByPlaceholder('Any team').click();
   await page.getByRole('option', { name: label, exact: true }).click();
   await page.getByRole('button', { name: 'Search' }).click();

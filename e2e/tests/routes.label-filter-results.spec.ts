@@ -112,7 +112,7 @@ test.afterAll(async () => {
 
 test('a label filter leaves out the routes that do not carry it', async ({ page }) => {
   await page.goto('/ui/routes');
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await addLabel(page, envLabel, 'prod');
   await page.getByRole('button', { name: 'Search' }).click();
 
@@ -129,7 +129,7 @@ test('a label filter leaves out the routes that do not carry it', async ({ page 
 
 test('two labels narrow the list rather than widen it', async ({ page }) => {
   await page.goto('/ui/routes');
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await addLabel(page, envLabel, 'prod');
   await addLabel(page, tierLabel, 'gold');
   await page.getByRole('button', { name: 'Search' }).click();
@@ -146,7 +146,7 @@ test('a key alone matches the routes carrying it, whatever its value', async ({ 
   // The backend has always read a bare key as "carries this label"; the filter
   // bar could only ask for a key with one of its values (#238).
   await page.goto('/ui/routes');
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await addKey(page, envLabel);
   await page.getByRole('button', { name: 'Search' }).click();
 

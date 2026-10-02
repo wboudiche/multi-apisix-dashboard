@@ -51,7 +51,9 @@
     "noUsername": "Usuario",
     "language": "Idioma",
     "openNavigation": "Abrir navegación",
-    "closeNavigation": "Cerrar navegación"
+    "closeNavigation": "Cerrar navegación",
+    "collapseNavigation": "Contraer navegación",
+    "expandNavigation": "Expandir navegación"
   },
   "instanceGuard": {
     "noInstances": {
@@ -448,7 +450,8 @@
         "upstream": "Configuración del upstream",
         "plugins": "Plugins",
         "noPlugins": "No hay ningún plugin configurado"
-      }
+      },
+      "removeHost": "Quitar host"
     },
     "ssls": {
       "cert": "Certificado",
@@ -1073,10 +1076,6 @@
     "upstream_health_unresolved": "No se ha podido leer el estado de estos upstreams desde la pasarela. Todos aparecen en la lista; lo que han visto sus comprobaciones no se muestra.",
     "service_upstream_unresolved": "No se ha podido leer la lista de servicios, así que las rutas que llegan a su upstream a través de un servicio no muestran ninguno abajo.",
     "unresolvedTitle": "Upstreams sin resolver"
-  },
-  "common": {
-    "expand": "Expandir",
-    "collapse": "Contraer"
   },
   "error": {
     "probeBusy": "El panel ya está ejecutando tantas pruebas salientes como permite a la vez. Vuelve a intentarlo en un momento.",

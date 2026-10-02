@@ -370,14 +370,14 @@ export const Header: FC<HeaderProps> = (props) => {
             size="sm"
             aria-label={opened ? t('header.closeNavigation') : t('header.openNavigation')}
           />
-          <Tooltip label={collapsed ? t('common.expand') : t('common.collapse')} position="bottom" withArrow>
+          <Tooltip label={collapsed ? t('header.expandNavigation') : t('header.collapseNavigation')} position="bottom" withArrow>
             <ActionIcon
               variant="subtle"
               color="gray"
               onClick={onCollapseToggle}
               visibleFrom="sm"
               size="lg"
-              aria-label={collapsed ? t('common.expand') : t('common.collapse')}
+              aria-label={collapsed ? t('header.expandNavigation') : t('header.collapseNavigation')}
             >
               {collapsed ? <IconMenu /> : <IconMenuOpen />}
             </ActionIcon>

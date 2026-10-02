@@ -51,7 +51,9 @@
     "noUsername": "Benutzer",
     "language": "Sprache",
     "openNavigation": "Navigation öffnen",
-    "closeNavigation": "Navigation schließen"
+    "closeNavigation": "Navigation schließen",
+    "collapseNavigation": "Navigation einklappen",
+    "expandNavigation": "Navigation ausklappen"
   },
   "instanceGuard": {
     "noInstances": {
@@ -446,7 +448,8 @@
         "upstream": "Upstream-Konfiguration",
         "plugins": "Plugins",
         "noPlugins": "Keine Plugins konfiguriert"
-      }
+      },
+      "removeHost": "Host entfernen"
     },
     "ssls": {
       "cert": "Zertifikat",
@@ -1071,10 +1074,6 @@
     "upstream_health_unresolved": "Der Zustand dieser Upstreams konnte nicht vom Gateway gelesen werden. Alle Upstreams sind aufgeführt; was ihre Prüfungen gesehen haben, wird nicht angezeigt.",
     "service_upstream_unresolved": "Die Service-Liste konnte nicht gelesen werden, daher zeigen Routen, die ihren Upstream über einen Service erreichen, unten keinen an.",
     "unresolvedTitle": "Upstreams nicht aufgelöst"
-  },
-  "common": {
-    "expand": "Ausklappen",
-    "collapse": "Einklappen"
   },
   "error": {
     "probeBusy": "Das Dashboard führt bereits so viele ausgehende Tests aus, wie es gleichzeitig zulässt. Versuchen Sie es in einem Moment erneut.",

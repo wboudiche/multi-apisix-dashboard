@@ -206,7 +206,7 @@ test('picking an upstream in the bar narrows the table', async ({ page }) => {
   await page.goto(`/ui/routes?name=${PREFIX}&page_size=50`);
   await expect(rowFor(page, `${PREFIX}-elsewhere`)).toBeVisible({ timeout: 20000 });
 
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await page.getByPlaceholder('Any upstream').click();
   await page.getByRole('option', { name: `${PREFIX}-upstream`, exact: true }).click();
   await page.getByRole('button', { name: 'Search' }).click();
@@ -256,7 +256,7 @@ test('opens a bookmark that still carries single-valued filters', async ({ page 
 test('keeps the Status field showing what was searched', async ({ page }) => {
   // The URL turns "1" back into the number 1, which no option value matches.
   await page.goto(`/ui/routes?name=${PREFIX}&status=1&page_size=50`);
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await expect(page.getByPlaceholder('UnPublished/Published')).toHaveValue('Published');
 });
 
@@ -264,7 +264,7 @@ test('a narrowing search returns to the first page', async ({ page }) => {
   // Searching from page 2 used to keep page=2 in the draft, so a filter matching
   // fewer rows than one page landed past the end and showed nothing.
   await page.goto(`/ui/routes?name=${PREFIX}&page_size=1&page=2`);
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await page.getByPlaceholder('Any upstream').click();
   await page.getByRole('option', { name: `${PREFIX}-other-upstream`, exact: true }).click();
   await page.getByRole('button', { name: 'Search' }).click();
@@ -358,7 +358,7 @@ test('keeps what was typed when the pager moves', async ({ page }) => {
   // The pager writes to that same URL, so paging used to wipe a half-typed
   // search out of the field with no explanation.
   await page.goto(`/ui/routes?name=${PREFIX}&page_size=1`);
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
 
   const nameField = page.getByPlaceholder('Please enter').first();
   await nameField.fill('half-typed');

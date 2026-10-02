@@ -94,14 +94,14 @@ export const FormItemHostsList = () => {
                   <Text size="xs" c="dimmed" fw={500}>{idx + 1}</Text>
                 }
               />
-              <Tooltip label={t('form.btn.delete')} position="right" withArrow>
+              <Tooltip label={t('form.services.removeHost')} position="right" withArrow>
                 <ActionIcon
                   variant="subtle"
                   color="gray"
                   size="lg"
                   mt={1}
                   onClick={() => handleRemove(idx)}
-                  aria-label={t('form.btn.delete')}
+                  aria-label={t('form.services.removeHost')}
                   disabled={displayHosts.length === 1 && hostValue === ''}
                 >
                   <IconDelete width="16" height="16" />

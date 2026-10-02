@@ -51,7 +51,9 @@
     "noUsername": "Kullanıcı",
     "language": "Dil",
     "openNavigation": "Gezinmeyi aç",
-    "closeNavigation": "Gezinmeyi kapat"
+    "closeNavigation": "Gezinmeyi kapat",
+    "collapseNavigation": "Gezinmeyi daralt",
+    "expandNavigation": "Gezinmeyi genişlet"
   },
   "instanceGuard": {
     "noInstances": {
@@ -446,7 +448,8 @@
         "upstream": "Upstream Yapılandırması",
         "plugins": "Plugin'ler",
         "noPlugins": "Plugin yapılandırılmadı"
-      }
+      },
+      "removeHost": "Sunucuyu kaldır"
     },
     "ssls": {
       "cert": "Certificate",
@@ -1071,10 +1074,6 @@
     "upstream_health_unresolved": "Bu upstream’lerin durumu ağ geçidinden okunamadı. Tüm upstream’ler listeleniyor; denetimlerinin gördüğü bilgi gösterilmiyor.",
     "service_upstream_unresolved": "Servis listesi okunamadı; bu yüzden upstream'ine bir servis üzerinden ulaşan rotalar aşağıda upstream göstermiyor.",
     "unresolvedTitle": "Upstream'ler çözümlenemedi"
-  },
-  "common": {
-    "expand": "Genişlet",
-    "collapse": "Daralt"
   },
   "error": {
     "probeBusy": "Panel şu anda aynı anda izin verdiği kadar giden test çalıştırıyor. Birazdan yeniden deneyin.",

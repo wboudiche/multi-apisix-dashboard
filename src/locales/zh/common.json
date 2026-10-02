@@ -51,7 +51,9 @@
     "noUsername": "用户",
     "language": "语言",
     "openNavigation": "打开导航",
-    "closeNavigation": "关闭导航"
+    "closeNavigation": "关闭导航",
+    "collapseNavigation": "收起导航",
+    "expandNavigation": "展开导航"
   },
   "instanceGuard": {
     "noInstances": {
@@ -446,7 +448,8 @@
         "upstream": "上游配置",
         "plugins": "插件",
         "noPlugins": "未配置插件"
-      }
+      },
+      "removeHost": "删除主机"
     },
     "ssls": {
       "cert": "证书",
@@ -1071,10 +1074,6 @@
     "upstream_health_unresolved": "无法从网关读取这些上游的健康状态。上游已全部列出，但其检查结果未显示。",
     "service_upstream_unresolved": "无法读取服务列表，因此通过服务访问上游的路由在下方不显示上游。",
     "unresolvedTitle": "上游未解析"
-  },
-  "common": {
-    "expand": "展开",
-    "collapse": "收起"
   },
   "error": {
     "probeBusy": "仪表板已在同时运行其允许的最大数量的外部测试。请稍后重试。",
