@@ -104,9 +104,13 @@ jobs:
         run: |
           pnpm exec playwright install-deps chromium
 
+      # The version api/go.mod declares, not a number written here: setup-go
+      # runs with GOTOOLCHAIN=local, so a go.mod asking for more than a pinned
+      # version is refused rather than fetched, and the Dependabot bump that
+      # raised the directive stayed red until the pin was moved by hand (#368).
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
 
       - name: Build Go backend

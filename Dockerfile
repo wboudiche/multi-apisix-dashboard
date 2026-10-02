@@ -47,7 +47,15 @@ RUN pnpm build
 # $BUILDPLATFORM) and the Go binary is cross-compiled for the target via
 # GOOS/GOARCH, so a multi-arch build never emulates the pnpm/tsc/vite or Go
 # toolchains under QEMU.
+#
+# The tag is a floor, not the version: the official image sets
+# GOTOOLCHAIN=local, under which a go.mod asking for a newer Go than the tag is
+# refused, and a dependency bump that raises the directive cannot build until
+# the tag is moved by hand (#368). With `auto`, go fetches the toolchain the
+# directive names when the tag is older, and uses the image's own - the
+# latest patch of its minor - when it is not.
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS api
+ENV GOTOOLCHAIN=auto
 WORKDIR /src
 COPY api/go.mod api/go.sum ./
 RUN go mod download
