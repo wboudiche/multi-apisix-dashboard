@@ -67,6 +67,11 @@ tester.run('readable-key', rule, {
     'const time = point.t',
     'const { t: time } = point',
     'const v = sample.t as number',
+    'for (const t of timers) { queue.find(t) }',
+    'const t = teams[0]; index.find(t)',
+    'try { run() } catch (t) { handlers.forEach(t) }',
+    'function t(x) { return x } ; list.map(t)',
+    'points.map(({ t, v }) => series.find(t))',
     // The key is written, after the spread: it is the one that counts.
     '<Trans {...rest} i18nKey="a.b" />',
   ],
@@ -106,5 +111,25 @@ tester.run('readable-key', rule, {
     // Under another name, no check reads its calls.
     { code: 'const { t: tr } = useTranslation(); tr(key)', errors: [{ messageId: 'alias' }] },
     { code: 'const translate = i18n.t', errors: [{ messageId: 'alias' }] },
+    {
+      code: 'const { t } = useTranslation(); const translate = t; translate(key)',
+      errors: [{ messageId: 'alias' }],
+    },
+    { code: 'const { t: tr } = i18n; tr(key)', errors: [{ messageId: 'alias' }] },
+    { code: 'const { t: tr } = useTranslation() as Hook; tr(key)', errors: [{ messageId: 'alias' }] },
+    { code: 'const tr = useTranslation().t; tr(key)', errors: [{ messageId: 'alias' }] },
+    {
+      code: 'const x = useTranslation(); const { t: tr } = x; tr(key)',
+      errors: [{ messageId: 'alias' }],
+    },
+    // A parameter that is the translate function, however its type says so.
+    { code: 'const C = ({ t }: { t: TFunction }) => keys.map(t)', errors: variable },
+    { code: 'const f = (t: i18n.TFunction) => keys.map(t)', errors: variable },
+    { code: 'const f = (t: typeof i18n.t) => keys.map(t)', errors: variable },
+    { code: 'const f = (t = i18n.t) => keys.map(t)', errors: variable },
+    { code: 'keys.map(i18next.t)', errors: variable },
+    { code: "import { t } from 'i18next'; keys.map(t)", errors: variable },
+    // A spread after the key may hold the key that counts.
+    { code: '<Trans i18nKey="a.b" {...rest} />', errors: variable },
   ],
 });

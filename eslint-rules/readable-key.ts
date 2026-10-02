@@ -53,6 +53,28 @@ const EACH = new Set(['map', 'flatMap', 'forEach', 'filter', 'some', 'every', 'f
 type Definition = { type: string; node: Node; name: Node };
 type Scope = { set: Map<string, { defs: Definition[] }>; upper: Scope | null };
 
+/** How far a name is followed back to what it was given: `const a = t; const b = a`. */
+const DEPTH = 3;
+
+/** The instance, under the names it is imported by. */
+const INSTANCES = new Set(['i18n', 'i18next']);
+
+/** `TFunction`, `i18n.TFunction`, `typeof i18n.t`: a type that says translate function. */
+const isTranslateType = (type: Node | undefined, functionName: string): boolean => {
+  const nameOf = (node: Node | undefined): string =>
+    node?.type === 'Identifier'
+      ? (node.name as string)
+      : node?.type === 'TSQualifiedName'
+        ? `${nameOf(node.left as Node)}.${nameOf(node.right as Node)}`
+        : '';
+  if (type?.type === 'TSTypeReference') return /(^|\.)TFunction$/.test(nameOf(type.typeName as Node));
+  if (type?.type === 'TSTypeQuery') return nameOf(type.exprName as Node).endsWith(`.${functionName}`);
+  return false;
+};
+
+const annotationOf = (node: Node | undefined) =>
+  (node?.typeAnnotation as Node | undefined)?.typeAnnotation as Node | undefined;
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
@@ -72,40 +94,87 @@ const rule: Rule.RuleModule = {
     const report = (node: Node, messageId: 'variable' | 'alias') =>
       context.report({ node: node as unknown as Rule.Node, messageId, data: { name: functionName } });
 
-    /** `useTranslation()`, with or without a namespace. */
-    const isHook = (node: Node | null | undefined) =>
-      node?.type === 'CallExpression' && calledName(node.callee as Node) === 'useTranslation';
-    /** `i18n.t`: the instance's own. */
-    const isInstanceMember = (node: Node | undefined) =>
-      node?.type === 'MemberExpression' &&
-      !node.computed &&
-      (node.object as Node).type === 'Identifier' &&
-      (node.object as Node).name === 'i18n' &&
-      (node.property as Node).name === functionName;
+    /** What a name was defined as, or 'nowhere' for one this file does not define. */
+    const definitionOf = (identifier: Node): Definition | 'nowhere' => {
+      let scope = context.sourceCode.getScope(identifier as unknown as Rule.Node) as unknown as Scope | null;
+      for (; scope; scope = scope.upper) {
+        const [definition] = scope.set.get(identifier.name as string)?.defs ?? [];
+        if (definition) return definition;
+      }
+      return 'nowhere';
+    };
 
     /**
-     * Whether an expression handed somewhere is the translate function: the
-     * instance's, or a `t` that is not something else of that name. A `t`
-     * that is the parameter of a callback - a token, a team, a tab - is not
-     * one; a parameter typed as the translate function is, and so is one this
-     * file does not define.
+     * Whether an expression is something that has the translate function as
+     * its `t`: the instance, what useTranslation() returns, or a name given
+     * one of those.
      */
-    const isTranslate = (wrapped: Node | undefined) => {
-      const node = underCasts(wrapped);
-      if (isInstanceMember(node)) return true;
-      if (node?.type !== 'Identifier' || node.name !== functionName) return false;
-      let scope = context.sourceCode.getScope(node as unknown as Rule.Node) as unknown as Scope | null;
-      for (; scope; scope = scope.upper) {
-        const [definition] = scope.set.get(functionName)?.defs ?? [];
-        if (!definition) continue;
-        if (definition.type !== 'Parameter') return true;
-        const annotation = (definition.name.typeAnnotation as Node | undefined)?.typeAnnotation as
-          | Node
-          | undefined;
-        return ((annotation?.typeName as Node | undefined)?.name as string | undefined) === 'TFunction';
-      }
-      return true;
+    const isSource = (wrapped: Node | null | undefined, depth = 0): boolean => {
+      const node = underCasts(wrapped ?? undefined);
+      if (node?.type === 'CallExpression') return calledName(node.callee as Node) === 'useTranslation';
+      if (node?.type !== 'Identifier') return false;
+      if (INSTANCES.has(node.name as string)) return true;
+      const definition = definitionOf(node);
+      if (definition === 'nowhere' || definition.type !== 'Variable' || depth >= DEPTH) return false;
+      const { id, init } = definition.node as unknown as { id: Node; init: Node | null };
+      return id.type === 'Identifier' && isSource(init, depth + 1);
     };
+
+    /** Whether a parameter is the translate function: by its type, or by its default. */
+    const isTranslateParameter = ({ node, name }: Definition): boolean => {
+      for (const parameter of node.params as Node[]) {
+        const pattern = parameter.type === 'AssignmentPattern' ? (parameter.left as Node) : parameter;
+        if (pattern === name) {
+          return (
+            isTranslateType(annotationOf(name), functionName) ||
+            (parameter.type === 'AssignmentPattern' && isTranslate(parameter.right as Node))
+          );
+        }
+        if (pattern.type !== 'ObjectPattern') continue;
+        const property = (pattern.properties as Node[]).find((p) => p.value === name);
+        if (!property) continue;
+        // ({ t }: { t: TFunction }): said in the pattern's own type. A named
+        // type - Props - is not read: it may hold a `t` that is anything.
+        const type = annotationOf(pattern);
+        const member =
+          type?.type === 'TSTypeLiteral'
+            ? (type.members as Node[]).find((m) => (m.key as Node | undefined)?.name === functionName)
+            : undefined;
+        return (
+          (property.key as Node).name === functionName &&
+          isTranslateType(annotationOf(member), functionName)
+        );
+      }
+      return false;
+    };
+
+    /**
+     * Whether an expression is the translate function: `t` off a source, or a
+     * name given it. Not everything called `t` is - a token in a loop, the
+     * parameter of a callback, a field of a sample - and a rule that took
+     * each for it failed the lint of code that has nothing to do with
+     * translations.
+     */
+    function isTranslate(wrapped: Node | null | undefined, depth = 0): boolean {
+      const node = underCasts(wrapped ?? undefined);
+      if (node?.type === 'MemberExpression' && !node.computed) {
+        return (node.property as Node).name === functionName && isSource(node.object as Node);
+      }
+      // i18n.t.bind(i18n)
+      if (node?.type === 'CallExpression' && calledName(node.callee as Node) === 'bind') {
+        return isTranslate((node.callee as Node).object as Node, depth);
+      }
+      if (node?.type !== 'Identifier') return false;
+      const definition = definitionOf(node);
+      if (definition === 'nowhere' || definition.type === 'ImportBinding') return node.name === functionName;
+      if (definition.type === 'Parameter') return isTranslateParameter(definition);
+      if (definition.type !== 'Variable' || depth >= DEPTH) return false;
+      const { id, init } = definition.node as unknown as { id: Node; init: Node | null };
+      if (id.type === 'Identifier') return isTranslate(init, depth + 1);
+      if (id.type !== 'ObjectPattern') return false;
+      const property = (id.properties as Node[]).find((p) => p.value === definition.name);
+      return (property?.key as Node | undefined)?.name === functionName && isSource(init);
+    }
 
     return {
       CallExpression(node) {
@@ -117,8 +186,8 @@ const rule: Rule.RuleModule = {
         if (callee.type === 'MemberExpression') {
           const method = calledName(callee) ?? '';
           const callback = EACH.has(method) ? args[0] : method === 'from' ? args[1] : undefined;
-          if (isTranslate(callback)) {
-            report(callback!, 'variable');
+          if (callback && isTranslate(callback)) {
+            report(callback, 'variable');
             return;
           }
         }
@@ -127,13 +196,14 @@ const rule: Rule.RuleModule = {
         if (keysOf(first).partial) report(first, 'variable');
       },
 
-      // const translate = i18n.t; const { t: tr } = useTranslation()
+      // const translate = t; const tr = i18n.t; const { t: tr } = useTranslation()
       VariableDeclarator(node) {
         const { id, init } = node as unknown as { id: Node; init: Node | null };
-        if (id.type === 'Identifier' && id.name !== functionName && isInstanceMember(underCasts(init ?? undefined))) {
-          report(id, 'alias');
+        if (id.type === 'Identifier') {
+          if (id.name !== functionName && isTranslate(init)) report(id, 'alias');
+          return;
         }
-        if (id.type !== 'ObjectPattern' || !isHook(init)) return;
+        if (id.type !== 'ObjectPattern' || !isSource(init)) return;
         for (const property of id.properties as Node[]) {
           if (property.type !== 'Property' || property.computed) continue;
           const value = property.value as Node;
@@ -151,15 +221,17 @@ const rule: Rule.RuleModule = {
         const opening = node as unknown as Node;
         if ((opening.name as Node).name !== 'Trans') return;
         const attributes = opening.attributes as Node[];
-        const key = attributes.find(
+        const at = attributes.findIndex(
           (a) => a.type === 'JSXAttribute' && (a.name as Node).name === 'i18nKey'
         );
-        if (key) {
-          if (keysOf(attributeExpression(key)).partial) report(key, 'variable');
+        const key = attributes[at];
+        if (key && keysOf(attributeExpression(key)).partial) {
+          report(key, 'variable');
           return;
         }
-        // <Trans {...props}>: the key is in there, or nowhere.
-        const spread = attributes.find((a) => a.type === 'JSXSpreadAttribute');
+        // <Trans {...props}>: the key is in there, or nowhere - and a spread
+        // after a key that is written may hold the one that counts.
+        const spread = attributes.find((a, index) => a.type === 'JSXSpreadAttribute' && index > at);
         if (spread) report(spread, 'variable');
       },
     };
