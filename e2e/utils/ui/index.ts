@@ -70,6 +70,17 @@ export const uiCell = (scope: Page | Locator, name: string) =>
 export const uiCellsShowing = (scope: Page | Locator, text: string) =>
   scope.getByRole('cell').filter({ hasText: text });
 
+/**
+ * Puts the page in another language, by the header's menu and the name the
+ * language gives itself there. The choice does not outlive a navigation: the
+ * app starts in English.
+ */
+export const uiSwitchLanguage = async (page: Page, name: 'Deutsch' | 'Español' | 'Türkçe' | '中文') => {
+  // The menu's button has no accessible name of its own yet.
+  await page.locator('header .mantine-ActionIcon-root[aria-haspopup="menu"]').click();
+  await page.getByRole('menuitem', { name }).click();
+};
+
 export async function uiCannotSubmitEmptyForm(page: Page, pom: CommonPOM) {
   await pom.getAddBtn(page).click();
   await pom.isAddPage(page);

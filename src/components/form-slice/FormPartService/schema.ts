@@ -17,14 +17,13 @@
 import { z } from 'zod';
 
 import { APISIXServices } from '@/types/schema/apisix/services';
+import { requiredString } from '@/utils/zod';
 
 import { parseToNodes } from '../FormPartUpstream/node-rows';
 
 export const ServicePostSchema = APISIXServices.ServicePost.extend({
     // Keys, not sentences: the field shows what the key says (see errorText).
-    name: z
-        .string({ required_error: 'form.validation.nameRequired' })
-        .min(1, { message: 'form.validation.nameRequired' }),
+    name: requiredString('form.validation.nameRequired'),
     hosts: z.array(z.string().min(1, { message: 'form.validation.hostEmpty' })).optional(),
 }).superRefine((data, ctx) => {
     if (

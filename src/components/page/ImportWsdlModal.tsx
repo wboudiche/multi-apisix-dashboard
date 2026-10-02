@@ -296,7 +296,7 @@ export const ImportWsdlModal = ({ opened, onClose, onSuccess }: ImportWsdlModalP
         success++;
       } catch (err: unknown) {
         failed++;
-        errors.push(`${route.name ?? route.uri}: ${proxyFailureText(err) ?? t('form.importWsdl.unknownError')}`);
+        errors.push(`${route.name ?? route.uri}: ${proxyFailureText(err) ?? t('form.import.unknownError')}`);
       }
     }
     setImportResults({ success, failed, errors });

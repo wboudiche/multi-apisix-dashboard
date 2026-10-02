@@ -19,18 +19,36 @@ import type { TFunction } from 'i18next';
 
 import type { PolicyViolation } from '@/apis/policy';
 
-/** The rules a password can break, by the code the backend names each with. */
+/**
+ * The rules a password can break, by the code the backend names each with,
+ * and the number its sentence needs - `min` for the shortest, `max` for the
+ * longest, none for the others.
+ */
 const RULES = {
-  min_length: 'passwordRules.min_length',
-  max_length: 'passwordRules.max_length',
-  missing_uppercase: 'passwordRules.missing_uppercase',
-  missing_lowercase: 'passwordRules.missing_lowercase',
-  missing_digit: 'passwordRules.missing_digit',
-  missing_symbol: 'passwordRules.missing_symbol',
+  min_length: { key: 'passwordRules.min_length', param: 'min' },
+  max_length: { key: 'passwordRules.max_length', param: 'max' },
+  missing_uppercase: { key: 'passwordRules.missing_uppercase', param: undefined },
+  missing_lowercase: { key: 'passwordRules.missing_lowercase', param: undefined },
+  missing_digit: { key: 'passwordRules.missing_digit', param: undefined },
+  missing_symbol: { key: 'passwordRules.missing_symbol', param: undefined },
 } as const;
 
-const known = (code: string): code is keyof typeof RULES =>
-  Object.prototype.hasOwnProperty.call(RULES, code);
+const known = (code: unknown): code is keyof typeof RULES =>
+  typeof code === 'string' && Object.prototype.hasOwnProperty.call(RULES, code);
+
+/**
+ * One rule in the reader's words, or nothing when the answer does not carry
+ * the number the sentence needs: "Be at least {{min}} characters" is not one
+ * to show. Only that number is read out of `params` - what the backend sends
+ * is not handed to i18next as its options.
+ */
+const ruleText = (t: TFunction, violation: PolicyViolation | undefined) => {
+  if (!known(violation?.code)) return undefined;
+  const { key, param } = RULES[violation.code];
+  if (param === undefined) return t(key);
+  const value = violation.params?.[param];
+  return typeof value === 'number' ? t(key, { [param]: value }) : undefined;
+};
 
 /**
  * What a refused password broke, in the reader's language.
@@ -48,10 +66,6 @@ export const policyRefusal = (t: TFunction, error: unknown): string | undefined 
   const violations = (error.response.data as { violations?: PolicyViolation[] } | undefined)
     ?.violations;
   if (!Array.isArray(violations)) return undefined;
-  const rules = violations.flatMap((violation) =>
-    typeof violation?.code === 'string' && known(violation.code)
-      ? [t(RULES[violation.code], violation.params ?? {})]
-      : []
-  );
+  const rules = violations.flatMap((violation) => ruleText(t, violation) ?? []);
   return rules.length > 0 ? t('passwordRules.unmet', { rules: rules.join('; ') }) : undefined;
 };

@@ -42,6 +42,9 @@ tester.run('no-prose-literal', rule, {
     'const s = `${count} routes could not be created`',
     // A list of fonts.
     "const style = { fontFamily: 'Outfit, sans-serif' }",
+    "const body = { fontFamily: 'DM Sans, sans-serif' }",
+    "const method = 'GET /apisix/admin/routes'",
+    "const protocols = 'TLSv1.2 TLSv1.3'",
   ],
   invalid: [
     { code: "z.string().min(1, 'Name is required')", errors: [{ messageId: 'prose' }] },
@@ -50,5 +53,21 @@ tester.run('no-prose-literal', rule, {
     { code: "setError(text || 'Failed to save')", errors: [{ messageId: 'prose' }] },
     { code: 'const s = `Could not parse ${url}`', errors: [{ messageId: 'prose' }] },
     { code: "t('form.add', 'Add a Node')", errors: [{ messageId: 'prose' }] },
+    // An acronym first, a one-letter word, a contraction, a quote after the word.
+    { code: "z.string().min(1, 'URI is required')", errors: [{ messageId: 'prose' }] },
+    {
+      code: "warnings.push('WSDL uses SOAP 1.2; consider passthrough mode.')",
+      errors: [{ messageId: 'prose' }],
+    },
+    {
+      code: 'throw new Error(`ZIP contains too many files (>${max}).`)',
+      errors: [{ messageId: 'prose' }],
+    },
+    { code: "setError('A node is required')", errors: [{ messageId: 'prose' }] },
+    { code: 'setError("Can\'t save")', errors: [{ messageId: 'prose' }] },
+    {
+      code: 'warnings.push(`Service \'${name}\': binding not found.`)',
+      errors: [{ messageId: 'prose' }],
+    },
   ],
 });

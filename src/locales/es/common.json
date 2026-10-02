@@ -350,7 +350,22 @@
       "duplicateReasonName": "«{{- name}}» usa el mismo nombre",
       "duplicateReasonPath": "«{{- name}}» ya responde en {{- uri}}",
       "duplicateReasonBoth": "«{{- name}}» usa el mismo nombre y ya responde en {{- uri}}",
-      "duplicateConfirmAction": "Crear de todos modos"
+      "duplicateConfirmAction": "Crear de todos modos",
+      "steps": {
+        "apiInfo": "Definir la información de la API",
+        "apiInfoDesc": "Protocolo, host, ruta, etc.",
+        "upstream": "Definir el upstream",
+        "upstreamDesc": "Configuración del destino",
+        "plugins": "Configuración de plugins",
+        "pluginsDesc": "Añadir y configurar plugins",
+        "preview": "Vista previa",
+        "previewDesc": "Revisar y finalizar",
+        "summaryBoundToService": "Vinculado a un servicio",
+        "summaryCustomNodes": "Personalizado: {{count}} nodo(s)",
+        "summaryCustom": "Upstream personalizado",
+        "summaryExisting": "Upstream existente",
+        "summaryPluginConfig": "Configuración de plugins: {{- id}}"
+      }
     },
     "requestOverride": {
       "title": "Reescritura de Solicitud",
@@ -709,7 +724,6 @@
       "readError": "No se ha podido leer el archivo",
       "fetchError": "No se ha podido descargar el WSDL",
       "upstreamRequired": "Introduce el ID de un upstream existente o elige crearlo automáticamente a partir de la dirección del WSDL",
-      "unknownError": "Error desconocido",
       "noEndpoint": "No se encontró ningún endpoint de servicio SOAP (<service>/<soap:address>) en el WSDL.",
       "zipEmpty": "No se encontraron archivos WSDL/XML en el archivo ZIP.",
       "zipTooManyFiles": "El ZIP contiene demasiados archivos (>{{max}}).",
@@ -767,27 +781,8 @@
       "uriRequired": "La URI es obligatoria",
       "hostEmpty": "El host no puede estar vacío",
       "nodeRequired": "Se requiere al menos un nodo",
-      "upstreamSourceRequired": "Seleccione un upstream, vincule un servicio o configure un upstream personalizado con al menos un nodo"
-    },
-    "steps": {
-      "apiInfo": "Definir la información de la API",
-      "apiInfoDesc": "Protocolo, host, ruta, etc.",
-      "upstream": "Definir el upstream",
-      "upstreamDesc": "Configuración del destino",
-      "plugins": "Configuración de plugins",
-      "pluginsDesc": "Añadir y configurar plugins",
-      "preview": "Vista previa",
-      "previewDesc": "Revisar y finalizar",
-      "serviceBasicDesc": "Configuración básica del servicio",
-      "serviceUpstream": "Upstream",
-      "serviceUpstreamDesc": "Configurar el upstream",
-      "servicePlugins": "Plugin",
-      "servicePluginsDesc": "Configurar plugins",
-      "summaryBoundToService": "Vinculado a un servicio",
-      "summaryCustomNodes": "Personalizado: {{count}} nodo(s)",
-      "summaryCustom": "Upstream personalizado",
-      "summaryExisting": "Upstream existente",
-      "summaryPluginConfig": "Configuración de plugins: {{- id}}"
+      "upstreamSourceRequired": "Seleccione un upstream, vincule un servicio o configure un upstream personalizado con al menos un nodo",
+      "required": "Obligatorio"
     }
   },
   "globalRules": {
@@ -830,7 +825,7 @@
     "missing_lowercase": "Contener una letra minúscula",
     "missing_digit": "Contener un dígito",
     "missing_symbol": "Contener un símbolo",
-    "max_length": "Tener como máximo {{max}} caracteres",
+    "max_length": "Ocupar como máximo {{max}} bytes (un carácter acentuado o no latino ocupa más de uno)",
     "unmet": "La contraseña debe: {{- rules}}"
   },
   "pluginConfigs": {

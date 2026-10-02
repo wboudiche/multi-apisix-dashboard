@@ -348,7 +348,22 @@
       "duplicateReasonName": "\"{{- name}}\" aynı adı kullanıyor",
       "duplicateReasonPath": "\"{{- name}}\" zaten {{- uri}} üzerinde yanıt veriyor",
       "duplicateReasonBoth": "\"{{- name}}\" aynı adı kullanıyor ve zaten {{- uri}} üzerinde yanıt veriyor",
-      "duplicateConfirmAction": "Yine de oluştur"
+      "duplicateConfirmAction": "Yine de oluştur",
+      "steps": {
+        "apiInfo": "API Bilgilerini Tanımla",
+        "apiInfoDesc": "Protokol, host, yol vb.",
+        "upstream": "Upstream Tanımla",
+        "upstreamDesc": "Hedef yapılandırması",
+        "plugins": "Plugin Yapılandırması",
+        "pluginsDesc": "Plugin ekle ve yapılandır",
+        "preview": "Önizleme",
+        "previewDesc": "Gözden geçir ve bitir",
+        "summaryBoundToService": "Servise bağlı",
+        "summaryCustomNodes": "Özel: {{count}} node",
+        "summaryCustom": "Özel upstream",
+        "summaryExisting": "Mevcut upstream",
+        "summaryPluginConfig": "Plugin yapılandırması: {{- id}}"
+      }
     },
     "requestOverride": {
       "title": "İstek Geçersiz Kılma",
@@ -707,7 +722,6 @@
       "readError": "Dosya okunamadı",
       "fetchError": "WSDL getirilemedi",
       "upstreamRequired": "Mevcut bir upstream ID'si girin veya WSDL adresinden otomatik oluşturmayı seçin",
-      "unknownError": "Bilinmeyen hata",
       "noEndpoint": "WSDL içinde SOAP servis uç noktası (<service>/<soap:address>) bulunamadı.",
       "zipEmpty": "ZIP arşivinde WSDL/XML dosyası bulunamadı.",
       "zipTooManyFiles": "ZIP çok fazla dosya içeriyor (>{{max}}).",
@@ -765,27 +779,8 @@
       "uriRequired": "URI zorunludur",
       "hostEmpty": "Host boş olamaz",
       "nodeRequired": "En az bir node gereklidir",
-      "upstreamSourceRequired": "Bir upstream seçin, bir servise bağlayın veya en az bir node içeren özel bir upstream yapılandırın"
-    },
-    "steps": {
-      "apiInfo": "API Bilgilerini Tanımla",
-      "apiInfoDesc": "Protokol, host, yol vb.",
-      "upstream": "Upstream Tanımla",
-      "upstreamDesc": "Hedef yapılandırması",
-      "plugins": "Plugin Yapılandırması",
-      "pluginsDesc": "Plugin ekle ve yapılandır",
-      "preview": "Önizleme",
-      "previewDesc": "Gözden geçir ve bitir",
-      "serviceBasicDesc": "Servisin temel yapılandırması",
-      "serviceUpstream": "Upstream",
-      "serviceUpstreamDesc": "Upstream yapılandır",
-      "servicePlugins": "Plugin",
-      "servicePluginsDesc": "Pluginleri yapılandır",
-      "summaryBoundToService": "Servise bağlı",
-      "summaryCustomNodes": "Özel: {{count}} node",
-      "summaryCustom": "Özel upstream",
-      "summaryExisting": "Mevcut upstream",
-      "summaryPluginConfig": "Plugin yapılandırması: {{- id}}"
+      "upstreamSourceRequired": "Bir upstream seçin, bir servise bağlayın veya en az bir node içeren özel bir upstream yapılandırın",
+      "required": "Zorunlu"
     }
   },
   "globalRules": {
@@ -828,7 +823,7 @@
     "missing_lowercase": "Bir küçük harf içermeli",
     "missing_digit": "Bir rakam içermeli",
     "missing_symbol": "Bir sembol içermeli",
-    "max_length": "En fazla {{max}} karakter olmalı",
+    "max_length": "En fazla {{max}} bayt uzunluğunda olmalı (aksanlı veya Latin olmayan bir karakter birden fazla bayt tutar)",
     "unmet": "Parola şunları karşılamalı: {{- rules}}"
   },
   "pluginConfigs": {

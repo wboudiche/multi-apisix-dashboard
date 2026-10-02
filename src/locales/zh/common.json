@@ -348,7 +348,22 @@
       "duplicateReasonName": "“{{- name}}”使用了相同的名称",
       "duplicateReasonPath": "“{{- name}}”已经在 {{- uri}} 上响应",
       "duplicateReasonBoth": "“{{- name}}”使用了相同的名称，并且已经在 {{- uri}} 上响应",
-      "duplicateConfirmAction": "仍然创建"
+      "duplicateConfirmAction": "仍然创建",
+      "steps": {
+        "apiInfo": "定义 API 信息",
+        "apiInfoDesc": "协议、主机、路径等",
+        "upstream": "定义上游",
+        "upstreamDesc": "目标配置",
+        "plugins": "插件配置",
+        "pluginsDesc": "添加并配置插件",
+        "preview": "预览",
+        "previewDesc": "检查并完成",
+        "summaryBoundToService": "已绑定服务",
+        "summaryCustomNodes": "自定义：{{count}} 个节点",
+        "summaryCustom": "自定义上游",
+        "summaryExisting": "已有上游",
+        "summaryPluginConfig": "插件配置：{{- id}}"
+      }
     },
     "requestOverride": {
       "title": "请求覆盖",
@@ -707,7 +722,6 @@
       "readError": "读取文件失败",
       "fetchError": "获取 WSDL 失败",
       "upstreamRequired": "请输入已有上游的 ID，或选择根据 WSDL 地址自动创建",
-      "unknownError": "未知错误",
       "noEndpoint": "在 WSDL 中未找到 SOAP 服务端点（<service>/<soap:address>）。",
       "zipEmpty": "ZIP 压缩包中未找到 WSDL/XML 文件。",
       "zipTooManyFiles": "ZIP 包含的文件过多（>{{max}}）。",
@@ -765,27 +779,8 @@
       "uriRequired": "URI 为必填项",
       "hostEmpty": "主机不能为空",
       "nodeRequired": "至少需要一个节点",
-      "upstreamSourceRequired": "请选择一个上游、绑定一个服务，或配置至少包含一个节点的自定义上游"
-    },
-    "steps": {
-      "apiInfo": "定义 API 信息",
-      "apiInfoDesc": "协议、主机、路径等",
-      "upstream": "定义上游",
-      "upstreamDesc": "目标配置",
-      "plugins": "插件配置",
-      "pluginsDesc": "添加并配置插件",
-      "preview": "预览",
-      "previewDesc": "检查并完成",
-      "serviceBasicDesc": "服务基本配置",
-      "serviceUpstream": "上游",
-      "serviceUpstreamDesc": "配置上游",
-      "servicePlugins": "插件",
-      "servicePluginsDesc": "配置插件",
-      "summaryBoundToService": "已绑定服务",
-      "summaryCustomNodes": "自定义：{{count}} 个节点",
-      "summaryCustom": "自定义上游",
-      "summaryExisting": "已有上游",
-      "summaryPluginConfig": "插件配置：{{- id}}"
+      "upstreamSourceRequired": "请选择一个上游、绑定一个服务，或配置至少包含一个节点的自定义上游",
+      "required": "必填"
     }
   },
   "globalRules": {
@@ -828,7 +823,7 @@
     "missing_lowercase": "包含一个小写字母",
     "missing_digit": "包含一个数字",
     "missing_symbol": "包含一个符号",
-    "max_length": "最多 {{max}} 个字符",
+    "max_length": "最多 {{max}} 个字节（带重音或非拉丁字符占用多个字节）",
     "unmet": "密码必须满足：{{- rules}}"
   },
   "pluginConfigs": {

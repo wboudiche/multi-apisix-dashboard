@@ -236,6 +236,7 @@ export const parseWsdlBundle = (
     if (opts.mode === 'passthrough') {
       const route: GeneratedRoute = {
         name: svc.name,
+        // eslint-disable-next-line local/no-prose-literal -- written into the route it creates
         desc: `SOAP passthrough for ${svc.name}`,
         uri,
         methods: ['POST'],

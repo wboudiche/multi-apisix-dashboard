@@ -94,7 +94,7 @@ const ServiceDetailForm = (props: Props) => {
   const steps = [
     {
       label: t('form.basic.title'),
-      description: t('form.steps.serviceBasicDesc'),
+      description: t('form.services.steps.basicDesc'),
       content: (
         <>
           <FormPartBasic
@@ -113,8 +113,8 @@ const ServiceDetailForm = (props: Props) => {
       fields: ['name', 'desc'],
     },
     {
-      label: t('form.steps.serviceUpstream'),
-      description: t('form.steps.serviceUpstreamDesc'),
+      label: t('form.services.steps.upstream'),
+      description: t('form.services.steps.upstreamDesc'),
       content: (
         <FormSectionUpstream
           simplified
@@ -128,14 +128,14 @@ const ServiceDetailForm = (props: Props) => {
       fields: ['upstream', 'upstream_id'],
     },
     {
-      label: t('form.steps.servicePlugins'),
-      description: t('form.steps.servicePluginsDesc'),
+      label: t('form.services.steps.plugin'),
+      description: t('form.services.steps.pluginDesc'),
       content: <FormSectionPlugins />,
       fields: ['plugins'],
     },
     {
-      label: t('form.steps.preview'),
-      description: t('form.steps.previewDesc'),
+      label: t('form.services.steps.preview'),
+      description: t('form.services.steps.previewDesc'),
       content: <ServicePreviewSummary data={readOnly ? serviceData?.value : undefined} />,
     },
   ];

@@ -17,6 +17,7 @@
 import { z } from 'zod';
 
 import { APISIX } from '@/types/schema/apisix';
+import { requiredString } from '@/utils/zod';
 
 import { parseToNodes } from '../FormPartUpstream/node-rows';
 import { SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
@@ -31,14 +32,8 @@ export const RoutePostSchema = APISIX.Route.omit({
   // is not in line with this usage.
   vars: z.string().optional(),
   // Keys, not sentences: the field shows what the key says (see errorText).
-  // Both ways of being empty: a field never typed in is undefined, and zod
-  // answers that with its own "Required" before `min` is asked.
-  name: z
-    .string({ required_error: 'form.validation.nameRequired' })
-    .min(1, 'form.validation.nameRequired'),
-  uri: z
-    .string({ required_error: 'form.validation.uriRequired' })
-    .min(1, 'form.validation.uriRequired'),
+  name: requiredString('form.validation.nameRequired'),
+  uri: requiredString('form.validation.uriRequired'),
 }).superRefine((data, ctx) => {
   const hasService = data.service_id && data.service_id !== SERVICE_NONE;
   const hasExistingUpstream = data.upstream_id && data.upstream_id !== UPSTREAM_CUSTOM;

@@ -202,8 +202,8 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
 
   const steps = [
     {
-      label: t('form.steps.apiInfo'),
-      description: t('form.steps.apiInfoDesc'),
+      label: t('form.routes.steps.apiInfo'),
+      description: t('form.routes.steps.apiInfoDesc'),
       content: (
         <>
           {/* [Feature 7] Live URI/Methods preview */}
@@ -224,21 +224,21 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
       },
     },
     {
-      label: t('form.steps.upstream'),
-      description: t('form.steps.upstreamDesc'),
+      label: t('form.routes.steps.upstream'),
+      description: t('form.routes.steps.upstreamDesc'),
       content: <UpstreamModeSelector />,
       fields: ['upstream', 'upstream_id', 'service_id'],
       // [Feature 4] Step summary
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getSummary: (values: Record<string, any>) => {
-        if (values.service_id && values.service_id !== 'none') return t('form.steps.summaryBoundToService');
+        if (values.service_id && values.service_id !== 'none') return t('form.routes.steps.summaryBoundToService');
         if (values.upstream_id === 'custom') {
           const nodes = parseToNodes(values.upstream?.nodes);
           return nodes.length
-            ? t('form.steps.summaryCustomNodes', { count: nodes.length })
-            : t('form.steps.summaryCustom');
+            ? t('form.routes.steps.summaryCustomNodes', { count: nodes.length })
+            : t('form.routes.steps.summaryCustom');
         }
-        if (values.upstream_id) return t('form.steps.summaryExisting');
+        if (values.upstream_id) return t('form.routes.steps.summaryExisting');
         return null;
       },
     },
@@ -251,7 +251,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
     {
       // [Feature 12] Plugin count badge
       label: <PluginStepLabel />,
-      description: t('form.steps.pluginsDesc'),
+      description: t('form.routes.steps.pluginsDesc'),
       content: <FormSectionPlugins />,
       fields: ['plugins', 'plugin_config_id'],
       // [Feature 4] Step summary
@@ -259,13 +259,13 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
       getSummary: (values: Record<string, any>) => {
         const count = values.plugins ? Object.keys(values.plugins).length : 0;
         if (values.plugin_config_id)
-          return t('form.steps.summaryPluginConfig', { id: values.plugin_config_id });
+          return t('form.routes.steps.summaryPluginConfig', { id: values.plugin_config_id });
         return count > 0 ? t('form.upstreamMode.pluginsCount', { count }) : null;
       },
     },
     {
-      label: t('form.steps.preview'),
-      description: t('form.steps.previewDesc'),
+      label: t('form.routes.steps.preview'),
+      description: t('form.routes.steps.previewDesc'),
       // [Feature 1] Structured preview
       content: <RoutePreviewSummary />,
     },

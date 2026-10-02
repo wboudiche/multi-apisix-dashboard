@@ -39,7 +39,7 @@ describe('a refused password', () => {
     });
 
     expect(policyRefusal(t, error)).toBe(
-      'The password must: Be at most 72 characters; Contain a digit'
+      `The password must: ${t('passwordRules.max_length', { max: 72 })}; Contain a digit`
     );
   });
 
@@ -55,6 +55,22 @@ describe('a refused password', () => {
     expect(policyRefusal(t, refused(422, { violations: [{ code: 'reused' }] }))).toBeUndefined();
     expect(policyRefusal(t, refused(422, { error: 'Password does not meet policy' }))).toBeUndefined();
     expect(policyRefusal(t, refused(422, { violations: 'none' }))).toBeUndefined();
+  });
+
+  it('leaves out a rule that came without its number, rather than show a placeholder', () => {
+    const error = refused(422, {
+      violations: [{ code: 'min_length' }, { code: 'max_length', params: { max: '72' } }, { code: 'missing_symbol' }],
+    });
+
+    expect(policyRefusal(t, error)).toBe('The password must: Contain a symbol');
+  });
+
+  it('reads the number a rule needs and nothing else the answer carries', () => {
+    const error = refused(422, {
+      violations: [{ code: 'min_length', params: { min: 12, lng: 'de', defaultValue: 'x' } }],
+    });
+
+    expect(policyRefusal(t, error)).toBe('The password must: Be at least 12 characters');
   });
 
   it('is not one for another failure', () => {

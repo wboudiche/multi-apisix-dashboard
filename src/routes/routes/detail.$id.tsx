@@ -123,8 +123,8 @@ const RouteDetailForm = (props: Props) => {
 
   const steps = [
     {
-      label: t('form.steps.apiInfo'),
-      description: t('form.steps.apiInfoDesc'),
+      label: t('form.routes.steps.apiInfo'),
+      description: t('form.routes.steps.apiInfoDesc'),
       content: (
         <>
           <FormSectionGeneral readOnly />
@@ -135,8 +135,8 @@ const RouteDetailForm = (props: Props) => {
       fields: ['name', 'uri', 'uris', 'methods', 'priority', 'vars'],
     },
     {
-      label: t('form.steps.upstream'),
-      description: t('form.steps.upstreamDesc'),
+      label: t('form.routes.steps.upstream'),
+      description: t('form.routes.steps.upstreamDesc'),
       content: (
         <>
           <FormSectionService />
@@ -152,14 +152,14 @@ const RouteDetailForm = (props: Props) => {
       fields: [],
     },
     {
-      label: t('form.steps.plugins'),
-      description: t('form.steps.pluginsDesc'),
+      label: t('form.routes.steps.plugins'),
+      description: t('form.routes.steps.pluginsDesc'),
       content: <FormSectionPlugins />,
       fields: ['plugins', 'plugin_config_id'],
     },
     {
-      label: t('form.steps.preview'),
-      description: t('form.steps.previewDesc'),
+      label: t('form.routes.steps.preview'),
+      description: t('form.routes.steps.previewDesc'),
       content: <RoutePreviewSummary data={readOnly ? routeData?.value : undefined} />,
     },
   ];

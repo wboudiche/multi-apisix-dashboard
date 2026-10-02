@@ -16,6 +16,9 @@
  */
 import i18n from '@/config/i18n';
 
+/** Where the keys of form errors live: what tells a key from a sentence. */
+const KEYS = 'form.validation.';
+
 /**
  * A form error as the reader's language has it.
  *
@@ -25,9 +28,10 @@ import i18n from '@/config/i18n';
  * schema writes the key - `form.validation.nameRequired` - and the field shows
  * what the key says.
  *
- * Whatever is not a key is shown as it is: zod's own messages, and a
- * gateway's. A key no bundle holds is refused before it gets here, by
+ * Whatever is not under `form.validation.` is shown as it is: zod's own
+ * messages, a gateway's - even one that happens to spell some other key of
+ * the bundles. A key no bundle holds is refused before it gets here, by
  * locale-keys.test.ts, which reads the schemas like any other source.
  */
 export const errorText = (message: string | undefined) =>
-  message !== undefined && i18n.exists(message) ? i18n.t(message as never) : message;
+  message?.startsWith(KEYS) && i18n.exists(message) ? i18n.t(message as never) : message;

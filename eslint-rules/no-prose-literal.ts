@@ -28,17 +28,19 @@ import type { Rule } from 'eslint';
  * same way.
  *
  * What it takes for a sentence: a string, or the text of a template, that
- * begins with a capitalised word followed by another word - "Name is
- * required", "Define Upstream". Not a constant, a path, a class name or a
- * key. What it misses, it misses: a sentence that begins in lower case, or
- * with a value. It is a net, not a proof - that every key exists in every
- * language is held by src/config/locale-keys.test.ts.
+ * begins with a capitalised word and goes on - "Name is required", "Define
+ * Upstream", "A node is required", "Service '…" - or with an acronym and a
+ * word in lower case, "URI is required". Not a constant, a path, a class
+ * name, a key, or a font ("DM Sans"). What it misses, it misses: a sentence
+ * that begins in lower case, with a value, or with an acronym and a
+ * capitalised word. It is a net, not a proof - that every key exists in
+ * every language is held by src/config/locale-keys.test.ts.
  *
  * A string that is this shape and is not for a reader - a product's name, a
  * sentence compared with a gateway's - says so on its own line, with the
  * reason.
  */
-const SENTENCE = /^[A-Z][a-z]+ \w/;
+const SENTENCE = /^(?:[A-Z][a-z']* [\w'"(<]|[A-Z]{2,}[a-z]* [a-z])/;
 
 const rule: Rule.RuleModule = {
   meta: {

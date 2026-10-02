@@ -39,6 +39,7 @@ import { req } from '@/config/req';
 import { useFormDraftAutoSave } from '@/hooks/useFormDraftAutoSave';
 import { APISIX } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
+import { requiredString } from '@/utils/zod';
 
 const DRAFT_KEY = 'apisix-upstream-draft';
 
@@ -46,9 +47,7 @@ const PostUpstreamSchema = FormPartUpstreamSchema.omit({
   id: true,
 }).extend({
   // Keys, not sentences: the field shows what the key says (see errorText).
-  name: z
-    .string({ required_error: 'form.validation.nameRequired' })
-    .min(1, 'form.validation.nameRequired'),
+  name: requiredString('form.validation.nameRequired'),
   nodes: z
     .array(APISIX.UpstreamNode, { required_error: 'form.validation.nodeRequired' })
     .min(1, 'form.validation.nodeRequired'),
