@@ -101,8 +101,7 @@ type SetUserInstanceRoleRequest struct {
 	// TeamIDs are the teams the user works for on the instance (#301).
 	TeamIDs []string `json:"team_ids"`
 	// TeamID is what a client from before the list sends: one team.
-	TeamID string        `json:"team_id"`
-	Scope  *models.Scope `json:"scope"`
+	TeamID string `json:"team_id"`
 }
 
 // teams is the list the request asks for: team_ids, or the single team_id of a
@@ -620,7 +619,6 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 		InstanceID: instanceID,
 		TeamIDs:    teamIDs,
 		Role:       req.Role,
-		Scope:      req.Scope,
 	}
 
 	if err := h.authService.SetUserInstanceRole(c.Request.Context(), ui); err != nil {

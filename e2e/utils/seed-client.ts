@@ -408,18 +408,12 @@ export async function ensureUser(token: string, input: CreateUserInput): Promise
 // non-empty team_id for these roles.
 // ---------------------------------------------------------------------------
 
-export type Scope = {
-  tags?: string[];
-  path_prefixes?: string[];
-};
-
 export type UserInstanceRoleInput = {
   role: string;
   /** One team. Required for developer and viewer roles, unless `team_ids` is given. */
   team_id?: string;
   /** Several teams on the one instance (#301). */
   team_ids?: string[];
-  scope?: Scope;
 };
 
 export async function ensureUserInstanceRole(
@@ -437,7 +431,6 @@ export async function ensureUserInstanceRole(
         role: input.role,
         ...(input.team_id !== undefined ? { team_id: input.team_id } : {}),
         ...(input.team_ids ? { team_ids: input.team_ids } : {}),
-        ...(input.scope ? { scope: input.scope } : {}),
       },
     },
   );

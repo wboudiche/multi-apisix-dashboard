@@ -108,12 +108,6 @@ type Team struct {
 	Description string `json:"description"`
 }
 
-// Scope defines resource-level restrictions
-type Scope struct {
-	Tags         []string `json:"tags,omitempty"`
-	PathPrefixes []string `json:"path_prefixes,omitempty"`
-}
-
 // UserInstance represents the role assignment between user and instance
 type UserInstance struct {
 	UserID     string
@@ -125,7 +119,6 @@ type UserInstance struct {
 	// somebody work for two.
 	TeamIDs []string
 	Role    string // instance_admin, developer, viewer
-	Scope   *Scope
 }
 
 // userInstanceJSON is the record as it is stored and sent.
@@ -135,13 +128,16 @@ type UserInstance struct {
 // written, as the first team of the list, for the dashboard that reads one
 // team and for a binary rolled back to before the list - both then see a team
 // the user does have.
+//
+// A record may also hold a scope, tags and path prefixes, from before #377.
+// Nothing ever applied one, so it is not read, and the next write of the
+// assignment leaves it out.
 type userInstanceJSON struct {
 	UserID     string   `json:"user_id"`
 	InstanceID string   `json:"instance_id"`
 	TeamIDs    []string `json:"team_ids"`
 	TeamID     string   `json:"team_id"`
 	Role       string   `json:"role"`
-	Scope      *Scope   `json:"scope,omitempty"`
 }
 
 // UnmarshalJSON reads the list, or the single team of a record that predates
@@ -156,7 +152,6 @@ func (ui *UserInstance) UnmarshalJSON(data []byte) error {
 		InstanceID: raw.InstanceID,
 		TeamIDs:    TeamIDsFrom(raw.TeamIDs, raw.TeamID),
 		Role:       raw.Role,
-		Scope:      raw.Scope,
 	}
 	return nil
 }
@@ -174,7 +169,6 @@ func (ui UserInstance) MarshalJSON() ([]byte, error) {
 		TeamIDs:    teams,
 		TeamID:     first,
 		Role:       ui.Role,
-		Scope:      ui.Scope,
 	})
 }
 
