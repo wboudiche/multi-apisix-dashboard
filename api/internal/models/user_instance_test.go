@@ -58,15 +58,36 @@ func TestUserInstanceReadsTheRecordsWrittenBeforeItHeldAList(t *testing.T) {
 
 func TestUserInstanceKeepsTheRestOfTheRecord(t *testing.T) {
 	var ui UserInstance
-	in := `{"user_id":"u-1","instance_id":"i-1","team_id":"team-a","role":"developer","scope":{"tags":["x"]}}`
+	in := `{"user_id":"u-1","instance_id":"i-1","team_id":"team-a","role":"developer"}`
 	if err := json.Unmarshal([]byte(in), &ui); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if ui.UserID != "u-1" || ui.InstanceID != "i-1" || ui.Role != RoleDeveloper {
 		t.Errorf("got %+v", ui)
 	}
-	if ui.Scope == nil || !reflect.DeepEqual(ui.Scope.Tags, []string{"x"}) {
-		t.Errorf("scope %+v", ui.Scope)
+}
+
+// A scope from before #377 restricted nothing. A record holding one still
+// reads, and writing the assignment back leaves it out.
+func TestUserInstanceDropsAScope(t *testing.T) {
+	var ui UserInstance
+	in := `{"user_id":"u-1","instance_id":"i-1","team_ids":["team-a"],"role":"viewer","scope":{"tags":["x"],"path_prefixes":["/a"]}}`
+	if err := json.Unmarshal([]byte(in), &ui); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if ui.Role != RoleViewer || !reflect.DeepEqual(ui.TeamIDs, []string{"team-a"}) {
+		t.Errorf("got %+v", ui)
+	}
+	out, err := json.Marshal(ui)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	var written map[string]any
+	if err := json.Unmarshal(out, &written); err != nil {
+		t.Fatalf("decode written: %v", err)
+	}
+	if _, ok := written["scope"]; ok {
+		t.Errorf("scope written back: %s", out)
 	}
 }
 

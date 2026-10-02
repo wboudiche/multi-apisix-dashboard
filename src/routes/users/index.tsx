@@ -76,7 +76,6 @@ type AssignmentForm = {
    * them: what it shows, what it checks and what it sends are this one list.
    */
   team_ids: string[];
-  scope?: { tags: string[]; pathPrefixes: string[] };
 };
 
 /**
@@ -304,7 +303,7 @@ const UsersPage = () => {
         }
       }
 
-      // Save instance specific roles, teams and scopes
+      // Save instance specific roles and teams
       for (const instanceID in instanceRoles) {
         const config = instanceRoles[instanceID];
         if (config.role) {
@@ -314,7 +313,6 @@ const UsersPage = () => {
             await instanceApi.setUserRole(userId, instanceID, {
               role: config.role,
               team_ids: config.team_ids,
-              scope: config.scope,
             });
           } catch (err) {
             notifications.show({
@@ -455,7 +453,6 @@ const UsersPage = () => {
       roles[a.instance_id] = {
         role: a.role,
         team_ids: teamsOf(a),
-        scope: a.scope ? { tags: a.scope.tags || [], pathPrefixes: a.scope.path_prefixes || [] } : undefined,
       };
     }
     setInstanceRoles(roles);

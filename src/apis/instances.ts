@@ -114,11 +114,6 @@ export type CreateInstanceRequest = {
   is_active?: boolean;
 };
 
-export type Scope = {
-  tags?: string[];
-  path_prefixes?: string[];
-};
-
 export type UserInstanceRole = {
   user_id: string;
   instance_id: string;
@@ -133,7 +128,6 @@ export type UserInstanceRole = {
    */
   teams?: { id: string; name: string }[];
   role: 'instance_admin' | 'developer' | 'viewer';
-  scope?: Scope;
 };
 
 /**
@@ -147,7 +141,6 @@ export type SetUserRoleRequest = {
   role: string;
   /** Every team of the assignment (#301). */
   team_ids: string[];
-  scope?: Scope;
 };
 
 export const instanceApi = {
@@ -210,7 +203,7 @@ export const instanceApi = {
     return parseRecordList<InstanceHealth>(response.data);
   },
 
-  // Assign role and scope to user for instance
+  // Assign a role and teams to a user for an instance
   setUserRole: async (
     userId: string,
     instanceId: string,

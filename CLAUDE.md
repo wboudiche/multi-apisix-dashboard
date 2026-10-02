@@ -90,7 +90,7 @@ api/
 ├── cmd/main.go                          ← Gin server wiring
 └── internal/
     ├── config/         ← env-driven config (PORT, ETCD_*, JWT_SECRET, ADMIN_PASSWORD)
-    ├── models/         ← Instance, User, Team, UserInstance, Role, Ownership, Label, Scope
+    ├── models/         ← Instance, User, Team, UserInstance, Role, Ownership, Label
     ├── services/       ← business logic + etcd persistence
     │   ├── etcd.go     ← thin etcd client (GetJSON / PutJSON / List / Delete)
     │   ├── auth.go     ← login, JWT generate/validate, user CRUD, per-instance role
@@ -113,7 +113,7 @@ api/
 /users/<userID>
 /teams/<teamID>
 /instances/<instanceID>
-/user_instances/<userID>/<instanceID>   ← role + teams + scope for that pair
+/user_instances/<userID>/<instanceID>   ← role + teams for that pair
 /ownership/<instanceID>/<resourceType>/<resourceID>
 /labels/<key>
 /roles/<name>
