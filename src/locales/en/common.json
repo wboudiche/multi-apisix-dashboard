@@ -994,7 +994,9 @@
     "updated": "Team updated successfully",
     "updateFailed": "Failed to update team",
     "deleted": "Team deleted successfully",
-    "deleteFailed": "Failed to delete team"
+    "deleteFailed": "Failed to delete team",
+    "deleteOwnsResources": "Resources this team still owns: {{count}}. Reassign or delete them first.",
+    "deleteHasMembers": "Users still assigned to this team: {{users}}. Move them to another team first."
   },
   "error": {
     "forbidden": "You do not have permission to do that on this instance.",

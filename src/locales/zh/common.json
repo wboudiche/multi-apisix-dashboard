@@ -1070,7 +1070,9 @@
     "updated": "团队更新成功",
     "updateFailed": "更新团队失败",
     "deleted": "团队删除成功",
-    "deleteFailed": "删除团队失败"
+    "deleteFailed": "删除团队失败",
+    "deleteOwnsResources": "该团队仍拥有的资源数：{{count}}。请先重新分配或删除它们。",
+    "deleteHasMembers": "仍分配到该团队的用户：{{users}}。请先将他们移到其他团队。"
   },
   "labelFilter": {
     "add": "添加到筛选",

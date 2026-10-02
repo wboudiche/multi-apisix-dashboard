@@ -154,7 +154,57 @@ func (h *TeamHandler) UpdateTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
-// DeleteTeam removes a team (super_admin only), blocked if team owns resources
+// Machine-readable codes on a refused delete, so the page can say why in the
+// reader's language rather than "Failed to delete team".
+const (
+	teamOwnsResourcesCode = "team_owns_resources"
+	teamHasMembersCode    = "team_has_members"
+)
+
+// teamDeleteRefused is the answer to a delete that may not happen yet.
+type teamDeleteRefused struct {
+	Error string `json:"error"`
+	Code  string `json:"code"`
+	// Count is how many of what stands in the way: resources, or users.
+	Count int `json:"count"`
+	// Users are the accounts still assigned to the team, by username, for the
+	// operator to go and find. Left out of the other refusal.
+	Users []string `json:"users,omitempty"`
+}
+
+// teamDeleteRefusal says why a team may not be deleted yet, or nil when it may.
+//
+// While it owns resources: they would be left naming a team that is gone, and
+// invisible to everyone but an admin.
+//
+// And while somebody is assigned to it. For a developer or a viewer the teams
+// are the access boundary, and a delete that did not look at them left the
+// assignment naming a team that no longer exists: with that one team, an
+// account that sees nothing and creates for a team no screen can show; with
+// several (#301), one that has to name a team to create while its header
+// offers a single one (#375). The operator moves the people, then deletes
+// the team - the same order as for what it owns.
+func teamDeleteRefusal(owned int, holders []string) *teamDeleteRefused {
+	switch {
+	case owned > 0:
+		return &teamDeleteRefused{
+			Error: fmt.Sprintf("Cannot delete team: resources it still owns: %d. Reassign or delete them first.", owned),
+			Code:  teamOwnsResourcesCode,
+			Count: owned,
+		}
+	case len(holders) > 0:
+		return &teamDeleteRefused{
+			Error: fmt.Sprintf("Cannot delete team: users still assigned to it: %s. Move them to another team first.", strings.Join(holders, ", ")),
+			Code:  teamHasMembersCode,
+			Count: len(holders),
+			Users: holders,
+		}
+	}
+	return nil
+}
+
+// DeleteTeam removes a team (super_admin only), blocked while the team owns
+// resources or an assignment names it.
 func (h *TeamHandler) DeleteTeam(c *gin.Context) {
 	role := middleware.GetRole(c)
 	if role != models.RoleSuperAdmin {
@@ -164,15 +214,23 @@ func (h *TeamHandler) DeleteTeam(c *gin.Context) {
 
 	id := c.Param("id")
 
-	count, err := h.ownershipService.CountByTeam(c.Request.Context(), id)
+	owned, err := h.ownershipService.CountByTeam(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if count > 0 {
-		c.JSON(http.StatusConflict, gin.H{
-			"error": fmt.Sprintf("Cannot delete team: it owns %d resources. Reassign or delete them first.", count),
-		})
+	// Who is assigned to it, on any instance - not asked when what it owns
+	// already decides. A read that fails refuses the delete: "nobody" is not
+	// something to assume.
+	var holders []string
+	if owned == 0 {
+		if holders, err = h.authService.TeamHolders(c.Request.Context(), id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	if refusal := teamDeleteRefusal(owned, holders); refusal != nil {
+		c.JSON(http.StatusConflict, refusal)
 		return
 	}
 

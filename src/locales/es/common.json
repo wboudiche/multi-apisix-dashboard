@@ -1072,7 +1072,9 @@
     "updated": "Equipo actualizado correctamente",
     "updateFailed": "No se ha podido actualizar el equipo",
     "deleted": "Equipo eliminado correctamente",
-    "deleteFailed": "No se ha podido eliminar el equipo"
+    "deleteFailed": "No se ha podido eliminar el equipo",
+    "deleteOwnsResources": "Recursos que este equipo aún posee: {{count}}. Reasígnalos o elimínalos primero.",
+    "deleteHasMembers": "Usuarios aún asignados a este equipo: {{users}}. Muévelos primero a otro equipo."
   },
   "labelFilter": {
     "add": "Añadir al filtro",

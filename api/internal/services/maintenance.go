@@ -172,21 +172,15 @@ func (s *MaintenanceService) purgeKeys(ctx context.Context, keys []string, orpha
 //
 // A user counts as existing if its key does, whatever its record holds: a
 // record that no longer parses is still a user, and its access is not this
-// sweep's to take away. Ids are compared with their quotes stripped, because
+// sweep's to take away - a key with no id in it aside, which is nobody's (see
+// livingUsers). Ids are compared with their quotes stripped, because
 // middleware/rbac.go still honours assignments an earlier bug wrote under a
 // quoted id - "<id>", or "\"<id>\"" - and those belong to living users.
 func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssignment, error) {
 	if len(users) == 0 {
 		return nil, ErrNoUsersRead
 	}
-	known := make(map[string]bool, len(users))
-	for key, value := range users {
-		known[unquoteID(strings.TrimPrefix(key, models.KeyPrefixUsers))] = true
-		var user models.User
-		if json.Unmarshal(value, &user) == nil && user.ID != "" {
-			known[unquoteID(user.ID)] = true
-		}
-	}
+	known := livingUsers(users)
 
 	orphans := []OrphanedAssignment{}
 	for key, value := range assignments {
@@ -195,7 +189,7 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 		if !ok || userSegment == "" {
 			continue
 		}
-		if known[unquoteID(userSegment)] {
+		if _, alive := known[unquoteID(userSegment)]; alive {
 			continue
 		}
 		orphan := OrphanedAssignment{Key: key, UserID: userSegment, InstanceID: instanceID}
@@ -211,6 +205,84 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 	}
 	sort.Slice(orphans, func(i, j int) bool { return orphans[i].Key < orphans[j].Key })
 	return orphans, nil
+}
+
+// livingUsers reads the users that exist out of their stored records: every id
+// one answers to, quotes aside, with the name to call it by.
+//
+// A user answers to the id in its key and to the id in its record - an old bug
+// wrote some of either in quotes - and a record that no longer parses is still
+// a user, known by its key: it may be repaired, and a token it was issued
+// keeps working until it expires. One reading for everything that asks "does
+// this user exist": the orphan scan, which must not purge the assignments of
+// a user that does, and a team delete, which must not go through from under
+// one (#375). Two readings had already come apart on the record that does not
+// parse.
+//
+// An id that is blank once its quotes are off is nobody: no account signs in
+// under it, and it would be named by a blank.
+//
+// The name is a username where any record answering to the id has one, and
+// the id itself for want of one - never the key of some other record. Where
+// several records have a username to give, the record stored under that very
+// id gives it before one that answers to the id by an alias - a key in
+// quotes, or an id written in a record kept under another key - and among
+// aliases the one whose key sorts first, so that the same question gets the
+// same answer twice.
+func livingUsers(users map[string][]byte) map[string]string {
+	keys := make([]string, 0, len(users))
+	for key := range users {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	const (
+		byItsOwnRecord = iota
+		byAnAlias
+		byItsID
+	)
+	type named struct {
+		name string
+		rank int
+	}
+	best := make(map[string]named, len(users))
+	offer := func(id, name string, rank int) {
+		if id == "" {
+			return
+		}
+		if current, known := best[id]; !known || rank < current.rank {
+			best[id] = named{name, rank}
+		}
+	}
+	for _, key := range keys {
+		written := strings.TrimPrefix(key, models.KeyPrefixUsers)
+		keyID := unquoteID(written)
+		offer(keyID, keyID, byItsID)
+
+		var user models.User
+		if json.Unmarshal(users[key], &user) != nil {
+			continue
+		}
+		recordID := unquoteID(user.ID)
+		offer(recordID, recordID, byItsID)
+		if user.Username == "" {
+			continue
+		}
+		if written == keyID {
+			offer(keyID, user.Username, byItsOwnRecord)
+		} else {
+			offer(keyID, user.Username, byAnAlias)
+		}
+		if recordID != keyID {
+			offer(recordID, user.Username, byAnAlias)
+		}
+	}
+
+	names := make(map[string]string, len(best))
+	for id, found := range best {
+		names[id] = found.name
+	}
+	return names
 }
 
 func unquoteID(id string) string {

@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/config"
@@ -404,6 +406,80 @@ func (s *AuthService) ListUsersByTeam(ctx context.Context, teamID string) ([]*mo
 		return nil, err
 	}
 	return assignmentsOfTeam(resp, teamID), nil
+}
+
+// TeamHolders returns, by username and sorted, the accounts a team cannot be
+// deleted from under: see teamHolders.
+func (s *AuthService) TeamHolders(ctx context.Context, teamID string) ([]string, error) {
+	assignments, err := s.etcd.List(ctx, models.KeyPrefixUserInstances)
+	if err != nil {
+		return nil, err
+	}
+	users, err := s.etcd.List(ctx, models.KeyPrefixUsers)
+	if err != nil {
+		return nil, err
+	}
+	instances, err := s.etcd.List(ctx, models.KeyPrefixInstances)
+	if err != nil {
+		return nil, err
+	}
+	return teamHolders(assignments, users, instances, teamID)
+}
+
+// teamHolders picks the accounts a team cannot be deleted from under: every
+// user that exists, with an assignment naming the team on an instance that
+// exists.
+//
+// The rule is what the access layer could honour, read the way it reads: a
+// user id is matched with or without the quotes an old bug wrote around some
+// of them, as RBAC's fallbacks and the orphan scan match it. A super admin
+// counts too. Its assignments are not read while the role is global, and are
+// read again the day it is taken away - skipped, the delete left one naming a
+// team that was gone, for that day.
+//
+// What cannot be honoured does not count: an assignment left by a user since
+// deleted, or on an instance since removed. Nobody can act through it, the
+// maintenance page purges the first kind, and counting either made a team
+// undeletable for a reason no screen shows. A user whose record no longer
+// parses is not that: it exists (see livingUsers), and counts, by its id.
+//
+// Nothing is rewritten. Taking the team out of the assignments instead of
+// refusing was tried, and every way of doing it left something worse than a
+// refusal: a developer or a viewer with no team, which the assignment API
+// itself refuses to create; a write racing the Users page; a team that kept
+// existing with fewer members after a delete that failed half-way.
+//
+// With no users read at all, nothing is judged - as for the orphan scan: that
+// read failed, and against it every assignment would look like nobody's.
+func teamHolders(assignments, users, instances map[string][]byte, teamID string) ([]string, error) {
+	if len(users) == 0 {
+		return nil, ErrNoUsersRead
+	}
+	// Who exists, as the orphan scan reads it.
+	names := livingUsers(users)
+	exists := make(map[string]bool, len(instances))
+	for key := range instances {
+		exists[strings.TrimPrefix(key, models.KeyPrefixInstances)] = true
+	}
+
+	held := map[string]bool{}
+	holders := []string{}
+	for key, data := range assignments {
+		var ui models.UserInstance
+		if json.Unmarshal(data, &ui) != nil || !ui.HasTeam(teamID) {
+			continue
+		}
+		userSegment, instanceID, _ := strings.Cut(strings.TrimPrefix(key, models.KeyPrefixUserInstances), "/")
+		userID := unquoteID(userSegment)
+		name, alive := names[userID]
+		if !alive || !exists[instanceID] || held[userID] {
+			continue
+		}
+		held[userID] = true
+		holders = append(holders, name)
+	}
+	sort.Strings(holders)
+	return holders, nil
 }
 
 // assignmentsOfTeam picks, out of the stored assignments, those that hold

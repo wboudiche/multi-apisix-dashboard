@@ -1070,7 +1070,9 @@
     "updated": "Takım başarıyla güncellendi",
     "updateFailed": "Takım güncellenemedi",
     "deleted": "Takım başarıyla silindi",
-    "deleteFailed": "Takım silinemedi"
+    "deleteFailed": "Takım silinemedi",
+    "deleteOwnsResources": "Bu takımın hâlâ sahip olduğu kaynaklar: {{count}}. Önce onları yeniden atayın veya silin.",
+    "deleteHasMembers": "Bu takıma hâlâ atanmış kullanıcılar: {{users}}. Önce onları başka bir takıma taşıyın."
   },
   "labelFilter": {
     "add": "Filtreye ekle",
