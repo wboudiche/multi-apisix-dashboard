@@ -116,6 +116,12 @@ func TestLivingUsersNamesAnId(t *testing.T) {
 		`/users/"u-gina"`: []byte(`not json`),
 		"/users/u-gina":   []byte(`{"id":"u-gina","username":"gina"}`),
 		"/users/u-broken": []byte(`not json`),
+		// Two aliases with a name each: the key that sorts first, every time.
+		"/users/k1": []byte(`{"id":"u-twice","username":"first"}`),
+		"/users/k2": []byte(`{"id":"u-twice","username":"second"}`),
+		// Its own record has no name to give: an alias that has one gives it.
+		"/users/u-hank": []byte(`{"id":"u-hank"}`),
+		"/users/zz":     []byte(`{"id":"u-hank","username":"hank"}`),
 		// No id at all is nobody.
 		"/users/": []byte(`{}`),
 	}
@@ -129,6 +135,11 @@ func TestLivingUsersNamesAnId(t *testing.T) {
 		"u-nameless": "u-nameless",
 		"u-gina":     "gina",
 		"u-broken":   "u-broken",
+		"k1":         "first",
+		"k2":         "second",
+		"u-twice":    "first",
+		"u-hank":     "hank",
+		"zz":         "hank",
 	}
 	for i := 0; i < 20; i++ {
 		if got := livingUsers(users); !reflect.DeepEqual(got, want) {

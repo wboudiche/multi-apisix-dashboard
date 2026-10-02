@@ -172,7 +172,8 @@ func (s *MaintenanceService) purgeKeys(ctx context.Context, keys []string, orpha
 //
 // A user counts as existing if its key does, whatever its record holds: a
 // record that no longer parses is still a user, and its access is not this
-// sweep's to take away. Ids are compared with their quotes stripped, because
+// sweep's to take away - a key with no id in it aside, which is nobody's (see
+// livingUsers). Ids are compared with their quotes stripped, because
 // middleware/rbac.go still honours assignments an earlier bug wrote under a
 // quoted id - "<id>", or "\"<id>\"" - and those belong to living users.
 func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssignment, error) {
@@ -218,12 +219,16 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 // one (#375). Two readings had already come apart on the record that does not
 // parse.
 //
-// The name is the username, or the id itself for want of one - never a blank,
-// and never the key of some other record. Where several records answer to one
-// id, the record stored under that very id names it before one that answers
-// to it by an alias - a key in quotes, or an id written in a record kept
-// under another key - and among equals the one whose key sorts first, so that
-// the same question gets the same answer twice.
+// An id that is blank once its quotes are off is nobody: no account signs in
+// under it, and it would be named by a blank.
+//
+// The name is a username where any record answering to the id has one, and
+// the id itself for want of one - never the key of some other record. Where
+// several records have a username to give, the record stored under that very
+// id gives it before one that answers to the id by an alias - a key in
+// quotes, or an id written in a record kept under another key - and among
+// aliases the one whose key sorts first, so that the same question gets the
+// same answer twice.
 func livingUsers(users map[string][]byte) map[string]string {
 	keys := make([]string, 0, len(users))
 	for key := range users {
