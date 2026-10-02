@@ -48,7 +48,12 @@
     "healthUnknown": "Bilinmiyor",
     "healthUnknownWhy": "Bilinmiyor: {{reason}}",
     "healthChecking": "Kontrol ediliyor…",
-    "noUsername": "Kullanıcı"
+    "noUsername": "Kullanıcı",
+    "language": "Dil",
+    "openNavigation": "Gezinmeyi aç",
+    "closeNavigation": "Gezinmeyi kapat",
+    "collapseNavigation": "Gezinmeyi daralt",
+    "expandNavigation": "Gezinmeyi genişlet"
   },
   "instanceGuard": {
     "noInstances": {
@@ -301,7 +306,10 @@
       "editorMode": {
         "form": "Form",
         "json": "JSON"
-      }
+      },
+      "addItem": "Öğe ekle",
+      "removeItem": "Öğeyi kaldır",
+      "clearSearch": "Aramayı temizle"
     },
     "protos": {
       "content": "İçerik",
@@ -382,7 +390,8 @@
       "headerKey": "Başlık Adı",
       "headerValue": "Başlık Değeri",
       "addHeader": "Başlık Ekle",
-      "syncNotice": "proxy-rewrite eklentisini otomatik olarak yapılandırır"
+      "syncNotice": "proxy-rewrite eklentisini otomatik olarak yapılandırır",
+      "removeHeader": "Başlığı kaldır"
     },
     "search": "Ara",
     "secrets": {
@@ -439,7 +448,8 @@
         "upstream": "Upstream Yapılandırması",
         "plugins": "Plugin'ler",
         "noPlugins": "Plugin yapılandırılmadı"
-      }
+      },
+      "removeHost": "Sunucuyu kaldır"
     },
     "ssls": {
       "cert": "Certificate",
@@ -676,7 +686,9 @@
       "response": "Yanıt",
       "header": "Başlık",
       "value": "Değer",
-      "emptyResponse": "Yanıtı görmek için bir istek gönderin"
+      "emptyResponse": "Yanıtı görmek için bir istek gönderin",
+      "removeHeader": "Başlığı kaldır",
+      "removeParameter": "Parametreyi kaldır"
     },
     "import": {
       "title": "Rotaları içe aktar",
@@ -891,7 +903,8 @@
       "columnsFixed": "Sabit",
       "columnsNameAlwaysShown": "Her satır tanınabilsin diye her zaman gösterilir",
       "emptyOwnershipHint": "Başka bir ekibe ait olan ya da henüz hiçbir ekibe atanmamış rotalar burada gösterilmez. Bir rotayı görmeyi bekliyorduysanız, bir yöneticiden onu ekibinize atamasını isteyin.",
-      "headerTeam": "Ekip"
+      "headerTeam": "Ekip",
+      "refresh": "Yenile"
     },
     "createFailed": "Rota oluşturulamadı",
     "updateFailed": "Rota güncellenemedi"
@@ -1062,10 +1075,6 @@
     "service_upstream_unresolved": "Servis listesi okunamadı; bu yüzden upstream'ine bir servis üzerinden ulaşan rotalar aşağıda upstream göstermiyor.",
     "unresolvedTitle": "Upstream'ler çözümlenemedi"
   },
-  "common": {
-    "expand": "Genişlet",
-    "collapse": "Daralt"
-  },
   "error": {
     "probeBusy": "Panel şu anda aynı anda izin verdiği kadar giden test çalıştırıyor. Birazdan yeniden deneyin.",
     "probeBusyCaller": "Bir hesabın çalıştırabileceği kadar giden testi hâlihazırda çalıştırıyorsunuz. Birinin bitmesini bekleyin.",
@@ -1122,7 +1131,8 @@
     "loading": "Etiketler yükleniyor…",
     "loadFailed": "Etiket kataloğu yüklenemedi; bu yüzden etikete göre filtreleme kullanılamıyor.",
     "noKeys": "Henüz tanımlı etiket anahtarı yok",
-    "noValues": "Bu anahtar için henüz tanımlı değer yok"
+    "noValues": "Bu anahtar için henüz tanımlı değer yok",
+    "remove": "{{label}} filtreden kaldır"
   },
   "pageError": {
     "retry": "Yeniden dene",

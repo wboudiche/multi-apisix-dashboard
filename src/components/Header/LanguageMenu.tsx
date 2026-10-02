@@ -50,7 +50,7 @@ export const LanguageMenu = () => {
   return (
     <Menu shadow="md" width={200}>
       <Menu.Target>
-        <ActionIcon variant="light" size="sm">
+        <ActionIcon variant="light" size="sm" aria-label={t('header.language')}>
           <IconLanguage />
         </ActionIcon>
       </Menu.Target>

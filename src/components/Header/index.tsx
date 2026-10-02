@@ -363,14 +363,21 @@ export const Header: FC<HeaderProps> = (props) => {
     <AppShell.Header>
       <Group h="100%" px="md" justify="space-between">
         <Group h="100%" gap="sm">
-          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-          <Tooltip label={collapsed ? t('common.expand') : t('common.collapse')} position="bottom" withArrow>
+          <Burger
+            opened={opened}
+            onClick={toggle}
+            hiddenFrom="sm"
+            size="sm"
+            aria-label={opened ? t('header.closeNavigation') : t('header.openNavigation')}
+          />
+          <Tooltip label={collapsed ? t('header.expandNavigation') : t('header.collapseNavigation')} position="bottom" withArrow>
             <ActionIcon
               variant="subtle"
               color="gray"
               onClick={onCollapseToggle}
               visibleFrom="sm"
               size="lg"
+              aria-label={collapsed ? t('header.expandNavigation') : t('header.collapseNavigation')}
             >
               {collapsed ? <IconMenu /> : <IconMenuOpen />}
             </ActionIcon>

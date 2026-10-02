@@ -130,10 +130,6 @@
   "consumers": {
     "singular": "Consumer"
   },
-  "common": {
-    "collapse": "Collapse",
-    "expand": "Expand"
-  },
   "credentials": {
     "singular": "Credential"
   },
@@ -284,7 +280,9 @@
       "otherTeam": "This route belongs to another team.",
       "noSuchRoute": "This route no longer exists on this instance.",
       "pathNotMatched": "That path is not one this route matches.",
-      "unverified": "The dashboard could not check who owns this route, so it did not send the request."
+      "unverified": "The dashboard could not check who owns this route, so it did not send the request.",
+      "removeHeader": "Remove header",
+      "removeParameter": "Remove parameter"
     },
     "plugins": {
       "addPlugin": "Add Plugin",
@@ -320,7 +318,10 @@
       "priorityCustom": "priority {{priority}}, set here",
       "priorityDefault": "priority {{priority}}",
       "priorityHelp": "Higher runs first. Leave empty to run at what this gateway uses: {{priority}}.",
-      "priorityHelpUnknown": "Higher runs first. This gateway does not say what this plugin runs at by default."
+      "priorityHelpUnknown": "Higher runs first. This gateway does not say what this plugin runs at by default.",
+      "addItem": "Add item",
+      "removeItem": "Remove item",
+      "clearSearch": "Clear search"
     },
     "protos": {
       "content": "Content",
@@ -414,7 +415,8 @@
       "headerKey": "Header Name",
       "headerValue": "Header Value",
       "addHeader": "Add Header",
-      "syncNotice": "Configures the proxy-rewrite plugin automatically"
+      "syncNotice": "Configures the proxy-rewrite plugin automatically",
+      "removeHeader": "Remove header"
     },
     "search": "Search",
     "secrets": {
@@ -471,7 +473,8 @@
         "upstream": "Upstream Configuration",
         "plugins": "Plugins",
         "noPlugins": "No plugins configured"
-      }
+      },
+      "removeHost": "Remove host"
     },
     "ssls": {
       "cert": "Certificate",
@@ -821,7 +824,8 @@
       "headerId": "ID",
       "duplicateFailed": "Failed to duplicate",
       "updateFailed": "Failed to update",
-      "headerTeam": "Team"
+      "headerTeam": "Team",
+      "refresh": "Refresh"
     },
     "createFailed": "Failed to create route",
     "updateFailed": "Failed to update route"
@@ -1001,7 +1005,12 @@
     "healthUnknown": "Unknown",
     "healthUnknownWhy": "Unknown: {{reason}}",
     "healthChecking": "Checking…",
-    "noUsername": "User"
+    "noUsername": "User",
+    "language": "Language",
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
+    "collapseNavigation": "Collapse navigation",
+    "expandNavigation": "Expand navigation"
   },
   "teams": {
     "title": "Teams",
@@ -1059,7 +1068,8 @@
     "loading": "Loading labels…",
     "loadFailed": "Could not load the label catalogue, so filtering by label is unavailable.",
     "noKeys": "No label keys are defined yet",
-    "noValues": "This key has no values defined yet"
+    "noValues": "This key has no values defined yet",
+    "remove": "Remove {{label}} from the filter"
   },
   "changePassword": {
     "confirm": "Confirm new password",

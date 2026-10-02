@@ -827,7 +827,7 @@ function RouteComponent() {
                 {t('form.importWsdl.title')}
               </Button>
             )}
-            <ActionIcon variant="subtle" color="gray" size="md" onClick={() => refetch()}><IconRefresh width="18" height="18" /></ActionIcon>
+            <ActionIcon variant="subtle" color="gray" size="md" onClick={() => refetch()} aria-label={t('routes.list.refresh')}><IconRefresh width="18" height="18" /></ActionIcon>
             <Popover width={200} position="bottom-end" withArrow shadow="md">
               <Popover.Target>
                 <ActionIcon

@@ -21,6 +21,7 @@ import { PAGE_SIZE_MAX } from '@/config/constant';
 import type { FileRouteTypes } from '@/routeTree.gen';
 
 import { env } from '../env';
+import { i18n } from './i18n';
 
 export const uiGoto = <T extends FileRouteTypes['to']>(
   page: Page,
@@ -76,8 +77,8 @@ export const uiCellsShowing = (scope: Page | Locator, text: string) =>
  * app starts in English.
  */
 export const uiSwitchLanguage = async (page: Page, name: 'Deutsch' | 'Español' | 'Türkçe' | '中文') => {
-  // The menu's button has no accessible name of its own yet.
-  await page.locator('header .mantine-ActionIcon-root[aria-haspopup="menu"]').click();
+  // From English: the button is named in the language the page is in.
+  await page.getByRole('button', { name: i18n.t('header.language'), exact: true }).click();
   await page.getByRole('menuitem', { name }).click();
 };
 

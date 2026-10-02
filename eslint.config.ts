@@ -32,6 +32,7 @@ import unusedImports from 'eslint-plugin-unused-imports'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
+import iconButtonName from './eslint-rules/icon-button-name';
 import interpolationData from './eslint-rules/interpolation-data';
 import noProseLiteral from './eslint-rules/no-prose-literal';
 import readableKey from './eslint-rules/readable-key';
@@ -257,6 +258,7 @@ const fieldKeysAreNotProse = tseslint.config({
 // twice under one name.
 const local = {
   rules: {
+    'icon-button-name': iconButtonName,
     'interpolation-data': interpolationData,
     'no-prose-literal': noProseLiteral,
     'readable-key': readableKey,
@@ -295,6 +297,16 @@ const keysAreSpelled = tseslint.config({
   ignores: ['src/**/*.test.{ts,tsx}'],
   plugins: { local },
   rules: { 'local/readable-key': 'error' },
+});
+
+/**
+ * A button that shows only an icon has a name: see
+ * eslint-rules/icon-button-name.ts.
+ */
+const iconButtonsAreNamed = tseslint.config({
+  files: ['src/**/*.tsx'],
+  plugins: { local },
+  rules: { 'local/icon-button-name': 'error' },
 });
 
 const i18nRules = tseslint.config({
@@ -441,5 +453,6 @@ export default tseslint.config(
   fieldKeysAreNotProse,
   proseHasAKey,
   keysAreSpelled,
+  iconButtonsAreNamed,
   srcRules
 );

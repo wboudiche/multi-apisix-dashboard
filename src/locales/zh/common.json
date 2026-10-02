@@ -48,7 +48,12 @@
     "healthUnknown": "未知",
     "healthUnknownWhy": "未知：{{reason}}",
     "healthChecking": "检查中…",
-    "noUsername": "用户"
+    "noUsername": "用户",
+    "language": "语言",
+    "openNavigation": "打开导航",
+    "closeNavigation": "关闭导航",
+    "collapseNavigation": "收起导航",
+    "expandNavigation": "展开导航"
   },
   "instanceGuard": {
     "noInstances": {
@@ -301,7 +306,10 @@
       "editorMode": {
         "form": "表单",
         "json": "JSON"
-      }
+      },
+      "addItem": "添加项",
+      "removeItem": "删除项",
+      "clearSearch": "清除搜索"
     },
     "protos": {
       "content": "内容",
@@ -382,7 +390,8 @@
       "headerKey": "请求头名称",
       "headerValue": "请求头值",
       "addHeader": "添加请求头",
-      "syncNotice": "自动配置 proxy-rewrite 插件"
+      "syncNotice": "自动配置 proxy-rewrite 插件",
+      "removeHeader": "删除请求头"
     },
     "search": "搜索",
     "secrets": {
@@ -439,7 +448,8 @@
         "upstream": "上游配置",
         "plugins": "插件",
         "noPlugins": "未配置插件"
-      }
+      },
+      "removeHost": "删除主机"
     },
     "ssls": {
       "cert": "证书",
@@ -676,7 +686,9 @@
       "response": "响应",
       "header": "标头",
       "value": "值",
-      "emptyResponse": "发送一个请求以查看响应"
+      "emptyResponse": "发送一个请求以查看响应",
+      "removeHeader": "删除请求头",
+      "removeParameter": "删除参数"
     },
     "import": {
       "title": "导入路由",
@@ -891,7 +903,8 @@
       "columnsFixed": "固定",
       "columnsNameAlwaysShown": "始终显示，以便识别每一行",
       "emptyOwnershipHint": "属于其他团队、或尚未分配给任何团队的路由不会显示在这里。如果你期望看到某条路由，请让管理员把它分配给你的团队。",
-      "headerTeam": "团队"
+      "headerTeam": "团队",
+      "refresh": "刷新"
     },
     "createFailed": "创建路由失败",
     "updateFailed": "更新路由失败"
@@ -1062,10 +1075,6 @@
     "service_upstream_unresolved": "无法读取服务列表，因此通过服务访问上游的路由在下方不显示上游。",
     "unresolvedTitle": "上游未解析"
   },
-  "common": {
-    "expand": "展开",
-    "collapse": "收起"
-  },
   "error": {
     "probeBusy": "仪表板已在同时运行其允许的最大数量的外部测试。请稍后重试。",
     "probeBusyCaller": "您已有一个账号允许的最大数量的外部测试在运行。请等待其中一个完成。",
@@ -1122,7 +1131,8 @@
     "loading": "正在加载标签…",
     "loadFailed": "无法加载标签目录，因此无法按标签筛选。",
     "noKeys": "尚未定义任何标签键",
-    "noValues": "此键尚未定义任何值"
+    "noValues": "此键尚未定义任何值",
+    "remove": "从筛选中移除 {{label}}"
   },
   "pageError": {
     "retry": "重试",

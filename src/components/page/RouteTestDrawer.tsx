@@ -288,7 +288,13 @@ export const RouteTestDrawer = ({
                       size="xs"
                       style={{ flex: 2 }}
                     />
-                    <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => removeHeader(i)}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      size="sm"
+                      onClick={() => removeHeader(i)}
+                      aria-label={t('form.routeTest.removeHeader')}
+                    >
                       <IconDelete width="14" height="14" />
                     </ActionIcon>
                   </Group>
@@ -321,7 +327,13 @@ export const RouteTestDrawer = ({
                       size="xs"
                       style={{ flex: 2 }}
                     />
-                    <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => removeQuery(i)}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      size="sm"
+                      onClick={() => removeQuery(i)}
+                      aria-label={t('form.routeTest.removeParameter')}
+                    >
                       <IconDelete width="14" height="14" />
                     </ActionIcon>
                   </Group>

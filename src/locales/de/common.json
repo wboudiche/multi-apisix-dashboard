@@ -48,7 +48,12 @@
     "healthUnknown": "Unbekannt",
     "healthUnknownWhy": "Unbekannt: {{reason}}",
     "healthChecking": "Wird geprüft…",
-    "noUsername": "Benutzer"
+    "noUsername": "Benutzer",
+    "language": "Sprache",
+    "openNavigation": "Navigation öffnen",
+    "closeNavigation": "Navigation schließen",
+    "collapseNavigation": "Navigation einklappen",
+    "expandNavigation": "Navigation ausklappen"
   },
   "instanceGuard": {
     "noInstances": {
@@ -301,7 +306,10 @@
       "editorMode": {
         "form": "Formular",
         "json": "JSON"
-      }
+      },
+      "addItem": "Eintrag hinzufügen",
+      "removeItem": "Eintrag entfernen",
+      "clearSearch": "Suche leeren"
     },
     "protos": {
       "content": "Inhalt",
@@ -382,7 +390,8 @@
       "headerKey": "Header-Name",
       "headerValue": "Header-Wert",
       "addHeader": "Header hinzufügen",
-      "syncNotice": "Konfiguriert das proxy-rewrite Plugin automatisch"
+      "syncNotice": "Konfiguriert das proxy-rewrite Plugin automatisch",
+      "removeHeader": "Header entfernen"
     },
     "search": "Suche",
     "secrets": {
@@ -439,7 +448,8 @@
         "upstream": "Upstream-Konfiguration",
         "plugins": "Plugins",
         "noPlugins": "Keine Plugins konfiguriert"
-      }
+      },
+      "removeHost": "Host entfernen"
     },
     "ssls": {
       "cert": "Zertifikat",
@@ -676,7 +686,9 @@
       "response": "Antwort",
       "header": "Header",
       "value": "Wert",
-      "emptyResponse": "Senden Sie eine Anfrage, um die Antwort zu sehen"
+      "emptyResponse": "Senden Sie eine Anfrage, um die Antwort zu sehen",
+      "removeHeader": "Header entfernen",
+      "removeParameter": "Parameter entfernen"
     },
     "import": {
       "title": "Routen importieren",
@@ -891,7 +903,8 @@
       "columnsFixed": "Fest",
       "columnsNameAlwaysShown": "Immer sichtbar, damit jede Zeile erkennbar bleibt",
       "emptyOwnershipHint": "Routen, die einem anderen Team gehören oder noch keinem Team zugewiesen sind, werden hier nicht angezeigt. Falls Sie eine Route erwartet haben, bitten Sie Ihren Administrator, sie Ihrem Team zuzuweisen.",
-      "headerTeam": "Team"
+      "headerTeam": "Team",
+      "refresh": "Aktualisieren"
     },
     "createFailed": "Route konnte nicht erstellt werden",
     "updateFailed": "Route konnte nicht aktualisiert werden"
@@ -1062,10 +1075,6 @@
     "service_upstream_unresolved": "Die Service-Liste konnte nicht gelesen werden, daher zeigen Routen, die ihren Upstream über einen Service erreichen, unten keinen an.",
     "unresolvedTitle": "Upstreams nicht aufgelöst"
   },
-  "common": {
-    "expand": "Ausklappen",
-    "collapse": "Einklappen"
-  },
   "error": {
     "probeBusy": "Das Dashboard führt bereits so viele ausgehende Tests aus, wie es gleichzeitig zulässt. Versuchen Sie es in einem Moment erneut.",
     "probeBusyCaller": "Sie haben bereits so viele ausgehende Tests laufen, wie ein Konto haben darf. Warten Sie, bis einer fertig ist.",
@@ -1122,7 +1131,8 @@
     "loading": "Labels werden geladen…",
     "loadFailed": "Der Label-Katalog konnte nicht geladen werden, das Filtern nach Label ist daher nicht verfügbar.",
     "noKeys": "Es sind noch keine Label-Keys definiert",
-    "noValues": "Für diesen Key sind noch keine Werte definiert"
+    "noValues": "Für diesen Key sind noch keine Werte definiert",
+    "remove": "{{label}} aus dem Filter entfernen"
   },
   "pageError": {
     "retry": "Erneut versuchen",

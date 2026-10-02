@@ -49,6 +49,7 @@ export const PluginCardListSearch = (props: PluginCardListSearchProps) => {
       rightSectionPointerEvents="all"
       rightSection={
         <CloseButton
+          aria-label={t('form.plugins.clearSearch')}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();

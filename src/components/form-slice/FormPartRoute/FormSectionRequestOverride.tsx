@@ -351,6 +351,7 @@ export const FormSectionRequestOverride = () => {
               <ActionIcon
                 color="red"
                 variant="subtle"
+                aria-label={t('form.requestOverride.removeHeader')}
                 onClick={() => {
                   update({ setHeaders: state.setHeaders.filter((_, j) => j !== i) });
                 }}
@@ -364,6 +365,7 @@ export const FormSectionRequestOverride = () => {
           <Group>
             <ActionIcon
               variant="light"
+              aria-label={t('form.requestOverride.addHeader')}
               onClick={() => update({ setHeaders: [...state.setHeaders, { key: '', value: '' }] })}
             >
               <IconAdd width="16" height="16" />

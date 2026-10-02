@@ -35,7 +35,7 @@ test('says so when the label catalogue cannot be loaded', async ({ page }) => {
 
   await page.goto('/ui/routes');
   // The label filter lives in the advanced panel, which starts collapsed.
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await expect(
     page.getByText('Could not load the label catalogue, so filtering by label is unavailable.')
   ).toBeVisible({ timeout: 20000 });
@@ -66,7 +66,7 @@ test('distinguishes an empty catalogue from a broken one', async ({ page }) => {
   );
 
   await page.goto('/ui/routes');
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   const select = keySelect(page);
   await expect(select).toBeEnabled({ timeout: 20000 });
 
@@ -130,7 +130,7 @@ test('offers the catalogue of the instance selected, after a switch', async ({ p
     await expect(page.getByRole('table')).toBeVisible({ timeout: 20000 });
     await switchTo('Local APISIX');
 
-    await page.getByRole('button', { name: 'Expand' }).click();
+    await page.getByRole('button', { name: 'Expand', exact: true }).click();
     const keys = page.getByPlaceholder('Select key');
     await keys.click();
     await expect(page.getByRole('option', { name: localName })).toBeVisible({ timeout: 20000 });
@@ -179,7 +179,7 @@ test('offers, and filters by, a label the routes carry that the catalogue does n
 
     await permission.switchInstance(page, 'Local APISIX');
     await page.goto('/ui/routes');
-    await page.getByRole('button', { name: 'Expand' }).click();
+    await page.getByRole('button', { name: 'Expand', exact: true }).click();
     await page.getByPlaceholder('Select key').click();
     await page.getByRole('option', { name: key, exact: true }).click({ timeout: 20000 });
     await page.getByPlaceholder('Any value').click();
@@ -217,9 +217,9 @@ test('offers a label written while the page is open, when the filter opens again
   try {
     await permission.switchInstance(page, 'Local APISIX');
     await page.goto('/ui/routes');
-    await page.getByRole('button', { name: 'Expand' }).click();
+    await page.getByRole('button', { name: 'Expand', exact: true }).click();
     await expect(page.getByPlaceholder('Select key')).toBeEnabled({ timeout: 20000 });
-    await page.getByRole('button', { name: 'Collapse' }).click();
+    await page.getByRole('button', { name: 'Collapse', exact: true }).click();
 
     // Written while the page stays open, as an import would.
     await defineLabel(token, fx.localInstanceId, key);
@@ -235,7 +235,7 @@ test('offers a label written while the page is open, when the filter opens again
     });
     await forgetLabel(token, fx.localInstanceId, key);
 
-    await page.getByRole('button', { name: 'Expand' }).click();
+    await page.getByRole('button', { name: 'Expand', exact: true }).click();
     await page.getByPlaceholder('Select key').click();
     await expect(page.getByRole('option', { name: key, exact: true })).toBeVisible({
       timeout: 20000,

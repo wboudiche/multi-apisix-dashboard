@@ -101,7 +101,7 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
   if (mode === 'icon') {
     return (
       <Tooltip label={t('form.btn.delete')}>
-        <ActionIcon variant="light" color="red" onClick={openModal}>
+        <ActionIcon variant="light" color="red" onClick={openModal} aria-label={t('form.btn.delete')}>
           <IconDelete width="18" height="18" />
         </ActionIcon>
       </Tooltip>
