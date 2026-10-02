@@ -17,7 +17,7 @@
 import { consumersPom } from '@e2e/pom/consumers';
 import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiHasToastMsg } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
@@ -99,7 +99,7 @@ test('should CRUD consumer with required fields', async ({ page }) => {
   await test.step('consumer should exist in list page', async () => {
     await consumersPom.getConsumerNavBtn(page).click();
     await consumersPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: consumerUsername })).toBeVisible();
+    await expect(uiCell(page, consumerUsername)).toBeVisible();
 
     // Click on the view button to go to the detail page
     await page
@@ -128,6 +128,6 @@ test('should CRUD consumer with required fields', async ({ page }) => {
     // Navigate to consumers index to verify consumer is gone
     await consumersPom.toIndex(page);
     await consumersPom.isIndexPage(page);
-    await expect(page.getByRole('cell', { name: consumerUsername })).toBeHidden();
+    await expect(uiCell(page, consumerUsername)).toBeHidden();
   });
 });

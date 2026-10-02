@@ -60,6 +60,7 @@ import { req } from '@/config/req';
 import { useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { useRowSelection } from '@/hooks/useRowSelection';
+import { checkboxNames, rowId, rowNameOrId } from '@/hooks/useTableRowSelection';
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { ownTeamsAtom } from '@/stores/team';
@@ -165,6 +166,18 @@ export const RouteList = (props: RouteListProps) => {
   // came back at the first row ticked there counting them, and Batch Delete
   // took routes nobody could see (#371).
   const [selectedIds, setSelectedIds] = useRowSelection(allIds, listKey);
+  // What each row's checkbox is called: its route, with the id beside it
+  // where two routes on the list share a name (see rowNames).
+  const rowCheckboxNames = useMemo(
+    () =>
+      checkboxNames<{ value: { id: string; name?: string } }>(
+        t,
+        data?.list ?? [],
+        rowId,
+        rowNameOrId
+      ),
+    [t, data?.list]
+  );
   const allSelected = allIds.length > 0 && selectedIds.length === allIds.length;
   const someSelected = selectedIds.length > 0;
 
@@ -338,7 +351,7 @@ export const RouteList = (props: RouteListProps) => {
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: 40 }}><Checkbox aria-label={t('routes.list.selectAll')} checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll} /></Table.Th>
+            <Table.Th style={{ width: 40 }}><Checkbox aria-label={t('table.selectAll')} checked={allSelected} indeterminate={someSelected && !allSelected} onChange={toggleSelectAll} /></Table.Th>
             {isVisible('name') && <Table.Th>{t('form.basic.name')}</Table.Th>}
             {isVisible('id') && <Table.Th>{t('routes.list.headerId')}</Table.Th>}
             {isVisible('host') && <Table.Th>{t('routes.list.headerHost')}</Table.Th>}
@@ -368,9 +381,9 @@ export const RouteList = (props: RouteListProps) => {
                   // same name on every row had a screen reader select rows for
                   // a batch delete blind (#348). The name also lands in this
                   // cell's accessible name, so a spec addresses the name cell
-                  // with `exact: true`.
-                  aria-label={t('routes.list.selectRow', {
-                    name: record.value.name || record.value.id,
+                  // through `uiCell`, which asks for it exactly.
+                  aria-label={t('table.selectRow', {
+                    name: rowCheckboxNames.get(String(record.value.id)) ?? rowNameOrId(record),
                   })}
                   checked={selectedIds.includes(record.value.id)}
                   onChange={() => toggleSelect(record.value.id)}

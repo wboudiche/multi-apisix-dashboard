@@ -28,7 +28,7 @@ import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_GLOBAL_RULES } from '@/config/constant';
 import { queryClient } from '@/config/global';
-import { useRowSelection } from '@/hooks/useRowSelection';
+import { rowId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
@@ -49,9 +49,10 @@ function GlobalRulesList() {
   const { t } = useTranslation();
   const { data, isLoading, refetch, pagination, listKey } = useGlobalRuleList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.id),
-    listKey
+  const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
+    data.list,
+    listKey,
+    { idOf: rowId }
   );
 
   const columns = useMemo<
@@ -93,15 +94,11 @@ function GlobalRulesList() {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey={(record) => record.value.id}
+        {...tableProps}
         loading={isLoading}
         search={false}
         options={false}
         pagination={pagination}
-        rowSelection={{
-          selectedRowKeys: selectedIds,
-          onChange: (keys) => setSelectedIds(keys as string[]),
-        }}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {

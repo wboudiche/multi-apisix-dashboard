@@ -30,18 +30,22 @@ import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMERS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
-import { useRowSelection } from '@/hooks/useRowSelection';
+import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+
+/** A consumer has no id: it is keyed, and called, by its username. */
+const consumerName = (record: APISIXType['RespConsumerItem']) => record.value.username;
 
 function ConsumersList() {
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useConsumerList();
   // Never more than the rows on screen: see useRowSelection (#371).
-  const [selectedIds, setSelectedIds] = useRowSelection(
-    data.list.map((record) => record.value.username),
-    listKey
+  const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
+    data.list,
+    listKey,
+    { idOf: consumerName }
   );
 
   const columns = useMemo<ProColumns<APISIXType['RespConsumerItem']>[]>(() => {
@@ -111,15 +115,11 @@ function ConsumersList() {
       <ProTable
         columns={columns}
         dataSource={data.list}
-        rowKey={(record) => record.value.username}
+        {...tableProps}
         loading={isLoading}
         search={false}
         options={false}
         pagination={pagination}
-        rowSelection={{
-          selectedRowKeys: selectedIds,
-          onChange: (keys) => setSelectedIds(keys as string[]),
-        }}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
           menu: {

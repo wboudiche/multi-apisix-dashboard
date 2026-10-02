@@ -21,6 +21,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
+import { uiCell } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { putConsumerReq } from '@/apis/consumers';
@@ -157,13 +158,13 @@ test('should only show credentials for current consumer', async ({ page }) => {
 
     // Credentials from another consumer should not be visible
     await expect(
-      page.getByRole('cell', { name: anotherConsumerCredential.id })
+      uiCell(page, anotherConsumerCredential.id)
     ).toBeHidden();
 
     // Only credentials belonging to current consumer should be visible
     for (const credential of credentials) {
       await expect(
-        page.getByRole('cell', { name: credential.id })
+        uiCell(page, credential.id)
       ).toBeVisible();
     }
   });
@@ -175,13 +176,13 @@ test('should only show credentials for current consumer', async ({ page }) => {
 
     // Should only see the other consumer's credential
     await expect(
-      page.getByRole('cell', { name: anotherConsumerCredential.id })
+      uiCell(page, anotherConsumerCredential.id)
     ).toBeVisible();
 
     // Should not see test consumer's credentials
     for (const credential of credentials) {
       await expect(
-        page.getByRole('cell', { name: credential.id })
+        uiCell(page, credential.id)
       ).toBeHidden();
     }
   });
@@ -198,10 +199,10 @@ test('should display credentials list under consumer', async ({ page }) => {
     // Verify all created credentials are displayed
     for (const credential of credentials) {
       await expect(
-        page.getByRole('cell', { name: credential.id })
+        uiCell(page, credential.id)
       ).toBeVisible();
       await expect(
-        page.getByRole('cell', { name: credential.desc || '' })
+        uiCell(page, credential.desc || '')
       ).toBeVisible();
     }
   });
@@ -299,7 +300,7 @@ test('should be able to delete credential', async ({ page }) => {
 
   await test.step('verify temporary credential exists', async () => {
     await expect(
-      page.getByRole('cell', { name: tempCredential.id })
+      uiCell(page, tempCredential.id)
     ).toBeVisible();
   });
 
@@ -326,7 +327,7 @@ test('should be able to delete credential', async ({ page }) => {
 
     // Verify the credential no longer appears
     await expect(
-      page.getByRole('cell', { name: tempCredential.id })
+      uiCell(page, tempCredential.id)
     ).toBeHidden();
   });
 });

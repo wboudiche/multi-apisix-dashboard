@@ -47,6 +47,29 @@ export const uiHasToastMsg = async (
   await expect(alertMsg).not.toBeVisible();
 };
 
+/**
+ * The cell that reads exactly `name`.
+ *
+ * Playwright matches a name by substring unless told otherwise, and a row's
+ * name is in two of its cells: the one that shows it, and the one holding the
+ * checkbox that selects it, which is named "Select <name>" (#348, #372). So
+ * `getByRole('cell', { name })` resolves to both - what turned five specs red
+ * in #347 - and ESLint sends a spec here, or to uiCellsShowing, instead.
+ */
+export const uiCell = (scope: Page | Locator, name: string) =>
+  // eslint-disable-next-line no-restricted-syntax -- the one place that may: it asks exactly
+  scope.getByRole('cell', { name, exact: true });
+
+/**
+ * Every cell that shows `text`, whatever else it holds: a spec's own fixtures
+ * on a list, by the prefix it named them with, or a cell that holds more than
+ * the name - a certificate's SNIs, a user beside their e-mail. By what the
+ * cell shows and not by its name, so the checkbox's cell, which shows
+ * nothing, is never one of them.
+ */
+export const uiCellsShowing = (scope: Page | Locator, text: string) =>
+  scope.getByRole('cell').filter({ hasText: text });
+
 export async function uiCannotSubmitEmptyForm(page: Page, pom: CommonPOM) {
   await pom.getAddBtn(page).click();
   await pom.isAddPage(page);

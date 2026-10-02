@@ -18,7 +18,7 @@ import { upstreamsPom } from '@e2e/pom/upstreams';
 import { deleteUpstreamsByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiHasToastMsg } from '@e2e/utils/ui';
 import {
   uiCheckUpstreamRequiredFields,
   uiFillUpstreamRequiredFields,
@@ -71,7 +71,7 @@ test('should CRUD upstream with required fields', async ({ page }) => {
   });
 
   await test.step('can see upstream in list page', async () => {
-    await expect(page.getByRole('cell', { name: upstreamName })).toBeVisible();
+    await expect(uiCell(page, upstreamName)).toBeVisible();
   });
 
   await test.step('navigate to upstream detail page', async () => {
@@ -169,6 +169,6 @@ test('should CRUD upstream with required fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete Upstream Successfully',
     });
-    await expect(page.getByRole('cell', { name: upstreamName })).toBeHidden();
+    await expect(uiCell(page, upstreamName)).toBeHidden();
   });
 });

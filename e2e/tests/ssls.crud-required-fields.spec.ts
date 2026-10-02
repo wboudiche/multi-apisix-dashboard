@@ -18,14 +18,16 @@ import { sslsPom } from '@e2e/pom/ssls';
 import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { genTLS } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCellsShowing, uiHasToastMsg } from '@e2e/utils/ui';
 import { uiFillSSLRequiredFields } from '@e2e/utils/ui/ssls';
 import { expect } from '@playwright/test';
 
 import { API_SSLS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
-const snis = ['test.example.com', 'www.test.example.com'];
+// Not a name another spec's fixture contains: cells are found by what they
+// show, and `test.example.com` is also shown by `full-test.example.com`.
+const snis = ['ssl-required.example.com', 'www.ssl-required.example.com'];
 
 // Only the certificates this spec created. SSLs carry no name, so they
 // are matched on their snis.
@@ -65,7 +67,7 @@ test('should CRUD SSL with required fields', async ({ page }) => {
   await test.step('SSL should exist in list page and navigate to detail', async () => {
     // Verify SSL exists in list
     const firstSni = snis[0];
-    await expect(page.getByRole('cell', { name: firstSni })).toBeVisible();
+    await expect(uiCellsShowing(page, firstSni)).toBeVisible();
 
     // Click on the View button to go to the detail page
     await page
@@ -156,6 +158,6 @@ test('should CRUD SSL with required fields', async ({ page }) => {
     await uiHasToastMsg(page, {
       hasText: 'Delete SSL Successfully',
     });
-    await expect(page.getByRole('cell', { name: snis[0] })).toBeHidden();
+    await expect(uiCellsShowing(page, snis[0])).toBeHidden();
   });
 });

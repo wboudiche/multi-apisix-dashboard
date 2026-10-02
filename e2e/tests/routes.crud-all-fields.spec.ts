@@ -18,11 +18,7 @@ import { routesPom } from '@e2e/pom/routes';
 import { deleteRoutesByNamePrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { test } from '@e2e/utils/test';
-import {
-  uiFillMonacoEditor,
-  uiGetMonacoEditor,
-  uiHasToastMsg,
-} from '@e2e/utils/ui';
+import { uiCell, uiFillMonacoEditor, uiGetMonacoEditor, uiHasToastMsg } from '@e2e/utils/ui';
 import {
   ROUTE_STEP_API_INFO,
   uiAddRouteNode,
@@ -334,13 +330,13 @@ test('should CRUD route with all fields', async ({ page }) => {
       hasText: 'Delete Route Successfully',
     });
     await expect(
-      page.getByRole('cell', { name: routeNameWithAllFields, exact: true })
+      uiCell(page, routeNameWithAllFields)
     ).toBeHidden();
 
     await page.reload();
     await routesPom.isIndexPage(page);
     await expect(
-      page.getByRole('cell', { name: routeNameWithAllFields, exact: true })
+      uiCell(page, routeNameWithAllFields)
     ).toBeHidden();
   });
 });

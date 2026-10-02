@@ -851,8 +851,6 @@
       "filterTeamPlaceholder": "Cualquier equipo",
       "filterTeamUnassigned": "Sin asignar",
       "headerId": "ID",
-      "selectAll": "Seleccionar todo",
-      "selectRow": "Seleccionar {{name}}",
       "duplicateFailed": "No se ha podido duplicar",
       "updateFailed": "No se ha podido actualizar",
       "columnsFixed": "Fijo",
@@ -931,7 +929,10 @@
   "table": {
     "actions": "Acciones",
     "disabled": "Deshabilitado",
-    "enabled": "Habilitado"
+    "enabled": "Habilitado",
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar {{name}}",
+    "nameWithId": "{{name}} ({{id}})"
   },
   "upstreams": {
     "health": "Estado",

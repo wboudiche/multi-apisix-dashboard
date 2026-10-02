@@ -100,6 +100,23 @@ const e2eRules = tseslint.config(
   {
     files: ['e2e/**/*.spec.ts'],
     ...playwright.configs['flat/recommended'],
+  },
+  {
+    // A name is matched by substring, and a row's name is also in the name of
+    // the checkbox that selects it - so a cell asked for by name is two cells
+    // (#372). The helpers say which one, once.
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.property.name='getByRole'][arguments.0.value='cell'] > ObjectExpression > Property[key.name='name']",
+          message:
+            'A cell asked for by name also matches the cell of the row checkbox - use uiCell or uiCellsShowing from @e2e/utils/ui.',
+        },
+      ],
+    },
   }
 );
 
@@ -308,6 +325,32 @@ const srcRules = tseslint.config({
         selector: "CallExpression[callee.name='t'] > ObjectExpression > SpreadElement",
         message:
           'i18n/no-unknown-key cannot see options behind a spread (#343) - write them out.',
+      },
+      // antd names no row checkbox, and the header's in English whatever
+      // the language (#372). The hook hands a table its selection with both
+      // named, and its row key with it, as props to spread; a rowSelection
+      // that reaches a table any other way - written out on it, built above
+      // it, behind a condition - has neither.
+      {
+        selector: "JSXAttribute[name.name='rowSelection']",
+        message:
+          'A rowSelection given to a table by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
+      },
+      {
+        // Built, not read: `const rowSelection = tableProps.rowSelection`
+        // is the hook's own.
+        selector:
+          ":matches(ObjectExpression > Property[key.name='rowSelection'], ObjectExpression > Property[key.value='rowSelection'], VariableDeclarator[id.name='rowSelection']) > :matches(ObjectExpression, ConditionalExpression)",
+        message:
+          'A rowSelection built by hand has checkboxes with no name (#372) - spread the tableProps of useTableRowSelection.',
+      },
+      // The selection is a list of row keys: a table keyed otherwise than it
+      // selects by ticks nothing, or deletes something else.
+      {
+        selector:
+          "JSXOpeningElement:has(> JSXSpreadAttribute[argument.name='tableProps']) > JSXAttribute[name.name='rowKey']",
+        message:
+          'tableProps holds the rowKey the selection goes by - a rowKey beside it replaces it or is replaced.',
       },
     ],
     'react-refresh/only-export-components': [

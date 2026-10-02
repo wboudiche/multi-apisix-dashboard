@@ -17,7 +17,7 @@
 import { adminPom } from '@e2e/pom/admin';
 import { adminToken } from '@e2e/utils/admin-api';
 import { test } from '@e2e/utils/test';
-import { uiGoto, uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCellsShowing, uiGoto, uiHasToastMsg } from '@e2e/utils/ui';
 import { i18n } from '@e2e/utils/ui/i18n';
 import { expect } from '@playwright/test';
 
@@ -156,7 +156,7 @@ test('the create-user form rejects a policy-violating password and accepts a com
   await expect(page.getByText('Add New User')).toBeHidden();
   // The username cell's accessible name also includes the email, so match the
   // username as a substring rather than exactly.
-  await expect(page.getByRole('cell', { name: TEST_USER })).toBeVisible();
+  await expect(uiCellsShowing(page, TEST_USER)).toBeVisible();
 });
 
 test('a saved policy persists across a Settings page reload', async ({ page }) => {
