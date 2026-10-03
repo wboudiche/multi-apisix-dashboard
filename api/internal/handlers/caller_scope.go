@@ -31,7 +31,7 @@ type teamScope struct {
 	// below restricts an admin.
 	isAdmin bool
 	// teams are a non-admin's teams on this instance: the boundary of what
-	// they may see and change.
+	// they may see. What they may change is narrower, see writable.
 	teams []string
 	// writable are the teams among them the non-admin is a developer in:
 	// what they may change, and what a create of theirs may go to
@@ -47,8 +47,10 @@ type teamScope struct {
 	// refused rather than answered for a team it did not ask about.
 	foreign bool
 	// acting is the team a resource this request creates will belong to: for
-	// an admin the team they named, for a non-admin the one they named or the
-	// only one they have. Empty when there is none to give.
+	// an admin the team they named. For a non-admin it is the team they named
+	// when they are a developer in it; with no team named, their only
+	// developer team. Empty when there is none to give, including when they
+	// named a team they only view.
 	acting string
 }
 
