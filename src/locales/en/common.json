@@ -236,6 +236,8 @@
       "toService": "Service {{- name}}",
       "toInline": "Inline upstream",
       "toPlugins": "Plugins only",
+      "toPluginConfig": "Plugin config {{- id}}",
+      "toScript": "Script",
       "toNone": "None",
       "noDestination": "{{count}} route(s) have no backend, and APISIX will refuse them. Choose one above."
     },

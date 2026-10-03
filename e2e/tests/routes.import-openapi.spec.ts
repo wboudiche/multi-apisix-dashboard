@@ -268,6 +268,30 @@ test('takes an uploaded file, and APISIX route JSON as well as OpenAPI', async (
   ]);
 });
 
+test('the preview names what a route without an upstream goes to', async ({ page }) => {
+  await openImporter(page);
+  await paste(
+    page,
+    JSON.stringify([
+      { name: `${PREFIX}-pc`, uri: `/${PREFIX}/pc`, plugin_config_id: `${PREFIX}-pc` },
+      { name: `${PREFIX}-script`, uri: `/${PREFIX}/script`, script: 'return 1' },
+      {
+        name: `${PREFIX}-plugins`,
+        uri: `/${PREFIX}/plugins`,
+        plugins: { 'mocking': { response_example: 'ok' } },
+      },
+    ])
+  );
+  await parse(page);
+
+  const row = (name: string) => dialog(page).getByRole('row').filter({ hasText: name });
+  await expect(row(`/${PREFIX}/pc`)).toContainText(`Plugin config ${PREFIX}-pc`);
+  await expect(row(`/${PREFIX}/script`)).toContainText('Script');
+  await expect(row(`/${PREFIX}/plugins`)).toContainText('Plugins only');
+  // Each names a destination, so none is reported as missing one.
+  await expect(dialog(page).getByText(/have no backend/)).toHaveCount(0);
+});
+
 const PROXY = '/api/v1/apisix/admin';
 
 test('an ordinary spec goes to its server, under the server\'s base path', async ({ page }) => {
