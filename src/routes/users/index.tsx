@@ -768,7 +768,11 @@ const UsersPage = () => {
                                 'aria-hidden': false,
                                 tabIndex: 0,
                               }}
-                              value={config?.role || null}
+                              value={
+                                config && roleNeedsTeam(config.role) && config.team_ids.length > 0
+                                  ? strongest(config.team_roles, config.team_ids)
+                                  : config?.role || null
+                              }
                               onChange={(role) => {
                                 const teamIds = instanceRoles[inst.id]?.team_ids || [];
                                 const current = instanceRoles[inst.id]?.team_roles || {};
