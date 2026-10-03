@@ -40,6 +40,7 @@
     "buildUnknown": "Bilinmeyen bir commit’in yapısı, {{date}}",
     "allTeams": "Tüm takımlar",
     "allMyTeams": "Tüm takımlarım",
+    "teamWithRole": "{{team}} · {{role}}",
     "teamSwitcher": "Takım",
     "selectInstance": "Örnek seçin",
     "healthConnected": "Bağlı",

@@ -112,7 +112,7 @@ const HealthDot: FC<{ health?: InstanceHealth }> = ({ health }) => {
 type TeamSwitcherProps = {
   // An admin's: the whole catalogue. A developer's or a viewer's: their own
   // teams on the instance, which is all they may choose between.
-  teams: Pick<Team, 'id' | 'name'>[];
+  teams: (Pick<Team, 'id' | 'name'> & { role?: 'developer' | 'viewer' })[];
   isAdmin: boolean;
 };
 
@@ -122,6 +122,17 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   // What this tab's requests carry: for a developer or a viewer, the pick
   // when it is one of the teams shown here, and none otherwise.
   const sentTeamId = useAtomValue(sentTeamIdAtom);
+
+  // Its role beside a developer's or a viewer's team: with a role per team it
+  // is what tells them which of their teams they may change (#role-per-team).
+  const withRole = (team: { name: string; role?: string }) =>
+    team.role
+      ? t('header.teamWithRole', {
+          team: team.name,
+          role: roleLabel(t, team.role),
+          interpolation: { escapeValue: false },
+        })
+      : team.name;
 
   const handleTeamChange = (value: string | null) => {
     const newTeamId = value ?? '';
@@ -161,7 +172,7 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   if (teams.length === 1) {
     return (
       <Badge data-testid="team-badge" variant="outline" color="apisix-red" size="sm" radius="sm">
-        {teams[0].name}
+        {withRole(teams[0])}
       </Badge>
     );
   }
@@ -177,7 +188,7 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
       aria-label={t('header.teamSwitcher')}
       data={[
         { value: '', label: t('header.allMyTeams') },
-        ...teams.map((team) => ({ value: team.id, label: team.name })),
+        ...teams.map((team) => ({ value: team.id, label: withRole(team) })),
       ]}
       value={sentTeamId}
       onChange={handleTeamChange}

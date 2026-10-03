@@ -40,6 +40,7 @@
     "buildUnknown": "未知提交的构建，{{date}}",
     "allTeams": "所有团队",
     "allMyTeams": "我的所有团队",
+    "teamWithRole": "{{team}} · {{role}}",
     "teamSwitcher": "团队",
     "selectInstance": "选择实例",
     "healthConnected": "已连接",

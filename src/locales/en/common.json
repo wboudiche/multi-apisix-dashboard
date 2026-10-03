@@ -1130,6 +1130,7 @@
     "buildUnknown": "Build of unknown commit, {{date}}",
     "allTeams": "All Teams",
     "allMyTeams": "All my teams",
+    "teamWithRole": "{{team}} · {{role}}",
     "teamSwitcher": "Team",
     "selectInstance": "Select instance",
     "healthConnected": "Connected",
