@@ -115,4 +115,13 @@ describe('findRouteDuplicates', () => {
 
     expect(findRouteDuplicates(nameless, { uri: '/other' })).toEqual([]);
   });
+
+  it('tells apart two routes on one path by their vars', () => {
+    const item = { name: 'item', uri: '/pets/*', vars: [['uri', '~~', '^/pets/[^/]+$']] };
+    const toys = { name: 'toys', uri: '/pets/*', vars: [['uri', '~~', '^/pets/[^/]+/toys$']] };
+    expect(findRouteDuplicates([{ id: '1', ...item }], toys)).toEqual([]);
+    // The same vars, or none on one side, still clash.
+    expect(findRouteDuplicates([{ id: '1', ...item }], { ...item, name: 'again' })).toHaveLength(1);
+    expect(findRouteDuplicates([{ id: '1', name: 'all', uri: '/pets/*' }], toys)).toHaveLength(1);
+  });
 });

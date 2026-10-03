@@ -112,6 +112,47 @@ const swaggerServer = (spec: OpenAPISpec): string | undefined =>
     ? `${spec.schemes?.[0] ?? 'http'}://${spec.host}${spec.basePath ?? ''}`
     : undefined;
 
+const TEMPLATE = /\{[^/{}]+\}/;
+
+const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * What a route has to match for an OpenAPI path.
+ *
+ * The gateway's default router takes a uri exactly, or as a prefix ending in
+ * `*`; `{petId}` means nothing to it, so a templated path copied as is made a
+ * route nothing could reach (#399). A templated path becomes the prefix up to
+ * its first parameter, and a `vars` match of the whole path in which each
+ * parameter is one segment: `/pets/{petId}/toys` is `/pets/*` matching
+ * `^/pets/[^/]+/toys$`. That holds whatever router the gateway runs.
+ */
+export const matchForPath = (path: string): { uri: string; vars?: unknown[] } => {
+  if (!TEMPLATE.test(path)) return { uri: path };
+  const segments = path.split('/');
+  const first = segments.findIndex((segment) => TEMPLATE.test(segment));
+  const pattern = path
+    .split(/(\{[^/{}]+\})/)
+    .map((part) => (TEMPLATE.test(part) ? '[^/]+' : escapeRegex(part)))
+    .join('');
+  return {
+    uri: `${segments.slice(0, first).join('/')}/*`,
+    vars: [['uri', '~~', `^${pattern}$`]],
+  };
+};
+
+/**
+ * The generated match together with the spec's own x-apisix-vars. A list of
+ * expressions is already an AND of them; anything else, such as an OR, is
+ * kept whole beside it.
+ */
+const combineVars = (generated: unknown[], theirs: unknown): unknown[] => {
+  if (!theirs) return generated;
+  if (Array.isArray(theirs) && theirs.every((expr) => Array.isArray(expr))) {
+    return [...generated, ...theirs];
+  }
+  return ['AND', ...generated, theirs];
+};
+
 const openAPIToRoutes = (spec: OpenAPISpec): { routes: APISIXRoute[]; servers: (string | undefined)[] } => {
   const routes: APISIXRoute[] = [];
   const servers: (string | undefined)[] = [];
@@ -131,8 +172,9 @@ const openAPIToRoutes = (spec: OpenAPISpec): { routes: APISIXRoute[]; servers: (
 
     if (methods.length === 0) continue;
 
+    const match = matchForPath(path);
     const route: APISIXRoute = {
-      uri: path,
+      uri: match.uri,
       methods,
       status: 1,
     };
@@ -167,7 +209,9 @@ const openAPIToRoutes = (spec: OpenAPISpec): { routes: APISIXRoute[]; servers: (
     if (mergedOp['x-apisix-service_id']) {
       route.service_id = mergedOp['x-apisix-service_id'];
     }
-    if (mergedOp['x-apisix-vars']) {
+    if (match.vars) {
+      route.vars = combineVars(match.vars, mergedOp['x-apisix-vars']);
+    } else if (mergedOp['x-apisix-vars']) {
       route.vars = mergedOp['x-apisix-vars'];
     }
     if (typeof mergedOp['x-apisix-status'] === 'number') {

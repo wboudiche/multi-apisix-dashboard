@@ -331,6 +331,68 @@ test('an ordinary spec goes to its server, under the server\'s base path', async
   expect(answer.body).toContain('by the backend');
 });
 
+test('a templated path matches the requests it describes, and no others', async ({ page }) => {
+  // The gateway's router knows nothing of {petId}: a path copied as is made a
+  // route nothing reached (#399). The backend answers anything under /v1/<prefix>/pets/.
+  const admin = await loginAdmin();
+  const backendId = `backend-${PREFIX}`;
+  const local = { 'X-Instance-ID': getFixtures().localInstanceId };
+  await apiFetch(`${PROXY}/routes/${backendId}`, admin, {
+    method: 'PUT',
+    headers: local,
+    json: {
+      uri: `/v1/${PREFIX}/pets/*`,
+      plugins: {
+        mocking: {
+          content_type: 'application/json',
+          response_status: 200,
+          response_example: '{"answered":"by the backend"}',
+        },
+      },
+    },
+  });
+  provisioned.push(`${API_ROUTES}/${backendId}`);
+
+  await openImporter(page);
+  await paste(
+    page,
+    JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'pets', version: '1' },
+      servers: [{ url: 'http://127.0.0.1:9080/v1' }],
+      paths: {
+        [`/${PREFIX}/pets/{petId}`]: { get: { summary: `${PREFIX}-item` } },
+        [`/${PREFIX}/pets/{petId}/toys`]: { get: { summary: `${PREFIX}-toys` } },
+      },
+    })
+  );
+  await parse(page);
+  await dialog(page).getByRole('button', { name: 'Import 2 route(s)' }).click();
+  await expect(dialog(page).getByText('2 route(s) imported successfully')).toBeVisible({
+    timeout: 15000,
+  });
+
+  const byName = Object.fromEntries((await imported()).map((r) => [r.name, r]));
+  expect(byName[`${PREFIX}-item`]).toMatchObject({
+    uri: `/${PREFIX}/pets/*`,
+    vars: [['uri', '~~', `^/${PREFIX}/pets/[^/]+$`]],
+  });
+
+  // Asked of the gateway, which picks the route: the item and its toys each
+  // answer, and a path neither describes is not swallowed by the prefix.
+  const status = async (path: string) =>
+    (
+      (await apiFetch('/api/v1/test-route', admin, {
+        method: 'POST',
+        headers: local,
+        json: { route_id: byName[`${PREFIX}-item`].id, method: 'GET', path },
+      })) as { status: number }
+    ).status;
+  expect(await status(`/${PREFIX}/pets/42`)).toBe(200);
+  expect(await status(`/${PREFIX}/pets/42/toys`)).toBe(200);
+  expect(await status(`/${PREFIX}/pets/42/extra`)).toBe(404);
+});
+
 test('sends routes to an upstream chosen from the list', async ({ page }) => {
   const upstreamName = `${PREFIX}-chosen`;
   const created = await postUpstreamReq(e2eReq, {

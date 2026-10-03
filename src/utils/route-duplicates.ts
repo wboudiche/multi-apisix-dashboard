@@ -32,6 +32,7 @@ export type ComparableRoute = {
   uri?: string;
   uris?: string[];
   methods?: string[];
+  vars?: unknown;
 };
 
 /** Why a route was flagged. Both can apply at once. */
@@ -54,14 +55,20 @@ const pathsOf = (route: ComparableRoute): string[] => {
 };
 
 /**
- * Two routes share a path when any of their paths match. Methods narrow that:
- * they only clash if they overlap, and a route with no methods answers all of
- * them, so it clashes with everything on that path.
+ * Two routes share a path when any of their paths match. Vars and methods
+ * narrow that: methods only clash if they overlap, and a route with no methods
+ * answers all of them, so it clashes with everything on that path.
  */
 const sharesPath = (a: ComparableRoute, b: ComparableRoute): boolean => {
   const aPaths = pathsOf(a);
   const bPaths = pathsOf(b);
   if (!aPaths.some((p) => bPaths.includes(p))) return false;
+
+  // Two routes that each match their own vars are told apart by them: an
+  // import puts every templated path under one prefix, /pets/{id} and
+  // /pets/{id}/toys both on /pets/* (#399). A route with no vars answers
+  // whatever the other's leave, so it still clashes.
+  if (a.vars && b.vars && JSON.stringify(a.vars) !== JSON.stringify(b.vars)) return false;
 
   const aMethods = a.methods ?? [];
   const bMethods = b.methods ?? [];
