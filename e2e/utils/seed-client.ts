@@ -61,6 +61,8 @@ export type UserInstance = {
   team_ids: string[];
   /** The first of them, as the answer named it when an assignment held one. */
   team_id: string;
+  /** The role in each team, where it differs from `role` (#role-per-team). */
+  team_roles?: Record<string, 'developer' | 'viewer'>;
 };
 
 // ---------------------------------------------------------------------------
@@ -403,9 +405,8 @@ export async function ensureUser(token: string, input: CreateUserInput): Promise
 // The backend's SetUserInstanceRole is a pure upsert (PutJSON to etcd), so
 // calling POST multiple times is idempotent — no pre-flight GET needed.
 //
-// IMPORTANT: The backend requires team_id for BOTH developer and viewer roles
-// (api/internal/handlers/instance.go:284-289). Callers must always pass a
-// non-empty team_id for these roles.
+// A developer or a viewer needs at least one team (team_id or team_ids);
+// team_roles names the role in some of them, the rest take role.
 // ---------------------------------------------------------------------------
 
 export type UserInstanceRoleInput = {
@@ -414,6 +415,8 @@ export type UserInstanceRoleInput = {
   team_id?: string;
   /** Several teams on the one instance (#301). */
   team_ids?: string[];
+  /** The role in each team (#role-per-team). */
+  team_roles?: Record<string, 'developer' | 'viewer'>;
 };
 
 export async function ensureUserInstanceRole(
@@ -431,6 +434,7 @@ export async function ensureUserInstanceRole(
         role: input.role,
         ...(input.team_id !== undefined ? { team_id: input.team_id } : {}),
         ...(input.team_ids ? { team_ids: input.team_ids } : {}),
+        ...(input.team_roles ? { team_roles: input.team_roles } : {}),
       },
     },
   );

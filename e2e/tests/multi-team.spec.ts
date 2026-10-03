@@ -142,12 +142,12 @@ test('an assignment holds every team it is given', async () => {
   // learns what theirs are called.
   const me = (await apiFetch('/api/v1/user', await devToken(), { headers: onInstance() })) as {
     team_ids: string[];
-    teams: { id: string; name: string }[];
+    teams: { id: string; name: string; role: string }[];
   };
   expect(me.team_ids).toEqual([mine.id, alsoMine.id]);
   expect(me.teams).toEqual([
-    { id: mine.id, name: mine.name },
-    { id: alsoMine.id, name: alsoMine.name },
+    { id: mine.id, name: mine.name, role: 'developer' },
+    { id: alsoMine.id, name: alsoMine.name, role: 'developer' },
   ]);
 
   // And in the access list they read of themselves, beside the role: what the
@@ -155,12 +155,12 @@ test('an assignment holds every team it is given', async () => {
   const access = (await apiFetch(
     `/api/v1/user-access/${assignment.user_id}/instances`,
     await devToken()
-  )) as (UserInstance & { teams: { id: string; name: string }[] })[];
+  )) as (UserInstance & { teams: { id: string; name: string; role: string }[] })[];
   const here = access.find((a) => a.instance_id === fx().localInstanceId);
   expect(here?.role).toBe('developer');
   expect(here?.teams).toEqual([
-    { id: mine.id, name: mine.name },
-    { id: alsoMine.id, name: alsoMine.name },
+    { id: mine.id, name: mine.name, role: 'developer' },
+    { id: alsoMine.id, name: alsoMine.name, role: 'developer' },
   ]);
 });
 

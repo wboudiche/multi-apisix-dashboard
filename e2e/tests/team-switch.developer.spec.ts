@@ -30,6 +30,7 @@ import {
 } from '@e2e/utils/seed-client';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { i18n } from '@e2e/utils/ui/i18n';
+import { roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page, test } from '@playwright/test';
 
 /**
@@ -108,9 +109,12 @@ const openAsDeveloper = async (page: Page, path: string) => {
   await expect(headerTeamSelect(page)).toBeVisible({ timeout: 30000 });
 };
 
+// The header names a team with the role held in it (#role-per-team).
+const asDeveloper = (team: string) => `${team} · ${roleText('developer')}`;
+
 const pickTeam = async (page: Page, team: string) => {
   await headerTeamSelect(page).click();
-  await page.getByRole('option', { name: team, exact: true }).click();
+  await page.getByRole('option', { name: asDeveloper(team), exact: true }).click();
 };
 
 const ownerOf = async (consumer: string): Promise<string | undefined> => {
@@ -144,12 +148,12 @@ test('a developer with several teams chooses between their own, and the lists fo
     await headerTeamSelect(page).click();
     await expect(page.getByRole('option')).toHaveText([
       i18n.t('header.allMyTeams'),
-      first.name,
-      second.name,
+      asDeveloper(first.name),
+      asDeveloper(second.name),
     ]);
-    await page.getByRole('option', { name: second.name, exact: true }).click();
+    await page.getByRole('option', { name: asDeveloper(second.name), exact: true }).click();
 
-    await expect(headerTeamSelect(page)).toHaveValue(second.name);
+    await expect(headerTeamSelect(page)).toHaveValue(asDeveloper(second.name));
     await expect(rowOf(routeOf.second)).toBeVisible();
     await expect(rowOf(routeOf.first)).toBeHidden();
 
@@ -158,7 +162,7 @@ test('a developer with several teams chooses between their own, and the lists fo
     // for. The list is asked again when they do - or the header would read
     // the second team over both teams' routes.
     await page.reload();
-    await expect(headerTeamSelect(page)).toHaveValue(second.name, { timeout: 30000 });
+    await expect(headerTeamSelect(page)).toHaveValue(asDeveloper(second.name), { timeout: 30000 });
     await expect(rowOf(routeOf.second)).toBeVisible({ timeout: 30000 });
     await expect(rowOf(routeOf.first)).toBeHidden();
   } finally {
@@ -209,7 +213,7 @@ test('a developer with one team is shown its name, and has nothing to choose', a
     await permission.switchInstance(page, 'Local APISIX');
     await page.goto('/ui/routes');
 
-    await expect(page.locator('header').getByTestId('team-badge')).toHaveText('Backend Team', {
+    await expect(page.locator('header').getByTestId('team-badge')).toHaveText(asDeveloper('Backend Team'), {
       timeout: 30000,
     });
     await expect(headerTeamSelect(page)).toHaveCount(0);
@@ -248,7 +252,7 @@ test('a developer whose other team was deleted can still create, for the team th
     await permission.loginAs(page, `${prefix}-dev`, PASSWORD);
     await permission.switchInstance(page, 'Local APISIX');
     await page.goto('/ui/consumers/add');
-    await expect(page.locator('header').getByTestId('team-badge')).toHaveText(kept.name, {
+    await expect(page.locator('header').getByTestId('team-badge')).toHaveText(asDeveloper(kept.name), {
       timeout: 30000,
     });
 
