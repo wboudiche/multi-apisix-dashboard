@@ -103,7 +103,7 @@ export const RouteList = (props: RouteListProps) => {
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
-  const { isAdmin, canWriteResource, canWriteOwner } = usePermission();
+  const { isAdmin, canCreate, canWriteResource, canWriteOwner } = usePermission();
   const [currentInstanceId] = useAtom(currentInstanceIdAtom);
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
   const [jsonDrawerData, setJsonDrawerData] = useState<{
@@ -653,7 +653,9 @@ export const RouteList = (props: RouteListProps) => {
                         >
                           {t('form.json.exportOpenAPI')}
                         </Menu.Item>
-                        {canWriteOwner(ownerOf(record.value)) && (
+                        {/* A duplicate reads the source and creates in the
+                            sent team: the create check, not the source's. */}
+                        {canCreate && (
                           <Menu.Item
                             leftSection={<IconCopy width="14" height="14" />}
                             onClick={() => handleDuplicate(record.value)}
@@ -748,7 +750,7 @@ export const RouteList = (props: RouteListProps) => {
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { canEdit, isAdmin } = usePermission();
+  const { canCreate, isAdmin } = usePermission();
   const { params, setParams, resetParams } = useSearchParams('/routes/');
   const { data, isLoading, refetch, setParams: setRouteParams, listKey } = useRouteList('/routes/');
   // Options for the bar. Teams are admin-only; upstreams are what the new
@@ -835,7 +837,7 @@ function RouteComponent() {
               to="/routes/add"
               color="blue"
             />
-            {canEdit && (
+            {canCreate && (
               <Button
                 variant="default"
                 size="sm"
@@ -845,7 +847,7 @@ function RouteComponent() {
                 {t('form.import.title')}
               </Button>
             )}
-            {canEdit && (
+            {canCreate && (
               <Button
                 variant="default"
                 size="sm"
