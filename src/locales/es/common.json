@@ -1217,6 +1217,7 @@
     "teamRequired": "Elige uno de tus equipos en la cabecera antes de crear esto: un recurso nuevo pertenece a un equipo.",
     "teamMissing": "Esta cuenta no tiene equipo en esta instancia, así que no puede crear esto. Pide a un administrador que le asigne uno.",
     "teamNotAssigned": "No estás asignado a ese equipo en esta instancia.",
+    "teamReadOnly": "Eres lector en ese equipo: puedes ver sus recursos, pero no modificarlos ni crear uno en él.",
     "unauthorized": "La pasarela ha rechazado esta petición. Su clave de administración puede ser incorrecta.",
     "notFound": "No encontrado.",
     "generic": "La petición ha fallado ({{status}}).",

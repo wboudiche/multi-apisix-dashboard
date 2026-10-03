@@ -114,6 +114,9 @@ export type CreateInstanceRequest = {
   is_active?: boolean;
 };
 
+/** A role a team member holds: per team, since #role-per-team. */
+export type TeamRole = 'developer' | 'viewer';
+
 export type UserInstanceRole = {
   user_id: string;
   instance_id: string;
@@ -122,11 +125,17 @@ export type UserInstanceRole = {
   /** The first of them, as the answer named it when an assignment held one. */
   team_id: string;
   /**
+   * The role in each team. Absent from a backend before it, and from an
+   * instance admin: every team then has `role`.
+   */
+  team_roles?: Record<string, TeamRole>;
+  /**
    * The teams among `team_ids` that still exist, by name: in the access list
    * the account reads of itself, where it is the only place a developer or a
    * viewer learns what their teams are called (#301).
    */
-  teams?: { id: string; name: string }[];
+  teams?: { id: string; name: string; role?: TeamRole }[];
+  /** instance_admin, or the strongest team role. */
   role: 'instance_admin' | 'developer' | 'viewer';
 };
 
@@ -137,10 +146,20 @@ export type UserInstanceRole = {
 export const teamsOf = (a: UserInstanceRole): string[] =>
   a.team_ids ?? (a.team_id ? [a.team_id] : []);
 
+/** The role in one team of an assignment, as the backend's `RoleIn` reads it. */
+export const roleInTeam = (a: UserInstanceRole, teamId: string): TeamRole | undefined => {
+  if (!teamsOf(a).includes(teamId)) return undefined;
+  const role = a.team_roles?.[teamId];
+  if (role === 'developer' || role === 'viewer') return role;
+  return a.role === 'developer' || a.role === 'viewer' ? a.role : undefined;
+};
+
 export type SetUserRoleRequest = {
   role: string;
   /** Every team of the assignment (#301). */
   team_ids: string[];
+  /** The role in each team; left out for an instance admin (#role-per-team). */
+  team_roles?: Record<string, TeamRole>;
 };
 
 export const instanceApi = {

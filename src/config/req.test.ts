@@ -191,6 +191,7 @@ describe('a refusal the backend names by a code', () => {
   it.each([
     ['team_required', 400, 'error.teamRequired'],
     ['team_not_assigned', 403, 'error.teamNotAssigned'],
+    ['team_read_only', 403, 'error.teamReadOnly'],
   ] as const)('%s is said in the reader’s language', async (code, status, key) => {
     const sentence = 'The backend’s own English sentence';
     const message = await shownAfter(

@@ -19,6 +19,7 @@ import { atom, useAtomValue } from 'jotai';
 import { canRoleWrite, type ResourceType } from '@/config/resource-permissions';
 import { currentUserAtom, userInstancesAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { ownTeamsAtom, sentTeamIdAtom } from '@/stores/team';
 
 export type Role = 'super_admin' | 'instance_admin' | 'developer' | 'viewer';
 
@@ -58,6 +59,13 @@ export type Permissions = {
    * offers an edit the proxy refuses with a 403 (#270).
    */
   canWriteResource: (resourceType: ResourceType) => boolean;
+  /**
+   * Whether this account may change a resource a team owns, given the
+   * `__team_id` the proxy put on it: an admin any; a developer or a viewer
+   * only one of the teams they are a developer in (#role-per-team). Not
+   * known, or no team: no.
+   */
+  canWriteOwner: (teamId: string | undefined) => boolean;
 };
 
 const effectiveRoleAtom = atom<Role | undefined>((get) => {
@@ -85,12 +93,23 @@ const effectiveRoleAtom = atom<Role | undefined>((get) => {
   return (instanceRole || user?.role || undefined) as Role | undefined;
 });
 
-const permissionsAtom = atom<Permissions>((get) => {
+export const permissionsAtom = atom<Permissions>((get) => {
   const role = get(effectiveRoleAtom);
   const isViewer = role === 'viewer';
   const isSuperAdmin = role === 'super_admin';
   const isAdmin = isSuperAdmin || role === 'instance_admin';
   const canWrite = role !== undefined && !isViewer;
+
+  const own = get(ownTeamsAtom)[get(currentInstanceIdAtom)];
+  const writable = own ? own.ids.filter((id) => own.roles[id] === 'developer') : [];
+  // The team a create would go to, when one is picked: one they only view
+  // takes the create button away, as the proxy would refuse it
+  // (team_read_only). None picked is left as it was - a developer with
+  // several developer teams is asked to choose by the proxy (#376).
+  const sent = get(sentTeamIdAtom);
+  const canCreate = isAdmin || (canWrite && (!sent || writable.includes(sent)));
+  const canWriteOwner = (teamId: string | undefined) =>
+    isAdmin || (!!teamId && writable.includes(teamId));
 
   const canAccessRoute = (path: string) => {
     if (!role) return false;
@@ -105,11 +124,12 @@ const permissionsAtom = atom<Permissions>((get) => {
     isViewer,
     isAdmin,
     isSuperAdmin,
-    canCreate: canWrite,
+    canCreate,
     canEdit: canWrite,
     canDelete: canWrite,
     canAccessRoute,
     canWriteResource: (resourceType: ResourceType) => canRoleWrite(role, resourceType),
+    canWriteOwner,
   };
 });
 

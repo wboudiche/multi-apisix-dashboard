@@ -212,7 +212,7 @@ describe('the team this tab works with', () => {
 // and refuses one that is not theirs on every proxied request - so what this
 // tab sends for them is one of the teams the header offers them, or nothing.
 describe('the team a developer with several sends', () => {
-  const team = (id: string) => ({ id, name: `team ${id}` });
+  const team = (id: string) => ({ id, name: `team ${id}`, role: 'developer' as const });
   // The account's assignment on an instance, as its access list answers it:
   // every id it holds, and the teams among them that still exist.
   const own = (
@@ -348,8 +348,8 @@ describe('the team a developer with several sends', () => {
       { user_id: 'user-none', instance_id: here(), role: 'viewer', team_ids: ['N1', 'N2'], team_id: 'N1' },
     ]);
     expect(store().get(ownTeamsAtom)[here()].teams).toEqual([
-      { id: 'N1', name: 'N1' },
-      { id: 'N2', name: 'N2' },
+      { id: 'N1', name: 'N1', role: 'viewer' },
+      { id: 'N2', name: 'N2', role: 'viewer' },
     ]);
   });
 
@@ -406,5 +406,28 @@ describe('the team a list is asked for', () => {
     await reqFor(here(), { 'X-Team-ID': '' }).get('/routes');
     expect(sent).toHaveLength(1);
     expect(lastTeam()).toBeUndefined();
+  });
+});
+
+describe('the role in each of a developer’s teams', () => {
+  const assignment = (extra: object) => ({
+    user_id: 'user-none',
+    instance_id: here(),
+    team_id: 'a',
+    team_ids: ['a', 'b'],
+    role: 'developer' as const,
+    ...extra,
+  });
+
+  it('is read from the answer, team by team', () => {
+    store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [assignment({ team_roles: { a: 'viewer', b: 'developer' } })]);
+    expect(store().get(ownTeamsAtom)[here()].roles).toEqual({ a: 'viewer', b: 'developer' });
+  });
+
+  it('is the assignment’s role in every team when the answer names none', () => {
+    store().set(currentUserAtom, account(''));
+    store().set(userInstancesAtom, [assignment({})]);
+    expect(store().get(ownTeamsAtom)[here()].roles).toEqual({ a: 'developer', b: 'developer' });
   });
 });

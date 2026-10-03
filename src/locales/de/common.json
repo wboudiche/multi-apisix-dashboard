@@ -1215,6 +1215,7 @@
     "teamRequired": "Wählen Sie vor dem Erstellen eines Ihrer Teams in der Kopfzeile aus: Eine neue Ressource gehört zu einem Team.",
     "teamMissing": "Dieses Konto hat auf dieser Instanz kein Team und kann dies daher nicht erstellen. Bitten Sie einen Admin, eines zuzuweisen.",
     "teamNotAssigned": "Sie sind diesem Team auf dieser Instanz nicht zugewiesen.",
+    "teamReadOnly": "Sie sind in diesem Team Betrachter: Sie können seine Ressourcen lesen, aber weder ändern noch darin anlegen.",
     "unauthorized": "Das Gateway hat diese Anfrage abgelehnt. Sein Admin-Schlüssel ist möglicherweise falsch.",
     "notFound": "Nicht gefunden.",
     "generic": "Die Anfrage ist fehlgeschlagen ({{status}}).",

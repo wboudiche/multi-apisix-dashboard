@@ -1185,6 +1185,7 @@
     "teamRequired": "Choose one of your teams in the header before creating this: a new resource belongs to one team.",
     "teamMissing": "This account has no team on this instance, so it cannot create this. Ask an admin to assign one.",
     "teamNotAssigned": "You are not assigned to that team on this instance.",
+    "teamReadOnly": "You are a viewer in that team: you can read its resources, not change them or create one in it.",
     "unauthorized": "The gateway rejected this request. Its admin key may be wrong.",
     "notFound": "Not found.",
     "generic": "The request failed ({{status}}).",
