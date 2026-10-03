@@ -125,6 +125,7 @@ function CredentialsList() {
                     key="add"
                     to="/consumers/detail/$username/credentials/add"
                     params={{ username }}
+                    allowed={mayChange}
                     label={t('info.add.title', {
                       name: t('credentials.singular'),
                     })}

@@ -29,11 +29,23 @@ import IconVisibility from '~icons/material-symbols/visibility-outline';
 export type ToAddPageBtnProps = {
   to: keyof FilterKeys<FileRoutesByTo, 'add'>;
   label: string;
+  /**
+   * Whether this account may add here. Left out, the create check decides:
+   * the role in the team it sends. A page that adds to something that already
+   * has an owner (a credential of a consumer) passes the owner's check.
+   */
+  allowed?: boolean;
 } & Pick<LinkProps, 'params'>;
 
-export const ToAddPageBtn = ({ to, params, label, ...props }: ToAddPageBtnProps & ButtonProps) => {
+export const ToAddPageBtn = ({
+  to,
+  params,
+  label,
+  allowed,
+  ...props
+}: ToAddPageBtnProps & ButtonProps) => {
   const { canCreate } = usePermission();
-  if (!canCreate) return null;
+  if (!(allowed ?? canCreate)) return null;
 
   return (
     <RouteLinkBtn
