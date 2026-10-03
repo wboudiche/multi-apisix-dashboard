@@ -167,12 +167,20 @@ export const RouteList = (props: RouteListProps) => {
   const shownWarning =
     listWarning === 'service_upstream_unresolved' && !wantsUpstreams ? undefined : listWarning;
 
-  // Whether this account may change the route: the role in the route's team,
-  // which is not the one it holds for the instance.
-  const writableRow = (r: { value: { __team_id?: string } }) => canWriteOwner(ownerOf(r.value));
-  // Only the routes this account may delete are offered for a batch.
-  const allIds: string[] =
-    data?.list?.filter(writableRow).map((r: { value: { id: string } }) => r.value.id) || [];
+  // Every visible route stays selectable: the selection also feeds the OpenAPI
+  // export, which is a read. Only the batch delete is narrowed, to the routes
+  // this account may change (the role in the route's team, which is not the
+  // one it holds for the instance).
+  const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
+  const writableIds = useMemo(
+    () =>
+      new Set<string>(
+        (data?.list ?? [])
+          .filter((r: { value: { __team_id?: string } }) => canWriteOwner(ownerOf(r.value)))
+          .map((r: { value: { id: string } }) => r.value.id)
+      ),
+    [data?.list, canWriteOwner]
+  );
   // The rows ticked on this very list, and still on it. Kept for the life of
   // the page, the ticks of page one were still selected on page two: the bar
   // came back at the first row ticked there counting them, and Batch Delete
@@ -347,7 +355,7 @@ export const RouteList = (props: RouteListProps) => {
           <Text size="sm" fw={500}>{t('form.json.selectedCount', { count: selectedIds.length })}</Text>
           <Group gap="xs">
             <BatchDeleteBtn
-              ids={selectedIds}
+              ids={selectedIds.filter((id) => writableIds.has(id))}
               apiBase={API_ROUTES}
               resourceName={t('routes.singular')}
               onSuccess={refetch}
@@ -408,7 +416,6 @@ export const RouteList = (props: RouteListProps) => {
                     name: rowCheckboxNames.get(String(record.value.id)) ?? rowNameOrId(record),
                   })}
                   checked={selectedIds.includes(record.value.id)}
-                  disabled={!writableRow(record)}
                   onChange={() => toggleSelect(record.value.id)}
                 />
               </Table.Td>
