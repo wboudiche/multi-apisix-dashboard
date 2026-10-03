@@ -22,20 +22,32 @@ import {
   Group,
   List,
   Modal,
+  Radio,
   ScrollArea,
+  Select,
   Stack,
   Table,
   Text,
   Textarea,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useCallback, useRef, useState } from 'react';
+import { useAtomValue } from 'jotai';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getRouteListReq } from '@/apis/routes';
 import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
 import { req } from '@/config/req';
-import { parseImportData,type ParseResult } from '@/utils/openapi-import';
+import { useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { currentInstanceIdAtom } from '@/stores/instance';
+import {
+  defaultBackend,
+  hasDestination,
+  type ImportBackend,
+  parseImportData,
+  type ParseResult,
+  withBackend,
+} from '@/utils/openapi-import';
 import {
   type ComparableRoute,
   findRouteDuplicates,
@@ -66,6 +78,21 @@ const findImportClashes = (
     .map((route) => ({ route, clashes: findRouteDuplicates(existing, route) }))
     .filter((entry) => entry.clashes.length > 0);
 
+type BackendKind = ImportBackend['kind'];
+
+type ImportedRoute = ReturnType<typeof withBackend>[number];
+
+// The node keys of an inline upstream, in either of the shapes APISIX takes.
+const nodeNames = (upstream: Record<string, unknown>): string[] => {
+  const nodes = upstream.nodes;
+  if (Array.isArray(nodes)) {
+    return nodes.map((n: { host?: string; port?: number }) =>
+      n.port ? `${n.host}:${n.port}` : String(n.host)
+    );
+  }
+  return nodes && typeof nodes === 'object' ? Object.keys(nodes) : [];
+};
+
 export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesModalProps) => {
   const { t } = useTranslation();
   const [content, setContent] = useState('');
@@ -79,6 +106,39 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
   const [clashes, setClashes] = useState<
     { route: ComparableRoute; clashes: RouteDuplicate[] }[]
   >([]);
+  // Where routes that name no destination of their own go (#396).
+  const [backendKind, setBackendKind] = useState<BackendKind>('spec');
+  const [upstreamId, setUpstreamId] = useState<string | null>(null);
+  const [serviceId, setServiceId] = useState<string | null>(null);
+  const instanceId = useAtomValue(currentInstanceIdAtom);
+  const { data: upstreams } = useAllUpstreams(instanceId, opened && backendKind === 'upstream');
+  const { data: services } = useAllServices(instanceId, opened && backendKind === 'service');
+
+  // Null while an upstream or a service is to be chosen and none is yet.
+  const backend = useMemo<ImportBackend | null>(() => {
+    if (backendKind === 'upstream') return upstreamId ? { kind: 'upstream', upstreamId } : null;
+    if (backendKind === 'service') return serviceId ? { kind: 'service', serviceId } : null;
+    return { kind: backendKind };
+  }, [backendKind, upstreamId, serviceId]);
+  const toWrite = useMemo(
+    () => (parseResult ? withBackend(parseResult, backend ?? { kind: 'spec' }) : []),
+    [parseResult, backend]
+  );
+  const withoutDestination = toWrite.filter((route) => !hasDestination(route)).length;
+
+  const upstreamName = (id: string) =>
+    upstreams?.list.find((u) => u.value.id === id)?.value.name || id;
+  const serviceName = (id: string) =>
+    services?.list.find((u) => u.value.id === id)?.value.name || id;
+  const backendText = (route: ImportedRoute): string | null => {
+    if (route.service_id) return t('form.import.toService', { name: serviceName(route.service_id) });
+    if (route.upstream_id) {
+      return t('form.import.toUpstream', { name: upstreamName(route.upstream_id) });
+    }
+    if (route.upstream) return nodeNames(route.upstream).join(', ') || t('form.import.toInline');
+    if (hasDestination(route)) return t('form.import.toPlugins');
+    return null;
+  };
 
   const reset = () => {
     setContent('');
@@ -88,6 +148,9 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
     setImportResults(null);
     setClashesAcknowledged(false);
     setClashes([]);
+    setBackendKind('spec');
+    setUpstreamId(null);
+    setServiceId(null);
   };
 
   const handleClose = () => {
@@ -106,6 +169,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
         return;
       }
       setParseResult(result);
+      setBackendKind(defaultBackend(result).kind);
     } catch (err: unknown) {
       const e = err as { message?: string };
       setParseError(e?.message || t('form.json.parseError'));
@@ -121,7 +185,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
       try {
         const existing = await getRouteListReq(req, { page: 1, page_size: PAGE_SIZE_MAX });
         const found = findImportClashes(
-          parseResult.routes as ComparableRoute[],
+          toWrite as ComparableRoute[],
           existing.list.map((r) => r.value as ComparableRoute)
         );
         if (found.length > 0) {
@@ -151,7 +215,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
     let failed = 0;
     const errors: string[] = [];
 
-    for (const route of parseResult.routes) {
+    for (const route of toWrite) {
       try {
         await req.post(API_ROUTES, route);
         success++;
@@ -169,7 +233,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
     if (success > 0) {
       onSuccess();
     }
-  }, [parseResult, onSuccess, clashesAcknowledged, t]);
+  }, [parseResult, toWrite, onSuccess, clashesAcknowledged, t]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -249,10 +313,11 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
                     <Table.Th>{t('form.basic.name')}</Table.Th>
                     <Table.Th>{t('form.routes.uri')}</Table.Th>
                     <Table.Th>{t('form.routes.methods')}</Table.Th>
+                    <Table.Th>{t('form.import.backend')}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {parseResult.routes.map((route, i) => (
+                  {toWrite.map((route, i) => (
                     <Table.Tr key={i}>
                       <Table.Td>
                         <Text size="xs">{route.name || '-'}</Text>
@@ -263,11 +328,69 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
                       <Table.Td>
                         <Text size="xs">{route.methods?.join(', ') || '*'}</Text>
                       </Table.Td>
+                      <Table.Td>
+                        {backendText(route) ? (
+                          <Text size="xs">{backendText(route)}</Text>
+                        ) : (
+                          <Text size="xs" c="red">{t('form.import.toNone')}</Text>
+                        )}
+                      </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
               </Table>
             </ScrollArea.Autosize>
+            <Stack gap={4}>
+              <Text size="sm" fw={500}>{t('form.import.backend')}</Text>
+              <Text size="xs" c="dimmed">{t('form.import.backendHint')}</Text>
+              <Radio.Group
+                value={backendKind}
+                onChange={(v) => {
+                  setBackendKind(v as BackendKind);
+                  setImportResults(null);
+                }}
+              >
+                <Group gap="md" mt={4}>
+                  <Radio value="servers" label={t('form.import.backendServers')} />
+                  <Radio value="upstream" label={t('form.import.backendUpstream')} />
+                  <Radio value="service" label={t('form.import.backendService')} />
+                  <Radio value="spec" label={t('form.import.backendSpec')} />
+                </Group>
+              </Radio.Group>
+              {backendKind === 'upstream' && (
+                <Select
+                  searchable
+                  aria-label={t('form.import.backendUpstream')}
+                  placeholder={t('form.import.chooseUpstream')}
+                  value={upstreamId}
+                  onChange={setUpstreamId}
+                  data={(upstreams?.list ?? []).map((u) => ({
+                    value: u.value.id,
+                    label: u.value.name || u.value.id,
+                  }))}
+                />
+              )}
+              {backendKind === 'service' && (
+                <Select
+                  searchable
+                  aria-label={t('form.import.backendService')}
+                  placeholder={t('form.import.chooseService')}
+                  value={serviceId}
+                  onChange={setServiceId}
+                  data={(services?.list ?? []).map((s) => ({
+                    value: s.value.id,
+                    label: s.value.name || s.value.id,
+                  }))}
+                />
+              )}
+            </Stack>
+            {backend && withoutDestination > 0 && (
+              <Alert variant="light" color="yellow" icon={<IconError width="16" height="16" />}>
+                <Text size="sm">
+                  {t('form.import.noDestination', { count: withoutDestination })}
+                </Text>
+              </Alert>
+            )}
           </Stack>
         )}
 
@@ -326,7 +449,7 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
             </Button>
           )}
           {parseResult && !importResults && (
-            <Button onClick={handleImport} loading={importing}>
+            <Button onClick={handleImport} loading={importing} disabled={!backend}>
               {t('form.import.importRoutes', { count: parseResult.routes.length })}
             </Button>
           )}

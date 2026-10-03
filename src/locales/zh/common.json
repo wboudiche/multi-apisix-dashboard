@@ -810,7 +810,21 @@
       "duplicateHint": "APISIX 允许同一路径上存在多条路由，因此再次导入会添加副本，而不会更新任何内容。要继续，请再次导入。",
       "duplicateCheckFailed": "无法检查已有路由。要跳过检查继续，请再次导入。",
       "unknownError": "未知错误",
-      "unrecognized": "无法识别的格式。应为 OpenAPI 规范、APISIX 路由 JSON 或路由数组。"
+      "unrecognized": "无法识别的格式。应为 OpenAPI 规范、APISIX 路由 JSON 或路由数组。",
+      "backend": "后端",
+      "backendHint": "用于未指定自身上游或服务的路由。",
+      "backendServers": "来自规范中的 servers",
+      "backendUpstream": "已有上游",
+      "backendService": "已有服务",
+      "backendSpec": "按规范原样",
+      "chooseUpstream": "选择上游",
+      "chooseService": "选择服务",
+      "toUpstream": "上游 {{- name}}",
+      "toService": "服务 {{- name}}",
+      "toInline": "内联上游",
+      "toPlugins": "仅插件",
+      "toNone": "无",
+      "noDestination": "{{count}} 条路由没有后端，APISIX 将拒绝它们。请在上方选择一个。"
     },
     "importWsdl": {
       "title": "从 WSDL 导入",
