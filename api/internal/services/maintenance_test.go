@@ -46,6 +46,7 @@ func TestOrphanedAssignments(t *testing.T) {
 		"/user_instances/gone/i2":        []byte(`not json`),
 		"/user_instances/gone/i3":        []byte(`{"role":"developer","team_ids":["t7","t8"]}`),
 		"/user_instances/malformed":      assignment("developer", "t1"),
+		"/user_instances/gone/i4":        []byte(`{"team_ids":["t1","t2"],"team_roles":{"t2":"viewer"},"role":"developer"}`),
 	}
 
 	got, err := orphanedAssignments(assignments, users)
@@ -54,10 +55,12 @@ func TestOrphanedAssignments(t *testing.T) {
 	}
 
 	want := []OrphanedAssignment{
-		{Key: "/user_instances/gone/i1", UserID: "gone", InstanceID: "i1", Role: "developer", TeamID: "t9", TeamIDs: []string{"t9"}},
+		{Key: "/user_instances/gone/i1", UserID: "gone", InstanceID: "i1", Role: "developer", TeamID: "t9", TeamIDs: []string{"t9"}, TeamRoles: map[string]string{"t9": "developer"}},
 		{Key: "/user_instances/gone/i2", UserID: "gone", InstanceID: "i2"},
 		// Every team the assignment held (#301), and the first under the old name.
-		{Key: "/user_instances/gone/i3", UserID: "gone", InstanceID: "i3", Role: "developer", TeamID: "t7", TeamIDs: []string{"t7", "t8"}},
+		{Key: "/user_instances/gone/i3", UserID: "gone", InstanceID: "i3", Role: "developer", TeamID: "t7", TeamIDs: []string{"t7", "t8"}, TeamRoles: map[string]string{"t7": "developer", "t8": "developer"}},
+		// A role per team (#role-per-team): the team that names none takes role.
+		{Key: "/user_instances/gone/i4", UserID: "gone", InstanceID: "i4", Role: "developer", TeamID: "t1", TeamIDs: []string{"t1", "t2"}, TeamRoles: map[string]string{"t1": "developer", "t2": "viewer"}},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d orphans %+v, want %d %+v", len(got), got, len(want), want)

@@ -42,6 +42,8 @@ type OrphanedAssignment struct {
 	// assignment held one team.
 	TeamID  string   `json:"team_id,omitempty"`
 	TeamIDs []string `json:"team_ids,omitempty"`
+	// TeamRoles is the role in each team (#role-per-team).
+	TeamRoles map[string]string `json:"team_roles,omitempty"`
 }
 
 // PurgeResult says what became of each key a purge was asked to delete.
@@ -199,6 +201,9 @@ func orphanedAssignments(assignments, users map[string][]byte) ([]OrphanedAssign
 			if len(ui.TeamIDs) > 0 {
 				orphan.TeamID = ui.TeamIDs[0]
 				orphan.TeamIDs = ui.TeamIDs
+			}
+			if len(ui.TeamRoles) > 0 {
+				orphan.TeamRoles = ui.TeamRoles
 			}
 		}
 		orphans = append(orphans, orphan)
