@@ -55,6 +55,28 @@ const pathsOf = (route: ComparableRoute): string[] => {
 };
 
 /**
+ * The number of segments a route's vars confine it to, when they are nothing
+ * but one uri match the importer could have generated: anchored, made of
+ * one-segment parameters ([^/]+) and escaped literals. Such a pattern matches
+ * exactly as many slashes as it holds. Null for any other vars.
+ */
+const uriMatchSegments = (vars: unknown): number | null => {
+  if (!Array.isArray(vars) || vars.length !== 1) return null;
+  const [expr] = vars;
+  if (!Array.isArray(expr) || expr.length !== 3) return null;
+  const [variable, operator, pattern] = expr;
+  if (variable !== 'uri' || operator !== '~~' || typeof pattern !== 'string') return null;
+  if (!pattern.startsWith('^') || !pattern.endsWith('$')) return null;
+  const literal = pattern
+    .slice(1, -1)
+    .split('[^/]+')
+    .join('')
+    .replace(/\\./g, '');
+  if (/[.*+?^${}()|[\]\\]/.test(literal)) return null;
+  return (pattern.match(/\//g) ?? []).length;
+};
+
+/**
  * Two routes share a path when any of their paths match. Vars and methods
  * narrow that: methods only clash if they overlap, and a route with no methods
  * answers all of them, so it clashes with everything on that path.
@@ -64,11 +86,14 @@ const sharesPath = (a: ComparableRoute, b: ComparableRoute): boolean => {
   const bPaths = pathsOf(b);
   if (!aPaths.some((p) => bPaths.includes(p))) return false;
 
-  // Two routes that each match their own vars are told apart by them: an
-  // import puts every templated path under one prefix, /pets/{id} and
-  // /pets/{id}/toys both on /pets/* (#399). A route with no vars answers
-  // whatever the other's leave, so it still clashes.
-  if (a.vars && b.vars && JSON.stringify(a.vars) !== JSON.stringify(b.vars)) return false;
+  // An import puts every templated path under one prefix, /pets/{id} and
+  // /pets/{id}/toys both on /pets/* (#399), told apart by a uri match each.
+  // Only a difference that rules out any request matching both is taken:
+  // matches over a different number of segments. Anything else - vars that
+  // overlap, a form's vars still as text, none on one side - still clashes.
+  const aSegments = uriMatchSegments(a.vars);
+  const bSegments = uriMatchSegments(b.vars);
+  if (aSegments !== null && bSegments !== null && aSegments !== bSegments) return false;
 
   const aMethods = a.methods ?? [];
   const bMethods = b.methods ?? [];
