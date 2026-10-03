@@ -23,6 +23,7 @@ import { randomId } from '@e2e/utils/common';
 import { getFixtures } from '@e2e/utils/fixtures';
 import { e2eReq, listEvery } from '@e2e/utils/req';
 import {
+  apiFetch,
   ensureTeam,
   ensureUser,
   ensureUserInstanceRole,
@@ -30,10 +31,12 @@ import {
   type Team,
 } from '@e2e/utils/seed-client';
 import { test } from '@e2e/utils/test';
+import { uiCell } from '@e2e/utils/ui';
 import { roleText } from '@e2e/utils/ui/roles';
 import { expect, type Page } from '@playwright/test';
 
-import { API_ROUTES } from '@/config/constant';
+import { postUpstreamReq } from '@/apis/upstreams';
+import { API_ROUTES, API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 /**
@@ -62,7 +65,19 @@ test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(deleteImported);
 
-test.afterEach(deleteImported);
+// What a test provisions beside the routes it imports, removed after them:
+// APISIX refuses to delete an upstream a route still uses.
+const provisioned: string[] = [];
+
+test.afterEach(async () => {
+  try {
+    await deleteImported();
+  } finally {
+    for (const path of provisioned.splice(0)) {
+      await e2eReq.delete(path).catch(() => null);
+    }
+  }
+});
 
 // APISIX refuses a route with nothing to send it to.
 const upstream = { type: 'roundrobin', nodes: [{ host: '127.0.0.1', port: 80, weight: 1 }] };
@@ -123,9 +138,10 @@ test('imports the routes an OpenAPI spec describes', async ({ page }) => {
   expect(byName[`${PREFIX}-pets`]).toMatchObject({
     uri: `/${PREFIX}/pets`,
     desc: 'Lists and adds pets',
-    hosts: ['pets.example.com'],
     status: 1,
   });
+  // A server names where the backend lives, not a host to match on (#396).
+  expect(byName[`${PREFIX}-pets`].hosts).toBeUndefined();
   expect(byName[`${PREFIX}-pets`].methods?.slice().sort()).toEqual(['GET', 'POST']);
   expect(byName[`${PREFIX}-health`]).toMatchObject({
     uri: `/${PREFIX}/health`,
@@ -180,6 +196,12 @@ test('a route the gateway refuses is reported by name, and the others still land
     })
   );
   await parse(page);
+  // Said before anything is written, and still left to the operator.
+  await expect(
+    dialog(page).getByText(
+      '1 route(s) have no backend, and APISIX will refuse them. Choose one above.'
+    )
+  ).toBeVisible();
   await dialog(page).getByRole('button', { name: 'Import 2 route(s)' }).click();
 
   await expect(dialog(page).getByText('1 route(s) imported successfully')).toBeVisible({
@@ -244,6 +266,104 @@ test('takes an uploaded file, and APISIX route JSON as well as OpenAPI', async (
     `${PREFIX}-one`,
     `${PREFIX}-two`,
   ]);
+});
+
+const PROXY = '/api/v1/apisix/admin';
+
+test('an ordinary spec goes to its server, under the server\'s base path', async ({ page }) => {
+  // The backend: a route on the gateway itself, under /v1, answering for the
+  // server the spec names. The gateway reaches itself on 9080 in its container.
+  const admin = await loginAdmin();
+  const backendId = `backend-${PREFIX}`;
+  const local = { 'X-Instance-ID': getFixtures().localInstanceId };
+  await apiFetch(`${PROXY}/routes/${backendId}`, admin, {
+    method: 'PUT',
+    headers: local,
+    json: {
+      uri: `/v1/${PREFIX}/pets`,
+      plugins: {
+        mocking: {
+          content_type: 'application/json',
+          response_status: 200,
+          response_example: '{"answered":"by the backend"}',
+        },
+      },
+    },
+  });
+  provisioned.push(`${API_ROUTES}/${backendId}`);
+
+  await openImporter(page);
+  // No x-apisix extension anywhere: what any spec looks like.
+  await paste(
+    page,
+    JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'pets', version: '1' },
+      servers: [{ url: 'http://127.0.0.1:9080/v1' }],
+      paths: { [`/${PREFIX}/pets`]: { get: { summary: `${PREFIX}-plain` } } },
+    })
+  );
+  await parse(page);
+
+  // The servers are offered first, and the preview says where the route goes.
+  await expect(dialog(page).getByRole('radio', { name: "From the spec's servers" })).toBeChecked();
+  await expect(uiCell(dialog(page), '127.0.0.1:9080')).toBeVisible();
+  await expect(dialog(page).getByText(/have no backend/)).toHaveCount(0);
+  await dialog(page).getByRole('button', { name: 'Import 1 route(s)' }).click();
+  await expect(dialog(page).getByText('1 route(s) imported successfully')).toBeVisible({
+    timeout: 15000,
+  });
+
+  const [route] = await imported();
+  expect(route?.upstream).toMatchObject({
+    scheme: 'http',
+    pass_host: 'node',
+    nodes: { '127.0.0.1:9080': 1 },
+  });
+
+  // And it answers: /<prefix>/pets on the gateway is /v1/<prefix>/pets to the backend.
+  const answer = (await apiFetch('/api/v1/test-route', admin, {
+    method: 'POST',
+    headers: local,
+    json: { route_id: route!.id, method: 'GET', path: `/${PREFIX}/pets` },
+  })) as { status: number; body: string };
+  expect(answer.status).toBe(200);
+  expect(answer.body).toContain('by the backend');
+});
+
+test('sends routes to an upstream chosen from the list', async ({ page }) => {
+  const upstreamName = `${PREFIX}-chosen`;
+  const created = await postUpstreamReq(e2eReq, {
+    name: upstreamName,
+    nodes: [{ host: '127.0.0.1', port: 80, weight: 1 }],
+  });
+  const upstreamId = created.data.value.id;
+  provisioned.push(`${API_UPSTREAMS}/${upstreamId}`);
+
+  await openImporter(page);
+  await paste(page, spec({ [`/${PREFIX}/chosen`]: { get: { summary: `${PREFIX}-chosen` } } }));
+  await parse(page);
+
+  // Nothing in the spec says where it goes, and the modal says so.
+  await expect(dialog(page).getByRole('radio', { name: 'As in the spec' })).toBeChecked();
+  await expect(dialog(page).getByText(/1 route\(s\) have no backend/)).toBeVisible();
+
+  await dialog(page).getByRole('radio', { name: 'Existing upstream' }).check();
+  // Not before one is chosen.
+  const importButton = dialog(page).getByRole('button', { name: 'Import 1 route(s)' });
+  await expect(importButton).toBeDisabled();
+  await dialog(page).getByRole('textbox', { name: 'Existing upstream' }).click();
+  await page.getByRole('option', { name: upstreamName, exact: true }).click();
+
+  await expect(dialog(page).getByText(/have no backend/)).toHaveCount(0);
+  await expect(uiCell(dialog(page), `Upstream ${upstreamName}`)).toBeVisible();
+  await importButton.click();
+  await expect(dialog(page).getByText('1 route(s) imported successfully')).toBeVisible({
+    timeout: 15000,
+  });
+  const [route] = await imported();
+  expect(route?.upstream_id).toBe(upstreamId);
+  expect(route?.upstream).toBeUndefined();
 });
 
 test.describe('a developer in one team and a viewer in another', () => {

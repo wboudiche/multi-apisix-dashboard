@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useListTeamId } from '@/apis/hooks';
 import { getRouteListReq } from '@/apis/routes';
+import { getServiceListReq } from '@/apis/services';
 import { getUpstreamListReq } from '@/apis/upstreams';
 import { PAGE_SIZE_MAX } from '@/config/constant';
 import { reqFor } from '@/config/req';
@@ -71,6 +72,24 @@ export const useAllRoutes = (instanceId: string, enabled = true) => {
         page_size: PAGE_SIZE_MAX,
       }),
     staleTime: 0,
+    enabled,
+  });
+};
+
+/**
+ * The whole service list for an instance, for the route importer to offer as
+ * a backend. Keyed like its siblings, by instance and team.
+ */
+export const useAllServices = (instanceId: string, enabled = true) => {
+  const teamId = useListTeamId();
+  return useQuery({
+    queryKey: ['services', instanceId, 'all', teamId],
+    queryFn: () =>
+      getServiceListReq(reqFor(instanceId, { 'X-Team-ID': teamId }), {
+        page: 1,
+        page_size: PAGE_SIZE_MAX,
+      }),
+    staleTime: 60_000,
     enabled,
   });
 };

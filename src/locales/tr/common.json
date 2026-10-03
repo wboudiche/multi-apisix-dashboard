@@ -810,7 +810,21 @@
       "duplicateHint": "APISIX aynı yolda birden fazla rotaya izin verir; yeniden içe aktarmak bir şeyi güncellemek yerine kopyalar ekler. Devam etmek için yeniden içe aktarın.",
       "duplicateCheckFailed": "Mevcut rotalar denetlenemedi. Denetim olmadan devam etmek için yeniden içe aktarın.",
       "unknownError": "Bilinmeyen hata",
-      "unrecognized": "Tanınmayan biçim. OpenAPI tanımı, APISIX rota JSON'u veya rota dizisi bekleniyordu."
+      "unrecognized": "Tanınmayan biçim. OpenAPI tanımı, APISIX rota JSON'u veya rota dizisi bekleniyordu.",
+      "backend": "Arka uç",
+      "backendHint": "Kendi upstream veya servisini belirtmeyen rotalar için.",
+      "backendServers": "Spesifikasyonun sunucularından",
+      "backendUpstream": "Mevcut upstream",
+      "backendService": "Mevcut servis",
+      "backendSpec": "Spesifikasyondaki gibi",
+      "chooseUpstream": "Bir upstream seçin",
+      "chooseService": "Bir servis seçin",
+      "toUpstream": "Upstream {{- name}}",
+      "toService": "Servis {{- name}}",
+      "toInline": "Satır içi upstream",
+      "toPlugins": "Yalnızca eklentiler",
+      "toNone": "Yok",
+      "noDestination": "{{count}} rotanın arka ucu yok ve APISIX bunları reddedecek. Yukarıdan birini seçin."
     },
     "importWsdl": {
       "title": "WSDL'den içe aktar",

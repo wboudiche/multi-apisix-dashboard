@@ -223,7 +223,21 @@
       "duplicateHint": "APISIX allows several routes on the same path, so importing again will add copies rather than update anything. Import again to go ahead.",
       "duplicateCheckFailed": "Could not check for existing routes. Import again to go ahead without the check.",
       "unknownError": "Unknown error",
-      "unrecognized": "Unrecognized format. Expected OpenAPI spec, APISIX route JSON, or array of routes."
+      "unrecognized": "Unrecognized format. Expected OpenAPI spec, APISIX route JSON, or array of routes.",
+      "backend": "Backend",
+      "backendHint": "For routes that name no upstream or service of their own.",
+      "backendServers": "From the spec's servers",
+      "backendUpstream": "Existing upstream",
+      "backendService": "Existing service",
+      "backendSpec": "As in the spec",
+      "chooseUpstream": "Choose an upstream",
+      "chooseService": "Choose a service",
+      "toUpstream": "Upstream {{- name}}",
+      "toService": "Service {{- name}}",
+      "toInline": "Inline upstream",
+      "toPlugins": "Plugins only",
+      "toNone": "None",
+      "noDestination": "{{count}} route(s) have no backend, and APISIX will refuse them. Choose one above."
     },
     "importWsdl": {
       "title": "Import from WSDL",
