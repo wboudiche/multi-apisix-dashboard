@@ -55,7 +55,7 @@ a row by its `__team_id`.
 | Where the role lives | Per (user, instance, team) for `developer`/`viewer`. `instance_admin` stays per (user, instance). `super_admin` is unchanged. |
 | Storage | Same key. New field `team_roles: {team_id: role}` beside `team_ids` (`teams` is already the name of the `{id, name}` view in responses). |
 | Meaning of `role` | For a non-admin, the **strongest** of their team roles (developer > viewer), in memory, in storage and in responses. Every existing check that reads `ui.Role` (the viewer gate, the resource-type check, `hasAccess`, label and reassign admin checks) stays correct unchanged. |
-| Old records | No `team_roles`: every team has `role`. That is exactly what they meant. No script; the next save writes the new field. |
+| Old records | No `team_roles`: every team has `role`. That is exactly what they meant. No script; the next save writes the new field. A `UserInstance` built in code without `TeamRoles` reads the same way (`RoleIn` falls back to `Role`). |
 | Reads | Unchanged: the union of every team, whatever the role in it. |
 | Writes to an owned resource | Only if the caller is a developer in the owning team. Otherwise 403 with the new code `team_read_only`. |
 | Owner of a create | The named team if the caller is a developer in it. With no header, their only developer team. A named viewer team gives 403 `team_read_only`. Several developer teams and no header give 400 `team_required`, as today. |
@@ -93,7 +93,7 @@ type UserInstance struct {
 - Entries of `team_roles` for teams not in the list are dropped.
 
 **`MarshalJSON`:** writes `team_ids`, `team_id` (first team), `team_roles`
-(nil for an admin; never null otherwise) and `role` (the strongest).
+(left out for an admin, or when empty) and `role` (the strongest).
 
 **New methods:**
 
@@ -115,10 +115,8 @@ func StrongestRole(roles map[string]string) string  // developer > viewer > ""
 - `team_roles` keys must be teams of the request's list. Values must be
   `developer` or `viewer`. Otherwise 400, naming the offending team.
 - `team_roles` with `role: instance_admin`: 400.
-- The #374 rule is unchanged: `team_id` alone, naming a team the assignment
-  already holds, keeps the list. In that case it also keeps the stored
-  `team_roles`, so a client that knows one team does not reset the others'
-  roles.
+- `team_id` alone still means that one team and replaces the list, as today
+  (`SetUserInstanceRoleRequest.teams`). Its role is `role`.
 - The stored record has full `team_roles` and `role` = strongest. It is
   echoed in the response.
 
@@ -172,11 +170,11 @@ readOnly  bool     // the named team is theirs but they are a viewer in it
 
 - `ownTeamsAtom` entries carry `role`. `writableTeams` is derived from them.
 - New `canWriteOwner(teamId)`: true for an admin, or a developer in that team.
-- `canCreate` for a non-admin:
-  - with a pick: the pick is a developer team;
-  - with no pick: exactly one developer team.
-
-  This mirrors the proxy's `acting`.
+- `canCreate` for a non-admin becomes false when the picked team is one they
+  are a viewer in. With no pick it is unchanged: a developer with several
+  developer teams still gets the create button, and the proxy's
+  `team_required` asks them to choose, as `team-switch.developer.spec.ts`
+  expects (#376).
 - `canEdit`, `canDelete` and `canWriteResource` keep their meaning, from the
   instance role, for pages that are not team-scoped.
 
@@ -197,19 +195,22 @@ consumers, consumer_groups, stream_routes; lists, nested lists, details):
 **Refusals:** `src/utils/team-refusal.ts` maps `team_read_only` to a new
 `error.teamReadOnly` message.
 
-**Users page, per instance:**
+**Users page, per instance.** The role `Select` and the teams `MultiSelect`
+stay, so the existing specs that drive them keep working.
 
-- The role `Select` offers `instance_admin`, or "By team".
-- "By team" shows one row per team: a team select, a role select (developer
-  or viewer), and a ✕. Below the rows, "+ Add a team". A team chosen in one
-  row is not offered in the others.
+- For a developer or a viewer with at least one team, a "Role in each team"
+  block lists every picked team with a developer/viewer control.
+- A team added to the `MultiSelect` starts with the role `Select`'s value.
+- Choosing a role in the `Select` sets every team to it.
+- The `Select` shows the stored `role`, i.e. the strongest.
 - Save sends:
 
   ```
-  {role: strongest, team_ids: rows in order, team_roles: every row}
+  {role: strongest, team_ids, team_roles}
   ```
 
-- No rows: the existing `users.teamRequired`.
+  `team_roles` is left out for an instance admin.
+- No teams: the existing `users.teamRequired`.
 - The Teams column shows one `team · role` badge per membership, with the
   instance in the tooltip.
 
