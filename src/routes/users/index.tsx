@@ -839,7 +839,7 @@ const UsersPage = () => {
                               />
                             )}
                           </Group>
-                          {roleNeedsTeam(config.role) && config.team_ids.length > 0 && (
+                          {config?.role && roleNeedsTeam(config.role) && config.team_ids.length > 0 && (
                             <Stack gap={4} data-testid={`team-roles-${inst.id}`}>
                               <Text size="xs" fw={500}>{t('users.teamRoles')}</Text>
                               {config.team_ids.map((teamId) => {
