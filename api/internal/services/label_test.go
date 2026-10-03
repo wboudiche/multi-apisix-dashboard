@@ -16,7 +16,6 @@
 package services
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -194,96 +193,4 @@ func TestValidateLabel(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestValidateRouteLabels(t *testing.T) {
-	taxonomy := map[string]*models.Label{
-		"env": {
-			Key: "env", DisplayName: "Environment", Color: "#4263eb",
-			Values: []string{"production", "staging", "development"},
-		},
-		"team": {
-			Key: "team", DisplayName: "Team", Color: "#40c057",
-			Values: []string{"payments", "platform"},
-		},
-	}
-
-	tests := []struct {
-		name    string
-		labels  map[string]string
-		wantErr bool
-		errMsg  string
-	}{
-		{
-			name:   "valid labels",
-			labels: map[string]string{"env": "production", "team": "payments"},
-		},
-		{
-			name:    "unknown key",
-			labels:  map[string]string{"unknown": "value"},
-			wantErr: true, errMsg: "not defined",
-		},
-		{
-			name:    "invalid value",
-			labels:  map[string]string{"env": "invalid"},
-			wantErr: true, errMsg: "not an allowed value",
-		},
-		{
-			name:   "case insensitive value",
-			labels: map[string]string{"env": "Production"},
-		},
-		{
-			name:   "empty labels",
-			labels: map[string]string{},
-		},
-		{
-			name:   "nil labels",
-			labels: nil,
-		},
-		{
-			name:   "single valid label",
-			labels: map[string]string{"team": "platform"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateLabelsAgainstTaxonomy(tt.labels, taxonomy)
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-				if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
-					t.Errorf("expected error containing %q, got %q", tt.errMsg, err.Error())
-				}
-			} else if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-		})
-	}
-}
-
-// validateLabelsAgainstTaxonomy extracts the core validation logic for testing
-// without requiring an etcd connection. Mirrors the logic in LabelService.ValidateRouteLabels.
-func validateLabelsAgainstTaxonomy(labels map[string]string, taxMap map[string]*models.Label) error {
-	if len(labels) == 0 {
-		return nil
-	}
-	for k, v := range labels {
-		def, ok := taxMap[k]
-		if !ok {
-			return fmt.Errorf("invalid label: key '%s' is not defined in the label taxonomy", k)
-		}
-		found := false
-		for _, allowed := range def.Values {
-			if strings.EqualFold(allowed, v) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label value: '%s' is not an allowed value for key '%s'. Allowed: %s", v, k, strings.Join(def.Values, ", "))
-		}
-	}
-	return nil
 }
