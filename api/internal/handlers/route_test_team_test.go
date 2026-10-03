@@ -404,3 +404,28 @@ func TestRouteTestRefusesATeamTheCallerDoesNotHave(t *testing.T) {
 		t.Errorf("the gateway was sent %v", *reached)
 	}
 }
+
+// A viewer in the route's team may read it and not send traffic through it: a
+// viewer cannot test routes, and being a developer elsewhere does not change
+// that for this team.
+func TestRouteTestRefusesARouteOfAViewerTeam(t *testing.T) {
+	adminAPI := adminAPIWithRoute(t, testRouteID, map[string]any{"uri": "/theirs"})
+	gateway, reached := gatewayThatAnswers(t)
+	owners := stubOwners{owners: map[string]string{"i-1/routes/" + testRouteID: otherTeam}}
+	mixed := &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{myTeam, otherTeam},
+		TeamRoles: map[string]string{myTeam: models.RoleDeveloper, otherTeam: models.RoleViewer}}
+
+	w := callTestRouteForTeam(t, owners, instanceFor(adminAPI.URL, gateway.URL),
+		models.RoleDeveloper, mixed,
+		`{"route_id":"`+testRouteID+`","method":"GET","path":"/theirs"}`, "")
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status %d, want %d: body %s", w.Code, http.StatusForbidden, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), teamReadOnlyCode) {
+		t.Errorf("body %s, want code %s", w.Body.String(), teamReadOnlyCode)
+	}
+	if len(*reached) != 0 {
+		t.Errorf("the gateway was sent %v, want nothing", *reached)
+	}
+}

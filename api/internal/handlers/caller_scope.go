@@ -33,6 +33,13 @@ type teamScope struct {
 	// teams are a non-admin's teams on this instance: the boundary of what
 	// they may see and change.
 	teams []string
+	// writable are the teams among them the non-admin is a developer in:
+	// what they may change, and what a create of theirs may go to
+	// (#role-per-team). Reads stay with teams.
+	writable []string
+	// readOnly: the non-admin named one of their teams that they are a
+	// viewer in. Their lists narrow to it; a create in it is refused.
+	readOnly bool
 	// chosen is the team a non-admin named in X-Team-ID, when it is one of
 	// theirs. It narrows what a list shows, not what they may reach.
 	chosen string
@@ -57,6 +64,23 @@ type teamScope struct {
 // unowned resources must not become a free-for-all for teamless accounts.
 func (s teamScope) mayAccess(ownerTeamID string) bool {
 	return ownerTeamID != "" && slices.Contains(s.teams, ownerTeamID)
+}
+
+// mayWrite reports whether a non-admin may change a resource owned by
+// ownerTeamID: they have to be a developer in it. A team they only view is
+// theirs to read (mayAccess) and not to change.
+func (s teamScope) mayWrite(ownerTeamID string) bool {
+	return ownerTeamID != "" && slices.Contains(s.writable, ownerTeamID)
+}
+
+// createRefusal is what a create with no team to own it is answered: the team
+// named is one the caller only views, or they have not said which of several
+// they may write to.
+func createRefusal(s teamScope) (int, string, string) {
+	if s.readOnly {
+		return http.StatusForbidden, teamReadOnlyMsg, teamReadOnlyCode
+	}
+	return http.StatusBadRequest, teamRequiredMsg, teamRequiredCode
 }
 
 // lists reports whether a non-admin's list shows a resource owned by
@@ -117,15 +141,21 @@ func callerTeamScope(c *gin.Context) teamScope {
 	var scope teamScope
 	if ui != nil {
 		scope.teams = ui.TeamIDs
+		scope.writable = ui.WritableTeams()
 	}
 	switch {
 	case named == "":
-		if len(scope.teams) == 1 {
-			scope.acting = scope.teams[0]
+		// Their only team they may write to: with one, nothing to choose.
+		if len(scope.writable) == 1 {
+			scope.acting = scope.writable[0]
 		}
 	case scope.mayAccess(named):
 		scope.chosen = named
-		scope.acting = named
+		if scope.mayWrite(named) {
+			scope.acting = named
+		} else {
+			scope.readOnly = true
+		}
 	default:
 		scope.foreign = true
 	}
