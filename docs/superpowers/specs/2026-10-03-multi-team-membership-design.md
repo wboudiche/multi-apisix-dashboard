@@ -1,278 +1,277 @@
-# Several teams per instance, one role per team — design
+# A role per team — design
 
 Date: 2026-10-03
 
 ## Goal
 
-Let a user belong to several teams on the same APISIX instance, with a role
-per team: viewer in one team and developer in another, or developer in two.
-Memberships on different instances stay independent of each other. End-to-end
-tests cover a user with several teams on one instance and teams on different
-instances.
+Give a user a role per team on an instance: viewer in one team and developer
+in another, or developer in two. `instance_admin` stays instance-wide.
+Memberships on different instances stay independent. End-to-end tests cover a
+user with several teams and different roles on one instance, and teams on
+different instances.
 
 ## Starting point (origin/main at #393)
 
-- `models.UserInstance{UserID, InstanceID, TeamID, Role, Scope}` is stored at
-  `/apisix-dashboard/user_instances/<user>/<instance>`: one role and one team
-  per (user, instance).
-- For a non-admin, `callerTeamScope` (`handlers/caller_scope.go`) returns
-  `ui.TeamID`. The proxy uses it for three things:
-  - filtering lists and single reads (`nonAdminMayAccess`: owner == team);
-  - allowing writes to an existing resource;
-  - naming the owner of a resource it creates (`SetOwnerIfUnowned`).
-- An admin's team comes from `X-Team-ID`. The SPA sends that header only for a
-  `super_admin` (`selectedTeamId`, #203).
-- Developers and viewers get 403 from `/api/v1/teams`, so they do not know
-  their teams' names.
-- `Scope` is stored and returned but never enforced. The SPA also sends
-  `pathPrefixes` in camelCase, which Go ignores.
-- `GET /user` returns `team_id`/`team_name`, but nothing reads them.
-- `DeleteTeam` leaves assignments that point at the deleted team. That is a
-  pre-existing defect and is out of scope here.
+#374 and #376 already let an assignment hold several teams on one instance.
+What they built, and what this design keeps:
+
+- `UserInstance{UserID, InstanceID, TeamIDs []string, Role}` is stored at
+  `/apisix-dashboard/user_instances/<user>/<instance>` as
+  `{user_id, instance_id, team_ids, team_id, role}`. `team_id` is the first
+  team, written for older clients and for a rollback. Records from before the
+  list are read as a list of one.
+- `teamScope` (`handlers/caller_scope.go`) for a non-admin:
+  - reads are the union of their teams (`mayAccess`);
+  - `X-Team-ID` naming one of their teams narrows a list (`chosen`) and names
+    the owner of a create (`acting`);
+  - with no header, a create goes to their only team; with several teams it is
+    refused with 400 `team_required`;
+  - a team that is not theirs is refused with 403 `team_not_assigned`.
+- `/user` and the caller's own `/user-access` list carry `teams: [{id, name}]`,
+  which is how a non-admin learns their teams' names.
+- The header gives a non-admin with several teams a switcher ("All my teams"
+  plus their teams). With one team they get a badge.
+- The Users page edits, per instance, a role `Select` and a teams
+  `MultiSelect`.
+- Deleting a team that an assignment names is refused (#379). Scope is gone
+  (#388).
+
+What is missing is a role per team. `Role` covers every team of the
+assignment, and each check reads it once, before anything knows which team the
+request touches:
+
+- the viewer GET-only gate (`middleware/rbac.go`);
+- `HasResourcePermission(effRole, …)` in the proxy;
+- `require_resource_permission` (test-route, test-upstream, wsdl);
+- `hasAccess`, `isLabelAdmin`, `ReassignOwnership`.
+
+The SPA gates writes on the account's role on the instance only. No page gates
+a row by its `__team_id`.
 
 ## Decisions
 
 | Question | Decision |
 |---|---|
-| Where the role lives | Per (user, instance, team) for `developer`/`viewer`. `instance_admin` stays per (user, instance) and excludes team memberships. `super_admin` is unchanged. |
-| Storage | Keep one key per (user, instance) and change its value (approach A). Rejected: a key per triplet (a prefix list on every proxied request, plus two sources of truth for `instance_admin`); members under the team (scans every team on the hot path). |
-| Migration | On read, in `UnmarshalJSON`. Records are rewritten in the new shape only when an admin next saves them. No script and no startup step. |
-| Reads | Union: a non-admin sees every resource owned by any of their teams, whatever their role in it. |
-| Writes to an existing resource | Allowed when the owner is one of the caller's developer teams; otherwise 403. |
-| Owner of a create | `X-Team-ID` if the caller is a developer in that team. If the header is absent and the caller has exactly one developer team, that team. Otherwise refused before APISIX is called. |
-| Old request body `{role, team_id}` | No longer accepted. The only callers (SPA, e2e helpers) move in the same change. |
-| `Scope` | Removed from the model, the API, the SPA and the e2e helper. Old records that carry it still decode. |
-| `GET /user` `team_id`/`team_name` | Removed. |
-| Dangling memberships after `DeleteTeam` | Out of scope; a follow-up issue, explained first. |
+| Where the role lives | Per (user, instance, team) for `developer`/`viewer`. `instance_admin` stays per (user, instance). `super_admin` is unchanged. |
+| Storage | Same key. New field `team_roles: {team_id: role}` beside `team_ids` (`teams` is already the name of the `{id, name}` view in responses). |
+| Meaning of `role` | For a non-admin, the **strongest** of their team roles (developer > viewer), in memory, in storage and in responses. Every existing check that reads `ui.Role` (the viewer gate, the resource-type check, `hasAccess`, label and reassign admin checks) stays correct unchanged. |
+| Old records | No `team_roles`: every team has `role`. That is exactly what they meant. No script; the next save writes the new field. |
+| Reads | Unchanged: the union of every team, whatever the role in it. |
+| Writes to an owned resource | Only if the caller is a developer in the owning team. Otherwise 403 with the new code `team_read_only`. |
+| Owner of a create | The named team if the caller is a developer in it. With no header, their only developer team. A named viewer team gives 403 `team_read_only`. Several developer teams and no header give 400 `team_required`, as today. |
+| Route test | Requires developer in the route's team. A viewer cannot test routes today, and a viewer team must not change that. |
+| Rollback | A binary from before this change reads `role` (the strongest) for every team, so a viewer team becomes writable until the record is saved again. Accepted: it only affects users given mixed roles after this ships, and a rollback is exceptional. |
+| Dangling memberships, scope | Already handled (#379, #388). |
 
-## Data model
+## Data model (`api/internal/models/models.go`)
 
 ```go
-type TeamMembership struct {
-    TeamID string `json:"team_id"`
-    Role   string `json:"role"` // developer | viewer
-}
-
 type UserInstance struct {
-    UserID     string           `json:"user_id"`
-    InstanceID string           `json:"instance_id"`
-    Role       string           `json:"role,omitempty"` // "instance_admin" or ""
-    Teams      []TeamMembership `json:"teams,omitempty"`
+    UserID     string
+    InstanceID string
+    TeamIDs    []string
+    // TeamRoles is the role in each team of TeamIDs, developer or viewer.
+    // Empty for an instance admin.
+    TeamRoles  map[string]string
+    // Role is instance_admin, or for a non-admin the strongest of TeamRoles.
+    Role       string
 }
 ```
 
-**Invariants** (checked on write, 400 otherwise):
+`userInstanceJSON` gains `TeamRoles map[string]string 'json:"team_roles,omitempty"'`.
 
-- Exactly one of: `Role == "instance_admin"` with no teams, or `Role == ""`
-  with at least one team.
-- Every team role is `developer` or `viewer`, and every team exists.
-- No team appears twice.
+**`UnmarshalJSON`:**
 
-**Decoding old records:**
+- Teams are read as today (`TeamIDsFrom`).
+- If `role` is `instance_admin`: `TeamRoles = nil`.
+- Otherwise, for each team, take `team_roles[team]` if it is developer or
+  viewer, else `role`. If the stored `role` is itself neither, the team gets
+  nothing and stays out of `TeamRoles`.
+- `Role` is then recomputed as the strongest value in `TeamRoles`, or the
+  stored `role` when `TeamRoles` is empty. That last case is a legacy
+  developer/viewer with no team, which keeps today's behaviour.
+- Entries of `team_roles` for teams not in the list are dropped.
 
-| Stored | Decoded |
-|---|---|
-| `{"role":"developer"\|"viewer","team_id":"t1"}` | `Teams: [{t1, role}]`, `Role: ""` |
-| `{"role":"instance_admin","team_id":…}` | `Role: "instance_admin"`, team dropped (an admin's team already comes from the header) |
-| `{"role":"developer"\|"viewer","team_id":""}` | an assignment with no teams. It sees no team-owned resource, as today. It reports `InstanceRole()` = the stored role, so the instance stays listed and the viewer gate still applies. |
-| any record with `scope` | `scope` ignored |
+**`MarshalJSON`:** writes `team_ids`, `team_id` (first team), `team_roles`
+(nil for an admin; never null otherwise) and `role` (the strongest).
 
-A record with no teams and no role can only come from the last case. Writes
-never produce one.
-
-**Helpers on `UserInstance`:**
-
-- `RoleIn(teamID) string`: the role in that team, or `""`.
-- `ReadableTeams()`, `WritableTeams()`: all teams, and the developer teams.
-- `InstanceRole() string`: the strongest role on the instance
-  (`instance_admin` > `developer` > `viewer`). It is used wherever a single
-  role is needed: the viewer GET-only gate, `HasResourcePermission`,
-  `require_resource_permission`, `hasAccess`.
-
-## Proxy and route test
-
-`callerTeamScope` returns a `teamScope` instead of `(isAdmin, teamID)`:
+**New methods:**
 
 ```go
-type teamScope struct {
-    isAdmin  bool
-    readable map[string]bool
-    writable map[string]bool
-    createAs string // owner for a resource with no owner yet; "" if none
-}
-func (s teamScope) mayRead(owner string) bool  // isAdmin || readable[owner]
-func (s teamScope) mayWrite(owner string) bool // isAdmin || writable[owner]
+func (ui UserInstance) RoleIn(teamID string) string // "" if not a member
+func (ui UserInstance) CanWrite(teamID string) bool  // RoleIn == developer
+func (ui UserInstance) WritableTeams() []string      // developer teams, in TeamIDs order
+func StrongestRole(roles map[string]string) string  // developer > viewer > ""
 ```
 
-- **Admin** (`super_admin` in the JWT, or `Role == instance_admin`):
-  `createAs = X-Team-ID`. Optional, as today.
-- **Non-admin**, deciding `createAs`:
-  1. If `X-Team-ID` is set and in `writable`, use it.
-  2. If `X-Team-ID` is set but not in `writable`, the scope carries a refusal
-     reason.
-  3. If `X-Team-ID` is absent and exactly one team is writable, use that team.
-  4. Otherwise `createAs = ""`.
-- **List filtering and single `GET`:** `mayRead(owner)`. A resource with no
-  owner stays hidden from non-admins.
-- **`PUT`/`PATCH`/`DELETE` on an id with an owner:** `mayWrite(owner)`,
-  otherwise 403 with a reason naming the caller's role in that team. A
-  resource the caller cannot read is still answered as not found.
-- **A write to a team-scoped id with no owner yet, by a non-admin:** refused
-  before APISIX is called when `createAs` is empty or the header was refused:
-  - 400 when the caller has several developer teams and sent none;
-  - 403 when the header names a team they cannot write to.
+## Assignment API (`handlers/instance.go`)
 
-  This keeps a create from producing a resource nobody owns.
-- **Recording the owner:** `SetOwnerIfUnowned(createAs)`. A resource that
-  already has a team keeps it (#260).
-- **The viewer gate in `RBACMiddleware`** uses `InstanceRole()`. A caller who
-  is a viewer in every team is still stopped at the door.
-- **`ReassignOwnership`** and **`isLabelAdmin`**: admin only, unchanged
-  (`Role == instance_admin`).
-- **Route test** (`route_test_handler.go`): it may test a route the caller
-  can read (`mayRead`).
+`SetUserInstanceRoleRequest` gains `TeamRoles map[string]string 'json:"team_roles"'`.
 
-## API
+- `role` stays required. For a non-admin it is the role of every team that
+  `team_roles` does not name, so `{role: "developer", team_ids: [a, b]}` keeps
+  meaning developer in both. Every existing client and the e2e seeding keep
+  working.
+- `team_roles` keys must be teams of the request's list. Values must be
+  `developer` or `viewer`. Otherwise 400, naming the offending team.
+- `team_roles` with `role: instance_admin`: 400.
+- The #374 rule is unchanged: `team_id` alone, naming a team the assignment
+  already holds, keeps the list. In that case it also keeps the stored
+  `team_roles`, so a client that knows one team does not reset the others'
+  roles.
+- The stored record has full `team_roles` and `role` = strongest. It is
+  echoed in the response.
 
-`POST /api/v1/user-access/:user_id/instances/:instance_id/role`
+**Readers:**
 
-```json
-{ "role": "instance_admin" }
-{ "teams": [ {"team_id": "t1", "role": "viewer"}, {"team_id": "t2", "role": "developer"} ] }
+- The caller's own `/user-access` list and `/user`: each `teams` entry
+  becomes `{id, name, role}`.
+- `/teams/:id/members` returns the raw record, which now carries
+  `team_roles`.
+- The maintenance orphan report adds `team_roles`.
+
+## Proxy and route test (`handlers/caller_scope.go`, `proxy.go`, `route_test_handler.go`)
+
+`teamScope` gains:
+
+```go
+writable  []string // a non-admin's developer teams
+readOnly  bool     // the named team is theirs but they are a viewer in it
 ```
 
-- Invariants are checked here. `{"teams": []}` with no role deletes the
-  assignment, the same as `DELETE`.
-- The response echoes the stored record.
-
-`GET /api/v1/user-access/:user_id/instances` returns the new shape. Every
-membership carries `team_name`, resolved at read time (empty for a deleted
-team). This is how a non-admin's SPA names their teams.
-
-`GET /api/v1/teams/:id/members` returns
-`{user_id, instance_id, role}` for every assignment listing that team, with
-`role` being the role in that team.
-
-`GET /api/v1/user` no longer returns `team_id`/`team_name`.
-
-Maintenance: `OrphanedAssignment` reports `role` and `teams` instead of
-`role` and `team_id`. Detection (the user no longer exists) is unchanged.
-
-Unchanged: assignment counting and deletion on instance delete (key-based),
-the quoting fallbacks in `rbac.go`, the overview.
+- `mayWrite(owner) bool`: `owner != "" && owner ∈ writable`.
+- **`callerTeamScope`, non-admin:**
+  - no header: `acting` = their only **writable** team, if exactly one;
+  - header naming one of their teams: `chosen = named`, so a viewer team
+    still narrows lists. If it is writable, `acting = named`; otherwise
+    `readOnly = true`;
+  - foreign header: unchanged.
+- **Ownerless create** (`createNeedsTeam` true, proxy.go:642 and :689): 403
+  `team_read_only` when `readOnly`, otherwise 400 `team_required` as today.
+- **Write to an owned resource** (proxy.go:696):
+  - `!mayAccess(owner)`: 403 "owned by another team", unchanged;
+  - `mayAccess && !mayWrite`: 403 `team_read_only`, "You are a viewer in the
+    team that owns this resource".
+- **Lists and single reads:** unchanged (`lists`, `mayAccess`).
+- **Route test:** `!mayWrite(owner)` is refused. A route the caller cannot
+  read keeps `routeTestOtherTeamCode`. A readable route in a viewer team gets
+  403 `team_read_only`.
+- `team_read_only` is a new constant beside `team_required` and
+  `team_not_assigned`.
 
 ## SPA
 
 **Types** (`src/apis/instances.ts`):
 
-- `UserInstanceRole` becomes `{user_id, instance_id, role?, teams?: {team_id, team_name, role}[]}`.
-- `SetUserRoleRequest` becomes `{role: 'instance_admin'} | {teams: {team_id, role}[]}`.
-- `Scope` is removed.
+- `UserInstanceRole` gains `team_roles?: Record<string, 'developer' | 'viewer'>`.
+- `teams` entries gain `role`.
+- `SetUserRoleRequest` gains `team_roles?`.
+- A helper `roleInTeam(assignment, teamId)`.
 
-**`usePermission`:**
+**Permissions** (`usePermission`, `stores/team.ts`):
 
-- New: `teams` (memberships on the current instance).
-- New: `canCreate`, true for an admin or when the user is a developer in at
-  least one team. For a user with several developer teams it also requires a
-  valid header pick.
-- New: `canWriteOwner(teamId)`, true for an admin or a developer in that team.
-- `canEdit`/`canDelete`/`canWriteResource` keep their current meaning,
-  computed from `InstanceRole`, for pages that are not team-scoped.
+- `ownTeamsAtom` entries carry `role`. `writableTeams` is derived from them.
+- New `canWriteOwner(teamId)`: true for an admin, or a developer in that team.
+- `canCreate` for a non-admin:
+  - with a pick: the pick is a developer team;
+  - with no pick: exactly one developer team.
+
+  This mirrors the proxy's `acting`.
+- `canEdit`, `canDelete` and `canWriteResource` keep their meaning, from the
+  instance role, for pages that are not team-scoped.
 
 **Per-row gating** on team-scoped pages (routes, services, upstreams,
-consumers, consumer_groups, stream_routes and their nested lists and details):
+consumers, consumer_groups, stream_routes; lists, nested lists, details):
 
 - Edit, delete and the batch-delete checkbox use
   `canWriteOwner(record.__team_id)`.
-- Detail pages use `canWriteOwner(detail.__team_id)`.
-- `DeleteResourceBtn` and the edit link take the owner team as a prop.
+- Details use `canWriteOwner(detail.__team_id)`.
+- `DeleteResourceBtn` and the edit actions take the owner as a prop.
 
 **Header:**
 
-| Caller | Header shows | `X-Team-ID` sent |
-|---|---|---|
-| super_admin | switcher over all teams (unchanged) | the pick |
-| instance_admin | unchanged (no switcher, #203) | none |
-| non-admin, ≥2 developer teams | "Team for new resources" switcher over those teams | the pick, if still one of them |
-| non-admin, otherwise | one badge per membership, `team · role` | none |
+- The non-admin switcher still lists every team of the caller (for
+  narrowing), each labelled `name · role`.
+- The single-team badge shows `name · role`.
 
-- `selectedTeamId` returns the pick for the third row too. A pick that is no
-  longer a developer team of the caller is treated as no pick, so the switcher
-  asks again and `canCreate` stays false.
-- `clearTeamPicks` on sign-in stays as is.
+**Refusals:** `src/utils/team-refusal.ts` maps `team_read_only` to a new
+`error.teamReadOnly` message.
 
-**Users page, Permissions modal** (one block per instance):
+**Users page, per instance:**
 
-```
-local          ( ) No access  ( ) Instance admin  (•) By team
-               ┌────────────────┬─────────────┬───┐
-               │ Payments     ▾ │ developer ▾ │ ✕ │
-               │ Catalogue    ▾ │ viewer    ▾ │ ✕ │
-               └────────────────┴─────────────┴───┘
-               + Add a team
-```
+- The role `Select` offers `instance_admin`, or "By team".
+- "By team" shows one row per team: a team select, a role select (developer
+  or viewer), and a ✕. Below the rows, "+ Add a team". A team chosen in one
+  row is not offered in the others.
+- Save sends:
 
-- A team already chosen in a row is not offered in the other rows.
-- "By team" with no rows is refused with the existing `users.teamRequired`.
-- The users table's Teams column shows one `team · role` badge per
-  membership across instances, with the instance name as a tooltip.
+  ```
+  {role: strongest, team_ids: rows in order, team_roles: every row}
+  ```
 
-All new strings go in `en` plus `de`, `es`, `tr`, `zh`, under the existing
-ESLint rules (`no-literal-string`, `icon-button-name` for ✕).
+- No rows: the existing `users.teamRequired`.
+- The Teams column shows one `team · role` badge per membership, with the
+  instance in the tooltip.
+
+New strings go in `en`, `de`, `es`, `tr`, `zh`.
 
 ## Testing
 
-**Go unit tests:**
+**Go:**
 
-- Decoding the old and new shapes, and the invariants.
-- `teamScope`: read, write and `createAs` across the full case table (admin
-  with and without a header; non-admin with 0, 1 or 2 developer teams, with
-  no header, with a header naming a writable team, with a header naming a
-  viewer team or an unrelated team).
-- The proxy's refusal of an ownerless create.
-- Existing tests move to the new shape: `route_test_team_test.go`,
-  `require_resource_permission_test.go`, `maintenance_test.go`.
-  `ownership_access_test.go` becomes the `teamScope` tests.
+- `user_instance_test.go`:
+  - a legacy record with no `team_roles` gives every team `role`;
+  - `team_roles` overrides per team;
+  - `role` is recomputed as the strongest;
+  - stray `team_roles` keys are dropped;
+  - an admin has no `team_roles`;
+  - a round-trip keeps everything.
+- `instance_role_validation_test.go`:
+  - unknown team key gives 400;
+  - a bad role value gives 400;
+  - `team_roles` with `instance_admin` gives 400;
+  - `team_id` alone keeps `team_roles`.
+- `caller_scope_test.go`: `acting`, `readOnly`, `mayWrite` for viewer+developer
+  and developer+developer, with no header, a developer header, a viewer header
+  and a foreign header.
+- Proxy: an owned write in a viewer team gives `team_read_only`; an ownerless
+  create with a viewer header gives `team_read_only`.
+- `route_test_team_test.go`: a viewer team's route is refused.
 
-**Vitest:** `usePermission` (`canCreate`, `canWriteOwner`), and
-`selectedTeamId` for a non-admin with a stale pick.
+**Vitest:** `canWriteOwner`, `canCreate` (pick or no pick; 0, 1 or 2
+developer teams), `ownTeamsAtom` roles, `team-refusal` for `team_read_only`.
 
-**E2E, new `e2e/tests/users.multi-team.spec.ts`.** Fixtures: teams T1, T2 and
-T4 on `local`, T3 on `staging`, user alice, and one admin-created route per
-team.
+**E2E, new `e2e/tests/multi-team.roles.spec.ts`.** The existing
+`multi-team.spec.ts` and `team-switch.developer.spec.ts` already cover
+developer-only memberships. Fixtures: teams T1, T2, T4 on `local`, T3 on
+`staging`; user alice; one admin-created route per team.
 
-1. In the Permissions modal, alice gets viewer in T1 and developer in T2 on
-   `local`. After a reload both rows read back, and the Users table shows
-   both badges.
-2. alice sees the T1 and T2 routes on `local`, and not the T4 route.
-3. She can edit the T2 route. The T1 route shows no edit or delete, and a
-   direct proxy `PUT` gets 403.
-4. As viewer T1 + developer T2, she creates a route without choosing, and it
-   is owned by T2.
-5. As developer in T1 and T2:
-   - the header offers T1 and T2, and her create is owned by the team she
-     picked;
-   - a proxy create with no header gets 400, and one with `X-Team-ID: T4`
-     gets 403;
-   - she can edit both teams' routes.
-6. The admin removes T2. alice no longer sees the T2 route and keeps T1. A
-   stale T2 pick is not sent.
+1. In the Permissions modal, the admin gives alice viewer in T1 and developer
+   in T2 on `local`. After a reload both rows read back, and the Users table
+   shows `T1 · viewer` and `T2 · developer`.
+2. alice sees the T1 and T2 routes, and not the T4 route.
+3. She can edit the T2 route. The T1 row and detail show no edit or delete,
+   and a direct proxy `PUT` to it gets 403 `team_read_only`.
+4. With no pick she creates a route, and it is owned by T2, her only
+   developer team.
+5. With T1 picked, the list narrows to T1 and the create button is hidden. A
+   proxy create with `X-Team-ID: T1` gets 403 `team_read_only`.
+6. A route test of the T1 route is refused, and of the T2 route allowed.
 7. As developer T2 on `local` and viewer T3 on `staging`, switching instance
-   in the header changes the list and the rights: she can edit on `local`
-   and only read on `staging`.
-8. An old-shape record written straight to etcd still reads, displays and
-   grants the same rights.
+   changes the list and the rights: she can write on `local` and only read on
+   `staging`, where every write is refused by the viewer gate.
+8. A legacy record (`team_ids` + `role`, no `team_roles`) written straight to
+   etcd gives the same role in every team.
 
 **Existing e2e:**
 
-- `ensureUserInstanceRole` keeps accepting `{role, team_id}` and translates it.
-  A new `teams` input covers several teams, and the unused `scope` option is
-  removed.
-- `maintenance.orphaned-assignments` keeps writing the old shape and expects
-  `teams` in the report.
-- `users.admin` checks the member role.
-- `permission.role-loading` and `access-unreadable` get updated mocked
-  responses.
+- `ensureUserInstanceRole` gains an optional `team_roles`. Its 22 callers are
+  unchanged.
+- `multi-team.spec.ts:136-164` additionally sees `role` in `teams`.
+- The specs touched by the model and the Users page are re-run: `multi-team`,
+  `team-switch.developer`, `team-switch`, `users.admin`, `teams.admin`,
+  `route-test.team-scope`, `plugin_metadata.viewer-read-only`,
+  `header.account-role`, and the maintenance specs.
 
 **Verification before the PR:**
 
@@ -281,5 +280,4 @@ team.
 3. `tsc -b`
 4. vitest
 5. The new spec and the touched specs, against the worktree's own backend
-   (`:18086`) and vite (`:5175`). Targeted only: a full parallel run saturates
-   the machine.
+   (`:18086`) and vite (`:5175`). Targeted only.
