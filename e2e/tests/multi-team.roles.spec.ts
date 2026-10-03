@@ -188,6 +188,7 @@ test('changes a route of the team she develops in, and not one of the team she v
     })
   );
   expect(del?.status).toBe(403);
+  expect(del?.message).toContain('team_read_only');
 });
 
 test('a create with no team named goes to the one team she develops in', async () => {
@@ -226,11 +227,13 @@ test('tests a route of the team she develops in, and not of the team she views',
         json: { route_id: routeId, method: 'GET', path: `/${routeId}` },
       })
     );
-    return err?.status ?? 200;
+    return err ?? { status: 200, message: '' };
   };
-  expect(await status(routeOf.viewed)).toBe(403);
+  const viewedAnswer = await status(routeOf.viewed);
+  expect(viewedAnswer.status).toBe(403);
+  expect(viewedAnswer.message).toContain('team_read_only');
   // Allowed: whatever the gateway answers, the dashboard did not refuse it.
-  expect([200, 502]).toContain(await status(routeOf.developed));
+  expect([200, 502]).toContain((await status(routeOf.developed)).status);
 });
 
 test('the routes page offers a write only on the team she develops in', async ({ page }) => {
