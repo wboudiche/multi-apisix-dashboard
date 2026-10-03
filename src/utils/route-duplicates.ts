@@ -71,7 +71,8 @@ const uriMatchSegments = (vars: unknown): number | null => {
     .slice(1, -1)
     .split('[^/]+')
     .join('')
-    .replace(/\\./g, '');
+    // Only an escaped punctuation mark is a literal: \W or \x2f can match a slash.
+    .replace(/\\[^A-Za-z0-9]/g, '');
   if (/[.*+?^${}()|[\]\\]/.test(literal)) return null;
   return (pattern.match(/\//g) ?? []).length;
 };

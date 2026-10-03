@@ -128,6 +128,9 @@ describe('findRouteDuplicates', () => {
 
     it('do not clash over a different number of segments', () => {
       expect(clash(item, on('toys', '^/pets/[^/]+/toys$'))).toBe(0);
+      // Escaped punctuation is a literal, an escaped slash a slash.
+      expect(clash(item, on('dotted', '^/pets/[^/]+/v1\\.0$'))).toBe(0);
+      expect(clash(item, on('slashed', '^/pets/[^/]+\\/toys$'))).toBe(0);
     });
 
     it('still clash where one request could match both', () => {
@@ -136,6 +139,10 @@ describe('findRouteDuplicates', () => {
       expect(clash(item, { ...item, name: 'again' })).toBe(1);
       // A pattern that could span segments proves nothing.
       expect(clash(item, on('any', '^/pets/.+/toys$'))).toBe(1);
+      // Nor does an escape that can match a slash: both take /pets/1/toys.
+      const toys = on('toys', '^/pets/[^/]+/toys$');
+      expect(clash(toys, on('non-digit', '^/pets/[^/]+\\D+$'))).toBe(1);
+      expect(clash(toys, on('hex', '^/pets/[^/]+\\x2ftoys$'))).toBe(1);
     });
 
     it('still clash when one side has no vars, or other vars', () => {
