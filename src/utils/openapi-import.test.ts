@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defaultBackend,
   hasDestination,
+  matchForPath,
   parseImportData,
   upstreamFromServer,
   withBackend,
@@ -221,5 +222,70 @@ describe('defaultBackend', () => {
       })
     );
     expect(defaultBackend(own)).toEqual({ kind: 'spec' });
+  });
+});
+
+describe('matchForPath', () => {
+  it('keeps a path without parameters as it is', () => {
+    expect(matchForPath('/pets')).toEqual({ uri: '/pets' });
+  });
+
+  it('matches each parameter as one segment, under the prefix before the first', () => {
+    expect(matchForPath('/pets/{petId}')).toEqual({
+      uri: '/pets/*',
+      vars: [['uri', '~~', '^/pets/[^/]+$']],
+    });
+    expect(matchForPath('/pets/{petId}/toys/{toyId}')).toEqual({
+      uri: '/pets/*',
+      vars: [['uri', '~~', '^/pets/[^/]+/toys/[^/]+$']],
+    });
+    expect(matchForPath('/{tenant}/pets').uri).toBe('/*');
+  });
+
+  it('escapes what is literal, inside a segment too', () => {
+    expect(matchForPath('/files/{name}.json').vars).toEqual([
+      ['uri', '~~', '^/files/[^/]+\\.json$'],
+    ]);
+    expect(matchForPath('/v1.0/(a)/{id}').vars).toEqual([
+      ['uri', '~~', '^/v1\\.0/\\(a\\)/[^/]+$'],
+    ]);
+  });
+
+  it('gives a pattern that matches the requests the path describes, and no others', () => {
+    const [[, , pattern]] = matchForPath('/pets/{petId}/toys').vars as string[][];
+    const re = new RegExp(pattern);
+    expect(re.test('/pets/42/toys')).toBe(true);
+    expect(re.test('/pets/42')).toBe(false);
+    expect(re.test('/pets/42/extra/toys')).toBe(false);
+    expect(re.test('/pets//toys')).toBe(false);
+  });
+});
+
+describe('parseImportData path templates', () => {
+  const templated = (op: Record<string, unknown>) =>
+    parseImportData(spec({ paths: { '/pets/{petId}': { get: op } } })).routes[0];
+  const generated = ['uri', '~~', '^/pets/[^/]+$'];
+
+  it('writes the prefix and the match', () => {
+    expect(templated({})).toMatchObject({ uri: '/pets/*', vars: [generated] });
+  });
+
+  it('adds the spec\'s own expressions to the match', () => {
+    expect(templated({ 'x-apisix-vars': [['arg_v', '==', '2']] }).vars).toEqual([
+      generated,
+      ['arg_v', '==', '2'],
+    ]);
+  });
+
+  it('keeps a logical expression of the spec\'s whole beside the match', () => {
+    const or = ['OR', ['arg_v', '==', '1'], ['arg_v', '==', '2']];
+    expect(templated({ 'x-apisix-vars': or }).vars).toEqual(['AND', generated, or]);
+  });
+
+  it('leaves the vars of a path without parameters to the spec', () => {
+    const route = parseImportData(
+      spec({ paths: { '/pets': { get: { 'x-apisix-vars': [['arg_v', '==', '2']] } } } })
+    ).routes[0];
+    expect(route).toMatchObject({ uri: '/pets', vars: [['arg_v', '==', '2']] });
   });
 });

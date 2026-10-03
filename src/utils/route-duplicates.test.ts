@@ -115,4 +115,48 @@ describe('findRouteDuplicates', () => {
 
     expect(findRouteDuplicates(nameless, { uri: '/other' })).toEqual([]);
   });
+
+  describe('two routes on one path, told apart by a uri match', () => {
+    const on = (name: string, pattern: string) => ({
+      name,
+      uri: '/pets/*',
+      vars: [['uri', '~~', pattern]],
+    });
+    const item = on('item', '^/pets/[^/]+$');
+    const clash = (existing: object, candidate: object) =>
+      findRouteDuplicates([{ id: '1', ...existing }], candidate).length;
+
+    it('do not clash over a different number of segments', () => {
+      expect(clash(item, on('toys', '^/pets/[^/]+/toys$'))).toBe(0);
+      // Escaped punctuation is a literal, an escaped slash a slash.
+      expect(clash(item, on('dotted', '^/pets/[^/]+/v1\\.0$'))).toBe(0);
+      expect(clash(item, on('slashed', '^/pets/[^/]+\\/toys$'))).toBe(0);
+    });
+
+    it('still clash where one request could match both', () => {
+      // /pets/1.json matches both.
+      expect(clash(item, on('json', '^/pets/[^/]+\\.json$'))).toBe(1);
+      expect(clash(item, { ...item, name: 'again' })).toBe(1);
+      // A pattern that could span segments proves nothing.
+      expect(clash(item, on('any', '^/pets/.+/toys$'))).toBe(1);
+      // Nor does an escape that can match a slash: both take /pets/1/toys.
+      const toys = on('toys', '^/pets/[^/]+/toys$');
+      expect(clash(toys, on('non-digit', '^/pets/[^/]+\\D+$'))).toBe(1);
+      expect(clash(toys, on('hex', '^/pets/[^/]+\\x2ftoys$'))).toBe(1);
+    });
+
+    it('still clash when one side has no vars, or other vars', () => {
+      expect(clash({ name: 'all', uri: '/pets/*' }, on('toys', '^/pets/[^/]+/toys$'))).toBe(1);
+      expect(
+        clash({ name: 'v', uri: '/pets/*', vars: [['arg_v', '==', '1']] }, item)
+      ).toBe(1);
+    });
+
+    it('still clash with vars from the route form, which are text', () => {
+      // The add form checks before its vars are parsed.
+      const typed = { name: 'typed', uri: '/pets/*', vars: '[["uri","~~","^/pets/[^/]+/toys$"]]' };
+      expect(clash(item, typed)).toBe(1);
+      expect(clash(typed, item)).toBe(1);
+    });
+  });
 });
