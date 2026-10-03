@@ -136,6 +136,10 @@ export const ImportRoutesModal = ({ opened, onClose, onSuccess }: ImportRoutesMo
       return t('form.import.toUpstream', { name: upstreamName(route.upstream_id) });
     }
     if (route.upstream) return nodeNames(route.upstream).join(', ') || t('form.import.toInline');
+    if (route.plugin_config_id) {
+      return t('form.import.toPluginConfig', { id: route.plugin_config_id });
+    }
+    if (route.script) return t('form.import.toScript');
     if (hasDestination(route)) return t('form.import.toPlugins');
     return null;
   };

@@ -823,6 +823,8 @@
       "toService": "Servis {{- name}}",
       "toInline": "Satır içi upstream",
       "toPlugins": "Yalnızca eklentiler",
+      "toPluginConfig": "Eklenti yapılandırması {{- id}}",
+      "toScript": "Betik",
       "toNone": "Yok",
       "noDestination": "{{count}} rotanın arka ucu yok ve APISIX bunları reddedecek. Yukarıdan birini seçin."
     },

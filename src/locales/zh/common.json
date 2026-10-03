@@ -823,6 +823,8 @@
       "toService": "服务 {{- name}}",
       "toInline": "内联上游",
       "toPlugins": "仅插件",
+      "toPluginConfig": "插件配置 {{- id}}",
+      "toScript": "脚本",
       "toNone": "无",
       "noDestination": "{{count}} 条路由没有后端，APISIX 将拒绝它们。请在上方选择一个。"
     },

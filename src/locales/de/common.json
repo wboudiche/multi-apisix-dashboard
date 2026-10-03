@@ -823,6 +823,8 @@
       "toService": "Service {{- name}}",
       "toInline": "Eingebettetes Upstream",
       "toPlugins": "Nur Plugins",
+      "toPluginConfig": "Plugin-Konfiguration {{- id}}",
+      "toScript": "Skript",
       "toNone": "Keins",
       "noDestination": "{{count}} Route(n) ohne Backend, APISIX wird sie ablehnen. Wählen Sie oben eines aus."
     },
