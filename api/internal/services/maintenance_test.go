@@ -59,7 +59,7 @@ func TestOrphanedAssignments(t *testing.T) {
 		{Key: "/user_instances/gone/i2", UserID: "gone", InstanceID: "i2"},
 		// Every team the assignment held (#301), and the first under the old name.
 		{Key: "/user_instances/gone/i3", UserID: "gone", InstanceID: "i3", Role: "developer", TeamID: "t7", TeamIDs: []string{"t7", "t8"}, TeamRoles: map[string]string{"t7": "developer", "t8": "developer"}},
-		// A role per team (#role-per-team): the team that names none takes role.
+		// A role per team (#394): the team that names none takes role.
 		{Key: "/user_instances/gone/i4", UserID: "gone", InstanceID: "i4", Role: "developer", TeamID: "t1", TeamIDs: []string{"t1", "t2"}, TeamRoles: map[string]string{"t1": "developer", "t2": "viewer"}},
 	}
 	if len(got) != len(want) {

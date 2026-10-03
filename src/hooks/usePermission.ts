@@ -62,7 +62,7 @@ export type Permissions = {
   /**
    * Whether this account may change a resource a team owns, given the
    * `__team_id` the proxy put on it: an admin any; a developer or a viewer
-   * only one of the teams they are a developer in (#role-per-team). Not
+   * only one of the teams they are a developer in (#394). Not
    * known, or no team: no.
    */
   canWriteOwner: (teamId: string | undefined) => boolean;

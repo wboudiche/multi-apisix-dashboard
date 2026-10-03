@@ -119,7 +119,7 @@ type UserInstance struct {
 	// somebody work for two.
 	TeamIDs []string
 	// TeamRoles is the role in each team of TeamIDs: developer or viewer. One
-	// role covered every team until #role-per-team, so that a viewer in one
+	// role covered every team until #394, so that a viewer in one
 	// team could not be a developer in another. Nil for an instance admin,
 	// who is not a member of a team. A team it does not name has Role.
 	TeamRoles map[string]string
@@ -141,7 +141,7 @@ type UserInstance struct {
 // Nothing ever applied one, so it is not read, and the next write of the
 // assignment leaves it out.
 //
-// team_roles is the role in each team (#role-per-team). A record from before
+// team_roles is the role in each team (#394). A record from before
 // it has none, and every team has its role - which is what it meant. role is
 // written as the strongest team role, so a binary from before the roles reads
 // a role the user has in at least one team.

@@ -114,7 +114,7 @@ export type CreateInstanceRequest = {
   is_active?: boolean;
 };
 
-/** A role a team member holds: per team, since #role-per-team. */
+/** A role a team member holds: per team, since #394. */
 export type TeamRole = 'developer' | 'viewer';
 
 export type UserInstanceRole = {
@@ -158,7 +158,7 @@ export type SetUserRoleRequest = {
   role: string;
   /** Every team of the assignment (#301). */
   team_ids: string[];
-  /** The role in each team; left out for an instance admin (#role-per-team). */
+  /** The role in each team; left out for an instance admin (#394). */
   team_roles?: Record<string, TeamRole>;
 };
 

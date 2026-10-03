@@ -42,7 +42,7 @@ type OrphanedAssignment struct {
 	// assignment held one team.
 	TeamID  string   `json:"team_id,omitempty"`
 	TeamIDs []string `json:"team_ids,omitempty"`
-	// TeamRoles is the role in each team (#role-per-team).
+	// TeamRoles is the role in each team (#394).
 	TeamRoles map[string]string `json:"team_roles,omitempty"`
 }
 

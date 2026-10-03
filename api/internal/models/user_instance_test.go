@@ -148,7 +148,7 @@ func TestUserInstanceHasTeam(t *testing.T) {
 	}
 }
 
-// A role per team (#role-per-team). A record from before it has one role for
+// A role per team (#394). A record from before it has one role for
 // every team, and is read that way; a record that names a role per team is
 // read as it says, and its role is the strongest of them.
 func TestUserInstanceReadsARolePerTeam(t *testing.T) {

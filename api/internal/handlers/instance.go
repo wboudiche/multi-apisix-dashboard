@@ -105,7 +105,7 @@ type SetUserInstanceRoleRequest struct {
 	// TeamID is what a client from before the list sends: one team.
 	TeamID string `json:"team_id"`
 	// TeamRoles is the role in some of the teams; the others take Role
-	// (#role-per-team). A client from before it sends none, and means Role
+	// (#394). A client from before it sends none, and means Role
 	// in every team.
 	TeamRoles map[string]string `json:"team_roles"`
 }

@@ -37,7 +37,7 @@ import { roleText } from '@e2e/utils/ui/roles';
 import { expect } from '@playwright/test';
 
 /**
- * A role per team (#role-per-team): viewer in one team and developer in
+ * A role per team (#394): viewer in one team and developer in
  * another on the same instance, and independent roles on another instance.
  * multi-team.spec.ts covers a developer in several teams; this covers what a
  * viewer team changes.
@@ -312,7 +312,7 @@ test('roles on another instance are its own', async () => {
 });
 
 test('an assignment stored before the roles has its role in every team', async () => {
-  // Written as a binary from before #role-per-team left it: one role.
+  // Written as a binary from before #394 left it: one role.
   await etcdPut(`/user_instances/${alice.id}/${fx().localInstanceId}`, {
     user_id: alice.id,
     instance_id: fx().localInstanceId,

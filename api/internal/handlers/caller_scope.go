@@ -35,7 +35,7 @@ type teamScope struct {
 	teams []string
 	// writable are the teams among them the non-admin is a developer in:
 	// what they may change, and what a create of theirs may go to
-	// (#role-per-team). Reads stay with teams.
+	// (#394). Reads stay with teams.
 	writable []string
 	// readOnly: the non-admin named one of their teams that they are a
 	// viewer in. Their lists narrow to it; a create in it is refused.

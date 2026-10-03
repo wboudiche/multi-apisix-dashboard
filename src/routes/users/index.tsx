@@ -79,7 +79,7 @@ type AssignmentForm = {
    */
   team_ids: string[];
   /**
-   * The role in each team, for a developer or a viewer (#role-per-team). A
+   * The role in each team, for a developer or a viewer (#394). A
    * team picked starts with `role`; choosing `role` sets every team to it.
    */
   team_roles: Record<string, TeamRole>;

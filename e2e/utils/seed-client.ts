@@ -61,7 +61,7 @@ export type UserInstance = {
   team_ids: string[];
   /** The first of them, as the answer named it when an assignment held one. */
   team_id: string;
-  /** The role in each team, where it differs from `role` (#role-per-team). */
+  /** The role in each team, where it differs from `role` (#394). */
   team_roles?: Record<string, 'developer' | 'viewer'>;
 };
 
@@ -415,7 +415,7 @@ export type UserInstanceRoleInput = {
   team_id?: string;
   /** Several teams on the one instance (#301). */
   team_ids?: string[];
-  /** The role in each team (#role-per-team). */
+  /** The role in each team (#394). */
   team_roles?: Record<string, 'developer' | 'viewer'>;
 };
 

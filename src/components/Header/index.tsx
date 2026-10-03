@@ -124,7 +124,7 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
   const sentTeamId = useAtomValue(sentTeamIdAtom);
 
   // Its role beside a developer's or a viewer's team: with a role per team it
-  // is what tells them which of their teams they may change (#role-per-team).
+  // is what tells them which of their teams they may change (#394).
   const withRole = (team: { name: string; role?: string }) =>
     team.role
       ? t('header.teamWithRole', {

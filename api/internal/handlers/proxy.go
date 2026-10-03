@@ -178,7 +178,7 @@ const teamNotAssignedCode = "team_not_assigned"
 
 // teamReadOnlyCode marks a write refused because the caller is a viewer in the
 // team that owns the resource, or in the team they named for a create
-// (#role-per-team).
+// (#394).
 const teamReadOnlyCode = "team_read_only"
 
 // maxListRows is the point past which a full list fetch is worth a log line.

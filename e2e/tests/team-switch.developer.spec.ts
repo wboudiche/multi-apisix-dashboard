@@ -109,7 +109,7 @@ const openAsDeveloper = async (page: Page, path: string) => {
   await expect(headerTeamSelect(page)).toBeVisible({ timeout: 30000 });
 };
 
-// The header names a team with the role held in it (#role-per-team).
+// The header names a team with the role held in it (#394).
 const asDeveloper = (team: string) => `${team} · ${roleText('developer')}`;
 
 const pickTeam = async (page: Page, team: string) => {
