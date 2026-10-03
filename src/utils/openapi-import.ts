@@ -42,6 +42,10 @@ type OpenAPISpec = {
   openapi?: string;
   swagger?: string;
   servers?: OpenAPIServer[];
+  // Swagger 2.0 says where the API lives with these instead of servers.
+  host?: string;
+  basePath?: string;
+  schemes?: string[];
   paths?: Record<string, OpenAPIPathItem>;
 };
 
@@ -56,6 +60,8 @@ type APISIXRoute = {
   upstream?: Record<string, unknown>;
   upstream_id?: string;
   service_id?: string;
+  plugin_config_id?: string;
+  script?: string;
   vars?: unknown;
   status?: number;
   priority?: number;
@@ -98,6 +104,13 @@ export const upstreamFromServer = (
     basePath: url.pathname.replace(/\/+$/, ''),
   };
 };
+
+// A Swagger 2.0 spec's one server; none when it names no host, which makes it
+// relative to wherever the spec was served from.
+const swaggerServer = (spec: OpenAPISpec): string | undefined =>
+  spec.swagger && typeof spec.host === 'string' && spec.host
+    ? `${spec.schemes?.[0] ?? 'http'}://${spec.host}${spec.basePath ?? ''}`
+    : undefined;
 
 const openAPIToRoutes = (spec: OpenAPISpec): { routes: APISIXRoute[]; servers: (string | undefined)[] } => {
   const routes: APISIXRoute[] = [];
@@ -171,7 +184,9 @@ const openAPIToRoutes = (spec: OpenAPISpec): { routes: APISIXRoute[]; servers: (
     // Where its backend lives: a server names the backend, not a host to match
     // on, so it is kept beside the route rather than written into it.
     servers.push(
-      firstServer(mergedOp.servers) ?? firstServer(pathItem.servers as OpenAPIServer[] | undefined) ?? firstServer(spec.servers)
+      firstServer(mergedOp.servers) ?? firstServer(pathItem.servers as OpenAPIServer[] | undefined) ??
+        firstServer(spec.servers) ??
+        swaggerServer(spec)
     );
   }
 
@@ -192,12 +207,19 @@ export type ImportBackend =
   | { kind: 'upstream'; upstreamId: string }
   | { kind: 'service'; serviceId: string };
 
+// What APISIX takes, beside the uri, as where the route goes or what answers it.
 const namesItsDestination = (route: APISIXRoute) =>
-  Boolean(route.upstream || route.upstream_id || route.service_id);
+  Boolean(
+    route.upstream ||
+      route.upstream_id ||
+      route.service_id ||
+      route.plugin_config_id ||
+      route.script
+  );
 
 /**
  * Whether APISIX will take the route: beside its uri it wants an upstream, an
- * upstream_id, a service_id or plugins.
+ * upstream_id, a service_id, a plugin_config_id, a script or plugins.
  */
 export const hasDestination = (route: APISIXRoute) =>
   namesItsDestination(route) || Object.keys(route.plugins ?? {}).length > 0;

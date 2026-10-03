@@ -97,6 +97,17 @@ describe('parseImportData servers', () => {
     expect(result.routes[0].hosts).toEqual(['gw.example.com']);
   });
 
+  it('reads a Swagger 2.0 host, base path and scheme', () => {
+    const swagger = (body: Record<string, unknown>) =>
+      parseImportData(JSON.stringify({ swagger: '2.0', paths: { '/a': { get: {} } }, ...body }));
+    expect(
+      swagger({ host: 'api.example.com:8443', basePath: '/v2', schemes: ['https'] }).servers
+    ).toEqual(['https://api.example.com:8443/v2']);
+    expect(swagger({ host: 'api.example.com' }).servers).toEqual(['http://api.example.com']);
+    // No host: relative to wherever the spec was served from.
+    expect(swagger({ basePath: '/v2' }).servers).toEqual([undefined]);
+  });
+
   it('has no server for APISIX route JSON', () => {
     const result = parseImportData(JSON.stringify([{ uri: '/a' }, { uri: '/b' }]));
     expect(result.servers).toEqual([undefined, undefined]);
@@ -139,6 +150,14 @@ describe('withBackend', () => {
     }
   });
 
+  it('leaves a route on a plugin config alone', () => {
+    const [route] = withBackend(
+      parseImportData(JSON.stringify([{ uri: '/a', plugin_config_id: 'p' }])),
+      { kind: 'upstream', upstreamId: 'u' }
+    );
+    expect(route.upstream_id).toBeUndefined();
+  });
+
   it('does not overwrite a proxy-rewrite the spec already set', () => {
     const route = withBackend(parsed, { kind: 'servers' })[rewritten];
     expect(route.upstream).toBeDefined();
@@ -178,6 +197,8 @@ describe('hasDestination', () => {
     expect(hasDestination({ uri: '/a', methods: [], service_id: 's' })).toBe(true);
     expect(hasDestination({ uri: '/a', methods: [], upstream: { nodes: {} } })).toBe(true);
     expect(hasDestination({ uri: '/a', methods: [], plugins: { redirect: {} } })).toBe(true);
+    expect(hasDestination({ uri: '/a', methods: [], plugin_config_id: 'p' })).toBe(true);
+    expect(hasDestination({ uri: '/a', methods: [], script: 'return 1' })).toBe(true);
   });
 });
 
