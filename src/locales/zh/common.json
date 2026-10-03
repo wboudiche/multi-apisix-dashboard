@@ -1190,7 +1190,10 @@
     "permissionsFailed": "更新权限失败",
     "deleted": "用户已删除",
     "deleteFailed": "删除用户失败",
-    "deleteConfirm": "确定要删除该用户吗？"
+    "deleteConfirm": "确定要删除该用户吗？",
+    "teamRoles": "各团队中的角色",
+    "teamRoleIn": "在 {{team}} 中的角色",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "listWarning": {
     "detailsUnresolved": "部分详情无法获取",

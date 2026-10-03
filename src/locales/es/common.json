@@ -1198,7 +1198,10 @@
     "permissionsFailed": "No se pudieron actualizar los permisos",
     "deleted": "Usuario eliminado",
     "deleteFailed": "No se pudo eliminar el usuario",
-    "deleteConfirm": "¿Seguro que quieres eliminar este usuario?"
+    "deleteConfirm": "¿Seguro que quieres eliminar este usuario?",
+    "teamRoles": "Rol en cada equipo",
+    "teamRoleIn": "Rol en {{team}}",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "listWarning": {
     "detailsUnresolved": "No se han podido resolver algunos detalles",

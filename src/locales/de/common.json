@@ -1196,7 +1196,10 @@
     "permissionsFailed": "Die Berechtigungen konnten nicht aktualisiert werden",
     "deleted": "Benutzer gelöscht",
     "deleteFailed": "Der Benutzer konnte nicht gelöscht werden",
-    "deleteConfirm": "Möchten Sie diesen Benutzer wirklich löschen?"
+    "deleteConfirm": "Möchten Sie diesen Benutzer wirklich löschen?",
+    "teamRoles": "Rolle in jedem Team",
+    "teamRoleIn": "Rolle in {{team}}",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "listWarning": {
     "detailsUnresolved": "Einige Details konnten nicht ermittelt werden",

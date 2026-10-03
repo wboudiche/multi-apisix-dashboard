@@ -1196,7 +1196,10 @@
     "permissionsFailed": "İzinler güncellenemedi",
     "deleted": "Kullanıcı silindi",
     "deleteFailed": "Kullanıcı silinemedi",
-    "deleteConfirm": "Bu kullanıcıyı silmek istediğinizden emin misiniz?"
+    "deleteConfirm": "Bu kullanıcıyı silmek istediğinizden emin misiniz?",
+    "teamRoles": "Her ekipteki rol",
+    "teamRoleIn": "{{team}} içindeki rol",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "listWarning": {
     "detailsUnresolved": "Bazı ayrıntılar çözümlenemedi",

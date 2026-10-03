@@ -25,6 +25,7 @@ import {
   MultiSelect,
   Paper,
   PasswordInput,
+  SegmentedControl,
   Select,
   Stack,
   Table,
@@ -33,6 +34,7 @@ import {
   TextInput,
   ThemeIcon,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { createFileRoute } from '@tanstack/react-router';
@@ -41,7 +43,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type User } from '@/apis/auth';
-import { instanceApi, teamsOf, type UserInstanceRole } from '@/apis/instances';
+import { instanceApi, roleInTeam, type TeamRole, teamsOf, type UserInstanceRole } from '@/apis/instances';
 import { type Team,teamApi } from '@/apis/teams';
 import { userApi } from '@/apis/users';
 import PageHeader from '@/components/page/PageHeader';
@@ -76,7 +78,19 @@ type AssignmentForm = {
    * them: what it shows, what it checks and what it sends are this one list.
    */
   team_ids: string[];
+  /**
+   * The role in each team, for a developer or a viewer (#role-per-team). A
+   * team picked starts with `role`; choosing `role` sets every team to it.
+   */
+  team_roles: Record<string, TeamRole>;
 };
+
+/** The roles a team can be held in. */
+const TEAM_ROLES: TeamRole[] = ['developer', 'viewer'];
+
+/** The strongest role held in the teams: what the backend stores as the role. */
+const strongest = (roles: Record<string, TeamRole>, ids: string[]): TeamRole =>
+  ids.some((id) => roles[id] === 'developer') ? 'developer' : 'viewer';
 
 /**
  * For a developer or a viewer the teams are the whole of what they can see; an
@@ -310,9 +324,16 @@ const UsersPage = () => {
           // Every one of these was previously unchecked, so a rejected
           // assignment still ended in a success toast.
           try {
+            const needsTeams = roleNeedsTeam(config.role);
             await instanceApi.setUserRole(userId, instanceID, {
-              role: config.role,
+              // The strongest team role: what the backend stores as role.
+              role: needsTeams ? strongest(config.team_roles, config.team_ids) : config.role,
               team_ids: config.team_ids,
+              ...(needsTeams ? {
+                team_roles: Object.fromEntries(
+                  config.team_ids.map((id) => [id, config.team_roles[id] ?? 'viewer'])
+                ),
+              } : {}),
             });
           } catch (err) {
             notifications.show({
@@ -453,6 +474,7 @@ const UsersPage = () => {
       roles[a.instance_id] = {
         role: a.role,
         team_ids: teamsOf(a),
+        team_roles: Object.fromEntries(teamsOf(a).map((id) => [id, roleInTeam(a, id) ?? 'viewer'])),
       };
     }
     setInstanceRoles(roles);
@@ -497,9 +519,14 @@ const UsersPage = () => {
               // them was this screen contradicting itself.
               // Only once the teams have been read: before that, or when
               // that read failed, every team would show as an id.
-              const uniqueTeams = [...new Set(assignments.flatMap(teamsOf))]
-                .map((id) => teamById.get(id) ?? (teamsLoaded ? { id, name: id } : undefined))
-                .filter((team) => team !== undefined);
+              const memberships = assignments.flatMap((a) =>
+                teamsOf(a).map((id) => ({
+                  key: `${a.instance_id}:${id}`,
+                  instance: availableInstances.find((i) => i.id === a.instance_id)?.name ?? a.instance_id,
+                  team: teamById.get(id) ?? (teamsLoaded ? { id, name: id } : undefined),
+                  role: roleInTeam(a, id),
+                }))
+              ).filter((m) => m.team !== undefined);
 
               return (
               <Table.Tr key={user.id} className={`stagger-${(index % 5) + 1}`}>
@@ -552,15 +579,21 @@ const UsersPage = () => {
                     // Derived from the assignments, so it is unknown for the
                     // same reason rather than empty.
                     <Text size="xs" c="red">{t('users.assignmentsUnreadable')}</Text>
-                  ) : uniqueTeams.length === 0 ? (
+                  ) : memberships.length === 0 ? (
                     <Text size="xs" c="dimmed">—</Text>
                   ) : (
                     <Stack gap={4}>
-                      {uniqueTeams.map((team) => (
-                        <Group key={team.id} gap={6} wrap="nowrap">
-                          <IconGroup width="13" height="13" style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0 }} />
-                          <Text size="xs" fw={500}>{team.name}</Text>
-                        </Group>
+                      {memberships.map((m) => (
+                        <Tooltip key={m.key} label={m.instance}>
+                          <Group gap={6} wrap="nowrap">
+                            <IconGroup width="13" height="13" style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0 }} />
+                            <Text size="xs" fw={500}>
+                              {m.role
+                                ? t('users.teamWithRole', { team: m.team!.name, role: roleLabel(t, m.role), interpolation: { escapeValue: false } })
+                                : m.team!.name}
+                            </Text>
+                          </Group>
+                        </Tooltip>
                       ))}
                     </Stack>
                   )}
@@ -736,10 +769,23 @@ const UsersPage = () => {
                                 tabIndex: 0,
                               }}
                               value={config?.role || null}
-                              onChange={(role) => setInstanceRoles({
-                                ...instanceRoles,
-                                [inst.id]: { ...instanceRoles[inst.id], role: role || '', team_ids: instanceRoles[inst.id]?.team_ids || [] }
-                              })}
+                              onChange={(role) => {
+                                const teamIds = instanceRoles[inst.id]?.team_ids || [];
+                                const current = instanceRoles[inst.id]?.team_roles || {};
+                                setInstanceRoles({
+                                  ...instanceRoles,
+                                  [inst.id]: {
+                                    ...instanceRoles[inst.id],
+                                    role: role || '',
+                                    team_ids: teamIds,
+                                    // A developer or a viewer sets every team to it;
+                                    // otherwise the roles stay, unsent for an admin.
+                                    team_roles: role && roleNeedsTeam(role)
+                                      ? Object.fromEntries(teamIds.map((id) => [id, role as TeamRole]))
+                                      : current,
+                                  },
+                                });
+                              }}
                               data={INSTANCE_ROLES.map((role) => ({
                                 value: role,
                                 label: roleLabel(t, role),
@@ -772,13 +818,53 @@ const UsersPage = () => {
                                 required={roleNeedsTeam(config.role)}
                                 data={teamOptions}
                                 value={config.team_ids}
-                                onChange={(teamIds) => setInstanceRoles({
-                                  ...instanceRoles,
-                                  [inst.id]: { ...instanceRoles[inst.id], team_ids: inStoredOrder(inst.id, teamIds), role: instanceRoles[inst.id]?.role || '' }
-                                })}
+                                onChange={(teamIds) => {
+                                  const ordered = inStoredOrder(inst.id, teamIds);
+                                  const current = instanceRoles[inst.id]?.team_roles || {};
+                                  const role = instanceRoles[inst.id]?.role || '';
+                                  setInstanceRoles({
+                                    ...instanceRoles,
+                                    [inst.id]: {
+                                      ...instanceRoles[inst.id],
+                                      team_ids: ordered,
+                                      role,
+                                      // A team already there keeps its role; a new one
+                                      // takes the role field's.
+                                      team_roles: Object.fromEntries(
+                                        ordered.map((id) => [id, current[id] ?? (roleNeedsTeam(role) ? (role as TeamRole) : 'viewer')])
+                                      ),
+                                    },
+                                  });
+                                }}
                               />
                             )}
                           </Group>
+                          {roleNeedsTeam(config.role) && config.team_ids.length > 0 && (
+                            <Stack gap={4} data-testid={`team-roles-${inst.id}`}>
+                              <Text size="xs" fw={500}>{t('users.teamRoles')}</Text>
+                              {config.team_ids.map((teamId) => {
+                                const name = teamById.get(teamId)?.name ?? teamId;
+                                return (
+                                  <Group key={teamId} gap="sm" justify="space-between" wrap="nowrap">
+                                    <Text size="sm">{name}</Text>
+                                    <SegmentedControl
+                                      size="xs"
+                                      aria-label={t('users.teamRoleIn', { team: name, interpolation: { escapeValue: false } })}
+                                      value={config.team_roles[teamId] ?? 'viewer'}
+                                      data={TEAM_ROLES.map((role) => ({ value: role, label: roleLabel(t, role) }))}
+                                      onChange={(role) => setInstanceRoles({
+                                        ...instanceRoles,
+                                        [inst.id]: {
+                                          ...config,
+                                          team_roles: { ...config.team_roles, [teamId]: role as TeamRole },
+                                        },
+                                      })}
+                                    />
+                                  </Group>
+                                );
+                              })}
+                            </Stack>
+                          )}
                         </Stack>
                       </Paper>
                     );

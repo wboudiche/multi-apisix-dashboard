@@ -1116,7 +1116,10 @@
     "permissionsFailed": "Failed to update permissions",
     "deleted": "User deleted successfully",
     "deleteFailed": "Failed to delete user",
-    "deleteConfirm": "Are you sure you want to delete this user?"
+    "deleteConfirm": "Are you sure you want to delete this user?",
+    "teamRoles": "Role in each team",
+    "teamRoleIn": "Role in {{team}}",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "header": {
     "accountRole": "Role: {{role}}",
