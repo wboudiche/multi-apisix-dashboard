@@ -311,10 +311,8 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const { id, onDeleteSuccess } = props;
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit, isAdmin, canWriteResource } = usePermission();
+  const { isAdmin, canWriteResource, canWriteOwner } = usePermission();
   // The backend keeps the route test for those who can write routes on the
-  // instance: it sends a request of any method through the gateway (#307).
-  const canTest = canWriteResource('routes');
   const [jsonDrawerOpen, setJsonDrawerOpen] = useBoolean(false);
   const [testDrawerOpen, setTestDrawerOpen] = useBoolean(false);
   const [reassignOpen, setReassignOpen] = useBoolean(false);
@@ -327,6 +325,12 @@ export const RouteDetail = (props: RouteDetailProps) => {
   const routeHost = rawJson?.host as string || (rawJson?.hosts as string[])?.[0] || undefined;
   const routeSoapAction = extractSoapAction(rawJson?.vars);
   const currentTeamId = (rawJson as Record<string, unknown> | null)?.__team_id as string | undefined;
+  // The role that counts is the one in the route's team, not the instance's.
+  const canChange = canWriteOwner(currentTeamId);
+  // The backend keeps the route test for those who can write routes on the
+  // instance, and are developer in the route's team: it sends a request of any
+  // method through the gateway (#307).
+  const canTest = canWriteResource('routes') && canChange;
 
   const handleJsonSave = useCallback(async (data: Record<string, unknown>) => {
     setJsonSaving(true);
@@ -386,7 +390,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
                   {t('form.reassignTeam.title')}
                 </Button>
               )}
-              {canEdit && (
+              {canChange && (
                 <Button
                   onClick={() => setReadOnly(false)}
                   size="compact-sm"
@@ -397,6 +401,7 @@ export const RouteDetail = (props: RouteDetailProps) => {
               )}
               <DeleteResourceBtn
                 mode="detail"
+                allowed={canChange}
                 name={t('routes.singular')}
                 target={id}
                 api={`${API_ROUTES}/${id}`}
@@ -410,9 +415,9 @@ export const RouteDetail = (props: RouteDetailProps) => {
       <RawJsonDrawer
         opened={jsonDrawerOpen}
         onClose={() => setJsonDrawerOpen(false)}
-        title={canEdit ? t('form.json.editRaw') : t('form.json.viewRaw')}
+        title={canChange ? t('form.json.editRaw') : t('form.json.viewRaw')}
         json={rawJson}
-        onSave={canEdit ? handleJsonSave : undefined}
+        onSave={canChange ? handleJsonSave : undefined}
         loading={jsonSaving}
       />
       <RouteTestDrawer

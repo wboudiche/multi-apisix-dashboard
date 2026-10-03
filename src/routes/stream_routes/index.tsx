@@ -18,7 +18,7 @@ import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
 import type { FC } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getStreamRouteListQueryOptions, useStreamRouteList } from '@/apis/hooks';
@@ -31,9 +31,11 @@ import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_route
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_STREAM_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import { rowId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { ownerOf } from '@/utils/owner';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 
 export type StreamRouteListProps = {
@@ -52,11 +54,16 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
     defaultParams
   );
   const { t } = useTranslation();
+  const { canWriteOwner } = usePermission();
   // Never more than the rows on screen: see useRowSelection (#371).
+  const selectable = useCallback(
+    (row: APISIXType['RespStreamRouteItem']) => canWriteOwner(ownerOf(row.value)),
+    [canWriteOwner]
+  );
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
     listKey,
-    { idOf: rowId }
+    { idOf: rowId, selectable }
   );
 
   const columns = useMemo<
@@ -96,6 +103,7 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
           <ToDetailBtn key="detail" record={record} />,
           <DeleteResourceBtn
             key="delete"
+            allowed={canWriteOwner(ownerOf(record.value))}
             name={t('streamRoutes.singular')}
             target={record.value.id}
             api={`${API_STREAM_ROUTES}/${record.value.id}`}
@@ -104,7 +112,7 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
         ],
       },
     ];
-  }, [t, ToDetailBtn, refetch]);
+  }, [t, ToDetailBtn, refetch, canWriteOwner]);
 
   return (
     <AntdConfigProvider>
@@ -157,6 +165,7 @@ export const StreamRouteList = (props: StreamRouteListProps) => {
 
 function StreamRouteComponent() {
   const { t } = useTranslation();
+  const { canWriteOwner } = usePermission();
 
   return (
     <>
@@ -169,6 +178,7 @@ function StreamRouteComponent() {
             key="detail"
             to="/stream_routes/detail/$id"
             params={{ id: record.value.id }}
+            allowed={canWriteOwner(ownerOf(record.value))}
           />
         )}
       />

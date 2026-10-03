@@ -17,7 +17,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Group,Skeleton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import {
   createFileRoute,
   useNavigate,
@@ -29,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { useBoolean } from 'react-use';
 
 import { putCredentialReq } from '@/apis/credentials';
-import { getCredentialQueryOptions } from '@/apis/hooks';
+import { getConsumerQueryOptions, getCredentialQueryOptions } from '@/apis/hooks';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartCredential } from '@/components/form-slice/FormPartCredential';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
@@ -40,6 +40,7 @@ import { API_CREDENTIALS } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 import { pipeProduce } from '@/utils/producer';
 
 type CredentialFormProps = {
@@ -122,10 +123,12 @@ const CredentialDetailForm = (props: CredentialFormProps) => {
 function CredentialDetailPage() {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
+  const { canWriteOwner } = usePermission();
   const { username, id } = useParams({
     from: '/consumers/detail/$username/credentials/detail/$id',
   });
+  // A credential belongs to its consumer's team: the role there counts.
+  const canChange = canWriteOwner(ownerOf(useQuery(getConsumerQueryOptions(username)).data?.value));
   const navigate = useNavigate();
 
   return (
@@ -136,7 +139,7 @@ function CredentialDetailPage() {
           title: t('info.detail.title', { name: t('credentials.singular') }),
           extra: (
             <Group>
-              {canEdit && (
+              {canChange && (
                 <Button
                   onClick={() => setReadOnly(false)}
                   size="compact-sm"
@@ -148,6 +151,7 @@ function CredentialDetailPage() {
               <DeleteResourceBtn
                 mode="detail"
                 key="delete"
+                allowed={canChange}
                 name={t('credentials.singular')}
                 target={id}
                 api={`${API_CREDENTIALS(username)}/${id}`}

@@ -16,11 +16,13 @@
  */
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useParams } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
+  getConsumerQueryOptions,
   getCredentialListQueryOptions,
   useCredentialsList,
 } from '@/apis/hooks';
@@ -29,7 +31,9 @@ import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CREDENTIALS } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import type { APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 
 function CredentialsList() {
   const { t } = useTranslation();
@@ -37,6 +41,11 @@ function CredentialsList() {
     from: '/consumers/detail/$username/credentials/',
   });
   const { data, isLoading, refetch } = useCredentialsList(username);
+  // A credential belongs to its consumer, and so to the consumer's team: the
+  // role that counts is the one there. Until the consumer answers nothing
+  // offers a write.
+  const { canWriteOwner } = usePermission();
+  const mayChange = canWriteOwner(ownerOf(useQuery(getConsumerQueryOptions(username)).data?.value));
 
   const columns = useMemo<
     ProColumns<APISIXType['RespCredentialItem']>[]
@@ -79,9 +88,11 @@ function CredentialsList() {
               username: username as string,
               id: record.value.id,
             }}
+            allowed={mayChange}
           />,
           <DeleteResourceBtn
             key="delete"
+            allowed={mayChange}
             name={t('credentials.singular')}
             target={record.value.id}
             api={`${API_CREDENTIALS(username)}/${record.value.id}`}
@@ -90,7 +101,7 @@ function CredentialsList() {
         ],
       },
     ];
-  }, [refetch, t, username]);
+  }, [refetch, t, username, mayChange]);
 
   return (
     <AntdConfigProvider>

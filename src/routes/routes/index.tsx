@@ -67,6 +67,7 @@ import { ownTeamsAtom } from '@/stores/team';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { withoutDashboardFields } from '@/utils/dashboard-fields';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
+import { ownerOf } from '@/utils/owner';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
 import { proxyFailureText } from '@/utils/team-refusal';
@@ -102,10 +103,16 @@ export const RouteList = (props: RouteListProps) => {
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
-  const { canEdit, canDelete, isAdmin, canWriteResource } = usePermission();
+  const { isAdmin, canWriteResource, canWriteOwner } = usePermission();
   const [currentInstanceId] = useAtom(currentInstanceIdAtom);
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
-  const [jsonDrawerData, setJsonDrawerData] = useState<{ id: string; json: Record<string, unknown> } | null>(null);
+  const [jsonDrawerData, setJsonDrawerData] = useState<{
+    id: string;
+    json: Record<string, unknown>;
+    // The team the route belongs to: the JSON drops it, and the role in that
+    // team says whether the drawer may save.
+    owner: string | undefined;
+  } | null>(null);
   const [jsonSaving, setJsonSaving] = useState(false);
   const [testDrawerOpen, setTestDrawerOpen] = useState(false);
   const [testDrawerRoute, setTestDrawerRoute] = useState<{
@@ -160,7 +167,12 @@ export const RouteList = (props: RouteListProps) => {
   const shownWarning =
     listWarning === 'service_upstream_unresolved' && !wantsUpstreams ? undefined : listWarning;
 
-  const allIds: string[] = data?.list?.map((r: { value: { id: string } }) => r.value.id) || [];
+  // Whether this account may change the route: the role in the route's team,
+  // which is not the one it holds for the instance.
+  const writableRow = (r: { value: { __team_id?: string } }) => canWriteOwner(ownerOf(r.value));
+  // Only the routes this account may delete are offered for a batch.
+  const allIds: string[] =
+    data?.list?.filter(writableRow).map((r: { value: { id: string } }) => r.value.id) || [];
   // The rows ticked on this very list, and still on it. Kept for the life of
   // the page, the ticks of page one were still selected on page two: the bar
   // came back at the first row ticked there counting them, and Batch Delete
@@ -219,9 +231,16 @@ export const RouteList = (props: RouteListProps) => {
     setTestDrawerOpen(true);
   };
 
+  // Fail closed: no route open, no team known, no save.
+  const drawerWritable = canWriteOwner(jsonDrawerData?.owner);
+
   const handleViewJson = (record: Record<string, unknown>) => {
     // The route as APISIX holds it, as the detail page's drawer shows it.
-    setJsonDrawerData({ id: record.id as string, json: withoutDashboardFields(record) });
+    setJsonDrawerData({
+      id: record.id as string,
+      json: withoutDashboardFields(record),
+      owner: ownerOf(record),
+    });
     setJsonDrawerOpen(true);
   };
 
@@ -373,7 +392,10 @@ export const RouteList = (props: RouteListProps) => {
         </Table.Thead>
         <Table.Tbody>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {data?.list.map((record: any, index: number) => (
+          {data?.list.map((record: any, index: number) => {
+            const writable =
+              canWriteResource('routes') && canWriteOwner(ownerOf(record.value));
+            return (
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
                 <Checkbox
@@ -386,6 +408,7 @@ export const RouteList = (props: RouteListProps) => {
                     name: rowCheckboxNames.get(String(record.value.id)) ?? rowNameOrId(record),
                   })}
                   checked={selectedIds.includes(record.value.id)}
+                  disabled={!writableRow(record)}
                   onChange={() => toggleSelect(record.value.id)}
                 />
               </Table.Td>
@@ -554,7 +577,7 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('operation') && (
                 <Table.Td>
                   <Group gap={8} wrap="nowrap">
-                    {canEdit && (
+                    {canWriteOwner(ownerOf(record.value)) && (
                       <Button
                         size="xs"
                         color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
@@ -589,15 +612,11 @@ export const RouteList = (props: RouteListProps) => {
                       params={{ id: record.value.id }}
                       size="xs"
                       color="blue"
-                      variant={canWriteResource('routes') ? 'filled' : 'light'}
+                      variant={writable ? 'filled' : 'light'}
                       radius="sm"
                       styles={{ root: { padding: '0 12px' } }}
                     >
-                      {t(
-                        canWriteResource('routes')
-                          ? 'form.btn.configure'
-                          : 'form.btn.view'
-                      )}
+                      {t(writable ? 'form.btn.configure' : 'form.btn.view')}
                     </RouteLinkBtn>
                     <Menu shadow="md" width={160}>
                       <Menu.Target>
@@ -607,7 +626,7 @@ export const RouteList = (props: RouteListProps) => {
                         {/* The backend keeps the route test for those who can
                             write routes on the instance: it sends a request
                             of any method through the gateway (#307). */}
-                        {canWriteResource('routes') && (
+                        {writable && (
                           <Menu.Item
                             leftSection={<IconPlayArrow width="14" height="14" />}
                             onClick={() => handleTestRoute(record.value)}
@@ -627,7 +646,7 @@ export const RouteList = (props: RouteListProps) => {
                         >
                           {t('form.json.exportOpenAPI')}
                         </Menu.Item>
-                        {canEdit && (
+                        {canWriteOwner(ownerOf(record.value)) && (
                           <Menu.Item
                             leftSection={<IconCopy width="14" height="14" />}
                             onClick={() => handleDuplicate(record.value)}
@@ -635,12 +654,13 @@ export const RouteList = (props: RouteListProps) => {
                             {t('form.json.duplicate')}
                           </Menu.Item>
                         )}
-                        {canDelete && (<>
+                        {canWriteOwner(ownerOf(record.value)) && (<>
                           <Menu.Divider />
                           {/* The same confirmation every other delete opens,
                               worn as a menu item: it names the route, and it
                               invalidates the caches other pages read. */}
                           <DeleteResourceBtn
+                            allowed={canWriteOwner(ownerOf(record.value))}
                             name={t('routes.singular')}
                             target={record.value.id}
                             api={`${API_ROUTES}/${record.value.id}`}
@@ -662,7 +682,8 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
             </Table.Tr>
-          ))}
+            );
+          })}
           {(!data?.list || data.list.length === 0) && (
             <Table.Tr>
               <Table.Td colSpan={visibleColumns.length + 1}>
@@ -699,9 +720,9 @@ export const RouteList = (props: RouteListProps) => {
       <RawJsonDrawer
         opened={jsonDrawerOpen}
         onClose={() => setJsonDrawerOpen(false)}
-        title={canEdit ? t('form.json.editRaw') : t('form.json.viewRaw')}
+        title={drawerWritable ? t('form.json.editRaw') : t('form.json.viewRaw')}
         json={jsonDrawerData?.json ?? null}
-        onSave={canEdit ? handleJsonSave : undefined}
+        onSave={drawerWritable ? handleJsonSave : undefined}
         loading={jsonSaving}
       />
       <RouteTestDrawer

@@ -18,7 +18,7 @@ import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { Badge, Stack, Text, Tooltip } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getUpstreamListQueryOptions, useUpstreamList } from '@/apis/hooks';
@@ -36,18 +36,23 @@ import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
 import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { ownerOf } from '@/utils/owner';
 import type { HealthNode } from '@/utils/upstream-health';
 import { summarizeHealth } from '@/utils/upstream-health';
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { canWriteResource } = usePermission();
+  const { canWriteResource, canWriteOwner } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useUpstreamList();
   // Never more than the rows on screen: see useRowSelection (#371).
+  const selectable = useCallback(
+    (row: UpstreamRow) => canWriteOwner(ownerOf(row.value)),
+    [canWriteOwner]
+  );
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list as UpstreamRow[],
     listKey,
-    { idOf: rowId, nameOf: rowNameOrId }
+    { idOf: rowId, nameOf: rowNameOrId, selectable }
   );
 
   // The proxy says so when it could not count: a page that showed nothing
@@ -211,23 +216,24 @@ function RouteComponent() {
         valueType: 'option',
         key: 'option',
         width: 200,
-        render: (_, record) => [
+        render: (_, record) => {
+          const writable = canWriteResource('upstreams') && canWriteOwner(ownerOf(record.value));
+          return [
           <RouteLinkBtn
             key="detail"
             to="/upstreams/detail/$id"
             params={{ id: record.value.id }}
             size="xs"
             color="blue"
-            variant={canWriteResource('upstreams') ? 'filled' : 'light'}
+            variant={writable ? 'filled' : 'light'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >
-            {t(
-              canWriteResource('upstreams') ? 'form.btn.configure' : 'form.btn.view'
-            )}
+            {t(writable ? 'form.btn.configure' : 'form.btn.view')}
           </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
+            allowed={canWriteOwner(ownerOf(record.value))}
             name={t('upstreams.singular')}
             target={record.value.id}
             api={`${API_UPSTREAMS}/${record.value.id}`}
@@ -238,10 +244,11 @@ function RouteComponent() {
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           />,
-        ],
+          ];
+        },
       },
     ];
-  }, [t, refetch, canWriteResource]);
+  }, [t, refetch, canWriteResource, canWriteOwner]);
 
   return (
     <>

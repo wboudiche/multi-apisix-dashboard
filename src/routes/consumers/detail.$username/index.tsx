@@ -17,7 +17,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Group,Skeleton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQuery,useSuspenseQuery } from '@tanstack/react-query';
 import {
   createFileRoute,
   useNavigate,
@@ -38,6 +38,7 @@ import { API_CONSUMERS } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 import { pipeProduce } from '@/utils/producer';
 
 type Props = {
@@ -118,15 +119,19 @@ const ConsumerDetailForm = (props: Props) => {
 const ConsumerDetailTab = () => {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
   const { username } = useParams({ from: '/consumers/detail/$username' });
+  const { canWriteOwner } = usePermission();
+  // The role that counts is the one in the resource's team. The query is the
+  // form's own, so this costs no request, and until it answers nothing offers
+  // a write.
+  const canChange = canWriteOwner(ownerOf(useQuery(getConsumerQueryOptions(username)).data?.value));
   const navigate = useNavigate();
 
   return (
     <>
       {readOnly && (
         <Group justify="flex-end" mb="md">
-          {canEdit && (
+          {canChange && (
             <Button
               onClick={() => setReadOnly(false)}
               size="compact-sm"
@@ -137,6 +142,7 @@ const ConsumerDetailTab = () => {
           )}
           <DeleteResourceBtn
             mode="detail"
+            allowed={canChange}
             name={t('consumers.singular')}
             target={username}
             api={`${API_CONSUMERS}/${username}`}

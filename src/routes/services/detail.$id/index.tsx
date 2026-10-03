@@ -17,7 +17,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Group, Skeleton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQuery,useSuspenseQuery } from '@tanstack/react-query';
 import {
   createFileRoute,
   useNavigate,
@@ -44,6 +44,7 @@ import { API_SERVICES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 import { produceServiceBody } from '@/utils/service-body';
 
 type Props = {
@@ -161,8 +162,12 @@ const ServiceDetailForm = (props: Props) => {
 function RouteComponent() {
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
   const { id } = useParams({ from: '/services/detail/$id' });
+  const { canWriteOwner } = usePermission();
+  // The role that counts is the one in the resource's team. The query is the
+  // form's own, so this costs no request, and until it answers nothing offers
+  // a write.
+  const canChange = canWriteOwner(ownerOf(useQuery(getServiceQueryOptions(id)).data?.value));
   const navigate = useNavigate();
 
   return (
@@ -173,7 +178,7 @@ function RouteComponent() {
           title: t('info.detail.title', { name: t('services.singular') }),
           extra: (
             <Group>
-              {canEdit && (
+              {canChange && (
                 <Button
                   onClick={() => setReadOnly(false)}
                   size="compact-sm"
@@ -184,6 +189,7 @@ function RouteComponent() {
               )}
               <DeleteResourceBtn
                 mode="detail"
+                allowed={canChange}
                 name={t('services.singular')}
                 target={id}
                 api={`${API_SERVICES}/${id}`}

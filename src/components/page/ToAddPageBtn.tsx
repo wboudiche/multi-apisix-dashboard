@@ -63,10 +63,16 @@ export type ToDetailPageBtnProps = {
    * different places (#270).
    */
   resource: ResourceType;
+  /**
+   * Whether this account may change this one resource: the role in its team
+   * (canWriteOwner). Left out, the account's role for the resource type
+   * decides alone.
+   */
+  allowed?: boolean;
 } & Pick<LinkProps, 'params'>;
 
 export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
-  const { params, to, mode = 'icon', resource } = props;
+  const { params, to, mode = 'icon', resource, allowed = true } = props;
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
 
@@ -74,7 +80,8 @@ export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
   // read as well as edited - named for what the account may do once it is
   // there. "Configure" offered to someone who may only read promises an edit
   // that every field refuses to save and the proxy answers 403 to (#188).
-  const label = canWriteResource(resource) ? t('form.btn.configure') : t('form.btn.view');
+  const writable = canWriteResource(resource) && allowed;
+  const label = writable ? t('form.btn.configure') : t('form.btn.view');
 
   if (mode === 'button') {
     return (
@@ -94,7 +101,7 @@ export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
       >
         {/* The pictogram follows the word: an eye for a page that can only
             be read, the edit mark for one that can be changed. */}
-        {canWriteResource(resource) ? (
+        {writable ? (
           <IconEdit width="18" height="18" />
         ) : (
           <IconVisibility width="18" height="18" />

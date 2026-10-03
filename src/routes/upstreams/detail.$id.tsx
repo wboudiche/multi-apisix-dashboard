@@ -17,7 +17,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Group, Skeleton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQuery,useSuspenseQuery } from '@tanstack/react-query';
 import {
   createFileRoute,
   useNavigate,
@@ -48,6 +48,7 @@ import { API_UPSTREAMS } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import type { APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 import { pipeProduce } from '@/utils/producer';
 
 type Props = {
@@ -152,7 +153,11 @@ function UpstreamDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/upstreams/detail/$id' });
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
+  const { canWriteOwner } = usePermission();
+  // The role that counts is the one in the resource's team. The query is the
+  // form's own, so this costs no request, and until it answers nothing offers
+  // a write.
+  const canChange = canWriteOwner(ownerOf(useQuery(getUpstreamQueryOptions(id)).data?.value));
   const navigate = useNavigate();
 
   return (
@@ -163,7 +168,7 @@ function UpstreamDetailPage() {
           title: t('info.detail.title', { name: t('upstreams.singular') }),
           extra: (
             <Group>
-              {canEdit && (
+              {canChange && (
                 <Button
                   onClick={() => setReadOnly(false)}
                   size="compact-sm"
@@ -174,6 +179,7 @@ function UpstreamDetailPage() {
               )}
               <DeleteResourceBtn
                 mode="detail"
+                allowed={canChange}
                 name={t('upstreams.singular')}
                 target={id}
                 api={`${API_UPSTREAMS}/${id}`}

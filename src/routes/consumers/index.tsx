@@ -17,7 +17,7 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getConsumerListQueryOptions, useConsumerList } from '@/apis/hooks';
@@ -33,19 +33,24 @@ import { usePermission } from '@/hooks/usePermission';
 import { useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { ownerOf } from '@/utils/owner';
 
 /** A consumer has no id: it is keyed, and called, by its username. */
 const consumerName = (record: APISIXType['RespConsumerItem']) => record.value.username;
 
 function ConsumersList() {
   const { t } = useTranslation();
-  const { canWriteResource } = usePermission();
+  const { canWriteResource, canWriteOwner } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useConsumerList();
   // Never more than the rows on screen: see useRowSelection (#371).
+  const selectable = useCallback(
+    (row: APISIXType['RespConsumerItem']) => canWriteOwner(ownerOf(row.value)),
+    [canWriteOwner]
+  );
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
     listKey,
-    { idOf: consumerName }
+    { idOf: consumerName, selectable }
   );
 
   const columns = useMemo<ProColumns<APISIXType['RespConsumerItem']>[]>(() => {
@@ -78,23 +83,24 @@ function ConsumersList() {
         valueType: 'option',
         key: 'option',
         width: 200,
-        render: (_, record) => [
+        render: (_, record) => {
+          const writable = canWriteResource('consumers') && canWriteOwner(ownerOf(record.value));
+          return [
           <RouteLinkBtn
             key="detail"
             to="/consumers/detail/$username"
             params={{ username: record.value.username }}
             size="xs"
             color="blue"
-            variant={canWriteResource('consumers') ? 'filled' : 'light'}
+            variant={writable ? 'filled' : 'light'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >
-            {t(
-              canWriteResource('consumers') ? 'form.btn.configure' : 'form.btn.view'
-            )}
+            {t(writable ? 'form.btn.configure' : 'form.btn.view')}
           </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
+            allowed={canWriteOwner(ownerOf(record.value))}
             name={t('consumers.singular')}
             target={record.value.username}
             api={`${API_CONSUMERS}/${record.value.username}`}
@@ -105,10 +111,11 @@ function ConsumersList() {
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           />,
-        ],
+          ];
+        },
       },
     ];
-  }, [refetch, t, canWriteResource]);
+  }, [refetch, t, canWriteResource, canWriteOwner]);
 
   return (
     <AntdConfigProvider>

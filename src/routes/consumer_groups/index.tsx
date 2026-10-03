@@ -17,7 +17,7 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getConsumerGroupListQueryOptions, useConsumerGroupList } from '@/apis/hooks';
@@ -28,18 +28,25 @@ import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMER_GROUPS } from '@/config/constant';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { ownerOf } from '@/utils/owner';
 
 function ConsumerGroupsList() {
   const { t } = useTranslation();
+  const { canWriteOwner } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useConsumerGroupList();
   // Never more than the rows on screen: see useRowSelection (#371).
+  const selectable = useCallback(
+    (row: APISIXType['RespConsumerGroupItem']) => canWriteOwner(ownerOf(row.value)),
+    [canWriteOwner]
+  );
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
     listKey,
-    { idOf: rowId, nameOf: rowNameOrId }
+    { idOf: rowId, nameOf: rowNameOrId, selectable }
   );
 
   const columns = useMemo<
@@ -86,9 +93,11 @@ function ConsumerGroupsList() {
             key="detail"
             to="/consumer_groups/detail/$id"
             params={{ id: record.value.id }}
+            allowed={canWriteOwner(ownerOf(record.value))}
           />,
           <DeleteResourceBtn
             key="delete"
+            allowed={canWriteOwner(ownerOf(record.value))}
             name={t('consumerGroups.singular')}
             target={record.value.id}
             api={`${API_CONSUMER_GROUPS}/${record.value.id}`}
@@ -97,7 +106,7 @@ function ConsumerGroupsList() {
         ],
       },
     ];
-  }, [refetch, t]);
+  }, [refetch, t, canWriteOwner]);
 
   return (
     <AntdConfigProvider>

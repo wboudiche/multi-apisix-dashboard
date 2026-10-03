@@ -22,11 +22,14 @@ import PageHeader from '@/components/page/PageHeader';
 import { ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { StreamRoutesErrorComponent } from '@/components/page-slice/stream_routes/ErrorComponent';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import { StreamRouteList } from '@/routes/stream_routes';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { ownerOf } from '@/utils/owner';
 
 function StreamRouteComponent() {
   const { t } = useTranslation();
+  const { canWriteOwner } = usePermission();
   const { id } = useParams({ from: '/services/detail/$id/stream_routes/' });
   return (
     <>
@@ -39,6 +42,7 @@ function StreamRouteComponent() {
             key="detail"
             to="/services/detail/$id/stream_routes/detail/$routeId"
             params={{ id, routeId: record.value.id }}
+            allowed={canWriteOwner(ownerOf(record.value))}
           />
         )}
         defaultParams={{

@@ -23,7 +23,9 @@ import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_SERVICES } from '@/config/constant';
 import { useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { ownerOf } from '@/utils/owner';
 import IconRoute from '~icons/material-symbols/alt-route';
 import IconUpstream from '~icons/material-symbols/hub-outline';
 
@@ -49,6 +51,7 @@ type ServiceCardsProps = {
  */
 export const ServiceCards = ({ services, onDeleted }: ServiceCardsProps) => {
   const { t } = useTranslation();
+  const { canWriteOwner } = usePermission();
   const instanceId = useAtomValue(currentInstanceIdAtom);
   const { data: upstreams } = useAllUpstreams(instanceId);
 
@@ -70,6 +73,7 @@ export const ServiceCards = ({ services, onDeleted }: ServiceCardsProps) => {
       {services.map((item) => {
         const service = item.value;
         const upstreamId = service.upstream_id;
+        const mayChange = canWriteOwner(ownerOf(service));
 
         return (
           <Card key={service.id} withBorder padding="md" radius="md">
@@ -121,11 +125,13 @@ export const ServiceCards = ({ services, onDeleted }: ServiceCardsProps) => {
               <Group gap="xs" justify="flex-end">
                 <ToDetailPageBtn
                   resource="services"
+                  allowed={mayChange}
                   mode="button"
                   to="/services/detail/$id"
                   params={{ id: service.id }}
                 />
                 <DeleteResourceBtn
+                  allowed={mayChange}
                   name={t('services.singular')}
                   target={service.id}
                   api={`${API_SERVICES}/${service.id}`}
