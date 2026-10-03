@@ -37,6 +37,12 @@ type DeleteResourceProps = {
   | (() => Promise<void>);
   DeleteBtn?: typeof Button;
   mode?: 'detail' | 'list' | 'icon';
+  /**
+   * Whether this account may delete this one resource. A team-scoped page
+   * passes canWriteOwner(owner): the role that counts is the one in the
+   * resource's team (#394). Left out, the account's canDelete.
+   */
+  allowed?: boolean;
 } & ButtonProps;
 export const DeleteResourceBtn = (props: DeleteResourceProps) => {
   const {
@@ -46,6 +52,7 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
     onSuccess,
     DeleteBtn,
     mode = 'list',
+    allowed,
     ...btnProps
   } = props;
   const { canDelete } = usePermission();
@@ -92,7 +99,7 @@ export const DeleteResourceBtn = (props: DeleteResourceProps) => {
     })
   );
 
-  if (!canDelete) return null;
+  if (!(allowed ?? canDelete)) return null;
 
   if (DeleteBtn) {
     return <DeleteBtn onClick={openModal} />;

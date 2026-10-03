@@ -1116,7 +1116,10 @@
     "permissionsFailed": "Failed to update permissions",
     "deleted": "User deleted successfully",
     "deleteFailed": "Failed to delete user",
-    "deleteConfirm": "Are you sure you want to delete this user?"
+    "deleteConfirm": "Are you sure you want to delete this user?",
+    "teamRoles": "Role in each team",
+    "teamRoleIn": "Role in {{team}}",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "header": {
     "accountRole": "Role: {{role}}",
@@ -1130,6 +1133,7 @@
     "buildUnknown": "Build of unknown commit, {{date}}",
     "allTeams": "All Teams",
     "allMyTeams": "All my teams",
+    "teamWithRole": "{{team}} · {{role}}",
     "teamSwitcher": "Team",
     "selectInstance": "Select instance",
     "healthConnected": "Connected",
@@ -1185,6 +1189,7 @@
     "teamRequired": "Choose one of your teams in the header before creating this: a new resource belongs to one team.",
     "teamMissing": "This account has no team on this instance, so it cannot create this. Ask an admin to assign one.",
     "teamNotAssigned": "You are not assigned to that team on this instance.",
+    "teamReadOnly": "You are a viewer in that team: you can read its resources, not change them or create one in it.",
     "unauthorized": "The gateway rejected this request. Its admin key may be wrong.",
     "notFound": "Not found.",
     "generic": "The request failed ({{status}}).",

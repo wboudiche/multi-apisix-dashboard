@@ -77,7 +77,9 @@ export const currentTeamIdAtom = atom(
  */
 export type OwnTeams = {
   ids: string[];
-  teams: { id: string; name: string }[];
+  /** The role in each of `ids`, read as `roleInTeam` reads it. */
+  roles: Record<string, 'developer' | 'viewer'>;
+  teams: { id: string; name: string; role?: 'developer' | 'viewer' }[];
 };
 
 /**
@@ -102,14 +104,21 @@ export const ownTeamsAtom = atom((get) => {
     // that one loads the API client, and the client loads this.
     const ids = assignment.team_ids ?? (assignment.team_id ? [assignment.team_id] : []);
     for (const team of assignment.teams ?? []) knownTeamNames.set(team.id, team.name);
+    const fallback = assignment.role;
+    const roles = Object.fromEntries(
+      ids.map((id) => [id, assignment.team_roles?.[id] ?? fallback])
+    ) as Record<string, 'developer' | 'viewer'>;
     own[assignment.instance_id] = {
       ids,
+      roles,
       // An answer that does not name the teams - the backend could not read
       // them this time - still says which the assignment holds. They go by
       // the name last heard, or by their id: a switcher of ids is a poor one,
       // and it is still the developer's teams, where dropping them took the
       // switcher and the team sent away in the middle of a session.
-      teams: assignment.teams ?? ids.map((id) => ({ id, name: knownTeamNames.get(id) ?? id })),
+      teams: (
+        (assignment.teams ?? ids.map((id) => ({ id, name: knownTeamNames.get(id) ?? id }))) as OwnTeams['teams']
+      ).map((team) => ({ ...team, role: team.role ?? roles[team.id] })),
     };
   }
   return own;

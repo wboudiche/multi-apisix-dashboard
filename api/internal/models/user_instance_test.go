@@ -147,3 +147,119 @@ func TestUserInstanceHasTeam(t *testing.T) {
 		t.Error("an assignment with no team has the empty team")
 	}
 }
+
+// A role per team (#394). A record from before it has one role for
+// every team, and is read that way; a record that names a role per team is
+// read as it says, and its role is the strongest of them.
+func TestUserInstanceReadsARolePerTeam(t *testing.T) {
+	cases := []struct {
+		name      string
+		in        string
+		wantRoles map[string]string
+		wantRole  string
+	}{
+		{"before the roles: every team has the role",
+			`{"team_ids":["a","b"],"role":"viewer"}`,
+			map[string]string{"a": "viewer", "b": "viewer"}, "viewer"},
+		{"a role per team",
+			`{"team_ids":["a","b"],"team_roles":{"a":"viewer","b":"developer"},"role":"developer"}`,
+			map[string]string{"a": "viewer", "b": "developer"}, "developer"},
+		{"the role is recomputed, whatever was stored",
+			`{"team_ids":["a","b"],"team_roles":{"a":"viewer","b":"viewer"},"role":"developer"}`,
+			map[string]string{"a": "viewer", "b": "viewer"}, "viewer"},
+		{"a team the roles leave out takes the role",
+			`{"team_ids":["a","b"],"team_roles":{"a":"viewer"},"role":"developer"}`,
+			map[string]string{"a": "viewer", "b": "developer"}, "developer"},
+		{"a role for a team the list does not hold is dropped",
+			`{"team_ids":["a"],"team_roles":{"a":"developer","x":"developer"},"role":"developer"}`,
+			map[string]string{"a": "developer"}, "developer"},
+		{"a value that is not a team role falls back to the role",
+			`{"team_ids":["a"],"team_roles":{"a":"instance_admin"},"role":"viewer"}`,
+			map[string]string{"a": "viewer"}, "viewer"},
+		{"an instance admin has no team roles",
+			`{"team_ids":["a"],"team_roles":{"a":"developer"},"role":"instance_admin"}`,
+			nil, "instance_admin"},
+		// Permitted before teams were required: it sees nothing team-owned,
+		// and keeps its role so the viewer gate still applies.
+		{"a developer with no team keeps the role",
+			`{"team_ids":[],"role":"developer"}`,
+			map[string]string{}, "developer"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var ui UserInstance
+			if err := json.Unmarshal([]byte(tc.in), &ui); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if !reflect.DeepEqual(ui.TeamRoles, tc.wantRoles) {
+				t.Errorf("TeamRoles %#v, want %#v", ui.TeamRoles, tc.wantRoles)
+			}
+			if ui.Role != tc.wantRole {
+				t.Errorf("Role %q, want %q", ui.Role, tc.wantRole)
+			}
+		})
+	}
+}
+
+func TestUserInstanceWritesItsTeamRoles(t *testing.T) {
+	ui := UserInstance{
+		UserID: "u", InstanceID: "i", TeamIDs: []string{"a", "b"},
+		TeamRoles: map[string]string{"a": "viewer", "b": "developer"}, Role: "viewer",
+	}
+	out, err := json.Marshal(ui)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	_ = json.Unmarshal(out, &got)
+	if got["role"] != "developer" {
+		t.Errorf("role %v, want the strongest, developer", got["role"])
+	}
+	if !reflect.DeepEqual(got["team_roles"], map[string]any{"a": "viewer", "b": "developer"}) {
+		t.Errorf("team_roles %v", got["team_roles"])
+	}
+
+	admin := UserInstance{TeamIDs: []string{"a"}, TeamRoles: map[string]string{"a": "developer"}, Role: RoleInstanceAdmin}
+	out, _ = json.Marshal(admin)
+	got = map[string]any{}
+	_ = json.Unmarshal(out, &got)
+	if _, ok := got["team_roles"]; ok {
+		t.Errorf("an instance admin was written with team_roles: %s", out)
+	}
+	if got["role"] != RoleInstanceAdmin {
+		t.Errorf("role %v, want instance_admin", got["role"])
+	}
+}
+
+// Built in code without TeamRoles - every test fixture before the roles - an
+// assignment reads as a record from before them: its role in every team.
+func TestRoleInFallsBackToTheRole(t *testing.T) {
+	legacy := UserInstance{Role: RoleDeveloper, TeamIDs: []string{"a", "b"}}
+	if got := legacy.RoleIn("b"); got != RoleDeveloper {
+		t.Errorf("RoleIn(b) = %q, want developer", got)
+	}
+	if got := legacy.WritableTeams(); !reflect.DeepEqual(got, []string{"a", "b"}) {
+		t.Errorf("WritableTeams() = %#v", got)
+	}
+
+	mixed := UserInstance{Role: RoleDeveloper, TeamIDs: []string{"a", "b"},
+		TeamRoles: map[string]string{"a": RoleViewer, "b": RoleDeveloper}}
+	if got := mixed.RoleIn("a"); got != RoleViewer {
+		t.Errorf("RoleIn(a) = %q, want viewer", got)
+	}
+	if got := mixed.RoleIn("x"); got != "" {
+		t.Errorf("RoleIn(x) = %q, want none: not a team of theirs", got)
+	}
+	if got := mixed.WritableTeams(); !reflect.DeepEqual(got, []string{"b"}) {
+		t.Errorf("WritableTeams() = %#v, want [b]", got)
+	}
+
+	viewer := UserInstance{Role: RoleViewer, TeamIDs: []string{"a"}}
+	if got := viewer.WritableTeams(); got != nil {
+		t.Errorf("WritableTeams() = %#v, want nil", got)
+	}
+	admin := UserInstance{Role: RoleInstanceAdmin, TeamIDs: []string{"a"}}
+	if got := admin.RoleIn("a"); got != "" {
+		t.Errorf("an instance admin's RoleIn = %q, want none: they are not a team member", got)
+	}
+}

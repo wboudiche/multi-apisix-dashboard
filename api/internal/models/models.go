@@ -118,7 +118,15 @@ type UserInstance struct {
 	// team until #301, which left instance_admin as the only way to let
 	// somebody work for two.
 	TeamIDs []string
-	Role    string // instance_admin, developer, viewer
+	// TeamRoles is the role in each team of TeamIDs: developer or viewer. One
+	// role covered every team until #394, so that a viewer in one
+	// team could not be a developer in another. Nil for an instance admin,
+	// who is not a member of a team. A team it does not name has Role.
+	TeamRoles map[string]string
+	// Role is instance_admin, or for a developer or a viewer the strongest of
+	// their team roles: the role every check that does not know which team a
+	// request touches - the viewer gate, the resource-type table - applies.
+	Role string
 }
 
 // userInstanceJSON is the record as it is stored and sent.
@@ -132,12 +140,18 @@ type UserInstance struct {
 // A record may also hold a scope, tags and path prefixes, from before #377.
 // Nothing ever applied one, so it is not read, and the next write of the
 // assignment leaves it out.
+//
+// team_roles is the role in each team (#394). A record from before
+// it has none, and every team has its role - which is what it meant. role is
+// written as the strongest team role, so a binary from before the roles reads
+// a role the user has in at least one team.
 type userInstanceJSON struct {
-	UserID     string   `json:"user_id"`
-	InstanceID string   `json:"instance_id"`
-	TeamIDs    []string `json:"team_ids"`
-	TeamID     string   `json:"team_id"`
-	Role       string   `json:"role"`
+	UserID     string            `json:"user_id"`
+	InstanceID string            `json:"instance_id"`
+	TeamIDs    []string          `json:"team_ids"`
+	TeamID     string            `json:"team_id"`
+	TeamRoles  map[string]string `json:"team_roles,omitempty"`
+	Role       string            `json:"role"`
 }
 
 // UnmarshalJSON reads the list, or the single team of a record that predates
@@ -147,11 +161,18 @@ func (ui *UserInstance) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
+	teams := TeamIDsFrom(raw.TeamIDs, raw.TeamID)
+	roles := TeamRolesFor(teams, raw.TeamRoles, raw.Role)
+	role := raw.Role
+	if strongest := StrongestRole(roles); strongest != "" {
+		role = strongest
+	}
 	*ui = UserInstance{
 		UserID:     raw.UserID,
 		InstanceID: raw.InstanceID,
-		TeamIDs:    TeamIDsFrom(raw.TeamIDs, raw.TeamID),
-		Role:       raw.Role,
+		TeamIDs:    teams,
+		TeamRoles:  roles,
+		Role:       role,
 	}
 	return nil
 }
@@ -163,12 +184,18 @@ func (ui UserInstance) MarshalJSON() ([]byte, error) {
 	if len(teams) > 0 {
 		first = teams[0]
 	}
+	roles := TeamRolesFor(teams, ui.TeamRoles, ui.Role)
+	role := ui.Role
+	if strongest := StrongestRole(roles); strongest != "" {
+		role = strongest
+	}
 	return json.Marshal(userInstanceJSON{
 		UserID:     ui.UserID,
 		InstanceID: ui.InstanceID,
 		TeamIDs:    teams,
 		TeamID:     first,
-		Role:       ui.Role,
+		TeamRoles:  roles,
+		Role:       role,
 	})
 }
 
@@ -184,6 +211,74 @@ func (ui UserInstance) HasTeam(teamID string) bool {
 		}
 	}
 	return false
+}
+
+// RoleIn is the user's role in teamID: developer, viewer, or "" when it is
+// not one of their teams. A team TeamRoles does not name has Role, as in a
+// record from before the roles; an instance admin is in no team.
+func (ui UserInstance) RoleIn(teamID string) string {
+	if !ui.HasTeam(teamID) {
+		return ""
+	}
+	if role, ok := ui.TeamRoles[teamID]; ok && IsTeamRole(role) {
+		return role
+	}
+	if IsTeamRole(ui.Role) {
+		return ui.Role
+	}
+	return ""
+}
+
+// WritableTeams are the teams the user is a developer in, in the order of
+// TeamIDs. Nil when there are none.
+func (ui UserInstance) WritableTeams() []string {
+	var out []string
+	for _, id := range ui.TeamIDs {
+		if ui.RoleIn(id) == RoleDeveloper {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// IsTeamRole reports whether role is one a team member can hold.
+func IsTeamRole(role string) bool {
+	return role == RoleDeveloper || role == RoleViewer
+}
+
+// TeamRolesFor is the role in each of teamIDs: the one stored for it, or
+// fallback. Entries for other teams are dropped. Nil for an instance admin,
+// who is not a member of a team; never nil otherwise. One reading for a
+// stored record and for a request.
+func TeamRolesFor(teamIDs []string, stored map[string]string, fallback string) map[string]string {
+	if fallback == RoleInstanceAdmin {
+		return nil
+	}
+	out := make(map[string]string, len(teamIDs))
+	for _, id := range teamIDs {
+		switch {
+		case IsTeamRole(stored[id]):
+			out[id] = stored[id]
+		case IsTeamRole(fallback):
+			out[id] = fallback
+		}
+	}
+	return out
+}
+
+// StrongestRole is developer if any team has it, else viewer if any has
+// that, else "".
+func StrongestRole(roles map[string]string) string {
+	strongest := ""
+	for _, role := range roles {
+		if role == RoleDeveloper {
+			return RoleDeveloper
+		}
+		if role == RoleViewer {
+			strongest = RoleViewer
+		}
+	}
+	return strongest
 }
 
 // TeamIDsFrom reads the teams out of the two shapes they are written in: the

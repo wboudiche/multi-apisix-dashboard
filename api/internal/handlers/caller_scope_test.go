@@ -43,6 +43,15 @@ func scopeOf(jwtRole string, ui *models.UserInstance, header string) teamScope {
 	return callerTeamScope(c)
 }
 
+// mixedOn is a viewer in the first team and a developer in the second.
+func mixedOn(viewerTeam, developerTeam string) *models.UserInstance {
+	return &models.UserInstance{
+		Role:      models.RoleDeveloper,
+		TeamIDs:   []string{viewerTeam, developerTeam},
+		TeamRoles: map[string]string{viewerTeam: models.RoleViewer, developerTeam: models.RoleDeveloper},
+	}
+}
+
 func developerOn(teams ...string) *models.UserInstance {
 	return &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: teams}
 }
@@ -80,41 +89,65 @@ func TestCallerTeamScope(t *testing.T) {
 			// from it.
 			name:    "a global instance_admin claim does not make an admin of a developer",
 			jwtRole: models.RoleInstanceAdmin, ui: developerOn("team-a"),
-			want: teamScope{teams: []string{"team-a"}, acting: "team-a"},
+			want: teamScope{teams: []string{"team-a"}, writable: []string{"team-a"}, acting: "team-a"},
 		},
 		{
 			// What every assignment was before the list: nothing to choose.
 			name:    "one team needs no choosing",
 			jwtRole: models.RoleDeveloper, ui: developerOn("team-a"),
-			want: teamScope{teams: []string{"team-a"}, acting: "team-a"},
+			want: teamScope{teams: []string{"team-a"}, writable: []string{"team-a"}, acting: "team-a"},
 		},
 		{
 			name:    "one team, named",
 			jwtRole: models.RoleDeveloper, ui: developerOn("team-a"), header: "team-a",
-			want: teamScope{teams: []string{"team-a"}, chosen: "team-a", acting: "team-a"},
+			want: teamScope{teams: []string{"team-a"}, writable: []string{"team-a"}, chosen: "team-a", acting: "team-a"},
 		},
 		{
 			// Sees both; what it creates has no owner to be given until it says.
 			name:    "several teams and none named",
 			jwtRole: models.RoleDeveloper, ui: developerOn("team-a", "team-b"),
-			want: teamScope{teams: []string{"team-a", "team-b"}},
+			want: teamScope{teams: []string{"team-a", "team-b"}, writable: []string{"team-a", "team-b"}},
 		},
 		{
 			name:    "several teams, one of them named",
 			jwtRole: models.RoleDeveloper, ui: developerOn("team-a", "team-b"), header: "team-b",
-			want: teamScope{teams: []string{"team-a", "team-b"}, chosen: "team-b", acting: "team-b"},
+			want: teamScope{teams: []string{"team-a", "team-b"}, writable: []string{"team-a", "team-b"}, chosen: "team-b", acting: "team-b"},
 		},
 		{
 			// Not ignored, and not answered as if for their own team: the
 			// request asked for something the caller cannot have.
 			name:    "a team that is not theirs",
 			jwtRole: models.RoleDeveloper, ui: developerOn("team-a", "team-b"), header: "team-x",
-			want: teamScope{teams: []string{"team-a", "team-b"}, foreign: true},
+			want: teamScope{teams: []string{"team-a", "team-b"}, writable: []string{"team-a", "team-b"}, foreign: true},
 		},
 		{
 			name:    "a team that is not theirs, with one team of their own",
 			jwtRole: models.RoleDeveloper, ui: developerOn("team-a"), header: "team-x",
-			want: teamScope{teams: []string{"team-a"}, foreign: true},
+			want: teamScope{teams: []string{"team-a"}, writable: []string{"team-a"}, foreign: true},
+		},
+		{
+			// A viewer in one team and a developer in the other: what they
+			// create can only go to the team they may write to.
+			name:    "a viewer team and a developer team, none named",
+			jwtRole: models.RoleDeveloper, ui: mixedOn("team-a", "team-b"),
+			want: teamScope{teams: []string{"team-a", "team-b"}, writable: []string{"team-b"}, acting: "team-b"},
+		},
+		{
+			name:    "a viewer team and a developer team, the developer one named",
+			jwtRole: models.RoleDeveloper, ui: mixedOn("team-a", "team-b"), header: "team-b",
+			want: teamScope{teams: []string{"team-a", "team-b"}, writable: []string{"team-b"}, chosen: "team-b", acting: "team-b"},
+		},
+		{
+			// Still narrows the list: a viewer reads their team. Creates
+			// nothing in it.
+			name:    "a viewer team and a developer team, the viewer one named",
+			jwtRole: models.RoleDeveloper, ui: mixedOn("team-a", "team-b"), header: "team-a",
+			want: teamScope{teams: []string{"team-a", "team-b"}, writable: []string{"team-b"}, chosen: "team-a", readOnly: true},
+		},
+		{
+			name:    "a viewer in every team acts for none",
+			jwtRole: models.RoleViewer, ui: &models.UserInstance{Role: models.RoleViewer, TeamIDs: []string{"team-a"}},
+			want: teamScope{teams: []string{"team-a"}},
 		},
 		{
 			name:    "no team at all",
@@ -220,5 +253,29 @@ func TestCreateNeedsATeam(t *testing.T) {
 				t.Errorf("createNeedsTeam = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestTeamScopeMayWrite(t *testing.T) {
+	s := scopeOf(models.RoleDeveloper, mixedOn("team-a", "team-b"), "")
+	if !s.mayAccess("team-a") || s.mayWrite("team-a") {
+		t.Errorf("a viewer team: mayAccess %v, mayWrite %v; want true, false", s.mayAccess("team-a"), s.mayWrite("team-a"))
+	}
+	if !s.mayWrite("team-b") {
+		t.Error("a developer team is not writable")
+	}
+	if s.mayWrite("") || s.mayWrite("team-x") {
+		t.Error("an unowned or foreign resource is writable")
+	}
+}
+
+func TestCreateRefusal(t *testing.T) {
+	status, _, code := createRefusal(scopeOf(models.RoleDeveloper, mixedOn("team-a", "team-b"), "team-a"))
+	if status != http.StatusForbidden || code != teamReadOnlyCode {
+		t.Errorf("a viewer team named: %d %s, want 403 %s", status, code, teamReadOnlyCode)
+	}
+	status, _, code = createRefusal(scopeOf(models.RoleDeveloper, developerOn("team-a", "team-b"), ""))
+	if status != http.StatusBadRequest || code != teamRequiredCode {
+		t.Errorf("several developer teams, none named: %d %s, want 400 %s", status, code, teamRequiredCode)
 	}
 }

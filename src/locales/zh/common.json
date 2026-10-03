@@ -40,6 +40,7 @@
     "buildUnknown": "未知提交的构建，{{date}}",
     "allTeams": "所有团队",
     "allMyTeams": "我的所有团队",
+    "teamWithRole": "{{team}} · {{role}}",
     "teamSwitcher": "团队",
     "selectInstance": "选择实例",
     "healthConnected": "已连接",
@@ -1189,7 +1190,10 @@
     "permissionsFailed": "更新权限失败",
     "deleted": "用户已删除",
     "deleteFailed": "删除用户失败",
-    "deleteConfirm": "确定要删除该用户吗？"
+    "deleteConfirm": "确定要删除该用户吗？",
+    "teamRoles": "各团队中的角色",
+    "teamRoleIn": "在 {{team}} 中的角色",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "listWarning": {
     "detailsUnresolved": "部分详情无法获取",
@@ -1209,6 +1213,7 @@
     "teamRequired": "创建之前，请先在页眉中选择您的一个团队：新资源只属于一个团队。",
     "teamMissing": "此账户在该实例上没有团队，因此无法创建。请联系管理员分配团队。",
     "teamNotAssigned": "您在此实例上未被分配到该团队。",
+    "teamReadOnly": "你在该团队中是查看者：可以查看其资源，但不能修改，也不能在其中创建资源。",
     "unauthorized": "网关拒绝了此请求。它的 Admin 密钥可能有误。",
     "notFound": "未找到。",
     "generic": "请求失败（{{status}}）。",

@@ -40,6 +40,7 @@
     "buildUnknown": "Compilación de un commit desconocido, {{date}}",
     "allTeams": "Todos los equipos",
     "allMyTeams": "Todos mis equipos",
+    "teamWithRole": "{{team}} · {{role}}",
     "teamSwitcher": "Equipo",
     "selectInstance": "Seleccionar instancia",
     "healthConnected": "Conectado",
@@ -1197,7 +1198,10 @@
     "permissionsFailed": "No se pudieron actualizar los permisos",
     "deleted": "Usuario eliminado",
     "deleteFailed": "No se pudo eliminar el usuario",
-    "deleteConfirm": "¿Seguro que quieres eliminar este usuario?"
+    "deleteConfirm": "¿Seguro que quieres eliminar este usuario?",
+    "teamRoles": "Rol en cada equipo",
+    "teamRoleIn": "Rol en {{team}}",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "listWarning": {
     "detailsUnresolved": "No se han podido resolver algunos detalles",
@@ -1217,6 +1221,7 @@
     "teamRequired": "Elige uno de tus equipos en la cabecera antes de crear esto: un recurso nuevo pertenece a un equipo.",
     "teamMissing": "Esta cuenta no tiene equipo en esta instancia, así que no puede crear esto. Pide a un administrador que le asigne uno.",
     "teamNotAssigned": "No estás asignado a ese equipo en esta instancia.",
+    "teamReadOnly": "Eres lector en ese equipo: puedes ver sus recursos, pero no modificarlos ni crear uno en él.",
     "unauthorized": "La pasarela ha rechazado esta petición. Su clave de administración puede ser incorrecta.",
     "notFound": "No encontrado.",
     "generic": "La petición ha fallado ({{status}}).",

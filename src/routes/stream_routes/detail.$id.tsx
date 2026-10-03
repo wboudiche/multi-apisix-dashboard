@@ -42,6 +42,7 @@ import { API_STREAM_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 
 type Props = {
   readOnly: boolean;
@@ -123,7 +124,11 @@ export const StreamRouteDetail = (props: StreamRouteDetailProps) => {
   const { id, onDeleteSuccess } = props;
   const { t } = useTranslation();
   const [readOnly, setReadOnly] = useBoolean(true);
-  const { canEdit } = usePermission();
+  const { canWriteOwner } = usePermission();
+  // The role that counts is the one in the resource's team. The query is the
+  // form's own, so this costs no request, and until it answers nothing offers
+  // a write.
+  const canChange = canWriteOwner(ownerOf(useQuery(getStreamRouteQueryOptions(id)).data?.value));
 
   return (
     <>
@@ -133,7 +138,7 @@ export const StreamRouteDetail = (props: StreamRouteDetailProps) => {
           title: t('info.detail.title', { name: t('streamRoutes.singular') }),
           extra: (
             <Group>
-              {canEdit && (
+              {canChange && (
                 <Button
                   onClick={() => setReadOnly(false)}
                   size="compact-sm"
@@ -144,6 +149,7 @@ export const StreamRouteDetail = (props: StreamRouteDetailProps) => {
               )}
               <DeleteResourceBtn
                 mode="detail"
+                allowed={canChange}
                 name={t('streamRoutes.singular')}
                 target={id}
                 api={`${API_STREAM_ROUTES}/${id}`}

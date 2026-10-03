@@ -18,8 +18,10 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -102,6 +104,39 @@ type SetUserInstanceRoleRequest struct {
 	TeamIDs []string `json:"team_ids"`
 	// TeamID is what a client from before the list sends: one team.
 	TeamID string `json:"team_id"`
+	// TeamRoles is the role in some of the teams; the others take Role
+	// (#394). A client from before it sends none, and means Role
+	// in every team.
+	TeamRoles map[string]string `json:"team_roles"`
+}
+
+// assignment is what the request asks to store: its teams, the role in each,
+// and the role of the assignment - instance_admin, or the strongest team
+// role. A team_roles entry for a team the request does not hold, or with a
+// role a team cannot hold, is refused rather than dropped: it is a request
+// for something else than what would be stored.
+func (r SetUserInstanceRoleRequest) assignment() ([]string, map[string]string, string, error) {
+	teams := r.teams()
+	if r.Role == models.RoleInstanceAdmin {
+		if len(r.TeamRoles) > 0 {
+			return nil, nil, "", errors.New("team_roles is for developer and viewer assignments, not an instance admin")
+		}
+		return teams, nil, r.Role, nil
+	}
+	for id, role := range r.TeamRoles {
+		if !slices.Contains(teams, id) {
+			return nil, nil, "", fmt.Errorf("team_roles names %s, which is not one of the assignment's teams", id)
+		}
+		if !models.IsTeamRole(role) {
+			return nil, nil, "", fmt.Errorf("team_roles: the role in %s must be developer or viewer", id)
+		}
+	}
+	roles := models.TeamRolesFor(teams, r.TeamRoles, r.Role)
+	role := r.Role
+	if strongest := models.StrongestRole(roles); strongest != "" {
+		role = strongest
+	}
+	return teams, roles, role, nil
 }
 
 // teams is the list the request asks for: team_ids, or the single team_id of a
@@ -593,7 +628,11 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 		return
 	}
 
-	teamIDs := req.teams()
+	teamIDs, teamRoles, assignedRole, err := req.assignment()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if roleNeedsTeam(req.Role) && len(teamIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one team is required for developer and viewer roles: team_ids, or team_id for a single team"})
 		return
@@ -618,7 +657,8 @@ func (h *InstanceHandler) SetUserInstanceRole(c *gin.Context) {
 		UserID:     userID,
 		InstanceID: instanceID,
 		TeamIDs:    teamIDs,
-		Role:       req.Role,
+		TeamRoles:  teamRoles,
+		Role:       assignedRole,
 	}
 
 	if err := h.authService.SetUserInstanceRole(c.Request.Context(), ui); err != nil {
@@ -702,6 +742,7 @@ func (h *InstanceHandler) GetUserInstances(c *gin.Context) {
 type teamName struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	Role string `json:"role,omitempty"`
 }
 
 // assignmentView is an assignment as it is answered: the record, and - when
@@ -749,7 +790,7 @@ func assignmentWithTeams(ui *models.UserInstance, names map[string]string) assig
 	teams := make([]teamName, 0, len(ui.TeamIDs))
 	for _, id := range ui.TeamIDs {
 		if name, ok := names[id]; ok {
-			teams = append(teams, teamName{ID: id, Name: name})
+			teams = append(teams, teamName{ID: id, Name: name, Role: ui.RoleIn(id)})
 		}
 	}
 	return assignmentView{assignment: *ui, teams: teams}

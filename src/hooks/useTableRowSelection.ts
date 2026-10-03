@@ -96,9 +96,13 @@ export const checkboxNames = <T>(
  */
 export const checkboxNaming = <T>(
   t: TFunction,
-  nameOf: (row: T) => string
+  nameOf: (row: T) => string,
+  selectable?: (row: T) => boolean
 ): Pick<RowSelection<T>, 'getCheckboxProps' | 'getTitleCheckboxProps'> => ({
-  getCheckboxProps: (row) => named(t('table.selectRow', { name: nameOf(row) })),
+  getCheckboxProps: (row) => ({
+    ...named(t('table.selectRow', { name: nameOf(row) })),
+    ...(selectable ? { disabled: !selectable(row) } : {}),
+  }),
   getTitleCheckboxProps: () => named(t('table.selectAll')),
 });
 
@@ -118,6 +122,12 @@ export type RowNaming<T> = {
   idOf: (row: T) => string;
   /** What the list calls the row, when that is not its id. */
   nameOf?: (row: T) => string;
+  /**
+   * Whether a row may be ticked: a row this account may not delete is not
+   * offered for a batch delete. Best a function that does not change between
+   * renders, like the two above.
+   */
+  selectable?: (row: T) => boolean;
 };
 
 /**
@@ -138,17 +148,20 @@ export type RowNaming<T> = {
 export const useTableRowSelection = <T>(
   rows: readonly T[],
   listKey: string,
-  { idOf, nameOf = idOf }: RowNaming<T>
+  { idOf, nameOf = idOf, selectable }: RowNaming<T>
 ) => {
   const { t } = useTranslation();
-  const [selectedIds, setSelectedIds] = useRowSelection(rows.map(idOf), listKey);
+  const [selectedIds, setSelectedIds] = useRowSelection(
+    (selectable ? rows.filter(selectable) : rows).map(idOf),
+    listKey
+  );
   // Apart from what is ticked: antd keeps what it worked out for each row's
   // checkbox for as long as `getCheckboxProps` is the same function, and a
   // tick is no reason to name five hundred rows again.
   const naming = useMemo(() => {
     const names = checkboxNames(t, rows, idOf, nameOf);
-    return checkboxNaming<T>(t, (row) => names.get(String(idOf(row))) ?? nameOf(row));
-  }, [t, rows, idOf, nameOf]);
+    return checkboxNaming<T>(t, (row) => names.get(String(idOf(row))) ?? nameOf(row), selectable);
+  }, [t, rows, idOf, nameOf, selectable]);
   const tableProps = useMemo(
     () => ({
       rowKey: idOf,

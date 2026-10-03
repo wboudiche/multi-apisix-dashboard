@@ -305,15 +305,21 @@ test('shows every team of an assignment, keeps them on a save, and takes one awa
   // Both in the table...
   await adminPom.toUsers(page);
   const row = adminPom.rowByText(page, username);
-  await expect(row.getByText(teamName, { exact: true })).toBeVisible({ timeout: 20000 });
-  await expect(row.getByText(`${PREFIX}-team-2`, { exact: true })).toBeVisible();
+  await expect(row.getByText(`${teamName} · ${roleText('developer')}`, { exact: true })).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(
+    row.getByText(`${PREFIX}-team-2 · ${roleText('developer')}`, { exact: true })
+  ).toBeVisible();
 
   // ...and both in the form, which a save with nothing changed leaves alone.
   await openPermissions();
   await page.getByRole('tab', { name: 'Instance Access' }).click();
+  // The MultiSelect's pills; the per-team role block names them too.
   const card = localInstanceCard(page);
-  await expect(card.getByText(teamName, { exact: true })).toBeVisible();
-  await expect(card.getByText(`${PREFIX}-team-2`, { exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Clear teams' })).toBeVisible();
+  await expect(card.getByText(teamName, { exact: true })).toHaveCount(2);
+  await expect(card.getByText(`${PREFIX}-team-2`, { exact: true })).toHaveCount(2);
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Edit User & Permissions')).toHaveCount(0);
   expect(await stored()).toEqual([teamId, second.id]);

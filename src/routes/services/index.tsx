@@ -18,7 +18,7 @@ import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { Group, Pagination, SegmentedControl, Stack, Text } from '@mantine/core';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
@@ -37,6 +37,7 @@ import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
 import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { ownerOf } from '@/utils/owner';
 
 /**
  * Which view the list is in, carried in the URL.
@@ -61,12 +62,16 @@ const ServiceList = () => {
     navigate({ search: (prev) => ({ ...prev, view: next }) });
   };
   const { t } = useTranslation();
-  const { canWriteResource } = usePermission();
+  const { canWriteResource, canWriteOwner } = usePermission();
   // Never more than the rows on screen: see useRowSelection (#371).
+  const selectable = useCallback(
+    (row: ServiceRow) => canWriteOwner(ownerOf(row.value)),
+    [canWriteOwner]
+  );
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
     listKey,
-    { idOf: rowId, nameOf: rowNameOrId }
+    { idOf: rowId, nameOf: rowNameOrId, selectable }
   );
 
   // The proxy says so when it could not count: without this the table and the
@@ -144,23 +149,24 @@ const ServiceList = () => {
         valueType: 'option',
         key: 'option',
         width: 200,
-        render: (_, record) => [
+        render: (_, record) => {
+          const writable = canWriteResource('services') && canWriteOwner(ownerOf(record.value));
+          return [
           <RouteLinkBtn
             key="detail"
             to="/services/detail/$id"
             params={{ id: record.value.id }}
             size="xs"
             color="blue"
-            variant={canWriteResource('services') ? 'filled' : 'light'}
+            variant={writable ? 'filled' : 'light'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >
-            {t(
-              canWriteResource('services') ? 'form.btn.configure' : 'form.btn.view'
-            )}
+            {t(writable ? 'form.btn.configure' : 'form.btn.view')}
           </RouteLinkBtn>,
           <DeleteResourceBtn
             key="delete"
+            allowed={canWriteOwner(ownerOf(record.value))}
             name={t('services.singular')}
             target={record.value.id}
             api={`${API_SERVICES}/${record.value.id}`}
@@ -171,10 +177,11 @@ const ServiceList = () => {
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           />,
-        ],
+          ];
+        },
       },
     ];
-  }, [t, refetch, canWriteResource]);
+  }, [t, refetch, canWriteResource, canWriteOwner]);
 
   const viewSwitch = (
     <SegmentedControl

@@ -40,6 +40,7 @@
     "buildUnknown": "Build eines unbekannten Commits, {{date}}",
     "allTeams": "Alle Teams",
     "allMyTeams": "Alle meine Teams",
+    "teamWithRole": "{{team}} · {{role}}",
     "teamSwitcher": "Team",
     "selectInstance": "Instanz auswählen",
     "healthConnected": "Verbunden",
@@ -1195,7 +1196,10 @@
     "permissionsFailed": "Die Berechtigungen konnten nicht aktualisiert werden",
     "deleted": "Benutzer gelöscht",
     "deleteFailed": "Der Benutzer konnte nicht gelöscht werden",
-    "deleteConfirm": "Möchten Sie diesen Benutzer wirklich löschen?"
+    "deleteConfirm": "Möchten Sie diesen Benutzer wirklich löschen?",
+    "teamRoles": "Rolle in jedem Team",
+    "teamRoleIn": "Rolle in {{team}}",
+    "teamWithRole": "{{team}} · {{role}}"
   },
   "listWarning": {
     "detailsUnresolved": "Einige Details konnten nicht ermittelt werden",
@@ -1215,6 +1219,7 @@
     "teamRequired": "Wählen Sie vor dem Erstellen eines Ihrer Teams in der Kopfzeile aus: Eine neue Ressource gehört zu einem Team.",
     "teamMissing": "Dieses Konto hat auf dieser Instanz kein Team und kann dies daher nicht erstellen. Bitten Sie einen Admin, eines zuzuweisen.",
     "teamNotAssigned": "Sie sind diesem Team auf dieser Instanz nicht zugewiesen.",
+    "teamReadOnly": "Sie sind in diesem Team Betrachter: Sie können seine Ressourcen lesen, aber weder ändern noch darin anlegen.",
     "unauthorized": "Das Gateway hat diese Anfrage abgelehnt. Sein Admin-Schlüssel ist möglicherweise falsch.",
     "notFound": "Nicht gefunden.",
     "generic": "Die Anfrage ist fehlgeschlagen ({{status}}).",

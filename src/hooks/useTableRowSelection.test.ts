@@ -50,6 +50,19 @@ describe('the selection checkboxes of an antd list', () => {
     expect(props).toEqual({ 'aria-label': 'table.selectRow(1)' });
   });
 
+  it('disables the checkbox of a row the account may not tick', () => {
+    const only = checkboxNaming<Row>(t, rowNameOrId, (row) => row.value.id !== 'b');
+
+    expect(only.getCheckboxProps?.({ value: { id: 'b' } })).toEqual({
+      'aria-label': 'table.selectRow(b)',
+      disabled: true,
+    });
+    expect(only.getCheckboxProps?.({ value: { id: 'a' } })).toEqual({
+      'aria-label': 'table.selectRow(a)',
+      disabled: false,
+    });
+  });
+
   it('names the header in the language of the page, not in antd’s', () => {
     expect(naming.getTitleCheckboxProps?.()).toEqual({ 'aria-label': 'table.selectAll' });
   });

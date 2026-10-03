@@ -181,6 +181,13 @@ func (h *RouteTestHandler) TestRoute(c *gin.Context) {
 			})
 			return
 		}
+		if !scope.mayWrite(owner) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": teamReadOnlyMsg,
+				"code":  teamReadOnlyCode,
+			})
+			return
+		}
 	}
 
 	route, err := h.readRoute(c.Request.Context(), instance, req.RouteID)

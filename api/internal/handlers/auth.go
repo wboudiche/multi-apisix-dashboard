@@ -199,7 +199,7 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 				if err != nil || team == nil {
 					continue
 				}
-				teams = append(teams, gin.H{"id": team.ID, "name": team.Name})
+				teams = append(teams, gin.H{"id": team.ID, "name": team.Name, "role": ui.RoleIn(teamID)})
 			}
 			resp["team_ids"] = ui.TeamIDs
 			resp["teams"] = teams

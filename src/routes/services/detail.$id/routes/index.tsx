@@ -21,11 +21,14 @@ import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import PageHeader from '@/components/page/PageHeader';
 import { ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { queryClient } from '@/config/global';
+import { usePermission } from '@/hooks/usePermission';
 import { RouteList } from '@/routes/routes';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { ownerOf } from '@/utils/owner';
 
 function RouteComponent() {
   const { t } = useTranslation();
+  const { canWriteOwner } = usePermission();
   const { id } = useParams({ from: '/services/detail/$id/routes/' });
   // Pass the nested route id — the hook defaults to '/routes/', which has
   // no active match under /services/detail/$id/routes and crashes the page
@@ -51,6 +54,7 @@ function RouteComponent() {
             key="detail"
             to="/services/detail/$id/routes/detail/$routeId"
             params={{ id, routeId: record.value.id }}
+            allowed={canWriteOwner(ownerOf(record.value))}
           />
         )}
       />

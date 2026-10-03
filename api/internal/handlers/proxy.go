@@ -176,6 +176,11 @@ const teamRequiredCode = "team_required"
 // work for on this instance.
 const teamNotAssignedCode = "team_not_assigned"
 
+// teamReadOnlyCode marks a write refused because the caller is a viewer in the
+// team that owns the resource, or in the team they named for a create
+// (#394).
+const teamReadOnlyCode = "team_read_only"
+
 // maxListRows is the point past which a full list fetch is worth a log line.
 // Nothing is truncated - dropping rows would hide resources - but an operator
 // deserves to know the dashboard is pulling this much per list request.
@@ -359,6 +364,7 @@ const (
 	accessDeniedMsg       = "Access denied to this resource"
 	teamRequiredMsg       = "Choose which of your teams this is for before creating it."
 	teamNotAssignedMsg    = "You are not assigned to this team on this instance"
+	teamReadOnlyMsg       = "You are a viewer in that team on this instance: you can read its resources, not change them or create one in it."
 )
 
 // refuse answers a request the team rules turn down. error_msg as well as
@@ -641,7 +647,8 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// of its target is known.
 	if c.Request.Method == http.MethodPost && resourceID == "" &&
 		createNeedsTeam(scope, c.Request.Method, resourceType, path) {
-		refuse(c, http.StatusBadRequest, teamRequiredMsg, teamRequiredCode)
+		status, msg, code := createRefusal(scope)
+		refuse(c, status, msg, code)
 		return
 	}
 
@@ -690,7 +697,8 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				// A create, then, if the method is one that creates. It needs
 				// one team to belong to.
 				if createNeedsTeam(scope, c.Request.Method, resourceType, path) {
-					refuse(c, http.StatusBadRequest, teamRequiredMsg, teamRequiredCode)
+					status, msg, code := createRefusal(scope)
+					refuse(c, status, msg, code)
 					return
 				}
 			} else if !scope.mayAccess(ownerTeamID) {
@@ -699,6 +707,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 					"error_msg": otherTeamMsg,
 				})
 				c.Abort()
+				return
+			} else if !scope.mayWrite(ownerTeamID) {
+				// Theirs to read, not to change: a viewer in the owning team,
+				// whatever they are in another.
+				refuse(c, http.StatusForbidden, teamReadOnlyMsg, teamReadOnlyCode)
 				return
 			}
 		}

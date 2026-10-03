@@ -34,12 +34,16 @@ import { ownTeamsAtom } from '@/stores/team';
  * resource is for, and an account with no team at all, which has none to
  * give. Told to choose a team in the header, the second finds no team there.
  *
+ * `team_read_only` is a viewer team: its resources can be read, not changed,
+ * and none can be created in it.
+ *
  * Undefined for any other code, or none: the caller shows what it has.
  */
 export const teamRefusal = (
   code: string | undefined,
   instanceId: string = selectedInstanceId()
 ): string | undefined => {
+  if (code === 'team_read_only') return i18n.t('error.teamReadOnly');
   if (code === 'team_not_assigned') return i18n.t('error.teamNotAssigned');
   if (code !== 'team_required') return undefined;
   const own = getDefaultStore().get(ownTeamsAtom)[instanceId];
