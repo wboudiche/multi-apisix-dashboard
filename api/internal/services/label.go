@@ -37,6 +37,11 @@ var (
 
 var labelKeyRegex = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
 
+// LabelService keeps each instance's label catalogue: the keys and values
+// offered when filtering resources by label. It is a guide, not a rule: the
+// labels a resource carries are not checked against it - the route form takes
+// any key and value, and the importers write labels of their own - and the
+// filter offers labels in use beside the catalogue (#190, #397).
 type LabelService struct {
 	etcd *EtcdClient
 }
@@ -168,39 +173,4 @@ func (s *LabelService) DeleteLabel(ctx context.Context, instanceID, key string) 
 		return ErrLabelNotFound
 	}
 	return s.etcd.Delete(ctx, s.labelKey(instanceID, key))
-}
-
-// ValidateRouteLabels checks that all label key-value pairs on a route exist in the taxonomy
-func (s *LabelService) ValidateRouteLabels(ctx context.Context, instanceID string, labels map[string]string) error {
-	if len(labels) == 0 {
-		return nil
-	}
-
-	taxonomy, err := s.ListLabels(ctx, instanceID)
-	if err != nil {
-		return fmt.Errorf("failed to load label taxonomy: %w", err)
-	}
-
-	taxMap := make(map[string]*models.Label)
-	for _, l := range taxonomy {
-		taxMap[l.Key] = l
-	}
-
-	for k, v := range labels {
-		def, ok := taxMap[k]
-		if !ok {
-			return fmt.Errorf("invalid label: key '%s' is not defined in the label taxonomy", k)
-		}
-		found := false
-		for _, allowed := range def.Values {
-			if strings.EqualFold(allowed, v) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label value: '%s' is not an allowed value for key '%s'. Allowed: %s", v, k, strings.Join(def.Values, ", "))
-		}
-	}
-	return nil
 }

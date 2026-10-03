@@ -97,13 +97,12 @@ api/
     │   ├── team.go
     │   ├── instance.go
     │   ├── ownership.go ← per-resource team ownership on each instance
-    │   ├── label.go    ← label key/value catalog (+ _test.go)
+    │   ├── label.go    ← label key/value catalog (+ _test.go); offered by the filter, not enforced on writes
     │   └── overview.go ← cross-instance aggregation
     ├── handlers/       ← HTTP layer (one per resource + proxy.go for APISIX passthrough)
     ├── middleware/
     │   ├── auth.go     ← Bearer JWT validation, sets userID/username/role on context
-    │   ├── rbac.go     ← per-instance role check; viewer is GET-only
-    │   └── label_validation.go ← validates label keys/values against the catalog
+    │   └── rbac.go     ← per-instance role check; viewer is GET-only
     └── utils/auth.go   ← bcrypt + JWT helpers
 ```
 
