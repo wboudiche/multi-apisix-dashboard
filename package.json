@@ -23,7 +23,7 @@
     "@mantine/notifications": "^8.0.0",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.102.8",
-    "@tanstack/react-router": "^1.116.0",
+    "@tanstack/react-router": "^1.170.41",
     "antd": "^5.24.8",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
