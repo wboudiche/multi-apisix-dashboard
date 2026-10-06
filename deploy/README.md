@@ -13,9 +13,9 @@ APISIX Admin API is reachable solely from the dashboard container.
 
 ## Start
 
-The GHCR image only exists starting with the first `vX.Y.Z` release; until then,
-or if the package is left private, `docker compose up -d --build` builds it
-locally instead of pulling.
+`docker compose up -d` pulls the last release. It holds what was merged up to
+its tag: to run `main`, build it (see below), and keep in mind that a later
+`docker compose pull` replaces that build with the release.
 
 Host ports 8080, 9080 and 9081 must be free. The repo's own e2e stack
 (`e2e/server/docker-compose.yml`) binds 9080 by default (plus 9180, 9181 and
