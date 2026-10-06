@@ -37,6 +37,12 @@ Go to **Instances** and add both, using the internal Admin URLs above. The
 demo admin key for both is `edd1c9f034335f136f87ad84b625c8f1` (see
 `apisix/apisix_conf.yml`). Replace it before exposing anything.
 
+Set each one's **Gateway URL** to its traffic port inside the network,
+`http://apisix:9080` and `http://apisix2:9080`. The route tester sends its
+request from the dashboard's container to that address: without it a test
+answers "Instance has no gateway_url configured", and `localhost` there is
+the dashboard itself. Not the Admin port 9180, which has no routes.
+
 ## Build the image from this checkout
 
 ```sh
