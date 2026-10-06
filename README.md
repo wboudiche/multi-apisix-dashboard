@@ -10,15 +10,16 @@ Where the upstream dashboard is a single-page app that talks directly to one API
 
 - **User accounts** with bcrypt-hashed passwords and JWT-based login (no more sharing the admin key with everyone).
 - **Multiple APISIX instances** registered through the UI — one dashboard, N gateways (staging, prod, per-region, …), each with a built-in **connection tester**.
-- **Teams** as the tenancy unit, with per-resource ownership and one-click **team reassignment**.
-- **Per-instance roles** — `super_admin`, `instance_admin`, `developer`, `viewer`. The same user can be admin on staging and viewer on prod; the UI gates writes and hides resources accordingly.
-- **Label-based classification** for routes and other resources, with backend-enforced key/value validation. Routes filter by label (a key alone or `key:value`), by upstream, and by several teams at once.
-- **Route import** from **OpenAPI** and from **WSDL** — the WSDL importer turns a SOAP service into one route per operation (matched on the `SOAPAction` header) or a single passthrough route, and handles multi-file ZIP bundles that follow `wsdl:import`.
+- **Teams** as the tenancy unit, with per-resource ownership and one-click **team reassignment**. A user can belong to **several teams on one instance**; a developer or viewer with more than one gets a team switcher of their own in the header ("All my teams", or one team, which narrows the lists and is where a new resource goes). A team cannot be deleted while an assignment still names it.
+- **Per-instance, per-team roles** — `super_admin`, `instance_admin`, `developer`, `viewer`. The same user can be admin on staging and viewer on prod, and on one instance developer in one team and viewer in another; the UI gates writes per row and hides resources accordingly.
+- **Label-based classification** for routes and other resources. Labels are free key/value pairs; a catalogue of known keys and values feeds the filter as a guide, not a rule. Routes filter by label (a key alone or `key:value`), by upstream, and by several teams at once.
+- **Route import** from **OpenAPI** and from **WSDL**. The OpenAPI importer asks where routes that name no backend go — an upstream built from the spec's `servers`, an existing upstream or service, or as the spec says — and previews each route's backend before importing; templated paths (`/pets/{id}`) become routes the gateway can match. The WSDL importer turns a SOAP service into one route per operation (matched on the `SOAPAction` header) or a single passthrough route, and handles multi-file ZIP bundles that follow `wsdl:import`.
 - **Built-in route testing** — a curl-style request drawer that pre-fills method, path, and host, and for per-operation SOAP routes also seeds the `SOAPAction` header and `text/xml` content type, so any route is testable in one click.
 - **Bulk & convenience actions** — batch delete, route duplication, and raw-JSON view/edit for every resource.
 - **Overview dashboard** with gateway health and consolidated route/service/upstream counts across all accessible instances.
 - **Operational detail where operators look for it** — how many nodes an upstream has and what depends on it, what APISIX's own health checkers have seen (through an optional Control API address per instance), when each certificate expires and who signed it, and the order a route's plugins actually run in, with a per-route priority.
 - **Maintenance for super admins** — list and purge the ownership records and instance assignments left behind by earlier deletions.
+- **Five languages** — English, German, Spanish, Turkish and Chinese, switchable from the header, including validation messages and the plugin catalogue.
 
 The frontend (React + TanStack Router + Mantine + Ant Design Pro) and most of the resource forms come from upstream; the `api/` directory and the new top-level pages (`login`, `overview`, `instances`, `teams`, `users`) are the multi-tenant additions.
 
@@ -26,7 +27,7 @@ The frontend (React + TanStack Router + Mantine + Ant Design Pro) and most of th
 
 The dashboard ships as one image, `ghcr.io/wboudiche/multi-apisix-dashboard`, published to GHCR on every semver tag `vX.Y.Z` as `:latest`, `:<major>.<minor>` and `:<version>`. It needs an etcd to keep its own data (users, teams, instances, roles) and reaches each APISIX over its Admin API, which you register from the UI.
 
-The GHCR image only exists starting with the first `vX.Y.Z` release; until then, or if the package is left private, run `docker compose up -d --build` in [`deploy/`](./deploy/) to build it locally instead of pulling. After the first release, make the GHCR package public in the repository's package settings, otherwise `docker pull` needs an authentication token.
+The image holds what was merged up to its release tag. To run what is on `main` since, build it locally with `docker compose up -d --build` in [`deploy/`](./deploy/); a later `docker compose pull` replaces that build with the published `:latest`.
 
 ```sh
 docker run -d -p 8080:8080 \
@@ -46,7 +47,7 @@ Open <http://localhost:8080/ui>. `JWT_SECRET` (at least 32 bytes) is required; t
 cd deploy
 cp .env.example .env
 printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env
-docker compose up -d --build     # drop --build once the image is on GHCR
+docker compose up -d             # add --build to run this checkout instead of the release
 ```
 
 | Service | Host port | Inside the network |
@@ -56,7 +57,7 @@ docker compose up -d --build     # drop --build once the image is on GHCR
 | `apisix2` (gateway 2) | 9081 | Admin API `http://apisix2:9180` |
 | `etcd` | — | `http://etcd:2379`, shared, one prefix per gateway |
 
-Open <http://localhost:8080/ui>, log in with `admin` and the `ADMIN_PASSWORD` from `.env` (default `admin`), then add both gateways on the **Instances** page with the internal Admin URLs above and the demo key from [`deploy/apisix/apisix_conf.yml`](./deploy/apisix/apisix_conf.yml). Reset, rebuild and the rest are in [`deploy/README.md`](./deploy/README.md).
+Open <http://localhost:8080/ui>, log in with `admin` and the `ADMIN_PASSWORD` from `.env` (default `admin`), then add both gateways on the **Instances** page with the internal Admin URLs above and the demo key from [`deploy/apisix/apisix_conf.yml`](./deploy/apisix/apisix_conf.yml). Give each a **Gateway URL** too (`http://apisix:9080`, `http://apisix2:9080`, the gateways' traffic port inside the network): the route tester sends its request there, from the dashboard's container. Reset, rebuild and the rest are in [`deploy/README.md`](./deploy/README.md).
 
 ## Develop locally
 
