@@ -52,6 +52,16 @@ const theme = createTheme({
     ],
   },
   fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  // One step up from Mantine's 12/14/16/18/20px: most of the dashboard is
+  // written in xs and sm, which left table cells, hints and assignments at
+  // 12px. md stays 16px, so a body text and the inputs do not move.
+  fontSizes: {
+    xs: '0.8125rem',
+    sm: '0.9375rem',
+    md: '1rem',
+    lg: '1.125rem',
+    xl: '1.25rem',
+  },
   headings: {
     fontFamily: '"Outfit", "Sora", sans-serif',
     fontWeight: '700',

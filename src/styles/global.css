@@ -278,7 +278,7 @@ table thead tr {
 table th {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.7rem !important;
+  font-size: 0.75rem !important;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-secondary) !important;
@@ -293,7 +293,7 @@ table td {
   border-bottom: 1px solid var(--border-light) !important;
   color: var(--text-primary) !important;
   font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 table tbody tr {
@@ -383,7 +383,7 @@ select:focus,
 [class*="FormLabel-root"] {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.8rem !important;
+  font-size: 0.875rem !important;
   color: var(--text-secondary) !important;
   margin-bottom: 6px !important;
   letter-spacing: 0.03em;
@@ -426,7 +426,7 @@ select:focus,
 [class*="Badge-root"] {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.7rem !important;
+  font-size: 0.75rem !important;
   letter-spacing: 0.05em;
   padding: 4px 10px !important;
   border-radius: var(--radius-full) !important;
@@ -487,7 +487,7 @@ select:focus,
 [class*="Tabs-tab"] {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.85rem !important;
+  font-size: 0.9375rem !important;
   letter-spacing: 0.03em;
   padding: 12px 20px !important;
   border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
@@ -514,7 +514,7 @@ select:focus,
 
 [class*="Tooltip-tooltip"] {
   font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 500 !important;
   padding: 8px 14px !important;
   border-radius: var(--radius-md) !important;
@@ -639,7 +639,7 @@ select:focus,
 }
 
 .mantine-Stepper-stepLabel {
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
   margin-bottom: 2px !important;
@@ -647,7 +647,7 @@ select:focus,
 }
 
 .mantine-Stepper-stepDescription {
-  font-size: 10px !important;
+  font-size: 0.75rem !important;
   max-width: 140px !important;
   text-align: center !important;
   white-space: normal !important;
