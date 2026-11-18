@@ -223,7 +223,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
       <Button variant="default" size="sm" onClick={reset}>
         {t('routes.list.filterReset')}
       </Button>
-      <Button color="blue" variant="filled" size="sm" onClick={search}>
+      <Button variant="filled" size="sm" onClick={search}>
         {t('routes.list.filterSearch')}
       </Button>
       <Button
@@ -237,7 +237,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
             <IconArrowDropDown width="14" height="14" />
           )
         }
-        style={{ color: '#1890ff', fontWeight: 400 }}
+        style={{ fontWeight: 400 }}
       >
         {expanded ? t('routes.list.filterCollapse') : t('routes.list.filterExpand')}
       </Button>

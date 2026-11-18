@@ -375,6 +375,10 @@ export const RouteList = (props: RouteListProps) => {
         </Group>
       )}
       <ListWarningBanner warning={shownWarning} />
+      {/* Scrolled rather than clipped: with every column shown the table is
+          wider than the card, whose overflow is hidden, and the actions at its
+          end went out of reach. The actions column stays in view (sticky-actions). */}
+      <Table.ScrollContainer minWidth={0} type="native">
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
@@ -395,7 +399,7 @@ export const RouteList = (props: RouteListProps) => {
             {isVisible('update_time') && <Table.Th>{t('routes.list.headerUpdateTime')}</Table.Th>}
             {isVisible('plugin') && <Table.Th>{t('routes.list.headerPlugin')}</Table.Th>}
             {isVisible('team') && <Table.Th>{t('routes.list.headerTeam')}</Table.Th>}
-            {isVisible('operation') && <Table.Th style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
+            {isVisible('operation') && <Table.Th className="sticky-actions" style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -582,7 +586,7 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
               {isVisible('operation') && (
-                <Table.Td>
+                <Table.Td className="sticky-actions">
                   <Group gap={8} wrap="nowrap">
                     {canWriteOwner(ownerOf(record.value)) && (
                       <Button
@@ -610,16 +614,15 @@ export const RouteList = (props: RouteListProps) => {
                         for what the account may actually do there. "Configure",
                         in the primary blue, promised an edit that every field
                         would refuse to save and the proxy would answer 403 to
-                        (#188). Light rather than the neutral default: this is
-                        still the row's primary action for a viewer, and the
-                        default variant is what the "More" button beside it
-                        wears. */}
+                        (#188). In the theme's colour, light for an edit and
+                        subtle for a read: the filled colour is the page's
+                        own action, Create, and the neutral default is what
+                        the "More" button beside it wears. */}
                     <RouteLinkBtn
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}
                       size="xs"
-                      color="blue"
-                      variant={writable ? 'filled' : 'light'}
+                      variant={writable ? 'light' : 'subtle'}
                       radius="sm"
                       styles={{ root: { padding: '0 12px' } }}
                     >
@@ -715,6 +718,7 @@ export const RouteList = (props: RouteListProps) => {
           )}
         </Table.Tbody>
       </Table>
+      </Table.ScrollContainer>
 
       <Group justify="flex-end" p="md" style={{ borderTop: '1px solid #eee' }}>
         <Pagination
@@ -835,7 +839,6 @@ function RouteComponent() {
             <ToAddPageBtn
               label={t('form.btn.create')}
               to="/routes/add"
-              color="blue"
             />
             {canCreate && (
               <Button

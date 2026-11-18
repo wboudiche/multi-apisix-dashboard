@@ -91,8 +91,7 @@ function ConsumersList() {
             to="/consumers/detail/$username"
             params={{ username: record.value.username }}
             size="xs"
-            color="blue"
-            variant={writable ? 'filled' : 'light'}
+            variant={writable ? 'light' : 'subtle'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >

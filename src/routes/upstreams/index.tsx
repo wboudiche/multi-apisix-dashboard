@@ -224,8 +224,7 @@ function RouteComponent() {
             to="/upstreams/detail/$id"
             params={{ id: record.value.id }}
             size="xs"
-            color="blue"
-            variant={writable ? 'filled' : 'light'}
+            variant={writable ? 'light' : 'subtle'}
             radius="sm"
             styles={{ root: { padding: '0 12px' } }}
           >

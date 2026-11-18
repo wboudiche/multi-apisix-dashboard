@@ -283,13 +283,44 @@ table th {
   letter-spacing: 0.1em;
   color: var(--text-secondary) !important;
   border-bottom: 2px solid var(--brand) !important;
-  padding: 16px 20px !important;
+  padding: 14px 16px !important;
   background: transparent !important;
   white-space: nowrap;
 }
 
+/* A badge in a cell is a value - a status, a path, a role, a plugin - and a
+   Mantine badge shrinks to an ellipsis when its column is narrow, which left
+   "PU..." for Published and "U..." for User. The table grows instead, and
+   scrolls where it is wrapped to. Written as it is stored, too: Mantine's
+   capitals turned the path /services/billing into /SERVICES/BILLING, and a
+   path, a label and a plugin name are all case-sensitive. */
+table td [class*="Badge-root"] {
+  min-width: max-content;
+  text-transform: none;
+}
+
+/* The row actions, kept in view at the end of a table that scrolls. A sticky
+   cell sticks within the nearest box that clips, and the table clips its own
+   corners: such a table leaves that to the container that scrolls it. */
+table:has(.sticky-actions) {
+  overflow: visible;
+}
+
+table th.sticky-actions,
+table td.sticky-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--bg-card) !important;
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.15);
+}
+
+table th.sticky-actions {
+  background: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%) !important;
+}
+
 table td {
-  padding: 16px 20px !important;
+  padding: 14px 16px !important;
   border-bottom: 1px solid var(--border-light) !important;
   color: var(--text-primary) !important;
   font-family: 'DM Sans', sans-serif !important;

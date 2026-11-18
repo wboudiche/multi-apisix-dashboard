@@ -605,7 +605,7 @@ const UsersPage = () => {
                 </Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
                   <Group gap="xs" justify="flex-end">
-                    <Button size="xs" variant="filled" color="blue" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openEditModal(user)}>
+                    <Button size="xs" variant="light" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openEditModal(user)}>
                       {t('users.permissions')}
                     </Button>
                     {user.id !== currentUser?.id && (
