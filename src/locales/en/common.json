@@ -866,7 +866,9 @@
       "destinationRequired": "Enter the backend's address",
       "destinationUrl": "An address starting with http:// or https://",
       "upstreamRequired": "Choose an upstream",
-      "serviceRequired": "Choose a service"
+      "serviceRequired": "Choose a service",
+      "destinationUrlPlain": "Only a scheme, host, port and path: no credentials, query, fragment or $",
+      "pathSlash": "A path starts with /"
     },
     "quickRoute": {
       "title": "New route",
@@ -884,7 +886,6 @@
       "hostHint": "Optional: only requests for this host name.",
       "name": "Name",
       "nameHint": "Proposed from the path until you change it.",
-      "duplicate": "A route already answers on this path: {{names}}",
       "moreOptions": "More options…",
       "create": "Create",
       "createOffline": "Create offline",

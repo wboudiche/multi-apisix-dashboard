@@ -20,6 +20,7 @@ import {
   destinationUrlError,
   proposeRouteName,
   type QuickRoute,
+  quickRouteErrors,
   quickRouteToDraft,
   quickRouteToForm,
   ROUTE_ADD_DEFAULTS,
@@ -173,5 +174,69 @@ describe('quickRouteToDraft', () => {
     const draft = quickRouteToDraft({ ...base, destination: { kind: 'upstream', upstreamId: 'u1' } });
     expect(draft.upstream_id).toBe('u1');
     expect(produceRoute(draft).upstream).toBeUndefined();
+  });
+});
+
+describe('what the dialog may not post', () => {
+  it('refuses an address that carries more than where the backend is', () => {
+    for (const url of [
+      'http://user:pw@backend:8080',
+      'http://backend:8080/v1?apikey=abc',
+      'http://backend:8080/v1#top',
+      'http://backend:8080/api$1/v2',
+    ]) {
+      expect(destinationUrlError(url), url).toBe('form.validation.destinationUrlPlain');
+    }
+  });
+
+  it('leaves an upstream or a service not picked yet as no destination at all', () => {
+    const upstream = quickRouteToForm({ ...base, destination: { kind: 'upstream', upstreamId: '' } });
+    expect(upstream.upstream_id).toBeUndefined();
+    const service = quickRouteToForm({ ...base, destination: { kind: 'service', serviceId: '' } });
+    expect(service.service_id).toBeUndefined();
+  });
+
+  it('hands the wizard its own empty upstream when nothing was picked', () => {
+    for (const destination of [
+      { kind: 'upstream', upstreamId: '' } as const,
+      { kind: 'service', serviceId: '' } as const,
+    ]) {
+      const draft = quickRouteToDraft({ ...base, destination });
+      expect(draft.upstream_id).toBe(ROUTE_ADD_DEFAULTS.upstream_id);
+      expect(draft.upstream).toEqual(ROUTE_ADD_DEFAULTS.upstream);
+      expect(draft.service_id).toBeUndefined();
+    }
+  });
+});
+
+describe('quickRouteErrors', () => {
+  it('finds nothing wrong with a complete route', () => {
+    expect(quickRouteErrors(base)).toEqual({});
+  });
+
+  it('asks for a path, and for one that starts with a slash', () => {
+    expect(quickRouteErrors({ ...base, path: ' ' }).path).toBe('form.validation.uriRequired');
+    expect(quickRouteErrors({ ...base, path: 'api/orders' }).path).toBe('form.validation.pathSlash');
+  });
+
+  it('asks for a name only when none can be proposed either', () => {
+    expect(quickRouteErrors({ ...base, name: '' }).name).toBeUndefined();
+    expect(quickRouteErrors({ ...base, name: '', path: '' }).name).toBe('form.validation.nameRequired');
+  });
+
+  it('names what each destination is missing', () => {
+    expect(quickRouteErrors({ ...base, destination: { kind: 'url', url: '' } }).destination)
+      .toBe('form.validation.destinationRequired');
+    expect(quickRouteErrors({ ...base, destination: { kind: 'upstream', upstreamId: '' } }).destination)
+      .toBe('form.validation.upstreamRequired');
+    expect(quickRouteErrors({ ...base, destination: { kind: 'service', serviceId: '' } }).destination)
+      .toBe('form.validation.serviceRequired');
+  });
+
+  it('holds what it posts to the wizard\'s own schema', () => {
+    // A methods value the schema refuses stands in for any rule the wizard's
+    // schema has and the dialog's own checks do not.
+    const errors = quickRouteErrors({ ...base, methods: ['BREW'] });
+    expect(errors.other?.length).toBeGreaterThan(0);
   });
 });

@@ -55,9 +55,6 @@ import {
 import { proxyFailureText } from '@/utils/team-refusal';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
-// Shared with the quick-create dialog, which hands its answers over as one.
-const DRAFT_KEY = ROUTE_DRAFT_KEY;
-
 type Props = {
   navigate: (res: APISIXType['RespRouteDetail']) => Promise<void>;
   defaultValues?: Partial<RoutePostType>;
@@ -102,8 +99,8 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
   // passes its service_id as a default and keeps a draft of its own, so no
   // draft carries one service's id to another page, or away from it (#228).
   const draftKey = defaultValues?.service_id
-    ? `${DRAFT_KEY}:service:${defaultValues.service_id}`
-    : DRAFT_KEY;
+    ? `${ROUTE_DRAFT_KEY}:service:${defaultValues.service_id}`
+    : ROUTE_DRAFT_KEY;
   const { t } = useTranslation();
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);

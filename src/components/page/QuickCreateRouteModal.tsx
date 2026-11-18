@@ -19,6 +19,7 @@ import {
   Button,
   Chip,
   Group,
+  List,
   Modal,
   SegmentedControl,
   Select,
@@ -29,27 +30,25 @@ import {
 } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getRouteListReq, postRouteReq } from '@/apis/routes';
+import { postRouteReq } from '@/apis/routes';
 import {
-  destinationUrlError,
   proposeRouteName,
   type QuickDestination,
   type QuickRoute,
+  quickRouteErrors,
   quickRouteToDraft,
   quickRouteToForm,
   ROUTE_ADD_DEFAULTS,
   ROUTE_DRAFT_KEY,
 } from '@/components/form-slice/FormPartRoute/quick-create';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
-import { PAGE_SIZE_MAX } from '@/config/constant';
 import { req } from '@/config/req';
-import { useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { errorText } from '@/utils/error-text';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
@@ -96,11 +95,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
 
   const { data: upstreams } = useAllUpstreams(instanceId, opened && kind === 'upstream');
   const { data: services } = useAllServices(instanceId, opened && kind === 'service');
-  const { data: existing } = useQuery({
-    queryKey: ['routes', 'quick-create', instanceId],
-    queryFn: () => getRouteListReq(req, { page: 1, page_size: PAGE_SIZE_MAX }),
-    enabled: opened,
-  });
+  // Pinned to the instance and keyed by the team, as every whole-instance
+  // list is; shared with the label filter's cache.
+  const { data: existing } = useAllRoutes(instanceId, opened);
 
   const name = typedName ?? proposeRouteName(methods, path);
 
@@ -112,14 +109,8 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
 
   const answers: QuickRoute = { path, methods, host, name, status: 1, destination };
 
-  const errors = {
-    path: path.trim() ? undefined : 'form.validation.uriRequired',
-    name: name.trim() ? undefined : 'form.validation.nameRequired',
-    url: kind === 'url' ? destinationUrlError(url) : undefined,
-    upstream: kind === 'upstream' && !upstreamId ? 'form.validation.upstreamRequired' : undefined,
-    service: kind === 'service' && !serviceId ? 'form.validation.serviceRequired' : undefined,
-  };
-  const valid = Object.values(errors).every((e) => !e);
+  const errors = quickRouteErrors(answers);
+  const valid = Object.keys(errors).length === 0;
   const shown = (key: string | undefined) => (showErrors ? errorText(key) : undefined);
 
   // The same check as the wizard's: advisory, since APISIX allows two routes
@@ -148,6 +139,12 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
   const close = () => {
     reset();
     onClose();
+  };
+
+  // Not while a route is being posted: its answer, success or refusal, has to
+  // land in a dialog that is still there to show it.
+  const dismiss = () => {
+    if (!submitting) close();
   };
 
   const create = async (status: 0 | 1) => {
@@ -179,7 +176,8 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
     typedName === null &&
     !upstreamId &&
     !serviceId &&
-    methods.join() === (ROUTE_ADD_DEFAULTS.methods ?? []).join();
+    // As a set: a method unticked and ticked again is no edit.
+    [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
   const openWizard = () => {
     if (untouched) {
@@ -213,7 +211,15 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
   };
 
   return (
-    <Modal opened={opened} onClose={close} title={t('form.quickRoute.title')} size="lg" centered>
+    <Modal
+      opened={opened}
+      onClose={dismiss}
+      closeOnEscape={!submitting}
+      closeOnClickOutside={!submitting}
+      title={t('form.quickRoute.title')}
+      size="lg"
+      centered
+    >
       <Stack gap="md">
         <Text size="sm" c="dimmed">{t('form.quickRoute.intro')}</Text>
 
@@ -262,7 +268,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
               placeholder="http://10.0.0.5:8080"
               value={url}
               onChange={(e) => setUrl(e.currentTarget.value)}
-              error={shown(errors.url)}
+              error={shown(errors.destination)}
             />
           )}
           {kind === 'upstream' && (
@@ -275,7 +281,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
               }))}
               value={upstreamId}
               onChange={setUpstreamId}
-              error={shown(errors.upstream)}
+              error={shown(errors.destination)}
             />
           )}
           {kind === 'service' && (
@@ -288,7 +294,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
               }))}
               value={serviceId}
               onChange={setServiceId}
-              error={shown(errors.service)}
+              error={shown(errors.destination)}
             />
           )}
         </Stack>
@@ -314,8 +320,33 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
         </SimpleGrid>
 
         {duplicates.length > 0 && (
-          <Alert color="yellow" variant="light" icon={<IconWarning />}>
-            {t('form.quickRoute.duplicate', { names: duplicates.map((d) => d.name).join(', ') })}
+          // Why each is one, as the wizard says it: a route on this path and a
+          // route of this name are two different clashes.
+          <Alert color="yellow" variant="light" icon={<IconWarning />} title={t('form.routes.duplicateConfirmTitle')}>
+            <List size="sm" spacing={2}>
+              {duplicates.map((d) => (
+                <List.Item key={`${d.id}-${d.reasons.join()}`}>
+                  {t(
+                    d.reasons.includes('name') && d.reasons.includes('path')
+                      ? 'form.routes.duplicateReasonBoth'
+                      : d.reasons.includes('name')
+                        ? 'form.routes.duplicateReasonName'
+                        : 'form.routes.duplicateReasonPath',
+                    { name: d.name, uri: d.uri }
+                  )}
+                </List.Item>
+              ))}
+            </List>
+          </Alert>
+        )}
+
+        {showErrors && errors.other && (
+          <Alert color="red" variant="light">
+            <List size="sm" spacing={2}>
+              {errors.other.map((message) => (
+                <List.Item key={message}>{errorText(message)}</List.Item>
+              ))}
+            </List>
           </Alert>
         )}
 
@@ -330,7 +361,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
             {t('form.quickRoute.moreOptions')}
           </Button>
           <Group gap="sm">
-            <Button variant="default" onClick={close} disabled={submitting}>
+            <Button variant="default" onClick={dismiss} disabled={submitting}>
               {t('form.btn.cancel')}
             </Button>
             <Button variant="light" onClick={() => create(0)} loading={submitting}>

@@ -940,7 +940,9 @@
       "destinationRequired": "请输入后端地址",
       "destinationUrl": "以 http:// 或 https:// 开头的地址",
       "upstreamRequired": "请选择一个上游",
-      "serviceRequired": "请选择一个服务"
+      "serviceRequired": "请选择一个服务",
+      "destinationUrlPlain": "只能包含协议、主机、端口和路径：不能包含凭据、查询参数、片段或 $",
+      "pathSlash": "路径必须以 / 开头"
     },
     "quickRoute": {
       "title": "新建路由",
@@ -958,7 +960,6 @@
       "hostHint": "可选：仅匹配此主机名的请求。",
       "name": "名称",
       "nameHint": "在您修改之前，根据路径自动建议。",
-      "duplicate": "已有路由在此路径上响应：{{names}}",
       "moreOptions": "更多选项…",
       "create": "创建",
       "createOffline": "创建为未发布",

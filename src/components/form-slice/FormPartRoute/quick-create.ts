@@ -18,7 +18,7 @@ import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows
 import type { APISIXType } from '@/types/schema/apisix';
 import { upstreamFromServer } from '@/utils/openapi-import';
 
-import type { RoutePostType } from './schema';
+import { RoutePostSchema, type RoutePostType } from './schema';
 import { UPSTREAM_CUSTOM } from './util';
 
 /** Where a route made in the quick-create dialog sends its requests. */
@@ -79,8 +79,17 @@ export const proposeRouteName = (methods: string[], path: string): string => {
  * import's servers, so an address one accepts the other does too.
  */
 export const destinationUrlError = (url: string): string | undefined => {
-  if (!url.trim()) return 'form.validation.destinationRequired';
-  return upstreamFromServer(url.trim()) ? undefined : 'form.validation.destinationUrl';
+  const value = url.trim();
+  if (!value) return 'form.validation.destinationRequired';
+  if (!upstreamFromServer(value)) return 'form.validation.destinationUrl';
+  // Only where the backend is becomes the route: credentials, a query or a
+  // fragment would be dropped without a word, and a $ in the path would be
+  // read by proxy-rewrite as a reference to what it matched.
+  const parsed = new URL(value);
+  if (parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname.includes('$')) {
+    return 'form.validation.destinationUrlPlain';
+  }
+  return undefined;
 };
 
 /**
@@ -100,9 +109,11 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     ...(host && { host }),
   };
 
+  // Nothing picked yet is no destination, rather than an empty id the
+  // wizard would read as one and the gateway would refuse.
   const d = q.destination;
-  if (d.kind === 'upstream') return { ...form, upstream_id: d.upstreamId };
-  if (d.kind === 'service') return { ...form, service_id: d.serviceId };
+  if (d.kind === 'upstream') return d.upstreamId ? { ...form, upstream_id: d.upstreamId } : form;
+  if (d.kind === 'service') return d.serviceId ? { ...form, service_id: d.serviceId } : form;
 
   const built = upstreamFromServer(d.url.trim());
   if (!built) return form;
@@ -148,4 +159,52 @@ export const quickRouteToDraft = (q: QuickRoute): RoutePostType => {
     delete draft.upstream_id;
   }
   return draft;
+};
+
+/** What the dialog says is wrong, as keys under form.validation, by field. */
+export type QuickRouteErrors = {
+  path?: string;
+  name?: string;
+  destination?: string;
+  /** What the wizard's schema refuses that no field of the dialog shows. */
+  other?: string[];
+};
+
+const DESTINATION_MISSING = {
+  upstream: 'form.validation.upstreamRequired',
+  service: 'form.validation.serviceRequired',
+} as const;
+
+/**
+ * Why the dialog's answers cannot be posted; empty when they can.
+ *
+ * What is posted is held to the wizard's own schema, so a rule the wizard
+ * enforces is one the dialog enforces too. On top of it, what the dialog can
+ * say better about its own fields: a path the gateway would never match, and
+ * which destination is missing rather than that one is.
+ */
+export const quickRouteErrors = (q: QuickRoute): QuickRouteErrors => {
+  const errors: QuickRouteErrors = {};
+  const path = q.path.trim();
+  if (!path) errors.path = 'form.validation.uriRequired';
+  else if (!path.startsWith('/')) errors.path = 'form.validation.pathSlash';
+
+  const d = q.destination;
+  if (d.kind === 'url') errors.destination = destinationUrlError(d.url);
+  else if (d.kind === 'upstream' && !d.upstreamId) errors.destination = DESTINATION_MISSING.upstream;
+  else if (d.kind === 'service' && !d.serviceId) errors.destination = DESTINATION_MISSING.service;
+
+  const parsed = RoutePostSchema.safeParse(quickRouteToForm(q));
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0];
+      if (field === 'uri') errors.path ??= issue.message;
+      else if (field === 'name') errors.name ??= issue.message;
+      // The destination is told apart above, by kind.
+      else if (field === 'upstream_id' || field === 'upstream' || field === 'service_id') errors.destination ??= issue.message;
+      else (errors.other ??= []).push(issue.message);
+    }
+  }
+  if (!errors.destination) delete errors.destination;
+  return errors;
 };

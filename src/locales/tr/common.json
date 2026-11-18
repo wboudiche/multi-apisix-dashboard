@@ -946,7 +946,9 @@
       "destinationRequired": "Backend'in adresini girin",
       "destinationUrl": "http:// veya https:// ile başlayan bir adres",
       "upstreamRequired": "Bir upstream seçin",
-      "serviceRequired": "Bir servis seçin"
+      "serviceRequired": "Bir servis seçin",
+      "destinationUrlPlain": "Yalnızca şema, host, port ve yol: kimlik bilgisi, sorgu, parça veya $ olmadan",
+      "pathSlash": "Bir yol / ile başlar"
     },
     "quickRoute": {
       "title": "Yeni rota",
@@ -964,7 +966,6 @@
       "hostHint": "İsteğe bağlı: yalnızca bu ana makine adına gelen istekler.",
       "name": "Ad",
       "nameHint": "Siz değiştirene kadar yoldan önerilir.",
-      "duplicate": "Bu yolda zaten yanıt veren bir rota var: {{names}}",
       "moreOptions": "Diğer seçenekler…",
       "create": "Oluştur",
       "createOffline": "Çevrimdışı oluştur",

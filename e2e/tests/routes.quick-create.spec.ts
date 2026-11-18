@@ -136,7 +136,8 @@ test('warns of a route already on the path', async ({ page }) => {
   const dialog = await openDialog(page);
 
   await dialog.getByRole('textbox', { name: 'Path' }).fill(path);
-  await expect(dialog.getByRole('alert')).toContainText('A route already answers on this path: already-here');
+  // Why it is one, as the wizard says it: on this path, not of this name.
+  await expect(dialog.getByRole('alert')).toContainText(`"already-here" already answers on ${path}`);
 });
 
 test('hands what was typed over to the wizard', async ({ page }) => {
