@@ -443,7 +443,7 @@ export const Header: FC<HeaderProps> = (props) => {
                         below, understating what it may do on the dashboard's
                         own authorization surface (#324). */}
                     {effectiveRole && (
-                      <Text size="10px" c="dimmed" style={{ marginTop: -4 }}>
+                      <Text size="xs" c="dimmed" style={{ marginTop: -4 }}>
                         {roleLabel(t, effectiveRole)}
                       </Text>
                     )}

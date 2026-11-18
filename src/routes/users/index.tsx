@@ -499,6 +499,8 @@ const UsersPage = () => {
       />
 
       <Paper className="Card-root" p={0}>
+        {/* Scrolled rather than clipped by the card, as on the routes list. */}
+        <Table.ScrollContainer minWidth={0} type="native">
         <Table horizontalSpacing="lg" verticalSpacing="md">
           <Table.Thead>
             <Table.Tr>
@@ -507,7 +509,7 @@ const UsersPage = () => {
               <Table.Th>{t('users.columnInstances')}</Table.Th>
               <Table.Th>{t('users.columnTeams')}</Table.Th>
               <Table.Th>{t('users.columnCreated')}</Table.Th>
-              <Table.Th style={{ textAlign: 'right' }}>{t('table.actions')}</Table.Th>
+              <Table.Th className="sticky-actions" style={{ textAlign: 'right' }}>{t('table.actions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -603,9 +605,9 @@ const UsersPage = () => {
                     {recordDate(user.created_at) ?? '—'}
                   </Text>
                 </Table.Td>
-                <Table.Td style={{ textAlign: 'right' }}>
+                <Table.Td className="sticky-actions" style={{ textAlign: 'right' }}>
                   <Group gap="xs" justify="flex-end">
-                    <Button size="xs" variant="filled" color="blue" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openEditModal(user)}>
+                    <Button size="xs" variant="filled" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openEditModal(user)}>
                       {t('users.permissions')}
                     </Button>
                     {user.id !== currentUser?.id && (
@@ -614,7 +616,7 @@ const UsersPage = () => {
                       </Button>
                     )}
                     {user.id !== currentUser?.id && (
-                      <Button size="xs" variant="filled" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(user.id)}>
+                      <Button size="xs" variant="light" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(user.id)}>
                         {t('form.btn.delete')}
                       </Button>
                     )}
@@ -636,6 +638,7 @@ const UsersPage = () => {
             )}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
       </Paper>
 
       <Modal

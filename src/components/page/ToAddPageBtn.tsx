@@ -67,6 +67,8 @@ export type ToDetailPageBtnProps = {
   | keyof FilterKeys<FileRoutesByTo, '$routeId'>
   | keyof FilterKeys<FileRoutesByTo, '$username'>;
   mode?: 'button' | 'icon';
+  /** The button's size, in button mode. */
+  size?: ButtonProps['size'];
   /**
    * The APISIX path segment for what this page lists - "routes", "ssls".
    *
@@ -84,7 +86,7 @@ export type ToDetailPageBtnProps = {
 } & Pick<LinkProps, 'params'>;
 
 export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
-  const { params, to, mode = 'icon', resource, allowed = true } = props;
+  const { params, to, mode = 'icon', resource, allowed = true, size = 'compact-xs' } = props;
   const { t } = useTranslation();
   const { canWriteResource } = usePermission();
 
@@ -96,8 +98,17 @@ export const ToDetailPageBtn = (props: ToDetailPageBtnProps) => {
   const label = writable ? t('form.btn.configure') : t('form.btn.view');
 
   if (mode === 'button') {
+    // Filled for an edit, light for a read: the row's primary action either
+    // way, lighter when the account may only look. Every list's row button
+    // comes from here, so the rule is written once.
     return (
-      <RouteLinkBtn size="compact-xs" variant="light" to={to} params={params}>
+      <RouteLinkBtn
+        size={size}
+        variant={writable ? 'filled' : 'light'}
+        radius="sm"
+        to={to}
+        params={params}
+      >
         {label}
       </RouteLinkBtn>
     );

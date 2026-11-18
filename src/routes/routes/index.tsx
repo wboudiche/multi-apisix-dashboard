@@ -42,7 +42,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import { teamsQueryOptions } from '@/apis/queries';
-import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
+import { RouteAnchor } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
@@ -53,7 +53,7 @@ import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import type { RouteFilters } from '@/components/page/RoutesFilterBar';
 import { RoutesFilterBar } from '@/components/page/RoutesFilterBar';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
-import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
@@ -375,6 +375,10 @@ export const RouteList = (props: RouteListProps) => {
         </Group>
       )}
       <ListWarningBanner warning={shownWarning} />
+      {/* Scrolled rather than clipped: with every column shown the table is
+          wider than the card, whose overflow is hidden, and the actions at its
+          end went out of reach. The actions column stays in view (sticky-actions). */}
+      <Table.ScrollContainer minWidth={0} type="native">
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
@@ -395,7 +399,7 @@ export const RouteList = (props: RouteListProps) => {
             {isVisible('update_time') && <Table.Th>{t('routes.list.headerUpdateTime')}</Table.Th>}
             {isVisible('plugin') && <Table.Th>{t('routes.list.headerPlugin')}</Table.Th>}
             {isVisible('team') && <Table.Th>{t('routes.list.headerTeam')}</Table.Th>}
-            {isVisible('operation') && <Table.Th style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
+            {isVisible('operation') && <Table.Th className="sticky-actions" style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -457,13 +461,13 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('path') && (
                 <Table.Td>
                   {record.value.uri ? (
-                    <Badge variant="light" color="blue" radius="sm" ff="monospace">
+                    <Badge variant="light" color="blue" radius="sm" ff="monospace" tt="none">
                       {record.value.uri}
                     </Badge>
                   ) : record.value.uris && record.value.uris.length > 0 ? (
                     <Group gap={4}>
                       {record.value.uris.map((uri: string, i: number) => (
-                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace">
+                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace" tt="none">
                           {uri}
                         </Badge>
                       ))}
@@ -524,7 +528,7 @@ export const RouteList = (props: RouteListProps) => {
                   {record.value.labels && Object.keys(record.value.labels).length > 0 ? (
                     <Group gap={4}>
                       {Object.entries(record.value.labels).map(([key, value]) => (
-                        <Badge key={key} variant="dot" size="sm" color="gray">
+                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none">
                           {key}:{value as string}
                         </Badge>
                       ))}
@@ -560,7 +564,7 @@ export const RouteList = (props: RouteListProps) => {
                   {record.value.plugins && Object.keys(record.value.plugins).length > 0 ? (
                     <Group gap={4}>
                       {Object.keys(record.value.plugins).map((pluginName) => (
-                        <Badge key={pluginName} variant="light" size="sm" color="blue">
+                        <Badge key={pluginName} variant="light" size="sm" color="blue" tt="none">
                           {pluginName}
                         </Badge>
                       ))}
@@ -582,13 +586,13 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
               {isVisible('operation') && (
-                <Table.Td>
+                <Table.Td className="sticky-actions">
                   <Group gap={8} wrap="nowrap">
                     {canWriteOwner(ownerOf(record.value)) && (
                       <Button
                         size="xs"
                         color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
-                        variant="filled"
+                        variant="light"
                         radius="sm"
                         styles={{ root: { padding: '0 12px' } }}
                         onClick={() =>
@@ -605,26 +609,16 @@ export const RouteList = (props: RouteListProps) => {
                         )}
                       </Button>
                     )}
-                    {/* The same link either way - the detail page is where a
-                        route is read as well as edited - but named and weighted
-                        for what the account may actually do there. "Configure",
-                        in the primary blue, promised an edit that every field
-                        would refuse to save and the proxy would answer 403 to
-                        (#188). Light rather than the neutral default: this is
-                        still the row's primary action for a viewer, and the
-                        default variant is what the "More" button beside it
-                        wears. */}
-                    <RouteLinkBtn
+                    {/* Configure, or View for an account that may only read
+                        it (#188): the row's primary action either way. */}
+                    <ToDetailPageBtn
+                      mode="button"
+                      size="xs"
+                      resource="routes"
+                      allowed={canWriteOwner(ownerOf(record.value))}
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}
-                      size="xs"
-                      color="blue"
-                      variant={writable ? 'filled' : 'light'}
-                      radius="sm"
-                      styles={{ root: { padding: '0 12px' } }}
-                    >
-                      {t(writable ? 'form.btn.configure' : 'form.btn.view')}
-                    </RouteLinkBtn>
+                    />
                     <Menu shadow="md" width={160}>
                       <Menu.Target>
                         <Button size="xs" variant="default" radius="sm" rightSection={<IconArrowDropDown width="14" height="14" />}>{t('routes.list.actionMore')}</Button>
@@ -715,6 +709,7 @@ export const RouteList = (props: RouteListProps) => {
           )}
         </Table.Tbody>
       </Table>
+      </Table.ScrollContainer>
 
       <Group justify="flex-end" p="md" style={{ borderTop: '1px solid #eee' }}>
         <Pagination
@@ -835,7 +830,6 @@ function RouteComponent() {
             <ToAddPageBtn
               label={t('form.btn.create')}
               to="/routes/add"
-              color="blue"
             />
             {canCreate && (
               <Button

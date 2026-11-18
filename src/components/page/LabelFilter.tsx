@@ -141,7 +141,6 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
       />
       <ActionIcon
         variant="filled"
-        color="blue"
         size="input-sm"
         disabled={!canAdd}
         onClick={handleAdd}

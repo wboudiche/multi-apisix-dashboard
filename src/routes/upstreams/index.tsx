@@ -22,12 +22,11 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getUpstreamListQueryOptions, useUpstreamList } from '@/apis/hooks';
-import { RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ListWarningBanner } from '@/components/page/ListWarningBanner';
 import PageHeader from '@/components/page/PageHeader';
-import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import type { UpstreamRow } from '@/components/page-slice/upstreams/upstream-row';
 import { nodeCount } from '@/components/page-slice/upstreams/upstream-row';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
@@ -42,7 +41,7 @@ import { summarizeHealth } from '@/utils/upstream-health';
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { canWriteResource, canWriteOwner } = usePermission();
+  const { canWriteOwner } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useUpstreamList();
   // Never more than the rows on screen: see useRowSelection (#371).
   const selectable = useCallback(
@@ -217,20 +216,16 @@ function RouteComponent() {
         key: 'option',
         width: 200,
         render: (_, record) => {
-          const writable = canWriteResource('upstreams') && canWriteOwner(ownerOf(record.value));
           return [
-          <RouteLinkBtn
+          <ToDetailPageBtn
             key="detail"
+            mode="button"
+            size="xs"
+            resource="upstreams"
+            allowed={canWriteOwner(ownerOf(record.value))}
             to="/upstreams/detail/$id"
             params={{ id: record.value.id }}
-            size="xs"
-            color="blue"
-            variant={writable ? 'filled' : 'light'}
-            radius="sm"
-            styles={{ root: { padding: '0 12px' } }}
-          >
-            {t(writable ? 'form.btn.configure' : 'form.btn.view')}
-          </RouteLinkBtn>,
+          />,
           <DeleteResourceBtn
             key="delete"
             allowed={canWriteOwner(ownerOf(record.value))}
@@ -248,7 +243,7 @@ function RouteComponent() {
         },
       },
     ];
-  }, [t, refetch, canWriteResource, canWriteOwner]);
+  }, [t, refetch, canWriteOwner]);
 
   return (
     <>

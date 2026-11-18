@@ -255,7 +255,7 @@ const Overview = () => {
                   <Table.Tr key={inst.instance_id} className={`stagger-${(index % 5) + 1}`}>
                     <Table.Td>
                       <Text fw={600} size="sm">{inst.name}</Text>
-                      <Text size="10px" ff="monospace" c="dimmed">{inst.instance_id}</Text>
+                      <Text size="xs" ff="monospace" c="dimmed">{inst.instance_id}</Text>
                     </Table.Td>
                     <Table.Td>
                       {/* Three states, not two: a gateway the refresh did not

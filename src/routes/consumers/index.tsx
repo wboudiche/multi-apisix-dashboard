@@ -21,11 +21,10 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getConsumerListQueryOptions, useConsumerList } from '@/apis/hooks';
-import { RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
-import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_CONSUMERS } from '@/config/constant';
 import { queryClient } from '@/config/global';
@@ -40,7 +39,7 @@ const consumerName = (record: APISIXType['RespConsumerItem']) => record.value.us
 
 function ConsumersList() {
   const { t } = useTranslation();
-  const { canWriteResource, canWriteOwner } = usePermission();
+  const { canWriteOwner } = usePermission();
   const { data, isLoading, refetch, pagination, listKey } = useConsumerList();
   // Never more than the rows on screen: see useRowSelection (#371).
   const selectable = useCallback(
@@ -84,20 +83,16 @@ function ConsumersList() {
         key: 'option',
         width: 200,
         render: (_, record) => {
-          const writable = canWriteResource('consumers') && canWriteOwner(ownerOf(record.value));
           return [
-          <RouteLinkBtn
+          <ToDetailPageBtn
             key="detail"
+            mode="button"
+            size="xs"
+            resource="consumers"
+            allowed={canWriteOwner(ownerOf(record.value))}
             to="/consumers/detail/$username"
             params={{ username: record.value.username }}
-            size="xs"
-            color="blue"
-            variant={writable ? 'filled' : 'light'}
-            radius="sm"
-            styles={{ root: { padding: '0 12px' } }}
-          >
-            {t(writable ? 'form.btn.configure' : 'form.btn.view')}
-          </RouteLinkBtn>,
+          />,
           <DeleteResourceBtn
             key="delete"
             allowed={canWriteOwner(ownerOf(record.value))}
@@ -115,7 +110,7 @@ function ConsumersList() {
         },
       },
     ];
-  }, [refetch, t, canWriteResource, canWriteOwner]);
+  }, [refetch, t, canWriteOwner]);
 
   return (
     <AntdConfigProvider>

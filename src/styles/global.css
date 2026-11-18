@@ -11,6 +11,7 @@
   --brand-hover: #E53532;
   --brand-active: #D32F2F;
   --brand-subtle: rgba(248, 66, 63, 0.1);
+  --table-head-bg: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%);
 
   /* Premium color palette */
   --bg-primary: #F8F9FA;
@@ -272,28 +273,70 @@ table {
 }
 
 table thead tr {
-  background: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%) !important;
+  background: var(--table-head-bg) !important;
 }
 
 table th {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.7rem !important;
+  font-size: 0.75rem !important;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-secondary) !important;
   border-bottom: 2px solid var(--brand) !important;
-  padding: 16px 20px !important;
+  padding: 14px 16px !important;
   background: transparent !important;
   white-space: nowrap;
 }
 
+/* A badge in a cell is a value - a status, a path, a role, a plugin - and a
+   Mantine badge shrinks to an ellipsis when its column is narrow, which left
+   "PU..." for Published and "U..." for User. In a table that scrolls the
+   table grows instead; in one that does not, the card would clip it. */
+[class*="TableScrollContainer"] td [class*="Badge-root"] {
+  min-width: max-content;
+}
+
+/* The row actions, kept in view at the end of a table that scrolls. A sticky
+   cell sticks within the nearest box that clips, and the table clips its own
+   corners: such a table hands its border and its corners to the container
+   that scrolls it, which clips them in its place. */
+[class*="TableScrollContainer-scrollContainer"]:has(.sticky-actions) {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
+table:has(.sticky-actions) {
+  overflow: visible;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+table th.sticky-actions,
+table td.sticky-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--bg-card) !important;
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.15);
+}
+
+table th.sticky-actions {
+  background: var(--table-head-bg) !important;
+}
+
+/* Opaque, as the cells it covers scroll under it, and tinted with the row
+   when the row is hovered: the hover's gradient ends at this tint. */
+table tbody tr:hover td.sticky-actions {
+  background: linear-gradient(rgba(248, 66, 63, 0.03), rgba(248, 66, 63, 0.03)), var(--bg-card) !important;
+}
+
 table td {
-  padding: 16px 20px !important;
+  padding: 14px 16px !important;
   border-bottom: 1px solid var(--border-light) !important;
   color: var(--text-primary) !important;
   font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 table tbody tr {
@@ -383,7 +426,7 @@ select:focus,
 [class*="FormLabel-root"] {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.8rem !important;
+  font-size: 0.875rem !important;
   color: var(--text-secondary) !important;
   margin-bottom: 6px !important;
   letter-spacing: 0.03em;
@@ -426,7 +469,7 @@ select:focus,
 [class*="Badge-root"] {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.7rem !important;
+  font-size: 0.75rem !important;
   letter-spacing: 0.05em;
   padding: 4px 10px !important;
   border-radius: var(--radius-full) !important;
@@ -487,7 +530,7 @@ select:focus,
 [class*="Tabs-tab"] {
   font-family: 'Sora', sans-serif !important;
   font-weight: 600 !important;
-  font-size: 0.85rem !important;
+  font-size: 0.9375rem !important;
   letter-spacing: 0.03em;
   padding: 12px 20px !important;
   border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
@@ -514,7 +557,7 @@ select:focus,
 
 [class*="Tooltip-tooltip"] {
   font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 500 !important;
   padding: 8px 14px !important;
   border-radius: var(--radius-md) !important;
@@ -639,7 +682,7 @@ select:focus,
 }
 
 .mantine-Stepper-stepLabel {
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
   margin-bottom: 2px !important;
@@ -647,7 +690,7 @@ select:focus,
 }
 
 .mantine-Stepper-stepDescription {
-  font-size: 10px !important;
+  font-size: 0.75rem !important;
   max-width: 140px !important;
   text-align: center !important;
   white-space: normal !important;

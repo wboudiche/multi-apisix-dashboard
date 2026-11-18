@@ -34,6 +34,12 @@ export const AntdConfigProvider = (props: PropsWithChildren) => {
         token: {
           borderRadiusSM: 2,
         },
+        components: {
+          // The resource tables, a step up from antd's 14px with Mantine's
+          // sm. The token alone would grow every antd control too, inputs
+          // and selects whose heights are drawn for 14px.
+          Table: { fontSize: 15 },
+        },
       }}
     >
       {children}
