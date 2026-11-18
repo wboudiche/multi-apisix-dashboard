@@ -48,12 +48,19 @@ type TestResponse = {
   results: NodeResult[];
 };
 
-export const TestConnectionButton = () => {
+type ConnectionTestProps = {
+  /** The nodes to dial, in the form's shape: a host and, maybe, a port. */
+  nodes: Record<string, unknown>[] | undefined;
+  scheme: string | undefined;
+};
+
+/**
+ * Has the dashboard dial each node and says how each answered. Given the
+ * nodes rather than reading them from a form, so the upstream form and the
+ * route quick-create dialog test the same way.
+ */
+export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
   const { t } = useTranslation();
-  const { control } = useFormContext();
-  const np = useNamePrefix();
-  const nodes = useWatch({ control, name: np('nodes') });
-  const scheme = useWatch({ control, name: np('scheme') });
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<NodeResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +79,7 @@ export const TestConnectionButton = () => {
     // answered are still shown, beside the error.
     const tested: NodeResult[] = [];
     try {
-      const testNodes = nodes
+      const testNodes = (nodes ?? [])
         .filter((n: Record<string, unknown>) => n?.host)
         .map((n: Record<string, unknown>) => ({
           host: n.host,
@@ -189,4 +196,13 @@ export const TestConnectionButton = () => {
       )}
     </Stack>
   );
+};
+
+/** The connection test of the upstream form, on the nodes it holds. */
+export const TestConnectionButton = () => {
+  const { control } = useFormContext();
+  const np = useNamePrefix();
+  const nodes = useWatch({ control, name: np('nodes') });
+  const scheme = useWatch({ control, name: np('scheme') });
+  return <ConnectionTest nodes={nodes} scheme={scheme} />;
 };

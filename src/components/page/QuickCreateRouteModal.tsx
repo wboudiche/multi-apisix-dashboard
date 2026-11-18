@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next';
 
 import { postRouteReq } from '@/apis/routes';
 import {
+  destinationUrlError,
   proposeRouteName,
   type QuickDestination,
   type QuickRoute,
@@ -47,6 +48,8 @@ import {
   ROUTE_DRAFT_KEY,
 } from '@/components/form-slice/FormPartRoute/quick-create';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
+import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
+import { ConnectionTest } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
 import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
@@ -59,6 +62,16 @@ import IconWarning from '~icons/material-symbols/warning-outline';
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 type DestinationKind = QuickDestination['kind'];
+
+// The rest of a route, for what only the destination decides.
+const EMPTY_ANSWERS: QuickRoute = {
+  path: '/',
+  methods: [],
+  host: '',
+  name: '',
+  status: 1,
+  destination: { kind: 'url', url: '' },
+};
 
 type Props = {
   opened: boolean;
@@ -108,6 +121,31 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
   }, [kind, url, upstreamId, serviceId]);
 
   const answers: QuickRoute = { path, methods, host, name, status: 1, destination };
+
+  // What the connection test dials: the node an address makes, or the nodes
+  // of the upstream picked. Nothing until there is one to dial.
+  const testTarget = useMemo(() => {
+    if (kind === 'url') {
+      if (destinationUrlError(url)) return null;
+      const upstream = quickRouteToForm({ ...EMPTY_ANSWERS, destination: { kind, url } }).upstream;
+      return upstream ? { nodes: parseToNodes(upstream.nodes), scheme: upstream.scheme } : null;
+    }
+    if (kind === 'upstream' && upstreamId) {
+      const picked = upstreams?.list.find((u) => u.value.id === upstreamId)?.value;
+      return picked ? { nodes: parseToNodes(picked.nodes), scheme: picked.scheme } : null;
+    }
+    return null;
+  }, [kind, url, upstreamId, upstreams]);
+
+  const connectionTest = testTarget && (
+    // Keyed by what it dials: an answer about the last address is not one
+    // about this one.
+    <ConnectionTest
+      key={JSON.stringify(testTarget)}
+      nodes={testTarget.nodes as Record<string, unknown>[]}
+      scheme={testTarget.scheme}
+    />
+  );
 
   const errors = quickRouteErrors(answers);
   const valid = Object.keys(errors).length === 0;
@@ -217,7 +255,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
       closeOnEscape={!submitting}
       closeOnClickOutside={!submitting}
       title={t('form.quickRoute.title')}
-      size="lg"
+      size="xl"
       centered
     >
       <Stack gap="md">
@@ -271,6 +309,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
               error={shown(errors.destination)}
             />
           )}
+          {kind === 'url' && connectionTest}
           {kind === 'upstream' && (
             <Select
               aria-label={t('form.quickRoute.destUpstream')}
@@ -284,6 +323,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
               error={shown(errors.destination)}
             />
           )}
+          {kind === 'upstream' && connectionTest}
           {kind === 'service' && (
             <Select
               aria-label={t('form.quickRoute.destService')}

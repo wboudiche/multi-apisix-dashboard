@@ -158,3 +158,20 @@ test('hands what was typed over to the wizard', async ({ page }) => {
   // The draft is the wizard's own: leave none behind for the next spec.
   await page.getByRole('button', { name: 'Discard Draft' }).click();
 });
+
+test('tests the address the way the upstream form does', async ({ page }) => {
+  const dialog = await openDialog(page);
+
+  // No address, nothing to test.
+  await expect(dialog.getByRole('button', { name: 'Test Connection' })).toHaveCount(0);
+
+  // An internal address is not dialed (#304), and says so rather than failing.
+  await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+  await dialog.getByRole('button', { name: 'Test Connection' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('127.0.0.1:1980');
+  await expect(dialog.getByRole('alert')).toContainText('Not tested');
+
+  // Another address is another question: the last answer goes.
+  await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1981');
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+});

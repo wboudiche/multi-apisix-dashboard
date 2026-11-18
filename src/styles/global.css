@@ -167,6 +167,13 @@ button[type="submit"] {
   overflow: hidden;
 }
 
+/* A compact button is as tall as Mantine draws it, 22 to 30px: 8px above and
+   below left a compact-sm label 10px for a 15px line, and cut its top off. */
+.mantine-Button-root[data-size^="compact"]:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"]) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .mantine-Button-root:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"])::before,
 button[type="submit"]::before {
   content: '';
