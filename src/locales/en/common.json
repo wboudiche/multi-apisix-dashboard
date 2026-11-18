@@ -862,7 +862,35 @@
       "tooManyItems_one": "Must have at most {{count}} item",
       "tooManyItems_other": "Must have at most {{count}} items",
       "itemsExactly_one": "Must have exactly {{count}} item",
-      "itemsExactly_other": "Must have exactly {{count}} items"
+      "itemsExactly_other": "Must have exactly {{count}} items",
+      "destinationRequired": "Enter the backend's address",
+      "destinationUrl": "An address starting with http:// or https://",
+      "upstreamRequired": "Choose an upstream",
+      "serviceRequired": "Choose a service"
+    },
+    "quickRoute": {
+      "title": "New route",
+      "intro": "A path and where to send it. Everything else can wait, or be set now under More options.",
+      "path": "Path",
+      "pathHint": "End it with * to match everything under it.",
+      "methods": "Methods",
+      "methodsHint": "None selected: every method.",
+      "destination": "Destination",
+      "destUrl": "Address",
+      "destUpstream": "Existing upstream",
+      "destService": "Service",
+      "urlHint": "The backend's address. A path after the host is put in front of every request.",
+      "host": "Host",
+      "hostHint": "Optional: only requests for this host name.",
+      "name": "Name",
+      "nameHint": "Proposed from the path until you change it.",
+      "duplicate": "A route already answers on this path: {{names}}",
+      "moreOptions": "More options…",
+      "create": "Create",
+      "createOffline": "Create offline",
+      "replaceDraftTitle": "Replace your draft?",
+      "replaceDraftBody": "The full form holds a route you started earlier. Opening it with these answers replaces that draft.",
+      "replaceDraftConfirm": "Replace"
     }
   },
   "globalRules": {

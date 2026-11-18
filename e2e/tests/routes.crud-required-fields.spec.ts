@@ -45,7 +45,7 @@ test('should CRUD route with required fields', async ({ page }) => {
   await routesPom.toIndex(page);
   await routesPom.isIndexPage(page);
 
-  await routesPom.getAddRouteBtn(page).click();
+  await routesPom.openAddWizard(page);
   await routesPom.isAddPage(page);
 
   await test.step('cannot advance past upstream step without a node', async () => {
@@ -70,7 +70,7 @@ test('should CRUD route with required fields', async ({ page }) => {
     // Restart from a clean add page to use the shared create helper.
     await routesPom.toIndex(page);
     await page.evaluate(() => localStorage.removeItem('apisix-route-draft'));
-    await routesPom.getAddRouteBtn(page).click();
+    await routesPom.openAddWizard(page);
     await routesPom.isAddPage(page);
 
     await uiCreateRouteWithCustomUpstream(page, {

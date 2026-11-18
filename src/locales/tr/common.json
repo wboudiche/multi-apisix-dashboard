@@ -942,7 +942,35 @@
       "tooManyItems_one": "En fazla {{count}} öğe olmalı",
       "tooManyItems_other": "En fazla {{count}} öğe olmalı",
       "itemsExactly_one": "Tam olarak {{count}} öğe olmalı",
-      "itemsExactly_other": "Tam olarak {{count}} öğe olmalı"
+      "itemsExactly_other": "Tam olarak {{count}} öğe olmalı",
+      "destinationRequired": "Backend'in adresini girin",
+      "destinationUrl": "http:// veya https:// ile başlayan bir adres",
+      "upstreamRequired": "Bir upstream seçin",
+      "serviceRequired": "Bir servis seçin"
+    },
+    "quickRoute": {
+      "title": "Yeni rota",
+      "intro": "Bir yol ve nereye gönderileceği. Geri kalan her şey bekleyebilir ya da şimdi Diğer seçenekler altında ayarlanabilir.",
+      "path": "Yol",
+      "pathHint": "Altındaki her şeyi eşleştirmek için * ile bitirin.",
+      "methods": "Yöntemler",
+      "methodsHint": "Hiçbiri seçili değil: tüm yöntemler.",
+      "destination": "Hedef",
+      "destUrl": "Adres",
+      "destUpstream": "Mevcut upstream",
+      "destService": "Servis",
+      "urlHint": "Backend'in adresi. Ana makineden sonra gelen bir yol her isteğin önüne eklenir.",
+      "host": "Host",
+      "hostHint": "İsteğe bağlı: yalnızca bu ana makine adına gelen istekler.",
+      "name": "Ad",
+      "nameHint": "Siz değiştirene kadar yoldan önerilir.",
+      "duplicate": "Bu yolda zaten yanıt veren bir rota var: {{names}}",
+      "moreOptions": "Diğer seçenekler…",
+      "create": "Oluştur",
+      "createOffline": "Çevrimdışı oluştur",
+      "replaceDraftTitle": "Taslağınız değiştirilsin mi?",
+      "replaceDraftBody": "Tam form daha önce başladığınız bir rotayı içeriyor. Bu yanıtlarla açmak o taslağın yerini alır.",
+      "replaceDraftConfirm": "Değiştir"
     }
   },
   "globalRules": {

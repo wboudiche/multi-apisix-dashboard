@@ -200,7 +200,7 @@ test('can create upstream -> service -> route', async ({ page }) => {
 
     await routesPom.toIndex(page);
     await routesPom.isIndexPage(page);
-    await routesPom.getAddRouteBtn(page).click();
+    await routesPom.openAddWizard(page);
     await routesPom.isAddPage(page);
 
     // Step 1 — API info (methods are pre-filled with sensible defaults)

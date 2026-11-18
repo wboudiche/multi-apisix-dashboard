@@ -944,7 +944,35 @@
       "tooManyItems_one": "Debe tener como máximo {{count}} elemento",
       "tooManyItems_other": "Debe tener como máximo {{count}} elementos",
       "itemsExactly_one": "Debe tener exactamente {{count}} elemento",
-      "itemsExactly_other": "Debe tener exactamente {{count}} elementos"
+      "itemsExactly_other": "Debe tener exactamente {{count}} elementos",
+      "destinationRequired": "Introduzca la dirección del backend",
+      "destinationUrl": "Una dirección que empiece por http:// o https://",
+      "upstreamRequired": "Elija un upstream",
+      "serviceRequired": "Elija un servicio"
+    },
+    "quickRoute": {
+      "title": "Nueva ruta",
+      "intro": "Una ruta y adónde enviarla. Todo lo demás puede esperar, o configurarse ahora en Más opciones.",
+      "path": "Ruta",
+      "pathHint": "Termínela con * para abarcar todo lo que hay debajo.",
+      "methods": "Métodos",
+      "methodsHint": "Ninguno seleccionado: todos los métodos.",
+      "destination": "Destino",
+      "destUrl": "Dirección",
+      "destUpstream": "Upstream existente",
+      "destService": "Servicio",
+      "urlHint": "La dirección del backend. Una ruta tras el host se antepone a cada petición.",
+      "host": "Host",
+      "hostHint": "Opcional: solo las peticiones para este nombre de host.",
+      "name": "Nombre",
+      "nameHint": "Propuesto a partir de la ruta hasta que lo cambie.",
+      "duplicate": "Ya hay una ruta que responde en esta ruta: {{names}}",
+      "moreOptions": "Más opciones…",
+      "create": "Crear",
+      "createOffline": "Crear sin publicar",
+      "replaceDraftTitle": "¿Reemplazar su borrador?",
+      "replaceDraftBody": "El formulario completo contiene una ruta que empezó antes. Abrirlo con estas respuestas reemplaza ese borrador.",
+      "replaceDraftConfirm": "Reemplazar"
     }
   },
   "globalRules": {
