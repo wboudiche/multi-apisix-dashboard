@@ -23,12 +23,11 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { getServiceListQueryOptions, useServiceList } from '@/apis/hooks';
-import { RouteLinkBtn } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ListWarningBanner } from '@/components/page/ListWarningBanner';
 import PageHeader from '@/components/page/PageHeader';
-import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import type { ServiceRow } from '@/components/page-slice/services/service-row';
 import { ServiceCards } from '@/components/page-slice/services/ServiceCards';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
@@ -62,7 +61,7 @@ const ServiceList = () => {
     navigate({ search: (prev) => ({ ...prev, view: next }) });
   };
   const { t } = useTranslation();
-  const { canWriteResource, canWriteOwner } = usePermission();
+  const { canWriteOwner } = usePermission();
   // Never more than the rows on screen: see useRowSelection (#371).
   const selectable = useCallback(
     (row: ServiceRow) => canWriteOwner(ownerOf(row.value)),
@@ -150,19 +149,16 @@ const ServiceList = () => {
         key: 'option',
         width: 200,
         render: (_, record) => {
-          const writable = canWriteResource('services') && canWriteOwner(ownerOf(record.value));
           return [
-          <RouteLinkBtn
+          <ToDetailPageBtn
             key="detail"
+            mode="button"
+            size="xs"
+            resource="services"
+            allowed={canWriteOwner(ownerOf(record.value))}
             to="/services/detail/$id"
             params={{ id: record.value.id }}
-            size="xs"
-            variant={writable ? 'light' : 'subtle'}
-            radius="sm"
-            styles={{ root: { padding: '0 12px' } }}
-          >
-            {t(writable ? 'form.btn.configure' : 'form.btn.view')}
-          </RouteLinkBtn>,
+          />,
           <DeleteResourceBtn
             key="delete"
             allowed={canWriteOwner(ownerOf(record.value))}
@@ -180,7 +176,7 @@ const ServiceList = () => {
         },
       },
     ];
-  }, [t, refetch, canWriteResource, canWriteOwner]);
+  }, [t, refetch, canWriteOwner]);
 
   const viewSwitch = (
     <SegmentedControl

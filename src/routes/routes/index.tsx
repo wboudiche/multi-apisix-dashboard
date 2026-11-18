@@ -42,7 +42,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import { teamsQueryOptions } from '@/apis/queries';
-import { RouteAnchor, RouteLinkBtn } from '@/components/Btn';
+import { RouteAnchor } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
@@ -53,7 +53,7 @@ import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import type { RouteFilters } from '@/components/page/RoutesFilterBar';
 import { RoutesFilterBar } from '@/components/page/RoutesFilterBar';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
-import { ToAddPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
@@ -461,13 +461,13 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('path') && (
                 <Table.Td>
                   {record.value.uri ? (
-                    <Badge variant="light" color="blue" radius="sm" ff="monospace">
+                    <Badge variant="light" color="blue" radius="sm" ff="monospace" tt="none">
                       {record.value.uri}
                     </Badge>
                   ) : record.value.uris && record.value.uris.length > 0 ? (
                     <Group gap={4}>
                       {record.value.uris.map((uri: string, i: number) => (
-                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace">
+                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace" tt="none">
                           {uri}
                         </Badge>
                       ))}
@@ -528,7 +528,7 @@ export const RouteList = (props: RouteListProps) => {
                   {record.value.labels && Object.keys(record.value.labels).length > 0 ? (
                     <Group gap={4}>
                       {Object.entries(record.value.labels).map(([key, value]) => (
-                        <Badge key={key} variant="dot" size="sm" color="gray">
+                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none">
                           {key}:{value as string}
                         </Badge>
                       ))}
@@ -564,7 +564,7 @@ export const RouteList = (props: RouteListProps) => {
                   {record.value.plugins && Object.keys(record.value.plugins).length > 0 ? (
                     <Group gap={4}>
                       {Object.keys(record.value.plugins).map((pluginName) => (
-                        <Badge key={pluginName} variant="light" size="sm" color="blue">
+                        <Badge key={pluginName} variant="light" size="sm" color="blue" tt="none">
                           {pluginName}
                         </Badge>
                       ))}
@@ -592,7 +592,7 @@ export const RouteList = (props: RouteListProps) => {
                       <Button
                         size="xs"
                         color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
-                        variant="filled"
+                        variant="light"
                         radius="sm"
                         styles={{ root: { padding: '0 12px' } }}
                         onClick={() =>
@@ -609,25 +609,16 @@ export const RouteList = (props: RouteListProps) => {
                         )}
                       </Button>
                     )}
-                    {/* The same link either way - the detail page is where a
-                        route is read as well as edited - but named and weighted
-                        for what the account may actually do there. "Configure",
-                        in the primary blue, promised an edit that every field
-                        would refuse to save and the proxy would answer 403 to
-                        (#188). In the theme's colour, light for an edit and
-                        subtle for a read: the filled colour is the page's
-                        own action, Create, and the neutral default is what
-                        the "More" button beside it wears. */}
-                    <RouteLinkBtn
+                    {/* Configure, or View for an account that may only read
+                        it (#188): the row's primary action either way. */}
+                    <ToDetailPageBtn
+                      mode="button"
+                      size="xs"
+                      resource="routes"
+                      allowed={canWriteOwner(ownerOf(record.value))}
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}
-                      size="xs"
-                      variant={writable ? 'light' : 'subtle'}
-                      radius="sm"
-                      styles={{ root: { padding: '0 12px' } }}
-                    >
-                      {t(writable ? 'form.btn.configure' : 'form.btn.view')}
-                    </RouteLinkBtn>
+                    />
                     <Menu shadow="md" width={160}>
                       <Menu.Target>
                         <Button size="xs" variant="default" radius="sm" rightSection={<IconArrowDropDown width="14" height="14" />}>{t('routes.list.actionMore')}</Button>

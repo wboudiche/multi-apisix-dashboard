@@ -11,6 +11,7 @@
   --brand-hover: #E53532;
   --brand-active: #D32F2F;
   --brand-subtle: rgba(248, 66, 63, 0.1);
+  --table-head-bg: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%);
 
   /* Premium color palette */
   --bg-primary: #F8F9FA;
@@ -272,7 +273,7 @@ table {
 }
 
 table thead tr {
-  background: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%) !important;
+  background: var(--table-head-bg) !important;
 }
 
 table th {
@@ -290,20 +291,25 @@ table th {
 
 /* A badge in a cell is a value - a status, a path, a role, a plugin - and a
    Mantine badge shrinks to an ellipsis when its column is narrow, which left
-   "PU..." for Published and "U..." for User. The table grows instead, and
-   scrolls where it is wrapped to. Written as it is stored, too: Mantine's
-   capitals turned the path /services/billing into /SERVICES/BILLING, and a
-   path, a label and a plugin name are all case-sensitive. */
-table td [class*="Badge-root"] {
+   "PU..." for Published and "U..." for User. In a table that scrolls the
+   table grows instead; in one that does not, the card would clip it. */
+[class*="TableScrollContainer"] td [class*="Badge-root"] {
   min-width: max-content;
-  text-transform: none;
 }
 
 /* The row actions, kept in view at the end of a table that scrolls. A sticky
    cell sticks within the nearest box that clips, and the table clips its own
-   corners: such a table leaves that to the container that scrolls it. */
+   corners: such a table hands its border and its corners to the container
+   that scrolls it, which clips them in its place. */
+[class*="TableScrollContainer-scrollContainer"]:has(.sticky-actions) {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
 table:has(.sticky-actions) {
   overflow: visible;
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 table th.sticky-actions,
@@ -316,7 +322,13 @@ table td.sticky-actions {
 }
 
 table th.sticky-actions {
-  background: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%) !important;
+  background: var(--table-head-bg) !important;
+}
+
+/* Opaque, as the cells it covers scroll under it, and tinted with the row
+   when the row is hovered: the hover's gradient ends at this tint. */
+table tbody tr:hover td.sticky-actions {
+  background: linear-gradient(rgba(248, 66, 63, 0.03), rgba(248, 66, 63, 0.03)), var(--bg-card) !important;
 }
 
 table td {
