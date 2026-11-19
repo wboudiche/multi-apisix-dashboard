@@ -960,7 +960,7 @@
       "hostHint": "可选：仅匹配此主机名的请求。",
       "name": "名称",
       "nameHint": "在您修改之前，根据路径自动建议。",
-      "moreOptions": "插件和高级选项",
+      "moreOptions": "更多选项",
       "create": "创建",
       "createOffline": "创建为未发布",
       "replaceDraftTitle": "替换您的草稿？",

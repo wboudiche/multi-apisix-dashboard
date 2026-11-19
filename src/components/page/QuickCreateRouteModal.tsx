@@ -460,8 +460,8 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           {duplicating ? (
             <span />
           ) : (
-            // A button, and named for what it opens: as grey text it read as
-            // a note, and "More options" said nothing of plugins.
+            // A button: as grey text it read as a note rather than the way
+            // on to the full form.
             <Button
               variant="default"
               leftSection={<IconTune width="16" height="16" />}

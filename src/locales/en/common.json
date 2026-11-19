@@ -886,7 +886,7 @@
       "hostHint": "Optional: only requests for this host name.",
       "name": "Name",
       "nameHint": "Proposed from the path until you change it.",
-      "moreOptions": "Plugins & advanced options",
+      "moreOptions": "More options",
       "create": "Create",
       "createOffline": "Create offline",
       "replaceDraftTitle": "Replace your draft?",

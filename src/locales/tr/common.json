@@ -966,7 +966,7 @@
       "hostHint": "İsteğe bağlı: yalnızca bu ana makine adına gelen istekler.",
       "name": "Ad",
       "nameHint": "Siz değiştirene kadar yoldan önerilir.",
-      "moreOptions": "Eklentiler ve gelişmiş seçenekler",
+      "moreOptions": "Diğer seçenekler",
       "create": "Oluştur",
       "createOffline": "Çevrimdışı oluştur",
       "replaceDraftTitle": "Taslağınız değiştirilsin mi?",
