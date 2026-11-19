@@ -107,6 +107,9 @@ export type RouteListProps = {
 // ellipsis and shows the whole on hover; minWidth 0 lets it, against the
 // table cells' max-content rule.
 const PATH_BADGE = { maxWidth: 280, minWidth: 0 };
+// Text past its maximum wraps, inside a word when it has to: a generated
+// name, an id, a list of hosts.
+const WRAP = { overflowWrap: 'break-word' } as const;
 const LABEL_BADGE = { maxWidth: 240, minWidth: 0 };
 const TEAM_BADGE = { maxWidth: 200, minWidth: 0 };
 const NAME_CELL = { minWidth: 160 };
@@ -404,6 +407,9 @@ export const RouteList = (props: RouteListProps) => {
           {data?.list.map((record: any, index: number) => {
             const writable =
               canWriteResource('routes') && canWriteOwner(ownerOf(record.value));
+            const teamLabel = record.value.__team_id
+              ? teamMap.get(record.value.__team_id) || record.value.__team_id
+              : '';
             return (
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
@@ -426,7 +432,7 @@ export const RouteList = (props: RouteListProps) => {
                     // Wrapped at a width, not as wide as the longest name: a
                     // generated name 40 characters long took the room of the
                     // columns the actions then covered.
-                    <Text fw={600} size="sm" maw={280} style={{ overflowWrap: 'break-word' }}>
+                    <Text fw={600} size="sm" maw={280} style={WRAP}>
                       {record.value.name}
                     </Text>
                   ) : (
@@ -434,7 +440,7 @@ export const RouteList = (props: RouteListProps) => {
                     // guarantee nothing if it rendered a dash for the routes
                     // that have none, so fall back to the id — always present,
                     // and styled like the ID column so it does not read as one.
-                    <Text size="xs" ff="monospace" c="dimmed">
+                    <Text size="xs" ff="monospace" c="dimmed" maw={280} style={WRAP}>
                       {record.value.id}
                     </Text>
                   )}
@@ -442,7 +448,7 @@ export const RouteList = (props: RouteListProps) => {
               )}
               {isVisible('id') && (
                 <Table.Td>
-                  <Text size="xs" ff="monospace" c="dimmed">
+                  <Text size="xs" ff="monospace" c="dimmed" maw={280} style={WRAP}>
                     {record.value.id}
                   </Text>
                 </Table.Td>
@@ -450,9 +456,9 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('host') && (
                 <Table.Td>
                   {record.value.host ? (
-                    <Text size="sm">{record.value.host}</Text>
+                    <Text size="sm" maw={280} style={WRAP}>{record.value.host}</Text>
                   ) : record.value.hosts && record.value.hosts.length > 0 ? (
-                    <Text size="sm">{record.value.hosts.join(', ')}</Text>
+                    <Text size="sm" maw={280} style={WRAP}>{record.value.hosts.join(', ')}</Text>
                   ) : (
                     <Text size="sm" c="dimmed">-</Text>
                   )}
@@ -579,8 +585,8 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('team') && (
                 <Table.Td style={TEAM_CELL}>
                   {record.value.__team_id ? (
-                    <Badge variant="light" color="teal" size="sm" title={teamMap.get(record.value.__team_id) || record.value.__team_id} style={TEAM_BADGE}>
-                      {teamMap.get(record.value.__team_id) || record.value.__team_id}
+                    <Badge variant="light" color="teal" size="sm" title={teamLabel} style={TEAM_BADGE}>
+                      {teamLabel}
                     </Badge>
                   ) : (
                     <Text size="xs" c="dimmed" fs="italic">{t('noData')}</Text>
@@ -610,7 +616,9 @@ export const RouteList = (props: RouteListProps) => {
                         </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        {canWriteOwner(ownerOf(record.value)) && (<>
+                        {/* Writes, offered as the route test is: to those who
+                            may write routes and this one's team. */}
+                        {writable && (<>
                           <Menu.Item
                             leftSection={
                               isResourceEnabled(record.value.status)
@@ -663,13 +671,13 @@ export const RouteList = (props: RouteListProps) => {
                             {t('form.json.duplicate')}
                           </Menu.Item>
                         )}
-                        {canWriteOwner(ownerOf(record.value)) && (<>
+                        {writable && (<>
                           <Menu.Divider />
                           {/* The same confirmation every other delete opens,
                               worn as a menu item: it names the route, and it
                               invalidates the caches other pages read. */}
                           <DeleteResourceBtn
-                            allowed={canWriteOwner(ownerOf(record.value))}
+                            allowed={writable}
                             name={t('routes.singular')}
                             target={record.value.id}
                             api={`${API_ROUTES}/${record.value.id}`}
