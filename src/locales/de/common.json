@@ -977,7 +977,9 @@
       "duplicateIntro": "Alles aus „{{name}}“ wird kopiert - Plugins, Vars, Priorität, Labels. Nur was Sie hier ändern, ist anders.",
       "destSame": "Wie das Original",
       "nameCopy": "{{name}} (Kopie)",
-      "hostsHint": "Kopiert: {{hosts}}. Ein hier eingegebener Host ersetzt sie."
+      "hostsHint": "Kopiert: {{hosts}}. Ein hier eingegebener Host ersetzt sie.",
+      "urisHint": "Kopiert: {{uris}}. Ein hier eingegebener Pfad ersetzt sie.",
+      "rewriteKept": "„{{name}}“ schreibt den Pfad jeder Anfrage um ({{rewrite}}). Die Kopie behält diese Umschreibung: Prüfen Sie, ob sie zum neuen Ziel passt."
     }
   },
   "globalRules": {

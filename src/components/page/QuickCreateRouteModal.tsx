@@ -36,7 +36,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { postRouteReq } from '@/apis/routes';
-import { duplicateRouteBody, duplicateRouteErrors, quickRouteFromRoute } from '@/components/form-slice/FormPartRoute/duplicate-route';
+import { duplicateRouteBody, duplicateRouteErrors, keptPathRewrite, quickRouteFromRoute } from '@/components/form-slice/FormPartRoute/duplicate-route';
 import {
   destinationUrlError,
   proposeRouteName,
@@ -48,10 +48,10 @@ import {
   ROUTE_ADD_DEFAULTS,
   ROUTE_DRAFT_KEY,
 } from '@/components/form-slice/FormPartRoute/quick-create';
-import type { RoutePostType } from '@/components/form-slice/FormPartRoute/schema';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
 import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
 import { ConnectionTest } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
+import { API_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
@@ -211,12 +211,16 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     if (!valid) return;
     setSubmitting(true);
     try {
-      await postRouteReq(
-        req,
-        source
-          ? (duplicateRouteBody(source, { ...answers, status }) as RoutePostType)
-          : produceRoute(quickRouteToForm({ ...answers, status }))
-      );
+      if (source) {
+        // The copy belongs to the original's team, not to whichever the
+        // header has selected; a route that belongs to none is posted as any.
+        const team = (source as { __team_id?: string }).__team_id;
+        await req.post(API_ROUTES, duplicateRouteBody(source, { ...answers, status }), {
+          ...(team && { headers: { 'X-Team-ID': team } }),
+        });
+      } else {
+        await postRouteReq(req, produceRoute(quickRouteToForm({ ...answers, status })));
+      }
       notifications.show({
         message: t('info.add.success', { name: t('routes.singular') }),
         color: 'green',
@@ -292,7 +296,13 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
 
         <TextInput
           label={t('form.quickRoute.path')}
-          description={t('form.quickRoute.pathHint')}
+          description={
+            // A copy of a route on several paths says so: a path typed here
+            // takes their place.
+            source?.uris && source.uris.length > 1
+              ? t('form.quickRoute.urisHint', { uris: source.uris.join(', ') })
+              : t('form.quickRoute.pathHint')
+          }
           // eslint-disable-next-line i18next/no-literal-string -- an example path, not prose
           placeholder="/api/orders/*"
           required
@@ -306,7 +316,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           <Text size="sm" fw={500}>{t('form.quickRoute.methods')}</Text>
           <Chip.Group multiple value={methods} onChange={setMethods}>
             <Group gap={6}>
-              {METHODS.map((m) => (
+              {/* With any method a copied route has beyond these, so that
+                  each one it keeps can be seen and taken off. */}
+              {[...METHODS, ...methods.filter((m) => !METHODS.includes(m))].map((m) => (
                 <Chip key={m} value={m} size="xs">
                   {m}
                 </Chip>
@@ -413,6 +425,12 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
                 </List.Item>
               ))}
             </List>
+          </Alert>
+        )}
+
+        {source && keptPathRewrite(source, answers) && (
+          <Alert color="yellow" variant="light" icon={<IconWarning />}>
+            {t('form.quickRoute.rewriteKept', { name: sourceName, rewrite: keptPathRewrite(source, answers)! })}
           </Alert>
         )}
 

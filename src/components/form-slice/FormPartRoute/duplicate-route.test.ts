@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { APISIXType } from '@/types/schema/apisix';
 
-import { duplicateRouteBody, duplicateRouteErrors, quickRouteFromRoute } from './duplicate-route';
+import { duplicateRouteBody, duplicateRouteErrors, keptPathRewrite, quickRouteFromRoute } from './duplicate-route';
 import type { QuickRoute } from './quick-create';
 
 const source = {
@@ -179,5 +179,89 @@ describe('duplicateRouteErrors', () => {
     // Without a path of its own, the address is fine.
     const plain = { ...q, destination: { kind: 'url', url: 'http://b' } } as QuickRoute;
     expect(duplicateRouteErrors(rewriting, plain).destination).toBeUndefined();
+  });
+});
+
+describe('a rewrite that belongs to the original\'s destination', () => {
+  const fromAddress = {
+    ...source,
+    plugins: { 'proxy-rewrite': { regex_uri: ['^(.*)$', '/v1$1'] }, 'limit-count': { count: 1 } },
+  } as unknown as APISIXType['Route'];
+
+  it('goes with that destination when the copy is sent elsewhere', () => {
+    const body = duplicateRouteBody(fromAddress, {
+      ...quickRouteFromRoute(fromAddress, 'x'),
+      destination: { kind: 'upstream', upstreamId: 'u2' },
+    });
+    expect(body.plugins).toEqual({ 'limit-count': { count: 1 } });
+  });
+
+  it('stays with the copy that keeps the destination', () => {
+    const body = duplicateRouteBody(fromAddress, quickRouteFromRoute(fromAddress, 'x'));
+    expect(body.plugins?.['proxy-rewrite']).toEqual({ regex_uri: ['^(.*)$', '/v1$1'] });
+  });
+
+  it('gives way to the new address\'s own path', () => {
+    const q = { ...quickRouteFromRoute(fromAddress, 'x'), destination: { kind: 'url', url: 'http://b/v2' } } as QuickRoute;
+    expect(duplicateRouteErrors(fromAddress, q).destination).toBeUndefined();
+    expect(duplicateRouteBody(fromAddress, q).plugins?.['proxy-rewrite']).toEqual({ regex_uri: ['^(.*)$', '/v2$1'] });
+  });
+
+  it('keeps what else the rewrite does when its path goes', () => {
+    const withHeaders = {
+      ...source,
+      plugins: { 'proxy-rewrite': { regex_uri: ['^(.*)$', '/v1$1'], headers: { set: { 'X-A': '1' } } } },
+    } as unknown as APISIXType['Route'];
+    const body = duplicateRouteBody(withHeaders, {
+      ...quickRouteFromRoute(withHeaders, 'x'),
+      destination: { kind: 'upstream', upstreamId: 'u2' },
+    });
+    expect(body.plugins?.['proxy-rewrite']).toEqual({ headers: { set: { 'X-A': '1' } } });
+  });
+});
+
+describe('keptPathRewrite', () => {
+  const custom = { ...source, plugins: { 'proxy-rewrite': { uri: '/fixed' } } } as unknown as APISIXType['Route'];
+
+  it('names a rewrite of its own a copy sent elsewhere keeps', () => {
+    expect(keptPathRewrite(custom, { ...quickRouteFromRoute(custom, 'x'), destination: { kind: 'upstream', upstreamId: 'u' } }))
+      .toBe('/fixed');
+  });
+
+  it('says nothing when the destination is kept, or the rewrite is the old address\'s', () => {
+    expect(keptPathRewrite(custom, quickRouteFromRoute(custom, 'x'))).toBeUndefined();
+    const fromAddress = { ...source, plugins: { 'proxy-rewrite': { regex_uri: ['^(.*)$', '/v1$1'] } } } as unknown as APISIXType['Route'];
+    expect(keptPathRewrite(fromAddress, { ...quickRouteFromRoute(fromAddress, 'x'), destination: { kind: 'upstream', upstreamId: 'u' } }))
+      .toBeUndefined();
+  });
+});
+
+describe('a route bound to a service', () => {
+  const bound = { ...source, service_id: 's1' } as APISIXType['Route'];
+  delete (bound as Partial<APISIXType['Route']>).upstream_id;
+
+  it('keeps its service, and what it brings, when sent to another upstream', () => {
+    const body = duplicateRouteBody(bound, {
+      ...quickRouteFromRoute(bound, 'x'),
+      destination: { kind: 'upstream', upstreamId: 'u2' },
+    });
+    // The route's upstream wins over the service's; the service's plugins stay.
+    expect(body.service_id).toBe('s1');
+    expect(body.upstream_id).toBe('u2');
+  });
+
+  it('changes service when another one is chosen', () => {
+    const body = duplicateRouteBody(bound, {
+      ...quickRouteFromRoute(bound, 'x'),
+      destination: { kind: 'service', serviceId: 's2' },
+    });
+    expect(body.service_id).toBe('s2');
+  });
+});
+
+describe('what the gateway decides', () => {
+  it('leaves to it a setting of the route the dialog does not touch', () => {
+    const odd = { ...source, plugins: { 'limit-count': 'not an object' } } as unknown as APISIXType['Route'];
+    expect(duplicateRouteErrors(odd, quickRouteFromRoute(odd, 'x'))).toEqual({});
   });
 });

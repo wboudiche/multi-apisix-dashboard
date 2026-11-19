@@ -897,7 +897,9 @@
       "duplicateIntro": "Everything in “{{name}}” is copied - plugins, vars, priority, labels. Only what you change here is different.",
       "destSame": "Same as the original",
       "nameCopy": "{{name}} (copy)",
-      "hostsHint": "Copied: {{hosts}}. A host typed here replaces them."
+      "hostsHint": "Copied: {{hosts}}. A host typed here replaces them.",
+      "urisHint": "Copied: {{uris}}. A path typed here replaces them.",
+      "rewriteKept": "“{{name}}” rewrites each request's path ({{rewrite}}). The copy keeps that rewrite: check it fits the new destination."
     }
   },
   "globalRules": {

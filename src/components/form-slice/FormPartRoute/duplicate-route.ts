@@ -31,6 +31,31 @@ type RouteBody = Omit<APISIXType['Route'], 'id' | 'create_time' | 'update_time'>
 
 const pathOf = (route: APISIXType['Route']) => route.uri ?? route.uris?.[0] ?? '';
 
+type Rewrite = Record<string, unknown> | undefined;
+const rewriteOf = (route: APISIXType['Route']): Rewrite =>
+  (route.plugins as Record<string, Record<string, unknown>> | undefined)?.['proxy-rewrite'];
+
+/**
+ * A rewrite that only puts a path in front of every request - what an
+ * address with a path makes (basePathRewrite) - belongs to that address: a
+ * backend elsewhere has its API under a path of its own, or none.
+ */
+const isBasePathRewrite = (rewrite: Rewrite) => {
+  const regex = rewrite?.regex_uri;
+  return (
+    Array.isArray(regex) &&
+    regex.length === 2 &&
+    regex[0] === '^(.*)$' &&
+    typeof regex[1] === 'string' &&
+    /^\/.*\$1$/.test(regex[1]) &&
+    rewrite?.uri === undefined
+  );
+};
+
+/** A rewrite of its own: one of the path that is not just a base path. */
+const ownPathRewrite = (rewrite: Rewrite) =>
+  (rewrite?.uri !== undefined || rewrite?.regex_uri !== undefined) && !isBasePathRewrite(rewrite);
+
 /**
  * The duplicate dialog's starting answers: the route's path, methods and
  * host, the name it is given (the caller's, translated), offline, and to the
@@ -80,23 +105,50 @@ export const duplicateRouteBody = (route: APISIXType['Route'], q: QuickRoute): R
 
   const d = q.destination;
   if (d.kind === 'same') return body;
+
+  // The old destination's base path goes with it; what else the rewrite
+  // does - its headers, its host - stays.
+  const plugins = { ...(body.plugins ?? {}) } as Record<string, Record<string, unknown>>;
+  if (isBasePathRewrite(plugins['proxy-rewrite'])) {
+    const rest = { ...plugins['proxy-rewrite'] };
+    delete rest.regex_uri;
+    if (Object.keys(rest).length > 0) plugins['proxy-rewrite'] = rest;
+    else delete plugins['proxy-rewrite'];
+  }
+  body.plugins = plugins;
+
   delete body.upstream;
   delete body.upstream_id;
-  delete body.service_id;
-  if (d.kind === 'upstream') return { ...body, upstream_id: d.upstreamId };
+  // A service brings plugins - an auth, a limit - as well as an upstream. A
+  // copy sent to an upstream keeps its service, as APISIX takes the route's
+  // upstream over the service's; only another service replaces it.
   if (d.kind === 'service') return { ...body, service_id: d.serviceId };
+  if (d.kind === 'upstream') return { ...body, upstream_id: d.upstreamId };
 
   const built = upstreamFromAddress(d.url);
   if (!built) return body;
   body.upstream = built.upstream as RouteBody['upstream'];
   if (built.basePath) {
-    // Beside what else the route rewrites: its headers, its host.
-    const plugins = { ...(body.plugins ?? {}) } as Record<string, Record<string, unknown>>;
     plugins['proxy-rewrite'] = { ...plugins['proxy-rewrite'], ...basePathRewrite(built.basePath) };
-    body.plugins = plugins;
   }
   return body;
 };
+
+/**
+ * The path rewrite of the route's own a copy sent elsewhere keeps as it is,
+ * for the dialog to point out: it was written for the original's backend.
+ * Undefined when there is none, or the destination is kept.
+ */
+export const keptPathRewrite = (route: APISIXType['Route'], q: QuickRoute): string | undefined => {
+  if (q.destination.kind === 'same') return undefined;
+  const rewrite = rewriteOf(route);
+  if (!ownPathRewrite(rewrite)) return undefined;
+  return rewrite?.uri !== undefined ? String(rewrite.uri) : JSON.stringify(rewrite?.regex_uri);
+};
+
+// The fields the dialog answers for: what the schema refuses elsewhere in
+// the route is the route as the gateway already holds it, and left to it.
+const DIALOG_FIELDS = new Set(['name', 'uri', 'uris', 'methods', 'host', 'hosts', 'status', 'upstream', 'upstream_id', 'service_id']);
 
 // What the gateway may hold beside a copy's own id and times: the route's
 // schema, held to what is posted.
@@ -112,15 +164,21 @@ export const duplicateRouteErrors = (route: APISIXType['Route'], q: QuickRoute):
   const errors = answerErrors(q);
   if (!q.name.trim()) errors.name = 'form.validation.nameRequired';
 
+  // A base path of the old address gives way to the new one's; a rewrite of
+  // the route's own and the address's cannot both hold.
   const d = q.destination;
   if (d.kind === 'url' && !errors.destination) {
-    const rewrite = (route.plugins as Record<string, Record<string, unknown>> | undefined)?.['proxy-rewrite'];
-    if (upstreamFromAddress(d.url)?.basePath && (rewrite?.uri || rewrite?.regex_uri)) {
+    if (upstreamFromAddress(d.url)?.basePath && ownPathRewrite(rewriteOf(route))) {
       errors.destination = 'form.validation.destinationPathRewritten';
     }
   }
 
   const parsed = RouteBodySchema.safeParse(duplicateRouteBody(route, q));
-  if (!parsed.success) addSchemaIssues(errors, parsed.error.issues);
+  if (!parsed.success) {
+    addSchemaIssues(
+      errors,
+      parsed.error.issues.filter((issue) => DIALOG_FIELDS.has(String(issue.path[0])))
+    );
+  }
   return withoutEmpty(errors);
 };

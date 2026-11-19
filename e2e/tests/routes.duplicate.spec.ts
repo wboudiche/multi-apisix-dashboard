@@ -127,7 +127,11 @@ test('duplicates a route onto another upstream, keeping the rest', async ({ page
     });
     expect(copy!.upstream).toBeUndefined();
   } finally {
-    await e2eReq.delete(`${API_UPSTREAMS}/${upstreamId}`).catch(() => null);
+    // The copy first: the gateway refuses to delete an upstream a route uses.
+    const copies = (await listEvery<APISIXType['Route']>(API_ROUTES))
+      .filter((item) => item.value.upstream_id === upstreamId);
+    await Promise.all(copies.map((item) => e2eReq.delete(`${API_ROUTES}/${item.value.id}`)));
+    await e2eReq.delete(`${API_UPSTREAMS}/${upstreamId}`);
   }
 });
 

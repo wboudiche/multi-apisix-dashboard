@@ -979,7 +979,9 @@
       "duplicateIntro": "Se copia todo lo de «{{name}}»: plugins, vars, prioridad, etiquetas. Solo cambia lo que modifique aquí.",
       "destSame": "Igual que el original",
       "nameCopy": "{{name}} (copia)",
-      "hostsHint": "Copiados: {{hosts}}. Un host escrito aquí los reemplaza."
+      "hostsHint": "Copiados: {{hosts}}. Un host escrito aquí los reemplaza.",
+      "urisHint": "Copiadas: {{uris}}. Una ruta escrita aquí las reemplaza.",
+      "rewriteKept": "«{{name}}» reescribe la ruta de cada petición ({{rewrite}}). La copia conserva esa reescritura: compruebe que encaja con el nuevo destino."
     }
   },
   "globalRules": {
