@@ -936,7 +936,36 @@
       "lengthExactly_other": "长度必须为 {{count}} 个字符",
       "tooFewItems_other": "至少需要 {{count}} 项",
       "tooManyItems_other": "最多只能有 {{count}} 项",
-      "itemsExactly_other": "必须正好有 {{count}} 项"
+      "itemsExactly_other": "必须正好有 {{count}} 项",
+      "destinationRequired": "请输入后端地址",
+      "destinationUrl": "以 http:// 或 https:// 开头的地址",
+      "upstreamRequired": "请选择一个上游",
+      "serviceRequired": "请选择一个服务",
+      "destinationUrlPlain": "只能包含协议、主机、端口和路径：不能包含凭据、查询参数、片段或 $",
+      "pathSlash": "路径必须以 / 开头"
+    },
+    "quickRoute": {
+      "title": "新建路由",
+      "intro": "一个路径及其转发目标。其余设置可以稍后再做，也可以现在在“更多选项”中设置。",
+      "path": "路径",
+      "pathHint": "以 * 结尾可匹配其下的所有路径。",
+      "methods": "方法",
+      "methodsHint": "未选择：匹配所有方法。",
+      "destination": "目标",
+      "destUrl": "地址",
+      "destUpstream": "已有上游",
+      "destService": "服务",
+      "urlHint": "后端地址。主机之后的路径会加在每个请求之前。",
+      "host": "主机",
+      "hostHint": "可选：仅匹配此主机名的请求。",
+      "name": "名称",
+      "nameHint": "在您修改之前，根据路径自动建议。",
+      "moreOptions": "更多选项…",
+      "create": "创建",
+      "createOffline": "创建为未发布",
+      "replaceDraftTitle": "替换您的草稿？",
+      "replaceDraftBody": "完整表单中有一个您之前开始编辑的路由。用这些内容打开它会替换该草稿。",
+      "replaceDraftConfirm": "替换"
     }
   },
   "globalRules": {

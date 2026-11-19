@@ -31,6 +31,7 @@ import {
   FormSectionRequestOverride,
 } from '@/components/form-slice/FormPartRoute';
 import { MatchPreview } from '@/components/form-slice/FormPartRoute/MatchPreview';
+import { ROUTE_ADD_DEFAULTS, ROUTE_DRAFT_KEY } from '@/components/form-slice/FormPartRoute/quick-create';
 import { RoutePreviewSummary } from '@/components/form-slice/FormPartRoute/RoutePreviewSummary';
 import {
   RoutePostSchema,
@@ -53,8 +54,6 @@ import {
 } from '@/utils/route-duplicates';
 import { proxyFailureText } from '@/utils/team-refusal';
 import IconWarning from '~icons/material-symbols/warning-outline';
-
-const DRAFT_KEY = 'apisix-route-draft';
 
 type Props = {
   navigate: (res: APISIXType['RespRouteDetail']) => Promise<void>;
@@ -100,8 +99,8 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
   // passes its service_id as a default and keeps a draft of its own, so no
   // draft carries one service's id to another page, or away from it (#228).
   const draftKey = defaultValues?.service_id
-    ? `${DRAFT_KEY}:service:${defaultValues.service_id}`
-    : DRAFT_KEY;
+    ? `${ROUTE_DRAFT_KEY}:service:${defaultValues.service_id}`
+    : ROUTE_DRAFT_KEY;
   const { t } = useTranslation();
   const nav = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -373,19 +372,7 @@ function RouteComponent() {
     <>
       <PageHeader title={t('info.add.title', { name: t('routes.singular') })} />
       <RouteAddForm
-        defaultValues={{
-          uri: '/*',
-          status: 1,
-          methods: ['GET', 'POST', 'PUT', 'DELETE'],
-          upstream_id: 'custom',
-          upstream: {
-            type: 'roundrobin',
-            scheme: 'http',
-            nodes: [],
-            timeout: { connect: 6, send: 6, read: 6 },
-          },
-          plugins: {},
-        }}
+        defaultValues={ROUTE_ADD_DEFAULTS}
         navigate={() =>
           navigate({
             to: '/routes',

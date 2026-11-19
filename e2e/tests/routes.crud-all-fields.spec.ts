@@ -60,7 +60,7 @@ test('should CRUD route with all fields', async ({ page }) => {
   await routesPom.isIndexPage(page);
 
   // Click the add route button
-  await routesPom.getAddRouteBtn(page).click();
+  await routesPom.openAddWizard(page);
   await routesPom.isAddPage(page);
 
   await test.step('1: API information', async () => {

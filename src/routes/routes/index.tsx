@@ -49,11 +49,12 @@ import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
 import { ImportWsdlModal } from '@/components/page/ImportWsdlModal';
 import { ListWarningBanner } from '@/components/page/ListWarningBanner';
 import PageHeader from '@/components/page/PageHeader';
+import { QuickCreateRouteModal } from '@/components/page/QuickCreateRouteModal';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import type { RouteFilters } from '@/components/page/RoutesFilterBar';
 import { RoutesFilterBar } from '@/components/page/RoutesFilterBar';
 import { RouteTestDrawer } from '@/components/page/RouteTestDrawer';
-import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
+import { ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { API_ROUTES } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { req } from '@/config/req';
@@ -73,6 +74,7 @@ import { isResourceEnabled } from '@/utils/status';
 import { proxyFailureText } from '@/utils/team-refusal';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
+import IconPlus from '~icons/material-symbols/add';
 import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
 import IconCode from '~icons/material-symbols/code';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
@@ -782,6 +784,7 @@ function RouteComponent() {
   );
 
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [wsdlModalOpen, setWsdlModalOpen] = useState(false);
 
 
@@ -827,10 +830,17 @@ function RouteComponent() {
       <Paper p="md" radius="sm" shadow="sm" w="100%" style={{ borderTop: '2px solid #F8423F' }}>
         <Group justify="flex-end" mb="md" align="center">
           <Group gap="sm">
-            <ToAddPageBtn
-              label={t('form.btn.create')}
-              to="/routes/add"
-            />
+            {/* A path and a destination on one screen; the wizard is one
+                click away inside it, starting from what was typed. */}
+            {canCreate && (
+              <Button
+                size="sm"
+                leftSection={<IconPlus width="18" height="18" />}
+                onClick={() => setQuickCreateOpen(true)}
+              >
+                {t('form.btn.create')}
+              </Button>
+            )}
             {canCreate && (
               <Button
                 variant="default"
@@ -926,6 +936,11 @@ function RouteComponent() {
         />
       </Paper>
 
+      <QuickCreateRouteModal
+        opened={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        onCreated={() => void refetch()}
+      />
       <ImportRoutesModal
         opened={importModalOpen}
         onClose={() => setImportModalOpen(false)}

@@ -52,6 +52,15 @@ const assert = {
 const goto = {
   toIndex: (page: Page) => uiGoto(page, '/routes'),
   toAdd: (page: Page) => uiGoto(page, '/routes/add'),
+  /**
+   * The wizard, the way the list reaches it: Create opens the quick-create
+   * dialog, and its "More options…" is the way on to the full form.
+   */
+  openAddWizard: async (page: Page) => {
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'New route' });
+    await dialog.getByRole('button', { name: 'More options…' }).click();
+  },
 };
 
 export const routesPom = {

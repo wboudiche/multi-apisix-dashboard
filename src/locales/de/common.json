@@ -942,7 +942,36 @@
       "tooManyItems_one": "Darf höchstens {{count}} Eintrag haben",
       "tooManyItems_other": "Darf höchstens {{count}} Einträge haben",
       "itemsExactly_one": "Muss genau {{count}} Eintrag haben",
-      "itemsExactly_other": "Muss genau {{count}} Einträge haben"
+      "itemsExactly_other": "Muss genau {{count}} Einträge haben",
+      "destinationRequired": "Geben Sie die Adresse des Backends ein",
+      "destinationUrl": "Eine Adresse, die mit http:// oder https:// beginnt",
+      "upstreamRequired": "Wählen Sie einen Upstream",
+      "serviceRequired": "Wählen Sie einen Service",
+      "destinationUrlPlain": "Nur Schema, Host, Port und Pfad: keine Zugangsdaten, keine Query, kein Fragment und kein $",
+      "pathSlash": "Ein Pfad beginnt mit /"
+    },
+    "quickRoute": {
+      "title": "Neue Route",
+      "intro": "Ein Pfad und das Ziel, an das er weiterleitet. Alles andere kann warten oder jetzt unter Weitere Optionen festgelegt werden.",
+      "path": "Pfad",
+      "pathHint": "Mit * enden lassen, um alles darunter abzudecken.",
+      "methods": "Methoden",
+      "methodsHint": "Keine ausgewählt: alle Methoden.",
+      "destination": "Ziel",
+      "destUrl": "Adresse",
+      "destUpstream": "Vorhandener Upstream",
+      "destService": "Service",
+      "urlHint": "Die Adresse des Backends. Ein Pfad nach dem Host wird jeder Anfrage vorangestellt.",
+      "host": "Host",
+      "hostHint": "Optional: nur Anfragen für diesen Hostnamen.",
+      "name": "Name",
+      "nameHint": "Aus dem Pfad vorgeschlagen, bis Sie ihn ändern.",
+      "moreOptions": "Weitere Optionen…",
+      "create": "Erstellen",
+      "createOffline": "Offline erstellen",
+      "replaceDraftTitle": "Entwurf ersetzen?",
+      "replaceDraftBody": "Das vollständige Formular enthält eine früher begonnene Route. Wenn Sie es mit diesen Angaben öffnen, wird dieser Entwurf ersetzt.",
+      "replaceDraftConfirm": "Ersetzen"
     }
   },
   "globalRules": {
