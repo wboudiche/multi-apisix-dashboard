@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Badge, Button, Group, List, Modal, Stack, Text } from '@mantine/core';
+import { Alert, Badge, Button, Group, List, Modal, SimpleGrid, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -207,8 +207,13 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
           <MatchPreview />
           {/* [Feature 9] Duplicate route detection */}
           <DuplicateRouteWarning />
-          <FormPartRouteBasic />
-          <FormSectionMatchRules />
+          {/* Side by side from a laptop's width: stacked, the two cards
+              took the full width each and the step needed a scroll for
+              what fits on one screen. */}
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+            <FormPartRouteBasic />
+            <FormSectionMatchRules />
+          </SimpleGrid>
         </>
       ),
       // Every field the step holds: one left out is one a Submit from a later

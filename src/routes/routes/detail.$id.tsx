@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Button, Group, Modal, Select, Skeleton, Text } from '@mantine/core';
+import { Alert, Button, Group, Modal, Select, SimpleGrid, Skeleton, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
@@ -127,8 +127,13 @@ const RouteDetailForm = (props: Props) => {
       content: (
         <>
           <FormSectionGeneral readOnly />
-          <FormPartRouteBasic />
-          <FormSectionMatchRules />
+          {/* Side by side from a laptop's width: stacked, the two cards
+              took the full width each and the step needed a scroll for
+              what fits on one screen. */}
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+            <FormPartRouteBasic />
+            <FormSectionMatchRules />
+          </SimpleGrid>
         </>
       ),
       // Every field the step holds: one left out is one a Submit from a later
