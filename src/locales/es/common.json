@@ -466,18 +466,9 @@
       "duplicateConfirmAction": "Crear de todos modos",
       "steps": {
         "apiInfo": "Definir la información de la API",
-        "apiInfoDesc": "Protocolo, host, ruta, etc.",
         "upstream": "Definir el upstream",
-        "upstreamDesc": "Configuración del destino",
         "preview": "Vista previa",
-        "previewDesc": "Revisar y finalizar",
-        "summaryBoundToService": "Vinculado a un servicio",
-        "summaryCustomNodes": "Personalizado: {{count}} nodo(s)",
-        "summaryCustom": "Upstream personalizado",
-        "summaryExisting": "Upstream existente",
-        "summaryPluginConfig": "Configuración de plugins: {{- id}}",
-        "options": "Opciones",
-        "optionsDesc": "Reescritura de la petición y plugins, ambos opcionales"
+        "options": "Opciones"
       },
       "advancedMatching": "Coincidencia avanzada"
     },
@@ -536,13 +527,9 @@
       "hostsDescription": "Nombres de dominio que atenderá este servicio",
       "steps": {
         "basic": "Básico",
-        "basicDesc": "Nombre y hosts",
         "upstream": "Upstream",
-        "upstreamDesc": "Destinos del backend",
         "plugin": "Plugins",
-        "pluginDesc": "Extensiones",
-        "preview": "Vista previa",
-        "previewDesc": "Revisar y enviar"
+        "preview": "Vista previa"
       },
       "namePlaceholder": "p. ej. my-api-service",
       "descPlaceholder": "Descripción opcional de este servicio",
@@ -757,13 +744,9 @@
       "schemeDesc": "Protocolo usado para comunicarse con el servidor upstream",
       "steps": {
         "basic": "Básico",
-        "basicDesc": "Nombre y etiquetas",
         "nodes": "Nodos",
-        "nodesDesc": "Destinos del backend",
         "connection": "Conexión",
-        "connectionDesc": "Protocolo y ajustes",
-        "preview": "Vista previa",
-        "previewDesc": "Revisar y enviar"
+        "preview": "Vista previa"
       },
       "preview": {
         "nodesTitle": "Nodos del backend",

@@ -464,18 +464,9 @@
       "duplicateConfirmAction": "Yine de oluştur",
       "steps": {
         "apiInfo": "API Bilgilerini Tanımla",
-        "apiInfoDesc": "Protokol, host, yol vb.",
         "upstream": "Upstream Tanımla",
-        "upstreamDesc": "Hedef yapılandırması",
         "preview": "Önizleme",
-        "previewDesc": "Gözden geçir ve bitir",
-        "summaryBoundToService": "Servise bağlı",
-        "summaryCustomNodes": "Özel: {{count}} node",
-        "summaryCustom": "Özel upstream",
-        "summaryExisting": "Mevcut upstream",
-        "summaryPluginConfig": "Plugin yapılandırması: {{- id}}",
-        "options": "Seçenekler",
-        "optionsDesc": "İstek yeniden yazma ve eklentiler, ikisi de isteğe bağlı"
+        "options": "Seçenekler"
       },
       "advancedMatching": "Gelişmiş eşleştirme"
     },
@@ -534,13 +525,9 @@
       "hostsDescription": "Bu servisin yanıt vereceği alan adları",
       "steps": {
         "basic": "Temel",
-        "basicDesc": "Ad ve host'lar",
         "upstream": "Upstream",
-        "upstreamDesc": "Backend hedefleri",
         "plugin": "Plugin'ler",
-        "pluginDesc": "Eklentiler",
-        "preview": "Önizleme",
-        "previewDesc": "Gözden geçir ve gönder"
+        "preview": "Önizleme"
       },
       "namePlaceholder": "örn. my-api-service",
       "descPlaceholder": "Bu servisin isteğe bağlı açıklaması",
@@ -755,13 +742,9 @@
       "schemeDesc": "Upstream sunucusuyla iletişimde kullanılan protokol",
       "steps": {
         "basic": "Temel",
-        "basicDesc": "Ad ve etiketler",
         "nodes": "Node'lar",
-        "nodesDesc": "Backend hedefleri",
         "connection": "Bağlantı",
-        "connectionDesc": "Protokol ve ayarlar",
-        "preview": "Önizleme",
-        "previewDesc": "Gözden geçir ve gönder"
+        "preview": "Önizleme"
       },
       "preview": {
         "nodesTitle": "Backend Node'ları",

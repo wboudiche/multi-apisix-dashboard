@@ -135,7 +135,6 @@ const ServiceAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => void
   const steps = [
     {
       label: t('form.services.steps.basic'),
-      description: t('form.services.steps.basicDesc'),
       content: (
         <>
           <FormPartBasic
@@ -155,7 +154,6 @@ const ServiceAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => void
     },
     {
       label: t('form.services.steps.upstream'),
-      description: t('form.services.steps.upstreamDesc'),
       content: (
         <FormSectionUpstream
           simplified
@@ -172,13 +170,11 @@ const ServiceAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => void
     },
     {
       label: t('form.services.steps.plugin'),
-      description: t('form.services.steps.pluginDesc'),
       content: <FormSectionPlugins />,
       fields: [],
     },
     {
       label: t('form.services.steps.preview'),
-      description: t('form.services.steps.previewDesc'),
       content: <ServicePreviewSummary />,
     },
   ];

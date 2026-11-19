@@ -464,18 +464,9 @@
       "duplicateConfirmAction": "仍然创建",
       "steps": {
         "apiInfo": "定义 API 信息",
-        "apiInfoDesc": "协议、主机、路径等",
         "upstream": "定义上游",
-        "upstreamDesc": "目标配置",
         "preview": "预览",
-        "previewDesc": "检查并完成",
-        "summaryBoundToService": "已绑定服务",
-        "summaryCustomNodes": "自定义：{{count}} 个节点",
-        "summaryCustom": "自定义上游",
-        "summaryExisting": "已有上游",
-        "summaryPluginConfig": "插件配置：{{- id}}",
-        "options": "选项",
-        "optionsDesc": "请求改写和插件，均为可选"
+        "options": "选项"
       },
       "advancedMatching": "高级匹配"
     },
@@ -534,13 +525,9 @@
       "hostsDescription": "此服务处理的域名",
       "steps": {
         "basic": "基本",
-        "basicDesc": "名称与主机",
         "upstream": "上游",
-        "upstreamDesc": "后端目标",
         "plugin": "插件",
-        "pluginDesc": "扩展",
-        "preview": "预览",
-        "previewDesc": "检查并提交"
+        "preview": "预览"
       },
       "namePlaceholder": "例如 my-api-service",
       "descPlaceholder": "此服务的可选描述",
@@ -755,13 +742,9 @@
       "schemeDesc": "与上游服务器通信所用的协议",
       "steps": {
         "basic": "基本",
-        "basicDesc": "名称与标签",
         "nodes": "节点",
-        "nodesDesc": "后端目标",
         "connection": "连接",
-        "connectionDesc": "协议与设置",
-        "preview": "预览",
-        "previewDesc": "检查并提交"
+        "preview": "预览"
       },
       "preview": {
         "nodesTitle": "后端节点",

@@ -35,11 +35,8 @@ import IconAlertTriangle from '~icons/material-symbols/warning-outline';
 
 export type WizardStep = {
   label: ReactNode;
-  description?: string;
   content: ReactNode;
   fields?: string[]; // Field names to validate for this step
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getSummary?: (values: Record<string, any>) => string | null;
 };
 
 export type FormWizardProps = {
@@ -293,53 +290,29 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
           })}
         </Group>
       ) : (
-        <Box p="xs" mb="0" style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
+        <Box px="xs" py="sm" mb="0" style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
+          {/* One line per step, its number beside its name: a description
+              under each, and a summary in its place once done, made the bar
+              three lines tall over a form that needs the room. */}
           <Stepper
             active={active}
             onStepClick={handleStepClick}
             color="var(--brand)"
             allowNextStepsSelect={allowFreeSelect}
-            size="md"
-            px="lg"
+            size="sm"
+            px="md"
             styles={{
               steps: {
-                alignItems: 'flex-start',
-              },
-              step: {
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: 8,
-                minWidth: 0,
-                flex: 1,
-              },
-              stepWrapper: {
-                margin: 0,
               },
               stepIcon: {
                 borderWidth: '2px',
                 backgroundColor: 'white',
                 transition: 'all var(--transition-base)',
-                '&[data-completed]': {
-                  backgroundColor: 'var(--brand)',
-                  borderColor: 'var(--brand)',
-                },
-                '&[data-active]': {
-                  borderColor: 'var(--brand)',
-                  color: 'var(--brand)',
-                  boxShadow: 'var(--shadow-glow)',
-                }
               },
               separator: {
                 height: '2px',
                 backgroundColor: 'var(--border-light)',
-                marginTop: 20,
-                alignSelf: 'flex-start',
-                marginLeft: -8,
-                marginRight: -8,
-              },
-              stepBody: {
-                marginLeft: 0,
-                textAlign: 'center',
               },
               stepLabel: {
                 fontFamily: 'Outfit, sans-serif',
@@ -348,30 +321,17 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
                 color: 'var(--text-secondary)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.03em',
-                '&[data-active]': {
-                  color: 'var(--text-primary)',
-                }
-              },
-              stepDescription: {
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: '0.72rem',
-                color: 'var(--text-muted)',
               },
             }}
           >
-            {steps.map((step, index) => {
-              // [Feature 4] Step summary indicators
-              const summary = index < active && step.getSummary ? step.getSummary(getValues()) : null;
-              return (
-                <Stepper.Step
-                  key={index}
-                  label={step.label}
-                  description={summary || step.description}
-                  icon={index + 1}
-                  completedIcon={<IconCheck width="16" height="16" />}
-                />
-              );
-            })}
+            {steps.map((step, index) => (
+              <Stepper.Step
+                key={index}
+                label={step.label}
+                icon={index + 1}
+                completedIcon={<IconCheck width="14" height="14" />}
+              />
+            ))}
           </Stepper>
         </Box>
       )}

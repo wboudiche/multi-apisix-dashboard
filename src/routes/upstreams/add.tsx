@@ -110,19 +110,16 @@ const UpstreamAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => voi
   const steps = [
     {
       label: t('form.upstreams.steps.basic'),
-      description: t('form.upstreams.steps.basicDesc'),
       content: <FormPartBasic />,
       fields: ['name', 'desc', 'labels'],
     },
     {
       label: t('form.upstreams.steps.nodes'),
-      description: t('form.upstreams.steps.nodesDesc'),
       content: <FormSectionNodesAndDiscovery />,
       fields: ['nodes', 'service_name', 'discovery_type'],
     },
     {
       label: t('form.upstreams.steps.connection'),
-      description: t('form.upstreams.steps.connectionDesc'),
       content: (
         <>
           <FormSectionConnection />
@@ -133,7 +130,6 @@ const UpstreamAddFormBody = ({ onDraftDiscarded }: { onDraftDiscarded: () => voi
     },
     {
       label: t('form.upstreams.steps.preview'),
-      description: t('form.upstreams.steps.previewDesc'),
       content: <UpstreamPreviewSummary />,
     },
   ];

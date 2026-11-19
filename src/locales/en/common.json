@@ -491,18 +491,9 @@
       "duplicateConfirmAction": "Create anyway",
       "steps": {
         "apiInfo": "Define API Information",
-        "apiInfoDesc": "Protocol, Host, Path, etc.",
         "upstream": "Define Upstream",
-        "upstreamDesc": "Target gateway configuration",
         "preview": "Preview",
-        "previewDesc": "Review and finish",
-        "summaryBoundToService": "Bound to service",
-        "summaryCustomNodes": "Custom: {{count}} node(s)",
-        "summaryCustom": "Custom upstream",
-        "summaryExisting": "Existing upstream",
-        "summaryPluginConfig": "Plugin config: {{- id}}",
-        "options": "Options",
-        "optionsDesc": "Request rewrite and plugins, both optional"
+        "options": "Options"
       },
       "advancedMatching": "Advanced matching"
     },
@@ -574,13 +565,9 @@
       "hostsDescription": "Domain names this service will handle",
       "steps": {
         "basic": "Basic",
-        "basicDesc": "Name and hosts",
         "upstream": "Upstream",
-        "upstreamDesc": "Backend targets",
         "plugin": "Plugins",
-        "pluginDesc": "Extensions",
-        "preview": "Preview",
-        "previewDesc": "Review and submit"
+        "preview": "Preview"
       },
       "namePlaceholder": "e.g. my-api-service",
       "descPlaceholder": "Optional description of this service",
@@ -767,13 +754,9 @@
       "schemeDesc": "Protocol used to communicate with the upstream server",
       "steps": {
         "basic": "Basic",
-        "basicDesc": "Name and labels",
         "nodes": "Nodes",
-        "nodesDesc": "Backend targets",
         "connection": "Connection",
-        "connectionDesc": "Protocol and settings",
-        "preview": "Preview",
-        "previewDesc": "Review and submit"
+        "preview": "Preview"
       },
       "serviceDiscovery": {
         "title": "Service Discovery"

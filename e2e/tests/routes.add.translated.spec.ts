@@ -43,7 +43,6 @@ test('the route wizard is in the language of the page: its steps and its refusal
 
   // The steps: they were a table of labels above the JSX.
   await expect(page.getByText(de.t('form.routes.steps.apiInfo'))).toBeVisible();
-  await expect(page.getByText(de.t('form.routes.steps.apiInfoDesc'))).toBeVisible();
   await expect(page.getByText(de.t('form.routes.steps.upstream'))).toBeVisible();
   await expect(page.getByText(de.t('form.routes.steps.preview'), { exact: true })).toBeVisible();
   await expect(page.getByText(i18n.t('form.routes.steps.apiInfo'))).toHaveCount(0);
