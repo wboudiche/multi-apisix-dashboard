@@ -41,6 +41,7 @@ import {
   isAuthClientPlugin,
   readRestriction,
   type Restriction,
+  RESTRICTION_DEFAULT_PRIORITY,
   writeRestriction,
 } from '@/utils/auth-clients';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
@@ -102,6 +103,12 @@ export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
    * clients section reads who it lets through from it, and changes it.
    */
   restriction?: unknown;
+  /**
+   * The route's other authentication plugins. The restriction is the
+   * route's, not this plugin's: their clients are offered on the list too,
+   * or narrowing from here would shut them out unseen.
+   */
+  otherAuthPlugins?: string[];
 };
 
 const isEmptyConfig = (p: object): boolean => isEmpty(p) || isNil(p);
@@ -229,6 +236,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     defaultPriority,
     showClients,
     restriction,
+    otherAuthPlugins,
   } = props;
   const { name, config } = plugin;
   const { t } = useTranslation();
@@ -246,18 +254,17 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     defaultValues: { config: getDefaultConfig(name, config) },
   });
 
-  // Reset when the drawer is handed another plugin. Its own state follows
-  // while rendering, compared with the plugin it last reset for; the JSON
-  // field lives in react-hook-form, outside React state, and is still set from
-  // an effect.
   // Who may call, as the clients section shows it: read from the route's
   // consumer-restriction, and written back to it on save once changed.
   const [access, setAccess] = useState<Restriction>(() => readRestriction(restriction));
   const [accessChanged, setAccessChanged] = useState(false);
 
-  // Compared by value: the parent hands a fresh copy of it on each render,
-  // and a choice made here is not to be reset by a render that changed
-  // nothing.
+  // Reset when the drawer is handed another plugin. Its own state follows
+  // while rendering, compared with the plugin it last reset for; the JSON
+  // field lives in react-hook-form, outside React state, and is still set from
+  // an effect. The restriction is compared by value: the parent hands a fresh
+  // copy of it on each render, and a choice made here is not to be reset by
+  // a render that changed nothing.
   const restrictionKey = JSON.stringify(restriction ?? null);
   const [lastPlugin, setLastPlugin] = useState({ name, config, canShowForm, restrictionKey });
   if (
@@ -279,6 +286,14 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
   }, []);
 
   const clientsShown = !!showClients && isAuthClientPlugin(name);
+  const stored = readRestriction(restriction);
+  // What the route held, offered again when "only" is picked back.
+  const storedNames = stored.mode === 'only' ? stored.names : [];
+  const storedMeta = (restriction as { _meta?: { priority?: unknown } } | undefined)?._meta;
+  const restrictionPriority =
+    typeof storedMeta?.priority === 'number'
+      ? storedMeta.priority
+      : RESTRICTION_DEFAULT_PRIORITY;
   // A list with nobody on it would let no client through, and the gateway
   // refuses an empty one: the save waits for a name.
   const accessIncomplete =
@@ -472,6 +487,9 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
                 readOnly={mode === 'view'}
                 access={access}
                 onAccessChange={changeAccess}
+                storedNames={storedNames}
+                otherPlugins={otherAuthPlugins ?? []}
+                restrictionPriority={restrictionPriority}
               />
             )}
           </ScrollArea.Autosize>
@@ -490,6 +508,13 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
         </>
       ) : (
         <FormProvider {...methods}>
+          {clientsShown && accessChanged && access.mode !== 'custom' && (
+            <Text size="sm" c={accessIncomplete ? 'red' : 'dimmed'} mb="xs">
+              {accessIncomplete
+                ? t('form.plugins.clients.accessEmptyJson')
+                : t('form.plugins.clients.accessPending')}
+            </Text>
+          )}
           <form>
             <FormItemEditor
               name="config"

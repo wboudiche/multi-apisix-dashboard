@@ -446,7 +446,12 @@
         "accessOnlyHelp": "Die anderen erhalten 403, auch mit gültigen Zugangsdaten.",
         "accessEmpty": "Wählen Sie mindestens einen Client aus.",
         "accessCustom": "Diese Route beschränkt ihre Aufrufer bereits mit dem Plugin consumer-restriction, auf eine Weise, die diese Liste nicht darstellen kann. Ändern Sie es über dieses Plugin.",
-        "noCredential": "Hat keine Zugangsdaten für dieses Plugin"
+        "noCredential": "Hat keine Zugangsdaten für dieses Plugin",
+        "notVisible": "Nicht unter den Clients, die Sie sehen",
+        "accessShared": "Die Liste gilt auch für die Clients von {{plugins}} auf dieser Route: Sie sind ebenfalls aufgeführt.",
+        "accessOrder": "Dieses Plugin läuft vor der Beschränkung, die dann keinen Client findet und jede Anfrage ablehnt. Lassen Sie seine Priorität leer oder höher als die der Beschränkung.",
+        "accessPending": "Wer sie aufrufen darf, wurde im Formular-Tab geändert und wird mit diesem Plugin gespeichert.",
+        "accessEmptyJson": "Wer sie aufrufen darf: Wählen Sie im Formular-Tab mindestens einen Client aus."
       }
     },
     "protos": {

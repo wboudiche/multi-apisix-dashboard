@@ -100,6 +100,12 @@ export type Restriction =
 
 export const RESTRICTION_PLUGIN = 'consumer-restriction';
 
+/**
+ * Where the gateway runs consumer-restriction by default: below the
+ * authentication plugins, so the consumer is known by the time it looks.
+ */
+export const RESTRICTION_DEFAULT_PRIORITY = 2400;
+
 /** The keys of a consumer-restriction this form can read and write back. */
 const OWN_KEYS = new Set(['type', 'whitelist', 'rejected_code', 'rejected_msg', '_meta']);
 
@@ -107,14 +113,18 @@ export const readRestriction = (config: unknown): Restriction => {
   if (config === undefined || config === null) return { mode: 'any' };
   if (typeof config !== 'object') return { mode: 'custom' };
   const c = config as Record<string, unknown>;
-  const meta = c._meta as Record<string, unknown> | undefined;
+  const meta = c._meta;
   if (
     Object.keys(c).some((k) => !OWN_KEYS.has(k)) ||
     (c.type !== undefined && c.type !== 'consumer_name') ||
     !Array.isArray(c.whitelist) ||
     !c.whitelist.every((n) => typeof n === 'string') ||
     // Switched off, or run on a filter: not a plain list of who gets in.
-    (meta !== undefined && (meta.disable !== undefined || meta.filter !== undefined))
+    (meta !== undefined &&
+      (meta === null ||
+        typeof meta !== 'object' ||
+        (meta as Record<string, unknown>).disable === true ||
+        (meta as Record<string, unknown>).filter !== undefined))
   ) {
     return { mode: 'custom' };
   }

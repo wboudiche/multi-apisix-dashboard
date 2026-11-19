@@ -446,7 +446,12 @@
         "accessOnlyHelp": "Diğerleri, geçerli bir kimlik bilgisiyle bile 403 alır.",
         "accessEmpty": "En az bir istemci işaretleyin.",
         "accessCustom": "Bu rota, çağıranlarını consumer-restriction eklentisiyle bu listenin gösteremeyeceği bir şekilde zaten sınırlıyor. Bunu o eklentiden değiştirin.",
-        "noCredential": "Bu eklenti için kimlik bilgisi yok"
+        "noCredential": "Bu eklenti için kimlik bilgisi yok",
+        "notVisible": "Görebildiğiniz istemciler arasında değil",
+        "accessShared": "Liste bu rotadaki {{plugins}} istemcilerine de uygulanır: onlar da listelenir.",
+        "accessOrder": "Bu eklenti kısıtlamadan önce çalışır; kısıtlama da hiçbir istemci bulamaz ve her isteği reddeder. Önceliğini boş bırakın ya da kısıtlamanınkinden yüksek tutun.",
+        "accessPending": "Kimin çağırabileceği Form sekmesinde değiştirildi ve bu eklentiyle kaydedilir.",
+        "accessEmptyJson": "Kimin çağırabileceği: Form sekmesinde en az bir istemci işaretleyin."
       }
     },
     "protos": {

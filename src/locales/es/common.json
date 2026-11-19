@@ -448,7 +448,12 @@
         "accessOnlyHelp": "Los demás reciben un 403, incluso con una credencial válida.",
         "accessEmpty": "Marque al menos un cliente.",
         "accessCustom": "Esta ruta ya limita quién la llama con su plugin consumer-restriction, de una forma que esta lista no puede mostrar. Cámbielo desde ese plugin.",
-        "noCredential": "No tiene credencial para este plugin"
+        "noCredential": "No tiene credencial para este plugin",
+        "notVisible": "No está entre los clientes que puede ver",
+        "accessShared": "La lista también se aplica a los clientes de {{plugins}} en esta ruta: también aparecen.",
+        "accessOrder": "Este plugin se ejecuta antes de la restricción, que entonces no encuentra ningún cliente y rechaza todas las peticiones. Deje su prioridad vacía o por encima de la de la restricción.",
+        "accessPending": "Quién puede llamarla se cambió en la pestaña Formulario y se guarda con este plugin.",
+        "accessEmptyJson": "Quién puede llamarla: marque al menos un cliente en la pestaña Formulario."
       }
     },
     "protos": {

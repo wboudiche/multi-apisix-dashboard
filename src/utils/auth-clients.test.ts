@@ -90,6 +90,14 @@ describe('auth clients', () => {
     expect(readRestriction({ whitelist: ['a'], allowed_by_methods: [] })).toEqual({ mode: 'custom' });
     expect(readRestriction({ whitelist: ['a'], _meta: { disable: true } })).toEqual({ mode: 'custom' });
     expect(readRestriction('x')).toEqual({ mode: 'custom' });
+    expect(readRestriction({ whitelist: ['a'], _meta: null })).toEqual({ mode: 'custom' });
+  });
+
+  it('reads a list left switched on as a plain one', () => {
+    expect(readRestriction({ whitelist: ['a'], _meta: { disable: false } })).toEqual({
+      mode: 'only',
+      names: ['a'],
+    });
   });
 
   it('writes the choice back, keeping the rest of the plugin', () => {
