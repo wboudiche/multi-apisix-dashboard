@@ -163,7 +163,8 @@
       "unreachable": "Pano bu ağ geçidinin Admin API'sine ulaşamadı",
       "notRead": "Okunmadı: pano bu yenileme için zamanı tüketti",
       "unreadable": "Admin API'si okunamadı"
-    }
+    },
+    "activeManagerFor": "Etkin yönetici: {{name}}"
   },
   "login": {
     "adminNote": "Hesaplar yöneticiniz tarafından oluşturulur.",
@@ -244,7 +245,8 @@
       "previous": "Geri",
       "backToList": "Listeye Dön",
       "next": "İleri",
-      "submit": "Gönder"
+      "submit": "Gönder",
+      "close": "Kapat"
     },
     "consumers": {
       "groupId": "Grup ID",
@@ -1151,7 +1153,11 @@
     "enabled": "Aktif",
     "selectAll": "Tümünü seç",
     "selectRow": "{{name}} seç",
-    "nameWithId": "{{name}} ({{id}})"
+    "nameWithId": "{{name}} ({{id}})",
+    "previousPage": "Önceki sayfa",
+    "nextPage": "Sonraki sayfa",
+    "firstPage": "İlk sayfa",
+    "lastPage": "Son sayfa"
   },
   "upstreams": {
     "health": "Durum",

@@ -60,7 +60,7 @@ test('creates an instance via the Add Instance modal', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Add Instance' }).click();
   await expect(page.getByText('Add New Instance')).toBeVisible();
-  await page.getByLabel('Name').fill(name);
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByLabel('Description').fill('created by instances.admin e2e');
   await page.getByLabel('Admin API URL').fill(STAGING_ADMIN_URL);
   await page.getByLabel('Admin Key').fill(STAGING_ADMIN_KEY);
@@ -88,7 +88,7 @@ test('rejects an instance whose name is already taken', async ({ page }) => {
   await page.getByRole('button', { name: 'Add Instance' }).click();
   // Different case: names must collide case-insensitively, so the list can never
   // show two rows that look identical.
-  await page.getByLabel('Name').fill(name.toUpperCase());
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name.toUpperCase());
   await page.getByLabel('Admin API URL').fill('http://127.0.0.1:9999');
   await page.getByLabel('Admin Key').fill('irrelevant');
   await page.getByRole('button', { name: 'Create Instance' }).click();
@@ -127,7 +127,7 @@ test('warns that saving an unreachable instance did not connect', async ({ page 
   await adminPom.isInstancesPage(page);
 
   await page.getByRole('button', { name: 'Add Instance' }).click();
-  await page.getByLabel('Name').fill(name);
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByLabel('Admin API URL').fill(DEAD_URLS.saveWarning);
   await page.getByLabel('Admin Key').fill('irrelevant');
   await page.getByRole('button', { name: 'Create Instance' }).click();
@@ -222,7 +222,7 @@ test('edits and deletes an instance', async ({ page }) => {
 
   await adminPom.rowByText(page, name).getByRole('button', { name: 'Edit' }).click();
   await expect(page.getByText('Edit Instance')).toBeVisible();
-  await page.getByLabel('Name').fill(renamed);
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(renamed);
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(adminPom.rowByText(page, renamed)).toBeVisible();
 

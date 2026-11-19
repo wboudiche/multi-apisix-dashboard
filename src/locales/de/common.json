@@ -163,7 +163,8 @@
       "unreachable": "Das Dashboard konnte die Admin-API dieses Gateways nicht erreichen",
       "notRead": "Nicht gelesen: Dem Dashboard ist für diese Aktualisierung die Zeit ausgegangen",
       "unreadable": "Die Admin-API konnte nicht gelesen werden"
-    }
+    },
+    "activeManagerFor": "Aktiver Manager: {{name}}"
   },
   "login": {
     "adminNote": "Konten werden von Ihrem Administrator angelegt.",
@@ -244,7 +245,8 @@
       "previous": "Zurück",
       "backToList": "Zurück zur Liste",
       "next": "Weiter",
-      "submit": "Absenden"
+      "submit": "Absenden",
+      "close": "Schließen"
     },
     "consumers": {
       "groupId": "Gruppen ID",
@@ -1151,7 +1153,11 @@
     "enabled": "Aktiviert",
     "selectAll": "Alle auswählen",
     "selectRow": "{{name}} auswählen",
-    "nameWithId": "{{name}} ({{id}})"
+    "nameWithId": "{{name}} ({{id}})",
+    "previousPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "firstPage": "Erste Seite",
+    "lastPage": "Letzte Seite"
   },
   "upstreams": {
     "health": "Zustand",

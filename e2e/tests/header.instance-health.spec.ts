@@ -274,7 +274,7 @@ test('gives a newly added gateway a health dot without waiting for the timer', a
     await adminPom.isInstancesPage(page);
 
     await page.getByRole('button', { name: 'Add Instance' }).click();
-    await page.getByLabel('Name').fill(name);
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
     await page.getByLabel('Admin API URL').fill(STAGING_ADMIN_URL);
     await page.getByLabel('Admin Key').fill(STAGING_ADMIN_KEY);
     await page.getByRole('button', { name: 'Create Instance' }).click();

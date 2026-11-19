@@ -163,7 +163,8 @@
       "unreachable": "El panel no pudo conectar con la Admin API de este gateway",
       "notRead": "No leído: el panel se quedó sin tiempo en esta actualización",
       "unreadable": "No se pudo leer la Admin API"
-    }
+    },
+    "activeManagerFor": "Gestor activo: {{name}}"
   },
   "login": {
     "adminNote": "Las cuentas las crea tu administrador.",
@@ -244,7 +245,8 @@
       "previous": "Atrás",
       "backToList": "Volver a la lista",
       "next": "Siguiente",
-      "submit": "Enviar"
+      "submit": "Enviar",
+      "close": "Cerrar"
     },
     "consumers": {
       "groupId": "ID de Grupo",
@@ -1153,7 +1155,11 @@
     "enabled": "Habilitado",
     "selectAll": "Seleccionar todo",
     "selectRow": "Seleccionar {{name}}",
-    "nameWithId": "{{name}} ({{id}})"
+    "nameWithId": "{{name}} ({{id}})",
+    "previousPage": "Página anterior",
+    "nextPage": "Página siguiente",
+    "firstPage": "Primera página",
+    "lastPage": "Última página"
   },
   "upstreams": {
     "health": "Estado",

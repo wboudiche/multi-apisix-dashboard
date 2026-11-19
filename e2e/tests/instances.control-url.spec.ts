@@ -114,7 +114,7 @@ test('creates an instance without one, which is the ordinary case', async ({ pag
   await adminPom.isInstancesPage(page);
 
   await page.getByRole('button', { name: 'Add Instance' }).click();
-  await page.getByLabel('Name').fill(name);
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByLabel('Admin API URL').fill(DEAD_ADMIN_URLS.created);
   await page.getByLabel('Admin Key').fill('unused-by-this-spec');
   await page.getByRole('button', { name: 'Create Instance' }).click();

@@ -115,7 +115,8 @@
       "unreachable": "The dashboard could not reach this gateway's Admin API",
       "notRead": "Not read: the dashboard ran out of time for this refresh",
       "unreadable": "Could not read the Admin API"
-    }
+    },
+    "activeManagerFor": "Active manager: {{name}}"
   },
   "proxyError": {
     "title": "Cannot reach {{name}}",
@@ -165,7 +166,8 @@
       "submit": "Submit",
       "upload": "Upload",
       "view": "View",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "close": "Close"
     },
     "consumers": {
       "groupId": "Group ID",
@@ -1071,7 +1073,11 @@
     "enabled": "Enabled",
     "selectAll": "Select all",
     "selectRow": "Select {{name}}",
-    "nameWithId": "{{name}} ({{id}})"
+    "nameWithId": "{{name}} ({{id}})",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "firstPage": "First page",
+    "lastPage": "Last page"
   },
   "upstreams": {
     "health": "Health",

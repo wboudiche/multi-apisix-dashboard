@@ -20,7 +20,7 @@ import './styles/global.css';
 // zod's own "Required", as a key the forms translate: see the file.
 import './config/zod-errors';
 
-import { createTheme, MantineProvider } from '@mantine/core';
+import { createTheme } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -29,6 +29,7 @@ import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { followOtherTabs } from './apis/session';
+import { LocalizedMantineProvider } from './components/LocalizedMantineProvider';
 import { queryClient, router } from './config/global';
 
 // APISIX Brand Colors
@@ -181,14 +182,14 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <MantineProvider theme={theme}>
+      <LocalizedMantineProvider theme={theme}>
         <Notifications position="top-right" autoClose={5000} limit={5} />
         <QueryClientProvider client={queryClient}>
           <ModalsProvider>
             <RouterProvider router={router} />
           </ModalsProvider>
         </QueryClientProvider>
-      </MantineProvider>
+      </LocalizedMantineProvider>
     </StrictMode>
   );
 }

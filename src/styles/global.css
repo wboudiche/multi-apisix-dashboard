@@ -141,12 +141,24 @@ body::before {
   width: 100% !important;
 }
 
+/* The router marks the current page aria-current; nothing sets
+   data-active, so the bar and the fill keyed on it alone never showed. */
+[class*="NavLink-root"][aria-current="page"],
 [class*="NavLink-root"][data-active="true"] {
   background: linear-gradient(135deg, var(--brand-subtle) 0%, rgba(248, 66, 63, 0.05) 100%) !important;
   box-shadow: inset 3px 0 0 var(--brand) !important;
+  /* The brand red on its pink was 3.15:1, under the 4.5:1 text needs; the
+     darker red reads at about 6:1, the bar beside it keeps the brand's. */
+  color: #b32626 !important;
 }
 
-[class*="NavLink-root"]:hover:not([data-active="true"]) {
+[class*="NavLink-root"][aria-current="page"] [class*="NavLink-label"],
+[class*="NavLink-root"][data-active="true"] [class*="NavLink-label"],
+[class*="NavLink-root"][data-active="true"] [class*="NavLink-section"] {
+  color: #b32626 !important;
+}
+
+[class*="NavLink-root"]:hover:not([data-active="true"]):not([aria-current="page"]) {
   background: linear-gradient(135deg, rgba(248, 66, 63, 0.06) 0%, rgba(248, 66, 63, 0.02) 100%) !important;
 }
 
@@ -565,8 +577,35 @@ select:focus,
   background: var(--border-medium) !important;
 }
 
-[class*="Switch-track"][data-checked="true"] {
+/* Checked, by the input's own state: Mantine sets no data-checked on the
+   track, so a rule keyed on it never matched, and a switch that was on
+   showed the grey of one that is off. */
+.mantine-Switch-input:checked:not(:disabled) + .mantine-Switch-track {
   background: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
+
+/* ===== Dimmed text ===== */
+
+/* Mantine's dimmed - descriptions, hints, secondary text - is its gray 6,
+   3.3:1 on white, under the 4.5:1 text needs. */
+:root[data-mantine-color-scheme="light"] {
+  --mantine-color-dimmed: #5f6670;
+}
+
+/* ===== SegmentedControl ===== */
+
+/* The options not chosen: Mantine's grey on the control's own grey was 3.9:1,
+   under the 4.5:1 text needs. */
+[data-mantine-color-scheme="light"] .mantine-SegmentedControl-label:not([data-active]):not([data-disabled]) {
+  color: #565b61 !important;
+}
+
+/* The services list puts its Table/Cards control in the pro table's toolbar
+   menu, which fades an item it takes for unselected to 0.75 - over the
+   control's own state, and its text under 4.5:1. */
+.ant-pro-table-list-toolbar-inline-menu-item {
+  opacity: 1 !important;
 }
 
 /* ===== Tooltip ===== */
