@@ -451,7 +451,8 @@
         "accessOrder": "此插件在 consumer-restriction 之后运行，限制将找不到客户端并拒绝所有请求。请为它设置高于限制的优先级。",
         "accessPending": "谁可以调用已在表单标签页中修改，并会随此插件保存。",
         "accessEmptyJson": "谁可以调用：请在表单标签页中至少勾选一个客户端。",
-        "notFound": "此网关上没有该客户端"
+        "notFound": "此网关上没有该客户端",
+        "alsoAsks": "此路由还要求 {{plugins}}：客户端必须持有每一个的凭证才能通过。"
       }
     },
     "protos": {

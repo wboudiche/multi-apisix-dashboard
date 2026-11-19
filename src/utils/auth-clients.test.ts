@@ -23,6 +23,8 @@ import {
   holdsCredential,
   isAuthClientPlugin,
   readRestriction,
+  runsAfterRestriction,
+  sameRestriction,
   shellQuote,
   usableHeader,
   writeRestriction,
@@ -107,5 +109,20 @@ describe('auth clients', () => {
     expect(
       writeRestriction({ type: 'consumer_name', whitelist: ['a'], rejected_code: 401 }, ['b', 'c'])
     ).toEqual({ whitelist: ['b', 'c'], rejected_code: 401 });
+  });
+
+  it('warns of a plugin that runs at or below the restriction, not above it', () => {
+    // The gateway runs the higher priority first.
+    expect(runsAfterRestriction(2000, 2400)).toBe(true);
+    expect(runsAfterRestriction(2400, 2400)).toBe(true);
+    expect(runsAfterRestriction(2500, 2400)).toBe(false);
+    expect(runsAfterRestriction(undefined, 2400)).toBe(false);
+  });
+
+  it('takes a list ticked in another order for the same one', () => {
+    expect(sameRestriction({ mode: 'only', names: ['a', 'b'] }, { mode: 'only', names: ['b', 'a'] })).toBe(true);
+    expect(sameRestriction({ mode: 'only', names: ['a'] }, { mode: 'only', names: ['a', 'b'] })).toBe(false);
+    expect(sameRestriction({ mode: 'any' }, { mode: 'any' })).toBe(true);
+    expect(sameRestriction({ mode: 'any' }, { mode: 'only', names: [] })).toBe(false);
   });
 });

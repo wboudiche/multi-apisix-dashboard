@@ -451,7 +451,8 @@
         "accessOrder": "Dieses Plugin läuft nach consumer-restriction, die dann keinen Client findet und jede Anfrage ablehnt. Geben Sie ihm eine höhere Priorität als die der Beschränkung.",
         "accessPending": "Wer sie aufrufen darf, wurde im Formular-Tab geändert und wird mit diesem Plugin gespeichert.",
         "accessEmptyJson": "Wer sie aufrufen darf: Wählen Sie im Formular-Tab mindestens einen Client aus.",
-        "notFound": "Kein solcher Client auf diesem Gateway"
+        "notFound": "Kein solcher Client auf diesem Gateway",
+        "alsoAsks": "Diese Route verlangt auch {{plugins}}: Ein Client kommt nur mit Zugangsdaten für jedes davon durch."
       }
     },
     "protos": {

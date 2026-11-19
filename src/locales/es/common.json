@@ -453,7 +453,8 @@
         "accessOrder": "Este plugin se ejecuta después de consumer-restriction, que entonces no encuentra ningún cliente y rechaza todas las peticiones. Dele una prioridad mayor que la de la restricción.",
         "accessPending": "Quién puede llamarla se cambió en la pestaña Formulario y se guarda con este plugin.",
         "accessEmptyJson": "Quién puede llamarla: marque al menos un cliente en la pestaña Formulario.",
-        "notFound": "No existe ese cliente en esta pasarela"
+        "notFound": "No existe ese cliente en esta pasarela",
+        "alsoAsks": "Esta ruta también pide {{plugins}}: un cliente solo pasa con una credencial de cada uno."
       }
     },
     "protos": {

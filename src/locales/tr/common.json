@@ -451,7 +451,8 @@
         "accessOrder": "Bu eklenti consumer-restriction'dan sonra çalışır; kısıtlama da hiçbir istemci bulamaz ve her isteği reddeder. Ona kısıtlamanınkinden yüksek bir öncelik verin.",
         "accessPending": "Kimin çağırabileceği Form sekmesinde değiştirildi ve bu eklentiyle kaydedilir.",
         "accessEmptyJson": "Kimin çağırabileceği: Form sekmesinde en az bir istemci işaretleyin.",
-        "notFound": "Bu ağ geçidinde böyle bir istemci yok"
+        "notFound": "Bu ağ geçidinde böyle bir istemci yok",
+        "alsoAsks": "Bu rota ayrıca {{plugins}} istiyor: bir istemci yalnızca her biri için kimlik bilgisiyle geçebilir."
       }
     },
     "protos": {

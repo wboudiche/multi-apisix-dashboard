@@ -43,6 +43,8 @@ import {
   readRestriction,
   type Restriction,
   RESTRICTION_DEFAULT_PRIORITY,
+  runsAfterRestriction,
+  sameRestriction,
   writeRestriction,
 } from '@/utils/auth-clients';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
@@ -106,6 +108,11 @@ export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
   restriction?: unknown;
   /** Where the gateway runs consumer-restriction when the route says nothing. */
   restrictionDefaultPriority?: number;
+  /**
+   * The route's other authentication plugins. Each must pass on its own, so
+   * a client gets through only holding a credential of every one of them.
+   */
+  otherAuthPlugins?: string[];
 };
 
 const isEmptyConfig = (p: object): boolean => isEmpty(p) || isNil(p);
@@ -234,6 +241,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     showClients,
     restriction,
     restrictionDefaultPriority,
+    otherAuthPlugins,
   } = props;
   const { name, config } = plugin;
   const { t } = useTranslation();
@@ -281,12 +289,11 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
   const storedNames = stored.mode === 'only' ? stored.names : [];
   // Changed is what differs from the route, not what was clicked: picked
   // away and back, the choice is the stored one, and nothing is rewritten.
-  const accessChanged = JSON.stringify(access) !== JSON.stringify(stored);
+  const accessChanged = !sameRestriction(access, stored);
   // A list with nobody on it would let no client through, and the gateway
   // refuses an empty one: the save waits for a name.
   const accessIncomplete =
     clientsShown && access.mode === 'only' && access.names.length === 0;
-
 
   const restrictionToSave = useCallback((): Pick<PluginConfig, 'restriction'> => {
     if (!clientsShown || !accessChanged || access.mode === 'custom') return {};
@@ -359,11 +366,11 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
       ? storedMeta.priority
       : (restrictionDefaultPriority ?? RESTRICTION_DEFAULT_PRIORITY);
   const ownPriority = Number.isFinite(priority) ? (priority as number) : defaultPriority;
-  const runsAfterRestriction =
+  // Any restriction in force, the custom ones too: each looks at the consumer.
+  const runsLate =
     clientsShown &&
-    access.mode === 'only' &&
-    ownPriority !== undefined &&
-    ownPriority <= restrictionPriority;
+    access.mode !== 'any' &&
+    runsAfterRestriction(ownPriority, restrictionPriority);
 
   const setPriority = useCallback(
     (next: number | undefined) => {
@@ -493,9 +500,10 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
                 access={access}
                 onAccessChange={setAccess}
                 storedNames={storedNames}
+                otherPlugins={otherAuthPlugins ?? []}
               />
             )}
-            {runsAfterRestriction && (
+            {runsLate && (
               <Alert color="yellow" variant="light" mt="sm">
                 {t('form.plugins.clients.accessOrder')}
               </Alert>
@@ -523,7 +531,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
                 : t('form.plugins.clients.accessPending')}
             </Text>
           )}
-          {runsAfterRestriction && (
+          {runsLate && (
             <Alert color="yellow" variant="light" mb="xs">
               {t('form.plugins.clients.accessOrder')}
             </Alert>

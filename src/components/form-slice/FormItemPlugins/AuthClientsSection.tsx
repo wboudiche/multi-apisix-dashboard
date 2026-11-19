@@ -164,7 +164,9 @@ const ClientChecklist = ({
   onChange: (names: string[]) => void;
 }) => {
   const { t } = useTranslation();
-  const { isSuperAdmin } = usePermission();
+  // An admin of the instance sees every client, as a super admin does: for
+  // them a name nobody holds is gone, not out of sight.
+  const { isAdmin } = usePermission();
   const holders = clients?.holders ?? [];
   const options = [...new Set([...holders, ...names])].sort();
   // Why a name is on the list and cannot get through this plugin: it holds
@@ -174,7 +176,7 @@ const ClientChecklist = ({
   const hint = (option: string): string | undefined => {
     if (!clients || holders.includes(option)) return undefined;
     if (clients.all.includes(option)) return t('form.plugins.clients.noCredential');
-    return isSuperAdmin
+    return isAdmin
       ? t('form.plugins.clients.notFound')
       : t('form.plugins.clients.notVisible');
   };
@@ -219,6 +221,8 @@ export type AuthClientsSectionProps = {
   onAccessChange: (next: Restriction) => void;
   /** The names the route held, ticked again when "only" is picked back. */
   storedNames: string[];
+  /** The route's other authentication plugins, which a client must pass too. */
+  otherPlugins: string[];
 };
 
 /** The name is a consumer already, one this account cannot see. */
@@ -236,6 +240,7 @@ export const AuthClientsSection = ({
   access,
   onAccessChange,
   storedNames,
+  otherPlugins,
 }: AuthClientsSectionProps) => {
   const { t } = useTranslation();
   const instanceId = useAtomValue(currentInstanceIdAtom);
@@ -387,7 +392,11 @@ export const AuthClientsSection = ({
             onChange={(names) => onAccessChange({ mode: 'only', names })}
           />
         )}
-
+        {otherPlugins.length > 0 && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.alsoAsks', { plugins: otherPlugins.join(', ') })}
+          </Text>
+        )}
         {clients.data &&
           access.mode !== 'only' &&
           (clients.data.holders.length === 0 ? (

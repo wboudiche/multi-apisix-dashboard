@@ -131,6 +131,26 @@ export const readRestriction = (config: unknown): Restriction => {
   return { mode: 'only', names: c.whitelist as string[] };
 };
 
+/** Whether two choices let the same clients in, whatever the order ticked. */
+export const sameRestriction = (a: Restriction, b: Restriction): boolean => {
+  if (a.mode !== b.mode) return false;
+  if (a.mode !== 'only' || b.mode !== 'only') return true;
+  const x = [...a.names].sort();
+  const y = [...b.names].sort();
+  return x.length === y.length && x.every((n, i) => n === y[i]);
+};
+
+/**
+ * Whether an authentication plugin runs too late for the restriction: the
+ * restriction looks at the consumer the plugin found, and the gateway runs
+ * the higher priority first. At or below the restriction's, the plugin has
+ * found nobody yet when the restriction looks, and every request is refused.
+ */
+export const runsAfterRestriction = (
+  pluginPriority: number | undefined,
+  restrictionPriority: number
+): boolean => pluginPriority !== undefined && pluginPriority <= restrictionPriority;
+
 /**
  * The consumer-restriction a choice comes to: none at all for every client,
  * or an allow-list of the names, keeping what else the plugin was given - its

@@ -478,7 +478,8 @@
         "accessOrder": "This plugin runs after the consumer-restriction, which then finds no client and refuses every request. Give it a priority above the restriction's.",
         "accessPending": "Who can call it was changed in the Form tab, and is saved with this plugin.",
         "accessEmptyJson": "Who can call it: tick at least one client in the Form tab.",
-        "notFound": "No such client on this gateway"
+        "notFound": "No such client on this gateway",
+        "alsoAsks": "This route also asks for {{plugins}}: a client gets through only with a credential of each."
       }
     },
     "protos": {
