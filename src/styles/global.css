@@ -669,14 +669,14 @@ select:focus,
 
 .mantine-Stepper-stepIcon {
   margin-right: 0 !important;
-  width: 28px !important;
-  height: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
   /* Mantine's own minimum is the md size's: the number in an oval. */
-  min-width: 28px !important;
-  min-height: 28px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
   font-weight: 700 !important;
   font-family: 'Outfit', sans-serif !important;
-  font-size: 0.8125rem !important;
+  font-size: 0.875rem !important;
   transition: all var(--transition-base) !important;
   border-width: 2px !important;
 }
@@ -686,7 +686,7 @@ select:focus,
 }
 
 .mantine-Stepper-stepLabel {
-  font-size: 0.8125rem !important;
+  font-size: 0.875rem !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
   margin: 0 !important;

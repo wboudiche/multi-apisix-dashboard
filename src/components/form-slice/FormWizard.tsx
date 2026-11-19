@@ -290,7 +290,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
           })}
         </Group>
       ) : (
-        <Box px="xs" py={6} mb="0" style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
+        <Box px="xs" py="sm" mb="0" style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
           {/* One line per step, its number beside its name: a description
               under each, and a summary in its place once done, made the bar
               three lines tall over a form that needs the room. */}
