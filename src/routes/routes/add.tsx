@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getRouteListReq, postRouteReq } from '@/apis/routes';
 import {
-  FormPartBasicWithPriority,
+  FormPartRouteBasic,
   FormSectionMatchRules,
   FormSectionPlugins,
   FormSectionRequestOverride,
@@ -77,13 +77,13 @@ const DuplicateRouteWarning = () => {
 };
 
 // [Feature 12] Plugin count badge step label
-const PluginStepLabel = () => {
+const OptionsStepLabel = () => {
   const { t } = useTranslation();
   const plugins = useWatch({ name: 'plugins' });
   const count = plugins ? Object.keys(plugins).length : 0;
   return (
     <Group gap={6}>
-      <span>{t('form.plugins.label')}</span>
+      <span>{t('form.routes.steps.options')}</span>
       {count > 0 && (
         <Badge size="sm" circle color="var(--brand)">
           {count}
@@ -209,7 +209,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
           <MatchPreview />
           {/* [Feature 9] Duplicate route detection */}
           <DuplicateRouteWarning />
-          <FormPartBasicWithPriority />
+          <FormPartRouteBasic />
           <FormSectionMatchRules />
         </>
       ),
@@ -242,16 +242,17 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
       },
     },
     {
-      label: t('form.requestOverride.title'),
-      description: t('form.requestOverride.description'),
-      content: <FormSectionRequestOverride />,
-      fields: [],
-    },
-    {
+      // Request rewrite and plugins, one step: both optional, and two steps
+      // of them made a route that needs neither five screens long.
       // [Feature 12] Plugin count badge
-      label: <PluginStepLabel />,
-      description: t('form.routes.steps.pluginsDesc'),
-      content: <FormSectionPlugins />,
+      label: <OptionsStepLabel />,
+      description: t('form.routes.steps.optionsDesc'),
+      content: (
+        <>
+          <FormSectionRequestOverride />
+          <FormSectionPlugins />
+        </>
+      ),
       fields: ['plugins', 'plugin_config_id'],
       // [Feature 4] Step summary
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -291,6 +292,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
       )}
       <FormWizard
         steps={steps}
+        submitFromAnyStep
         onComplete={form.handleSubmit(async (d) => {
           setSubmitError(null);
           setSubmitting(true);

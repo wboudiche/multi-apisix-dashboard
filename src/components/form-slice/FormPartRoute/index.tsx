@@ -40,6 +40,7 @@ import { NamePrefixProvider } from '@/utils/useNamePrefix';
 import { zGetDefault } from '@/utils/zod';
 
 import { useFormReadOnlyFields } from '../../../utils/form-context';
+import { AdvancedSection } from '../AdvancedSection';
 import { FormItemPlugins } from '../FormItemPlugins';
 import { FormPartBasic } from '../FormPartBasic';
 import { FormPartUpstream, FormSectionTimeout } from '../FormPartUpstream';
@@ -47,24 +48,32 @@ import { FormSection, type FormSectionProps } from '../FormSection';
 import type { RoutePostType } from './schema';
 import { SERVICE_NONE, UPSTREAM_CUSTOM } from './util';
 
-export const FormPartBasicWithPriority = ({
+/**
+ * A route's name, description, labels and status. Its priority, which decides
+ * between routes that match the same request, is with the other matching
+ * settings in FormSectionMatchRules.
+ */
+export const FormPartRouteBasic = ({
   showGeneral,
 }: {
   showGeneral?: boolean;
-}) => {
-  const { t } = useTranslation();
-  const { control } = useFormContext<RoutePostType>();
-  return (
-    <FormPartBasic showStatus showGeneral={showGeneral}>
-      <FormItemNumberInput
-        control={control}
-        name="priority"
-        label={<LabelWithTooltip label={t('form.routes.priority')} tooltip={t('form.routes.tooltip.priority')} />}
-        defaultValue={zGetDefault(APISIX.Route).priority!}
-      />
-    </FormPartBasic>
-  );
-};
+}) => <FormPartBasic showStatus showGeneral={showGeneral} />;
+
+// The matching settings most routes never set, folded away until one is.
+const ADVANCED_MATCH_FIELDS = [
+  'enable_websocket',
+  'uris',
+  'hosts',
+  'remote_addr',
+  'remote_addrs',
+  'vars',
+  'filter_func',
+  'priority',
+];
+
+// A priority of 0 is the one every route has until told otherwise.
+const isDefaultMatch = (name: string, value: unknown) =>
+  name === 'priority' && value === zGetDefault(APISIX.Route).priority;
 
 export const FormSectionMatchRules = () => {
   const { t } = useTranslation();
@@ -93,29 +102,12 @@ export const FormSectionMatchRules = () => {
           disabled={readOnlyFields.includes('methods') || undefined}
         />
       )}
-      {(!isReadOnly || enableWebsocket) && (
-        <InputWrapper label={<LabelWithTooltip label={t('form.routes.enableWebsocket')} tooltip={t('form.routes.tooltip.enableWebsocket')} />}>
-          <FormItemSwitch
-            control={control}
-            name="enable_websocket"
-            disabled={readOnlyFields.includes('enable_websocket') || undefined}
-          />
-        </InputWrapper>
-      )}
       {(!isReadOnly || hasValue(uri)) && (
         <FormItemTextInput
           control={control}
           name="uri"
           label={<LabelWithTooltip label={t('form.routes.uri')} tooltip={t('form.routes.tooltip.uri')} />}
           disabled={readOnlyFields.includes('uri') || undefined}
-        />
-      )}
-      {(!isReadOnly || hasValue(uris)) && (
-        <FormItemTagsInput
-          control={control}
-          name="uris"
-          label={t('form.routes.uris')}
-          disabled={readOnlyFields.includes('uris') || undefined}
         />
       )}
       {(!isReadOnly || hasValue(host)) && (
@@ -126,47 +118,77 @@ export const FormSectionMatchRules = () => {
           disabled={readOnlyFields.includes('host') || undefined}
         />
       )}
-      {(!isReadOnly || hasValue(hosts)) && (
-        <FormItemTagsInput
+      <AdvancedSection
+        label={t('form.routes.advancedMatching')}
+        names={ADVANCED_MATCH_FIELDS}
+        isDefault={isDefaultMatch}
+      >
+        {(!isReadOnly || enableWebsocket) && (
+          <InputWrapper label={<LabelWithTooltip label={t('form.routes.enableWebsocket')} tooltip={t('form.routes.tooltip.enableWebsocket')} />}>
+            <FormItemSwitch
+              control={control}
+              name="enable_websocket"
+              disabled={readOnlyFields.includes('enable_websocket') || undefined}
+            />
+          </InputWrapper>
+        )}
+        {(!isReadOnly || hasValue(uris)) && (
+          <FormItemTagsInput
+            control={control}
+            name="uris"
+            label={t('form.routes.uris')}
+            disabled={readOnlyFields.includes('uris') || undefined}
+          />
+        )}
+        {(!isReadOnly || hasValue(hosts)) && (
+          <FormItemTagsInput
+            control={control}
+            name="hosts"
+            label={t('form.routes.hosts')}
+            disabled={readOnlyFields.includes('hosts') || undefined}
+          />
+        )}
+        {(!isReadOnly || hasValue(remoteAddr)) && (
+          <FormItemTextInput
+            control={control}
+            name="remote_addr"
+            label={<LabelWithTooltip label={t('form.routes.remoteAddr')} tooltip={t('form.routes.tooltip.remoteAddr')} />}
+            disabled={readOnlyFields.includes('remote_addr') || undefined}
+          />
+        )}
+        {(!isReadOnly || hasValue(remoteAddrs)) && (
+          <FormItemTagsInput
+            control={control}
+            name="remote_addrs"
+            label={t('form.routes.remoteAddrs')}
+            disabled={readOnlyFields.includes('remote_addrs') || undefined}
+          />
+        )}
+        {(!isReadOnly || hasValue(vars)) && (
+          <FormItemEditor
+            control={control}
+            name="vars"
+            label={<LabelWithTooltip label={t('form.routes.vars')} tooltip={t('form.routes.tooltip.vars')} />}
+            description={t('form.routes.varsDescription')}
+            disabled={readOnlyFields.includes('vars') || undefined}
+          />
+        )}
+        {(!isReadOnly || hasValue(filterFunc)) && (
+          <FormItemTextarea
+            control={control}
+            name="filter_func"
+            label={<LabelWithTooltip label={t('form.routes.filterFunc')} tooltip={t('form.routes.tooltip.filterFunc')} />}
+            disabled={readOnlyFields.includes('filter_func') || undefined}
+          />
+        )}
+        <FormItemNumberInput
           control={control}
-          name="hosts"
-          label={t('form.routes.hosts')}
-          disabled={readOnlyFields.includes('hosts') || undefined}
+          name="priority"
+          label={<LabelWithTooltip label={t('form.routes.priority')} tooltip={t('form.routes.tooltip.priority')} />}
+          defaultValue={zGetDefault(APISIX.Route).priority!}
+          disabled={readOnlyFields.includes('priority') || undefined}
         />
-      )}
-      {(!isReadOnly || hasValue(remoteAddr)) && (
-        <FormItemTextInput
-          control={control}
-          name="remote_addr"
-          label={<LabelWithTooltip label={t('form.routes.remoteAddr')} tooltip={t('form.routes.tooltip.remoteAddr')} />}
-          disabled={readOnlyFields.includes('remote_addr') || undefined}
-        />
-      )}
-      {(!isReadOnly || hasValue(remoteAddrs)) && (
-        <FormItemTagsInput
-          control={control}
-          name="remote_addrs"
-          label={t('form.routes.remoteAddrs')}
-          disabled={readOnlyFields.includes('remote_addrs') || undefined}
-        />
-      )}
-      {(!isReadOnly || hasValue(vars)) && (
-        <FormItemEditor
-          control={control}
-          name="vars"
-          label={<LabelWithTooltip label={t('form.routes.vars')} tooltip={t('form.routes.tooltip.vars')} />}
-          description={t('form.routes.varsDescription')}
-          disabled={readOnlyFields.includes('vars') || undefined}
-        />
-      )}
-      {(!isReadOnly || hasValue(filterFunc)) && (
-        <FormItemTextarea
-          control={control}
-          name="filter_func"
-          label={<LabelWithTooltip label={t('form.routes.filterFunc')} tooltip={t('form.routes.tooltip.filterFunc')} />}
-          disabled={readOnlyFields.includes('filter_func') || undefined}
-        />
-      )}
+      </AdvancedSection>
     </FormSection>
   );
 };
@@ -345,7 +367,7 @@ export const FormSectionService = () => {
 export const FormPartRoute = ({ showGeneral }: { showGeneral?: boolean }) => {
   return (
     <>
-      <FormPartBasicWithPriority showGeneral={showGeneral} />
+      <FormPartRouteBasic showGeneral={showGeneral} />
       <FormSectionMatchRules />
       <FormSectionService />
       <FormSectionTimeout />

@@ -467,20 +467,20 @@
         "apiInfoDesc": "Protokoll, Host, Pfad usw.",
         "upstream": "Upstream festlegen",
         "upstreamDesc": "Konfiguration des Zielsystems",
-        "plugins": "Plugin-Konfiguration",
-        "pluginsDesc": "Plugins hinzufügen und konfigurieren",
         "preview": "Vorschau",
         "previewDesc": "Prüfen und abschließen",
         "summaryBoundToService": "An Service gebunden",
         "summaryCustomNodes": "Eigener: {{count}} Node(s)",
         "summaryCustom": "Eigener Upstream",
         "summaryExisting": "Vorhandener Upstream",
-        "summaryPluginConfig": "Plugin-Konfiguration: {{- id}}"
-      }
+        "summaryPluginConfig": "Plugin-Konfiguration: {{- id}}",
+        "options": "Optionen",
+        "optionsDesc": "Request-Umschreibung und Plugins, beides optional"
+      },
+      "advancedMatching": "Erweitertes Matching"
     },
     "requestOverride": {
       "title": "Request Override",
-      "description": "Request-Eigenschaften vor dem Proxy umschreiben",
       "scheme": "Schema",
       "keepOriginal": "Beibehalten",
       "uri": "URI Override",

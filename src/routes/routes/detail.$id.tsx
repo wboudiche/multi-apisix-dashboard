@@ -34,7 +34,7 @@ import { teamsQueryOptions } from '@/apis/queries';
 import { putRouteReq } from '@/apis/routes';
 import {teamApi } from '@/apis/teams';
 import {
-  FormPartBasicWithPriority,
+  FormPartRouteBasic,
   FormSectionMatchRules,
   FormSectionPlugins,
   FormSectionRequestOverride,
@@ -128,7 +128,7 @@ const RouteDetailForm = (props: Props) => {
       content: (
         <>
           <FormSectionGeneral readOnly />
-          <FormPartBasicWithPriority />
+          <FormPartRouteBasic />
           <FormSectionMatchRules />
         </>
       ),
@@ -146,15 +146,15 @@ const RouteDetailForm = (props: Props) => {
       fields: ['upstream', 'upstream_id', 'service_id'],
     },
     {
-      label: t('form.requestOverride.title'),
-      description: t('form.requestOverride.description'),
-      content: <FormSectionRequestOverride />,
-      fields: [],
-    },
-    {
-      label: t('form.routes.steps.plugins'),
-      description: t('form.routes.steps.pluginsDesc'),
-      content: <FormSectionPlugins />,
+      // Request rewrite and plugins, one step, as on the add page.
+      label: t('form.routes.steps.options'),
+      description: t('form.routes.steps.optionsDesc'),
+      content: (
+        <>
+          <FormSectionRequestOverride />
+          <FormSectionPlugins />
+        </>
+      ),
       fields: ['plugins', 'plugin_config_id'],
     },
     {

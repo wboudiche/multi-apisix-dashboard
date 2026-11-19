@@ -467,20 +467,20 @@
         "apiInfoDesc": "Protokol, host, yol vb.",
         "upstream": "Upstream Tanımla",
         "upstreamDesc": "Hedef yapılandırması",
-        "plugins": "Plugin Yapılandırması",
-        "pluginsDesc": "Plugin ekle ve yapılandır",
         "preview": "Önizleme",
         "previewDesc": "Gözden geçir ve bitir",
         "summaryBoundToService": "Servise bağlı",
         "summaryCustomNodes": "Özel: {{count}} node",
         "summaryCustom": "Özel upstream",
         "summaryExisting": "Mevcut upstream",
-        "summaryPluginConfig": "Plugin yapılandırması: {{- id}}"
-      }
+        "summaryPluginConfig": "Plugin yapılandırması: {{- id}}",
+        "options": "Seçenekler",
+        "optionsDesc": "İstek yeniden yazma ve eklentiler, ikisi de isteğe bağlı"
+      },
+      "advancedMatching": "Gelişmiş eşleştirme"
     },
     "requestOverride": {
       "title": "İstek Geçersiz Kılma",
-      "description": "Proxy öncesi istek özelliklerini yeniden yaz",
       "scheme": "Şema",
       "keepOriginal": "Orijinali Koru",
       "uri": "URI Geçersiz Kılma",
