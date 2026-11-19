@@ -484,9 +484,13 @@
         "descHmac": "Clients holding a secret key: each signs every request with it (HMAC). Only the clients you can see are listed.",
         "secret": "Secret",
         "createdSecret": "Client {{name}} created. Copy its secret now: it is not shown again here.",
-        "jwtHow": "The application signs its tokens with this secret, HS256, carrying the claims \"key\": \"{{name}}\" and \"exp\", the time it expires.",
-        "jwtTry": "Once saved, a token valid for one hour gets through like this:",
-        "hmacTry": "Once saved, a request signed like this gets through (a shell script: set the path first):"
+        "jwtHow": "The application signs its tokens with this secret, HS256, carrying the claims \"{{claim}}\": \"{{identifier}}\" and \"exp\", the time it expires.",
+        "jwtTry": "Once saved, this token gets through until {{time}}:",
+        "hmacTry": "Once saved, a request signed like this gets through (a shell script: set the gateway, the method and the path first):",
+        "jwtNoSign": "This browser cannot sign a token to try it with here: the page is not served over HTTPS.",
+        "identifierBasic": "Its username:",
+        "identifierJwt": "Its key, the claim its tokens carry:",
+        "identifierHmac": "Its keyId, named in each signature:"
       }
     },
     "protos": {

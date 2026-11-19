@@ -488,8 +488,12 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
               value={formValue}
               onChange={setFormValue}
               disabled={mode === 'view'}
+              // The fields a route's form sets: a consumer's credential is
+              // another schema, whose own fields are all to be seen.
               primaryKeys={
-                isAuthClientPlugin(name) ? AUTH_PRIMARY_FIELDS[name] : undefined
+                clientsShown && isAuthClientPlugin(name)
+                  ? AUTH_PRIMARY_FIELDS[name]
+                  : undefined
               }
             />
             {clientsShown && (

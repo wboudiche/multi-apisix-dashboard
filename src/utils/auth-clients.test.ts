@@ -19,12 +19,14 @@ import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import {
+  clientIdentifier,
   credentialConfig,
   credentialId,
   generateSecret,
   hmacScript,
   holdsCredential,
   isAuthClientPlugin,
+  jwtKeyClaim,
   readRestriction,
   runsAfterRestriction,
   sameRestriction,
@@ -137,24 +139,49 @@ describe('auth clients', () => {
     expect(sameRestriction({ mode: 'any' }, { mode: 'only', names: [] })).toBe(false);
   });
 
-  it('signs a JWT the way jwt-auth checks it', async () => {
-    const now = Date.UTC(2026, 0, 1);
-    const token = await signJwt('app', 's3cret', 3600, now);
+  it('names a client by its name and a random suffix', () => {
+    const a = clientIdentifier('app');
+    expect(a).toMatch(/^app-[0-9a-f]{6}$/);
+    expect(clientIdentifier('app')).not.toBe(a);
+  });
+
+  it('signs a JWT the way jwt-auth checks it, in the claim the route reads', async () => {
+    const token = await signJwt('sub', 'app-1', 's3cret', 1767225600);
     const [header, payload, signature] = token.split('.');
     const decode = (part: string) => JSON.parse(Buffer.from(part, 'base64url').toString());
     expect(decode(header)).toEqual({ alg: 'HS256', typ: 'JWT' });
-    expect(decode(payload)).toEqual({ key: 'app', exp: now / 1000 + 3600 });
+    expect(decode(payload)).toEqual({ sub: 'app-1', exp: 1767225600 });
     expect(signature).toBe(
       createHmac('sha256', 's3cret').update(`${header}.${payload}`).digest('base64url')
     );
+    expect(jwtKeyClaim({})).toBe('key');
+    expect(jwtKeyClaim({ key_claim_name: 'sub' })).toBe('sub');
   });
 
   it('writes an HMAC script with its values quoted and its date in English', () => {
-    const script = hmacScript('app', "it's");
+    const script = hmacScript('app', "it's", {});
     expect(script).toContain("KEY_ID='app'");
     expect(script).toContain("SECRET='it'\\''s'");
     // The gateway refuses a day or month name in another language.
     expect(script).toContain('LC_ALL=C date -u');
+    // On one line: base64 wraps a long signature, and the header breaks.
+    expect(script).toContain('openssl base64 -A');
+    expect(script).not.toMatch(/\| base64\b/);
     expect(script).toContain('headers=\\"@request-target date\\"');
+    expect(script).toContain('openssl dgst -sha256');
+  });
+
+  it('signs what the route requires: its headers, spelt its way, its algorithm, the body', () => {
+    const script = hmacScript('app', 's', {
+      signed_headers: ['Date', 'X-App'],
+      allowed_algorithms: ['hmac-sha512'],
+      validate_request_body: true,
+    });
+    expect(script).toContain("H_X_APP='value'");
+    expect(script).toContain("'%s\\n%s %s\\nDate: %s\\nX-App: %s\\n'");
+    expect(script).toContain('headers=\\"@request-target Date X-App\\"');
+    expect(script).toContain('algorithm=\\"hmac-sha512\\"');
+    expect(script).toContain('openssl dgst -sha512');
+    expect(script).toContain('-H "Digest: $DIGEST" --data-binary "$BODY"');
   });
 });

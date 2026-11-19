@@ -457,9 +457,13 @@
         "descHmac": "Clients mit einem geheimen Schlüssel: Jeder signiert damit jede Anfrage (HMAC). Nur die Clients, die Sie sehen, werden aufgeführt.",
         "secret": "Geheimnis",
         "createdSecret": "Client {{name}} erstellt. Kopieren Sie sein Geheimnis jetzt: Es wird hier nicht noch einmal angezeigt.",
-        "jwtHow": "Die Anwendung signiert ihre Tokens mit diesem Geheimnis, HS256, mit den Claims \"key\": \"{{name}}\" und \"exp\", dem Ablaufzeitpunkt.",
-        "jwtTry": "Nach dem Speichern kommt ein eine Stunde gültiges Token so durch:",
-        "hmacTry": "Nach dem Speichern kommt eine so signierte Anfrage durch (ein Shell-Skript: zuerst den Pfad setzen):"
+        "jwtHow": "Die Anwendung signiert ihre Tokens mit diesem Geheimnis, HS256, mit den Claims \"{{claim}}\": \"{{identifier}}\" und \"exp\", dem Ablaufzeitpunkt.",
+        "jwtTry": "Nach dem Speichern kommt dieses Token bis {{time}} durch:",
+        "hmacTry": "Nach dem Speichern kommt eine so signierte Anfrage durch (ein Shell-Skript: zuerst Gateway, Methode und Pfad setzen):",
+        "jwtNoSign": "Dieser Browser kann hier kein Token zum Ausprobieren signieren: Die Seite wird nicht über HTTPS ausgeliefert.",
+        "identifierBasic": "Sein Benutzername:",
+        "identifierJwt": "Sein Schlüssel, der Claim seiner Tokens:",
+        "identifierHmac": "Seine keyId, in jeder Signatur genannt:"
       }
     },
     "protos": {

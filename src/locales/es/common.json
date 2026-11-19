@@ -459,9 +459,13 @@
         "descHmac": "Clientes que tienen una clave secreta: cada uno firma con ella cada petición (HMAC). Solo se listan los clientes que puede ver.",
         "secret": "Secreto",
         "createdSecret": "Cliente {{name}} creado. Copie su secreto ahora: no se vuelve a mostrar aquí.",
-        "jwtHow": "La aplicación firma sus tokens con este secreto, HS256, con los claims \"key\": \"{{name}}\" y \"exp\", el momento en que caduca.",
-        "jwtTry": "Una vez guardado, un token válido durante una hora pasa así:",
-        "hmacTry": "Una vez guardado, una petición firmada así pasa (un script de shell: defina primero la ruta):"
+        "jwtHow": "La aplicación firma sus tokens con este secreto, HS256, con los claims \"{{claim}}\": \"{{identifier}}\" y \"exp\", el momento en que caduca.",
+        "jwtTry": "Una vez guardado, este token pasa hasta las {{time}}:",
+        "hmacTry": "Una vez guardado, una petición firmada así pasa (un script de shell: defina primero la pasarela, el método y la ruta):",
+        "jwtNoSign": "Este navegador no puede firmar aquí un token para probarlo: la página no se sirve por HTTPS.",
+        "identifierBasic": "Su nombre de usuario:",
+        "identifierJwt": "Su clave, el claim que llevan sus tokens:",
+        "identifierHmac": "Su keyId, nombrado en cada firma:"
       }
     },
     "protos": {

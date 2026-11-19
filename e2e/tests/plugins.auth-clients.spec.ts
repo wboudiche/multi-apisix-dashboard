@@ -154,7 +154,7 @@ const SIGNING = [
   // A token signed in the browser, sent with the Bearer word.
   { plugin: 'jwt-auth', field: 'key', usage: () => /curl -H 'authorization: Bearer [\w-]+\.[\w-]+\.[\w-]+'/ },
   // A script that signs a request, with the client's keyId.
-  { plugin: 'hmac-auth', field: 'key_id', usage: (name: string) => `KEY_ID='${name}'` },
+  { plugin: 'hmac-auth', field: 'key_id', usage: (name: string) => new RegExp(`KEY_ID='${name}-[0-9a-f]{6}'`) },
 ] as const;
 
 for (const { plugin, field, usage } of SIGNING) {
@@ -182,7 +182,9 @@ for (const { plugin, field, usage } of SIGNING) {
       const creds = await e2eReq
         .get<unknown, { data: Credentials }>(API_CREDENTIALS(name))
         .then((r) => r.data.list);
-      expect(creds.map((c) => c.value.plugins[plugin]?.[field])).toContain(name);
+      expect(creds.map((c) => c.value.plugins[plugin]?.[field])).toContainEqual(
+        expect.stringMatching(new RegExp(`^${name}-[0-9a-f]{6}$`))
+      );
     } finally {
       await removeClient(name);
     }

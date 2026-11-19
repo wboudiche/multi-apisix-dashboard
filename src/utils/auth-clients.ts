@@ -64,24 +64,29 @@ export const holdsCredential = (
   credentials.some((c) => !!c.plugins?.[plugin]);
 
 /**
- * What a new client's credential carries, by plugin. A JWT names its client
- * by the token's `key` claim and an HMAC signature by its keyId: both are the
- * client's name, which the gateway already holds unique.
+ * The name a client's credential is found by, for the plugins that name it
+ * apart from its secret: a basic-auth username, a JWT's key claim, an HMAC
+ * keyId. The gateway finds the client by it and takes a second credential
+ * holding the same one without complaint, so it is the client's name with a
+ * random suffix - nothing made elsewhere, by another team, holds it already.
  */
+export const clientIdentifier = (name: string): string => `${name}-${generateSecret(3)}`;
+
+/** What a new client's credential carries, by plugin. */
 export const credentialConfig = (
   plugin: AuthClientPlugin,
-  name: string,
+  identifier: string,
   secret: string
 ): Record<string, string> => {
   switch (plugin) {
     case 'key-auth':
       return { key: secret };
     case 'basic-auth':
-      return { username: name, password: secret };
+      return { username: identifier, password: secret };
     case 'jwt-auth':
-      return { key: name, secret };
+      return { key: identifier, secret };
     case 'hmac-auth':
-      return { key_id: name, secret_key: secret };
+      return { key_id: identifier, secret_key: secret };
   }
 };
 
@@ -106,23 +111,29 @@ const base64url = (bytes: Uint8Array): string =>
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 
+/** The claim jwt-auth finds the client by, as the route's form sets it. */
+export const jwtKeyClaim = (config: Record<string, unknown>): string =>
+  typeof config.key_claim_name === 'string' && config.key_claim_name
+    ? config.key_claim_name
+    : 'key';
+
 /**
  * A JWT signed HS256 with the client's secret, as jwt-auth checks it: the
- * client named by the `key` claim, valid for the seconds given. Made in the
- * browser, for trying the route; the application makes its own.
+ * client named in the claim the route reads, valid until the expiry given.
+ * Made in the browser, for trying the route; the application makes its own.
+ * Rejects where the browser offers no Web Crypto - a page not served over
+ * HTTPS or from localhost.
  */
 export const signJwt = async (
-  key: string,
+  claim: string,
+  identifier: string,
   secret: string,
-  seconds: number,
-  now = Date.now()
+  exp: number
 ): Promise<string> => {
+  if (!globalThis.crypto?.subtle) throw new Error('no Web Crypto');
   const enc = new TextEncoder();
   const part = (o: object) => base64url(enc.encode(JSON.stringify(o)));
-  const body = `${part({ alg: 'HS256', typ: 'JWT' })}.${part({
-    key,
-    exp: Math.floor(now / 1000) + seconds,
-  })}`;
+  const body = `${part({ alg: 'HS256', typ: 'JWT' })}.${part({ [claim]: identifier, exp })}`;
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     enc.encode(secret),
@@ -134,24 +145,69 @@ export const signJwt = async (
   return `${body}.${base64url(new Uint8Array(sig))}`;
 };
 
+const HMAC_ALGORITHMS = ['hmac-sha256', 'hmac-sha512', 'hmac-sha1'] as const;
+
+/** A header name as a shell variable: X-App becomes H_X_APP. */
+const headerVar = (header: string): string =>
+  `H_${header.toUpperCase().replace(/-/g, '_')}`;
+
 /**
- * A shell script that signs one request as hmac-auth checks it: the keyId,
- * the method and path, and the Date header, each on its own line, signed
- * HMAC-SHA256 with the secret. The date is written in the C locale - the
- * gateway refuses a day or month name in another language.
+ * A shell script that signs one request as the route's hmac-auth checks it:
+ * the keyId, the method and path, the Date header and every other header the
+ * route requires signed, each on its own line, signed with an algorithm the
+ * route allows; and the body's digest when the route validates it. Its date
+ * is written in the C locale - the gateway refuses a day or month name in
+ * another language - and its base64 on one line, which `base64` wraps.
  */
-export const hmacScript = (keyId: string, secret: string): string =>
-  [
-    `KEY_ID=${shellQuote(keyId)}`,
-    `SECRET=${shellQuote(secret)}`,
+export const hmacScript = (
+  identifier: string,
+  secret: string,
+  config: Record<string, unknown>
+): string => {
+  const allowed = Array.isArray(config.allowed_algorithms)
+    ? HMAC_ALGORITHMS.filter((a) => (config.allowed_algorithms as unknown[]).includes(a))
+    : [...HMAC_ALGORITHMS];
+  const algorithm = allowed[0] ?? 'hmac-sha256';
+  const digest = algorithm.replace('hmac-', '');
+  // Spelt as the route spells them: the gateway compares the names it
+  // requires with the signed ones case and all.
+  const required = (Array.isArray(config.signed_headers) ? config.signed_headers : [])
+    .filter((h): h is string => typeof h === 'string' && /^[A-Za-z0-9-]+$/.test(h));
+  const date = required.find((h) => h.toLowerCase() === 'date') ?? 'date';
+  const headers = [...new Set(required.filter((h) => h.toLowerCase() !== 'date'))];
+  const withBody = config.validate_request_body === true;
+
+  const format =
+    ['%s', '%s %s', `${date}: %s`, ...headers.map((h) => `${h}: %s`)].join('\\n') + '\\n';
+  const args = [
+    '"$KEY_ID"',
+    '"$METHOD"',
+    '"$REQ_PATH"',
+    '"$DATE"',
+    ...headers.map((h) => `"$${headerVar(h)}"`),
+  ];
+  const signed = ['@request-target', date, ...headers].join(' ');
+  return [
+    'GATEWAY=\'http://<gateway>\'',
+    'METHOD=GET',
     'REQ_PATH=/your/path',
+    ...headers.map((h) => `${headerVar(h)}='value'`),
+    ...(withBody ? ['BODY=\'\''] : []),
+    `KEY_ID=${shellQuote(identifier)}`,
+    `SECRET=${shellQuote(secret)}`,
     'DATE=$(LC_ALL=C date -u \'+%a, %d %b %Y %H:%M:%S GMT\')',
-    'SIG=$(printf \'%s\\n%s %s\\ndate: %s\\n\' "$KEY_ID" GET "$REQ_PATH" "$DATE" \\',
-    '  | openssl dgst -sha256 -hmac "$SECRET" -binary | base64)',
-    'curl -H "Date: $DATE" \\',
-    '  -H "Authorization: Signature keyId=\\"$KEY_ID\\",algorithm=\\"hmac-sha256\\",headers=\\"@request-target date\\",signature=\\"$SIG\\"" \\',
-    '  "http://<gateway>$REQ_PATH"',
+    ...(withBody
+      ? ['DIGEST="SHA-256=$(printf \'%s\' "$BODY" | openssl dgst -sha256 -binary | openssl base64 -A)"']
+      : []),
+    `SIG=$(printf '${format}' ${args.join(' ')} \\`,
+    `  | openssl dgst -${digest} -hmac "$SECRET" -binary | openssl base64 -A)`,
+    'curl -X "$METHOD" -H "Date: $DATE" \\',
+    ...headers.map((h) => `  -H "${h}: $${headerVar(h)}" \\`),
+    ...(withBody ? ['  -H "Digest: $DIGEST" --data-binary "$BODY" \\'] : []),
+    `  -H "Authorization: Signature keyId=\\"$KEY_ID\\",algorithm=\\"${algorithm}\\",headers=\\"${signed}\\",signature=\\"$SIG\\"" \\`,
+    '  "$GATEWAY$REQ_PATH"',
   ].join('\n');
+};
 
 /**
  * Which clients the route lets through, as its consumer-restriction plugin

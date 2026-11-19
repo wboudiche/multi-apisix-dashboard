@@ -457,9 +457,13 @@
         "descHmac": "持有密钥的客户端：每个客户端用它对每个请求签名（HMAC）。仅列出您可见的客户端。",
         "secret": "密钥",
         "createdSecret": "客户端 {{name}} 已创建。请立即复制其密钥：此处不会再次显示。",
-        "jwtHow": "应用使用此密钥以 HS256 签发令牌，携带声明 \"key\": \"{{name}}\" 和过期时间 \"exp\"。",
-        "jwtTry": "保存后，有效期一小时的令牌可以这样通过：",
-        "hmacTry": "保存后，这样签名的请求可以通过（一个 shell 脚本：请先设置路径）："
+        "jwtHow": "应用使用此密钥以 HS256 签发令牌，携带声明 \"{{claim}}\": \"{{identifier}}\" 和过期时间 \"exp\"。",
+        "jwtTry": "保存后，此令牌在 {{time}} 之前可以通过：",
+        "hmacTry": "保存后，这样签名的请求可以通过（一个 shell 脚本：请先设置网关、方法和路径）：",
+        "jwtNoSign": "此浏览器无法在此签发用于尝试的令牌：页面未通过 HTTPS 提供。",
+        "identifierBasic": "其用户名：",
+        "identifierJwt": "其 key，即令牌携带的声明：",
+        "identifierHmac": "其 keyId，在每次签名中注明："
       }
     },
     "protos": {

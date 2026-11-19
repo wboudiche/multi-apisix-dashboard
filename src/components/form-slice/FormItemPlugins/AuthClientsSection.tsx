@@ -51,11 +51,13 @@ import type { APISIXType } from '@/types/schema/apisix';
 import {
   type AuthClientPlugin,
   CLIENT_NAME_PATTERN,
+  clientIdentifier,
   credentialConfig,
   credentialId,
   generateSecret,
   hmacScript,
   holdsCredential,
+  jwtKeyClaim,
   type Restriction,
   shellQuote,
   signJwt,
@@ -122,9 +124,14 @@ const CopyValue = ({ value }: { value: string }) => {
 
 type Created = {
   name: string;
+  /** What the credential finds the client by, beside its secret. */
+  identifier: string;
   secret: string;
-  /** For jwt-auth: a token signed with the secret, to try the route with. */
-  token?: string;
+  /**
+   * For jwt-auth: a token signed with the secret, to try the route with, and
+   * when it expires; null where the browser could not sign one.
+   */
+  token?: { value: string; exp: number } | null;
 };
 
 /** A command or script, with a button that copies it. */
@@ -154,7 +161,7 @@ const Usage = ({
         <Text size="xs" c="dimmed">
           {t('form.plugins.clients.hmacTry')}
         </Text>
-        <CopyBlock value={hmacScript(created.name, created.secret)} />
+        <CopyBlock value={hmacScript(created.identifier, created.secret, config)} />
       </>
     );
   }
@@ -165,15 +172,25 @@ const Usage = ({
     return (
       <>
         <Text size="xs" c="dimmed">
-          {t('form.plugins.clients.jwtHow', { name: created.name })}
+          {t('form.plugins.clients.jwtHow', {
+            claim: jwtKeyClaim(config),
+            identifier: created.identifier,
+          })}
         </Text>
+        {created.token === null && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.jwtNoSign')}
+          </Text>
+        )}
         {created.token && (
           <>
             <Text size="xs" c="dimmed">
-              {t('form.plugins.clients.jwtTry')}
+              {t('form.plugins.clients.jwtTry', {
+                time: new Date(created.token.exp * 1000).toLocaleTimeString(),
+              })}
             </Text>
             <CopyBlock
-              value={`curl -H ${shellQuote(`${header}: Bearer ${created.token}`)} http://<gateway>/<path>`}
+              value={`curl -H ${shellQuote(`${header}: Bearer ${created.token.value}`)} http://<gateway>/<path>`}
             />
           </>
         )}
@@ -185,7 +202,7 @@ const Usage = ({
   const credential =
     plugin === 'key-auth'
       ? `-H ${shellQuote(`${usableHeader(config.header)}: ${created.secret}`)}`
-      : `-u ${shellQuote(`${created.name}:${created.secret}`)}`;
+      : `-u ${shellQuote(`${created.identifier}:${created.secret}`)}`;
   return (
     <>
       <Text size="xs" c="dimmed">
@@ -338,13 +355,14 @@ export const AuthClientsSection = ({
           throw e;
         }
       }
+      const identifier = clientIdentifier(name);
       try {
         await putCredentialReq(
           req,
           {
             username: name,
             id: credentialId(plugin),
-            plugins: { [plugin]: credentialConfig(plugin, name, secret) },
+            plugins: { [plugin]: credentialConfig(plugin, identifier, secret) },
           } as APISIXType['CredentialPut'] & { username: string },
           CREATE_ONLY
         );
@@ -356,16 +374,19 @@ export const AuthClientsSection = ({
         }
         throw e;
       }
-      // A token to try the route with, signed here: the secret is not
-      // stored readable, so it cannot be signed with later.
-      const token =
-        plugin === 'jwt-auth'
-          ? await signJwt(name, secret, 3600).catch(() => undefined)
-          : undefined;
-      return token;
+      // A token to try the route with, signed now, while the secret is at
+      // hand, and valid an hour from now: the text says until when.
+      let token: Created['token'];
+      if (plugin === 'jwt-auth') {
+        const exp = Math.floor(Date.now() / 1000) + 3600;
+        token = await signJwt(jwtKeyClaim(config), identifier, secret, exp)
+          .then((value) => ({ value, exp }))
+          .catch(() => null);
+      }
+      return { identifier, token };
     },
-    onSuccess: (token) => {
-      setCreated({ name, secret, token });
+    onSuccess: ({ identifier, token }) => {
+      setCreated({ name, identifier, secret, token });
       // Made from this form to call this route: on its list at once.
       if (access.mode === 'only' && !access.names.includes(name)) {
         onAccessChange({ mode: 'only', names: [...access.names, name] });
@@ -491,6 +512,21 @@ export const AuthClientsSection = ({
                 <Code style={{ flex: 1 }}>{created.secret}</Code>
                 <CopyValue value={created.secret} />
               </Group>
+              {plugin !== 'key-auth' && (
+                <>
+                  <Text size="xs" c="dimmed">
+                    {plugin === 'basic-auth'
+                      ? t('form.plugins.clients.identifierBasic')
+                      : plugin === 'jwt-auth'
+                        ? t('form.plugins.clients.identifierJwt')
+                        : t('form.plugins.clients.identifierHmac')}
+                  </Text>
+                  <Group gap={4} wrap="nowrap">
+                    <Code style={{ flex: 1 }}>{created.identifier}</Code>
+                    <CopyValue value={created.identifier} />
+                  </Group>
+                </>
+              )}
               <Usage plugin={plugin} config={config} created={created} />
             </Stack>
           </Alert>
