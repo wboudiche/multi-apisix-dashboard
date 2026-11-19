@@ -948,7 +948,8 @@
       "upstreamRequired": "Bir upstream seçin",
       "serviceRequired": "Bir servis seçin",
       "destinationUrlPlain": "Yalnızca şema, host, port ve yol: kimlik bilgisi, sorgu, parça veya $ olmadan",
-      "pathSlash": "Bir yol / ile başlar"
+      "pathSlash": "Bir yol / ile başlar",
+      "destinationPathRewritten": "Bu rota yolunu zaten yeniden yazıyor: adresi yol olmadan verin"
     },
     "quickRoute": {
       "title": "Yeni rota",
@@ -971,7 +972,12 @@
       "createOffline": "Çevrimdışı oluştur",
       "replaceDraftTitle": "Taslağınız değiştirilsin mi?",
       "replaceDraftBody": "Tam form daha önce başladığınız bir rotayı içeriyor. Bu yanıtlarla açmak o taslağın yerini alır.",
-      "replaceDraftConfirm": "Değiştir"
+      "replaceDraftConfirm": "Değiştir",
+      "duplicateTitle": "“{{name}}” çoğalt",
+      "duplicateIntro": "“{{name}}” içindeki her şey kopyalanır: eklentiler, vars, öncelik, etiketler. Yalnızca burada değiştirdikleriniz farklı olur.",
+      "destSame": "Orijinaliyle aynı",
+      "nameCopy": "{{name}} (kopya)",
+      "hostsHint": "Kopyalanan: {{hosts}}. Buraya yazılan bir host bunların yerini alır."
     }
   },
   "globalRules": {
@@ -1077,7 +1083,6 @@
       "filterTeamPlaceholder": "Herhangi bir takım",
       "filterTeamUnassigned": "Atanmamış",
       "headerId": "ID",
-      "duplicateFailed": "Çoğaltılamadı",
       "updateFailed": "Güncellenemedi",
       "columnsFixed": "Sabit",
       "columnsNameAlwaysShown": "Her satır tanınabilsin diye her zaman gösterilir",

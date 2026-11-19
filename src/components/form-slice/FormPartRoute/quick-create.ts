@@ -25,7 +25,9 @@ import { UPSTREAM_CUSTOM } from './util';
 export type QuickDestination =
   | { kind: 'url'; url: string }
   | { kind: 'upstream'; upstreamId: string }
-  | { kind: 'service'; serviceId: string };
+  | { kind: 'service'; serviceId: string }
+  /** A copy's destination left as the original's (the duplicate dialog). */
+  | { kind: 'same' };
 
 /** The dialog's answers: what a route needs, and nothing it can do without. */
 export type QuickRoute = {
@@ -38,7 +40,7 @@ export type QuickRoute = {
 };
 
 /** The timeouts the wizard starts a new upstream with. */
-const WIZARD_TIMEOUT = { connect: 6, send: 6, read: 6 };
+export const WIZARD_TIMEOUT = { connect: 6, send: 6, read: 6 };
 
 /** Where the add page keeps a route being written, and restores it from. */
 export const ROUTE_DRAFT_KEY = 'apisix-route-draft';
@@ -114,26 +116,44 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
   const d = q.destination;
   if (d.kind === 'upstream') return d.upstreamId ? { ...form, upstream_id: d.upstreamId } : form;
   if (d.kind === 'service') return d.serviceId ? { ...form, service_id: d.serviceId } : form;
+  if (d.kind === 'same') return form;
 
-  const built = upstreamFromServer(d.url.trim());
+  const built = upstreamFromAddress(d.url);
   if (!built) return form;
-  const { nodes, ...upstream } = built.upstream;
   return {
     ...form,
     upstream_id: UPSTREAM_CUSTOM,
-    upstream: {
-      ...upstream,
-      // The list shape: the one the wizard's node rows edit.
-      nodes: parseToNodes(nodes as APISIXType['UpstreamNodeListOrObj']),
-      timeout: WIZARD_TIMEOUT,
-    } as RoutePostType['upstream'],
-    // The address's path is where the backend's API lives: /orders under
-    // http://backend/v1 is /v1/orders to it, as the importer reads a server.
-    ...(built.basePath && {
-      plugins: { 'proxy-rewrite': { regex_uri: ['^(.*)$', `${built.basePath}$1`] } },
-    }),
+    upstream: built.upstream as RoutePostType['upstream'],
+    ...(built.basePath && { plugins: { 'proxy-rewrite': basePathRewrite(built.basePath) } }),
   };
 };
+
+/**
+ * The upstream an address makes - the importer's reading of a server, with
+ * the wizard's timeouts and nodes in the list shape its node rows edit - and
+ * the path the backend's API lives under. Null for what cannot be one.
+ */
+export const upstreamFromAddress = (url: string) => {
+  const built = upstreamFromServer(url.trim());
+  if (!built) return null;
+  const { nodes, ...upstream } = built.upstream;
+  return {
+    upstream: {
+      ...upstream,
+      nodes: parseToNodes(nodes as APISIXType['UpstreamNodeListOrObj']),
+      timeout: WIZARD_TIMEOUT,
+    },
+    basePath: built.basePath,
+  };
+};
+
+/**
+ * The proxy-rewrite for a backend whose API lives under a path: /orders
+ * under http://backend/v1 is /v1/orders to it, as the importer reads it.
+ */
+export const basePathRewrite = (basePath: string) => ({
+  regex_uri: ['^(.*)$', `${basePath}$1`],
+});
 
 /**
  * The dialog's answers as a draft for the add page, for "More options".
@@ -184,6 +204,18 @@ const DESTINATION_MISSING = {
  * which destination is missing rather than that one is.
  */
 export const quickRouteErrors = (q: QuickRoute): QuickRouteErrors => {
+  const errors = answerErrors(q);
+  const parsed = RoutePostSchema.safeParse(quickRouteToForm(q));
+  if (!parsed.success) addSchemaIssues(errors, parsed.error.issues);
+  return withoutEmpty(errors);
+};
+
+/**
+ * What the dialog can say about its own fields better than a schema: a path
+ * the gateway would never match, and which destination is missing rather
+ * than that one is.
+ */
+export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   const errors: QuickRouteErrors = {};
   const path = q.path.trim();
   if (!path) errors.path = 'form.validation.uriRequired';
@@ -193,18 +225,23 @@ export const quickRouteErrors = (q: QuickRoute): QuickRouteErrors => {
   if (d.kind === 'url') errors.destination = destinationUrlError(d.url);
   else if (d.kind === 'upstream' && !d.upstreamId) errors.destination = DESTINATION_MISSING.upstream;
   else if (d.kind === 'service' && !d.serviceId) errors.destination = DESTINATION_MISSING.service;
-
-  const parsed = RoutePostSchema.safeParse(quickRouteToForm(q));
-  if (!parsed.success) {
-    for (const issue of parsed.error.issues) {
-      const field = issue.path[0];
-      if (field === 'uri') errors.path ??= issue.message;
-      else if (field === 'name') errors.name ??= issue.message;
-      // The destination is told apart above, by kind.
-      else if (field === 'upstream_id' || field === 'upstream' || field === 'service_id') errors.destination ??= issue.message;
-      else (errors.other ??= []).push(issue.message);
-    }
-  }
-  if (!errors.destination) delete errors.destination;
   return errors;
 };
+
+/** A schema's refusals, each by the field of the dialog that shows it. */
+export const addSchemaIssues = (
+  errors: QuickRouteErrors,
+  issues: { path: (string | number)[]; message: string }[]
+) => {
+  for (const issue of issues) {
+    const field = issue.path[0];
+    if (field === 'uri') errors.path ??= issue.message;
+    else if (field === 'name') errors.name ??= issue.message;
+    // The destination is told apart by kind, in answerErrors.
+    else if (field === 'upstream_id' || field === 'upstream' || field === 'service_id') errors.destination ??= issue.message;
+    else (errors.other ??= []).push(issue.message);
+  }
+};
+
+export const withoutEmpty = (errors: QuickRouteErrors): QuickRouteErrors =>
+  Object.fromEntries(Object.entries(errors).filter(([, v]) => v !== undefined)) as QuickRouteErrors;
