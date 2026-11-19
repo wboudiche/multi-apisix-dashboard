@@ -137,10 +137,17 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
     return target && target.nodes.length > 0 ? target : null;
   }, [kind, url, upstreamId, upstreams]);
 
-  const connectionTest = testTarget && (
+  // Shown from the start, greyed out until there is something to dial, so
+  // that it is found before it is needed. Not for an upstream picked with no
+  // node to dial - found through service discovery, or APISIX's empty {} -
+  // where it would stay greyed out for good.
+  const awaitingTarget = kind === 'url' || (kind === 'upstream' && !upstreamId);
+  const connectionTest = testTarget ? (
     // Keyed by what it dials: an answer about the last address is not one
     // about this one.
     <ConnectionTest key={JSON.stringify(testTarget)} nodes={testTarget.nodes} scheme={testTarget.scheme} />
+  ) : (
+    awaitingTarget && <ConnectionTest key="none" nodes={[]} scheme={undefined} />
   );
 
   const errors = quickRouteErrors(answers);
