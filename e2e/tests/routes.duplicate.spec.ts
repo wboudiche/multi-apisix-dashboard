@@ -22,7 +22,7 @@ import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
 import { putRouteReq } from '@/apis/routes';
-import { API_ROUTES, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_ROUTES, API_UPSTREAMS, PAGE_SIZE_MAX } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 // The list endpoint injects the dashboard's own __team_id into every row — an
@@ -67,7 +67,7 @@ test.afterEach(async () => {
   );
 });
 
-test('duplicates a route without leaking dashboard fields to the Admin API', async ({
+test('duplicates a route whole, offline, without leaking dashboard fields', async ({
   page,
 }) => {
   await gotoRoutesList(page);
@@ -75,11 +75,64 @@ test('duplicates a route without leaking dashboard fields to the Admin API', asy
   await openMoreMenu(page, ROUTE_NAME);
   await page.getByRole('menuitem', { name: 'Duplicate' }).click();
 
-  // Success navigates to the copy's detail page. The bug surfaced instead as a
-  // toast reading "additional properties forbidden, found __team_id".
-  await routesPom.isDetailPage(page);
+  // The quick-create dialog, on the route it copies.
+  const dialog = page.getByRole('dialog', { name: `Duplicate “${ROUTE_NAME}”` });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue(`${ROUTE_NAME} (copy)`);
+  await expect(dialog.getByRole('textbox', { name: 'Path' })).toHaveValue(route.uri!);
+  await dialog.getByRole('button', { name: 'Create offline' }).click();
+  await expect(dialog).toBeHidden();
   await expect(page.getByText(/additional properties forbidden/)).toHaveCount(0);
-  await expect(page).toHaveURL((url) => !url.pathname.endsWith(`/detail/${ROUTE_ID}`));
+
+  const copy = (await listEvery<APISIXType['Route']>(API_ROUTES))
+    .map((item) => item.value)
+    .find((item) => item.name === `${ROUTE_NAME} (copy)`);
+  expect(copy).toBeDefined();
+  expect(copy!.id).not.toBe(ROUTE_ID);
+  // Offline: it answers on the original's path, and takes no traffic yet.
+  expect(copy!.status).toBe(0);
+  expect(copy!.upstream?.nodes).toEqual(route.upstream?.nodes);
+});
+
+test('duplicates a route onto another upstream, keeping the rest', async ({ page }) => {
+  const upstreamId = `${ROUTE_ID}-other`;
+  await e2eReq.put(`${API_UPSTREAMS}/${upstreamId}`, {
+    name: upstreamId,
+    type: 'roundrobin',
+    nodes: { '127.0.0.1:1980': 1 },
+  });
+  await putRouteReq(e2eReq, { ...route, priority: 7, vars: [['http_x_env', '==', 'beta']] });
+
+  try {
+    await gotoRoutesList(page);
+    await openMoreMenu(page, ROUTE_NAME);
+    await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+    const dialog = page.getByRole('dialog', { name: `Duplicate “${ROUTE_NAME}”` });
+    await dialog.locator('label').filter({ hasText: /^Existing upstream$/ }).click();
+    await dialog.getByRole('textbox', { name: 'Existing upstream' }).click();
+    await page.getByRole('option', { name: upstreamId }).click();
+    await dialog.getByRole('button', { name: 'Create offline' }).click();
+    await expect(dialog).toBeHidden();
+
+    const copy = (await listEvery<APISIXType['Route']>(API_ROUTES))
+      .map((item) => item.value)
+      .find((item) => item.name === `${ROUTE_NAME} (copy)`);
+    expect(copy).toMatchObject({
+      uri: route.uri,
+      methods: route.methods,
+      priority: 7,
+      vars: [['http_x_env', '==', 'beta']],
+      status: 0,
+      upstream_id: upstreamId,
+    });
+    expect(copy!.upstream).toBeUndefined();
+  } finally {
+    // The copy first: the gateway refuses to delete an upstream a route uses.
+    const copies = (await listEvery<APISIXType['Route']>(API_ROUTES))
+      .filter((item) => item.value.upstream_id === upstreamId);
+    await Promise.all(copies.map((item) => e2eReq.delete(`${API_ROUTES}/${item.value.id}`)));
+    await e2eReq.delete(`${API_UPSTREAMS}/${upstreamId}`);
+  }
 });
 
 // Every write path that echoes back a resource it just read hits this — the

@@ -35,7 +35,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useAtom,useAtomValue } from 'jotai';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -65,13 +65,13 @@ import { checkboxNames, rowId, rowNameOrId } from '@/hooks/useTableRowSelection'
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { ownTeamsAtom } from '@/stores/team';
+import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { withoutDashboardFields } from '@/utils/dashboard-fields';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { ownerOf } from '@/utils/owner';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
-import { proxyFailureText } from '@/utils/team-refusal';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconPlus from '~icons/material-symbols/add';
@@ -274,29 +274,10 @@ export const RouteList = (props: RouteListProps) => {
     }
   }, [jsonDrawerData, t, refetch]);
 
-  const navigate = useNavigate();
-  const handleDuplicate = useCallback(async (record: Record<string, unknown>) => {
-    try {
-      const body = { ...record };
-      delete body.id;
-      delete body.create_time;
-      delete body.update_time;
-      body.name = `${record.name || ''} (copy)`;
-      const res = await req.post(API_ROUTES, body);
-      const newId = res.data?.value?.id;
-      if (newId) {
-        await navigate({ to: '/routes/detail/$id', params: { id: newId } });
-      }
-    } catch (err: unknown) {
-      notifications.show({
-        // The sentence first, the reason under it: axios fills `message` on
-        // every network failure, so a fallback behind it was never read.
-        title: t('routes.list.duplicateFailed'),
-        message: proxyFailureText(err),
-        color: 'red',
-      });
-    }
-  }, [navigate, t]);
+  // The route being duplicated: the quick-create dialog, on its settings.
+  // It used to post an identical copy at once, published, answering on the
+  // original's path beside it before anyone chose where it should go.
+  const [duplicating, setDuplicating] = useState<APISIXType['Route'] | null>(null);
 
   /**
    * Publishes a route, or takes it offline.
@@ -654,7 +635,7 @@ export const RouteList = (props: RouteListProps) => {
                         {canCreate && (
                           <Menu.Item
                             leftSection={<IconCopy width="14" height="14" />}
-                            onClick={() => handleDuplicate(record.value)}
+                            onClick={() => setDuplicating(record.value)}
                           >
                             {t('form.json.duplicate')}
                           </Menu.Item>
@@ -740,6 +721,16 @@ export const RouteList = (props: RouteListProps) => {
         defaultHost={testDrawerRoute?.host}
         defaultSoapAction={testDrawerRoute?.soapAction}
       />
+      {duplicating && (
+        <QuickCreateRouteModal
+          // Keyed by the route: the dialog starts from the one it copies.
+          key={duplicating.id}
+          opened
+          source={duplicating}
+          onClose={() => setDuplicating(null)}
+          onCreated={refetch}
+        />
+      )}
     </Paper >
   );
 };

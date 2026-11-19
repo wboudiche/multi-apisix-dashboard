@@ -36,6 +36,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { postRouteReq } from '@/apis/routes';
+import { duplicateRouteBody, duplicateRouteErrors, keptPathRewrite, quickRouteFromRoute } from '@/components/form-slice/FormPartRoute/duplicate-route';
 import {
   destinationUrlError,
   proposeRouteName,
@@ -50,6 +51,7 @@ import {
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
 import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
 import { ConnectionTest } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
+import { API_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
@@ -65,12 +67,17 @@ const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 type DestinationKind = QuickDestination['kind'];
 
-
 type Props = {
   opened: boolean;
   onClose: () => void;
   /** After a route is created, for the list to read it. */
   onCreated: () => void;
+  /**
+   * The route to copy: the dialog then duplicates it, with every setting it
+   * has and only what is changed here different. Remount it for another
+   * route (a key), since it starts from this one.
+   */
+  source?: APISIXType['Route'];
 };
 
 /**
@@ -81,20 +88,27 @@ type Props = {
  * cannot do without, posts it the way the wizard does, and hands over to the
  * wizard, answers and all, for anything more.
  */
-export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => {
+export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const instanceId = useAtomValue(currentInstanceIdAtom);
 
-  const [path, setPath] = useState('');
-  const [methods, setMethods] = useState<string[]>(ROUTE_ADD_DEFAULTS.methods ?? []);
-  const [kind, setKind] = useState<DestinationKind>('url');
+  // A copy starts from the route; a new route from nothing.
+  const sourceName = source ? source.name || source.id : '';
+  const [initial] = useState(() =>
+    source ? quickRouteFromRoute(source, t('form.quickRoute.nameCopy', { name: sourceName })) : null
+  );
+
+  const [path, setPath] = useState(initial?.path ?? '');
+  const [methods, setMethods] = useState<string[]>(initial?.methods ?? ROUTE_ADD_DEFAULTS.methods ?? []);
+  const [kind, setKind] = useState<DestinationKind>(initial ? 'same' : 'url');
   const [url, setUrl] = useState('');
   const [upstreamId, setUpstreamId] = useState<string | null>(null);
   const [serviceId, setServiceId] = useState<string | null>(null);
-  const [host, setHost] = useState('');
-  // Null until typed in: until then the field shows the name it proposes.
-  const [typedName, setTypedName] = useState<string | null>(null);
+  const [host, setHost] = useState(initial?.host ?? '');
+  // Null until typed in: until then the field shows the name it proposes. A
+  // copy has its name from the start.
+  const [typedName, setTypedName] = useState<string | null>(initial?.name ?? null);
   const [showErrors, setShowErrors] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -110,10 +124,12 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
   const destination = useMemo<QuickDestination>(() => {
     if (kind === 'upstream') return { kind, upstreamId: upstreamId ?? '' };
     if (kind === 'service') return { kind, serviceId: serviceId ?? '' };
+    if (kind === 'same') return { kind };
     return { kind, url };
   }, [kind, url, upstreamId, serviceId]);
 
   const answers: QuickRoute = { path, methods, host, name, status: 1, destination };
+  const duplicating = source !== undefined;
 
   // What the connection test dials: the node an address makes, or the nodes
   // of the upstream picked. Nothing until there is one to dial.
@@ -150,7 +166,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
     awaitingTarget && <ConnectionTest key="none" nodes={[]} scheme={undefined} />
   );
 
-  const errors = quickRouteErrors(answers);
+  const errors = source ? duplicateRouteErrors(source, answers) : quickRouteErrors(answers);
   const valid = Object.keys(errors).length === 0;
   const shown = (key: string | undefined) => (showErrors ? errorText(key) : undefined);
 
@@ -164,15 +180,16 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
     );
   }, [existing, name, path, methods]);
 
+  // Back to where the dialog started: nothing, or the route it copies.
   const reset = () => {
-    setPath('');
-    setMethods(ROUTE_ADD_DEFAULTS.methods ?? []);
-    setKind('url');
+    setPath(initial?.path ?? '');
+    setMethods(initial?.methods ?? ROUTE_ADD_DEFAULTS.methods ?? []);
+    setKind(initial ? 'same' : 'url');
     setUrl('');
     setUpstreamId(null);
     setServiceId(null);
-    setHost('');
-    setTypedName(null);
+    setHost(initial?.host ?? '');
+    setTypedName(initial?.name ?? null);
     setShowErrors(false);
     setSubmitError(null);
   };
@@ -194,7 +211,16 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
     if (!valid) return;
     setSubmitting(true);
     try {
-      await postRouteReq(req, produceRoute(quickRouteToForm({ ...answers, status })));
+      if (source) {
+        // The copy belongs to the original's team, not to whichever the
+        // header has selected; a route that belongs to none is posted as any.
+        const team = (source as { __team_id?: string }).__team_id;
+        await req.post(API_ROUTES, duplicateRouteBody(source, { ...answers, status }), {
+          ...(team && { headers: { 'X-Team-ID': team } }),
+        });
+      } else {
+        await postRouteReq(req, produceRoute(quickRouteToForm({ ...answers, status })));
+      }
       notifications.show({
         message: t('info.add.success', { name: t('routes.singular') }),
         color: 'green',
@@ -257,16 +283,26 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
       onClose={dismiss}
       closeOnEscape={!submitting}
       closeOnClickOutside={!submitting}
-      title={t('form.quickRoute.title')}
+      title={duplicating ? t('form.quickRoute.duplicateTitle', { name: sourceName }) : t('form.quickRoute.title')}
       size="xl"
       centered
     >
       <Stack gap="md">
-        <Text size="sm" c="dimmed">{t('form.quickRoute.intro')}</Text>
+        <Text size="sm" c="dimmed">
+          {duplicating
+            ? t('form.quickRoute.duplicateIntro', { name: sourceName })
+            : t('form.quickRoute.intro')}
+        </Text>
 
         <TextInput
           label={t('form.quickRoute.path')}
-          description={t('form.quickRoute.pathHint')}
+          description={
+            // A copy of a route on several paths says so: a path typed here
+            // takes their place.
+            source?.uris && source.uris.length > 1
+              ? t('form.quickRoute.urisHint', { uris: source.uris.join(', ') })
+              : t('form.quickRoute.pathHint')
+          }
           // eslint-disable-next-line i18next/no-literal-string -- an example path, not prose
           placeholder="/api/orders/*"
           required
@@ -280,7 +316,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
           <Text size="sm" fw={500}>{t('form.quickRoute.methods')}</Text>
           <Chip.Group multiple value={methods} onChange={setMethods}>
             <Group gap={6}>
-              {METHODS.map((m) => (
+              {/* With any method a copied route has beyond these, so that
+                  each one it keeps can be seen and taken off. */}
+              {[...METHODS, ...methods.filter((m) => !METHODS.includes(m))].map((m) => (
                 <Chip key={m} value={m} size="xs">
                   {m}
                 </Chip>
@@ -296,6 +334,8 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
             value={kind}
             onChange={(v) => setKind(v as DestinationKind)}
             data={[
+              // A copy goes where the route goes until told otherwise.
+              ...(duplicating ? [{ value: 'same', label: t('form.quickRoute.destSame') }] : []),
               { value: 'url', label: t('form.quickRoute.destUrl') },
               { value: 'upstream', label: t('form.quickRoute.destUpstream') },
               { value: 'service', label: t('form.quickRoute.destService') },
@@ -345,7 +385,13 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <TextInput
             label={t('form.quickRoute.host')}
-            description={t('form.quickRoute.hostHint')}
+            description={
+              // A copy of a route answering for several hosts says so: a
+              // host typed here takes their place.
+              source?.hosts?.length
+                ? t('form.quickRoute.hostsHint', { hosts: source.hosts.join(', ') })
+                : t('form.quickRoute.hostHint')
+            }
             // eslint-disable-next-line i18next/no-literal-string -- an example host name, not prose
             placeholder="api.example.com"
             value={host}
@@ -353,7 +399,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
           />
           <TextInput
             label={t('form.quickRoute.name')}
-            description={t('form.quickRoute.nameHint')}
+            description={duplicating ? undefined : t('form.quickRoute.nameHint')}
             required
             value={name}
             onChange={(e) => setTypedName(e.currentTarget.value)}
@@ -382,6 +428,12 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
           </Alert>
         )}
 
+        {source && keptPathRewrite(source, answers) && (
+          <Alert color="yellow" variant="light" icon={<IconWarning />}>
+            {t('form.quickRoute.rewriteKept', { name: sourceName, rewrite: keptPathRewrite(source, answers)! })}
+          </Alert>
+        )}
+
         {showErrors && errors.other && (
           <Alert color="red" variant="light">
             <List size="sm" spacing={2}>
@@ -399,17 +451,25 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
         )}
 
         <Group justify="space-between" mt="sm">
-          <Button variant="subtle" onClick={openWizard} disabled={submitting}>
-            {t('form.quickRoute.moreOptions')}
-          </Button>
+          {/* A copy carries what the wizard's draft cannot - every plugin,
+              var and setting of the route - so it is made here. */}
+          {duplicating ? (
+            <span />
+          ) : (
+            <Button variant="subtle" onClick={openWizard} disabled={submitting}>
+              {t('form.quickRoute.moreOptions')}
+            </Button>
+          )}
           <Group gap="sm">
             <Button variant="default" onClick={dismiss} disabled={submitting}>
               {t('form.btn.cancel')}
             </Button>
-            <Button variant="light" onClick={() => create(0)} loading={submitting}>
+            {/* A copy answers on the route's own path: offline is its first
+                choice, so it takes no traffic before it is meant to. */}
+            <Button variant={duplicating ? 'filled' : 'light'} onClick={() => create(0)} loading={submitting}>
               {t('form.quickRoute.createOffline')}
             </Button>
-            <Button onClick={() => create(1)} loading={submitting}>
+            <Button variant={duplicating ? 'light' : 'filled'} onClick={() => create(1)} loading={submitting}>
               {t('form.quickRoute.create')}
             </Button>
           </Group>

@@ -868,7 +868,8 @@
       "upstreamRequired": "Choose an upstream",
       "serviceRequired": "Choose a service",
       "destinationUrlPlain": "Only a scheme, host, port and path: no credentials, query, fragment or $",
-      "pathSlash": "A path starts with /"
+      "pathSlash": "A path starts with /",
+      "destinationPathRewritten": "This route already rewrites its path: give the address without a path"
     },
     "quickRoute": {
       "title": "New route",
@@ -891,7 +892,14 @@
       "createOffline": "Create offline",
       "replaceDraftTitle": "Replace your draft?",
       "replaceDraftBody": "The full form holds a route you started earlier. Opening it with these answers replaces that draft.",
-      "replaceDraftConfirm": "Replace"
+      "replaceDraftConfirm": "Replace",
+      "duplicateTitle": "Duplicate “{{name}}”",
+      "duplicateIntro": "Everything in “{{name}}” is copied - plugins, vars, priority, labels. Only what you change here is different.",
+      "destSame": "Same as the original",
+      "nameCopy": "{{name}} (copy)",
+      "hostsHint": "Copied: {{hosts}}. A host typed here replaces them.",
+      "urisHint": "Copied: {{uris}}. A path typed here replaces them.",
+      "rewriteKept": "“{{name}}” rewrites each request's path ({{rewrite}}). The copy keeps that rewrite: check it fits the new destination."
     }
   },
   "globalRules": {
@@ -1000,7 +1008,6 @@
       "upstreamInline": "inline",
       "upstreamNone": "—",
       "headerId": "ID",
-      "duplicateFailed": "Failed to duplicate",
       "updateFailed": "Failed to update",
       "headerTeam": "Team",
       "refresh": "Refresh"

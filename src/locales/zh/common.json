@@ -942,7 +942,8 @@
       "upstreamRequired": "请选择一个上游",
       "serviceRequired": "请选择一个服务",
       "destinationUrlPlain": "只能包含协议、主机、端口和路径：不能包含凭据、查询参数、片段或 $",
-      "pathSlash": "路径必须以 / 开头"
+      "pathSlash": "路径必须以 / 开头",
+      "destinationPathRewritten": "此路由已经改写了路径：请填写不带路径的地址"
     },
     "quickRoute": {
       "title": "新建路由",
@@ -965,7 +966,14 @@
       "createOffline": "创建为未发布",
       "replaceDraftTitle": "替换您的草稿？",
       "replaceDraftBody": "完整表单中有一个您之前开始编辑的路由。用这些内容打开它会替换该草稿。",
-      "replaceDraftConfirm": "替换"
+      "replaceDraftConfirm": "替换",
+      "duplicateTitle": "复制“{{name}}”",
+      "duplicateIntro": "“{{name}}”中的所有内容都会被复制：插件、vars、优先级、标签。只有您在这里修改的内容不同。",
+      "destSame": "与原路由相同",
+      "nameCopy": "{{name}}（副本）",
+      "hostsHint": "已复制：{{hosts}}。在此填写的主机会替换它们。",
+      "urisHint": "已复制：{{uris}}。在此填写的路径会替换它们。",
+      "rewriteKept": "“{{name}}”会改写每个请求的路径（{{rewrite}}）。副本会保留该改写：请确认它适用于新的目标。"
     }
   },
   "globalRules": {
@@ -1071,7 +1079,6 @@
       "filterTeamPlaceholder": "任意团队",
       "filterTeamUnassigned": "未分配",
       "headerId": "ID",
-      "duplicateFailed": "复制失败",
       "updateFailed": "更新失败",
       "columnsFixed": "固定",
       "columnsNameAlwaysShown": "始终显示，以便识别每一行",

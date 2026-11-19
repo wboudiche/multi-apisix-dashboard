@@ -950,7 +950,8 @@
       "upstreamRequired": "Elija un upstream",
       "serviceRequired": "Elija un servicio",
       "destinationUrlPlain": "Solo esquema, host, puerto y ruta: sin credenciales, consulta, fragmento ni $",
-      "pathSlash": "Una ruta empieza por /"
+      "pathSlash": "Una ruta empieza por /",
+      "destinationPathRewritten": "Esta ruta ya reescribe su ruta: indique la dirección sin ruta"
     },
     "quickRoute": {
       "title": "Nueva ruta",
@@ -973,7 +974,14 @@
       "createOffline": "Crear sin publicar",
       "replaceDraftTitle": "¿Reemplazar su borrador?",
       "replaceDraftBody": "El formulario completo contiene una ruta que empezó antes. Abrirlo con estas respuestas reemplaza ese borrador.",
-      "replaceDraftConfirm": "Reemplazar"
+      "replaceDraftConfirm": "Reemplazar",
+      "duplicateTitle": "Duplicar «{{name}}»",
+      "duplicateIntro": "Se copia todo lo de «{{name}}»: plugins, vars, prioridad, etiquetas. Solo cambia lo que modifique aquí.",
+      "destSame": "Igual que el original",
+      "nameCopy": "{{name}} (copia)",
+      "hostsHint": "Copiados: {{hosts}}. Un host escrito aquí los reemplaza.",
+      "urisHint": "Copiadas: {{uris}}. Una ruta escrita aquí las reemplaza.",
+      "rewriteKept": "«{{name}}» reescribe la ruta de cada petición ({{rewrite}}). La copia conserva esa reescritura: compruebe que encaja con el nuevo destino."
     }
   },
   "globalRules": {
@@ -1079,7 +1087,6 @@
       "filterTeamPlaceholder": "Cualquier equipo",
       "filterTeamUnassigned": "Sin asignar",
       "headerId": "ID",
-      "duplicateFailed": "No se ha podido duplicar",
       "updateFailed": "No se ha podido actualizar",
       "columnsFixed": "Fijo",
       "columnsNameAlwaysShown": "Siempre visible, para que cada fila pueda identificarse",
