@@ -14,18 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { createHmac } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   credentialConfig,
   credentialId,
   generateSecret,
+  hmacScript,
   holdsCredential,
   isAuthClientPlugin,
   readRestriction,
   runsAfterRestriction,
   sameRestriction,
   shellQuote,
+  signJwt,
   usableHeader,
   writeRestriction,
 } from './auth-clients';
@@ -34,6 +38,8 @@ describe('auth clients', () => {
   it('knows the plugins whose callers the gateway holds', () => {
     expect(isAuthClientPlugin('key-auth')).toBe(true);
     expect(isAuthClientPlugin('basic-auth')).toBe(true);
+    expect(isAuthClientPlugin('jwt-auth')).toBe(true);
+    expect(isAuthClientPlugin('hmac-auth')).toBe(true);
     // Its users live in the identity provider, not on the gateway.
     expect(isAuthClientPlugin('openid-connect')).toBe(false);
   });
@@ -56,6 +62,11 @@ describe('auth clients', () => {
 
   it('writes what each plugin expects of a credential', () => {
     expect(credentialConfig('key-auth', 'app', 's3cret')).toEqual({ key: 's3cret' });
+    expect(credentialConfig('jwt-auth', 'app', 's3cret')).toEqual({ key: 'app', secret: 's3cret' });
+    expect(credentialConfig('hmac-auth', 'app', 's3cret')).toEqual({
+      key_id: 'app',
+      secret_key: 's3cret',
+    });
     expect(credentialConfig('basic-auth', 'app', 's3cret')).toEqual({
       username: 'app',
       password: 's3cret',
@@ -124,5 +135,26 @@ describe('auth clients', () => {
     expect(sameRestriction({ mode: 'only', names: ['a'] }, { mode: 'only', names: ['a', 'b'] })).toBe(false);
     expect(sameRestriction({ mode: 'any' }, { mode: 'any' })).toBe(true);
     expect(sameRestriction({ mode: 'any' }, { mode: 'only', names: [] })).toBe(false);
+  });
+
+  it('signs a JWT the way jwt-auth checks it', async () => {
+    const now = Date.UTC(2026, 0, 1);
+    const token = await signJwt('app', 's3cret', 3600, now);
+    const [header, payload, signature] = token.split('.');
+    const decode = (part: string) => JSON.parse(Buffer.from(part, 'base64url').toString());
+    expect(decode(header)).toEqual({ alg: 'HS256', typ: 'JWT' });
+    expect(decode(payload)).toEqual({ key: 'app', exp: now / 1000 + 3600 });
+    expect(signature).toBe(
+      createHmac('sha256', 's3cret').update(`${header}.${payload}`).digest('base64url')
+    );
+  });
+
+  it('writes an HMAC script with its values quoted and its date in English', () => {
+    const script = hmacScript('app', "it's");
+    expect(script).toContain("KEY_ID='app'");
+    expect(script).toContain("SECRET='it'\\''s'");
+    // The gateway refuses a day or month name in another language.
+    expect(script).toContain('LC_ALL=C date -u');
+    expect(script).toContain('headers=\\"@request-target date\\"');
   });
 });

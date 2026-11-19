@@ -54,9 +54,11 @@ import {
   credentialConfig,
   credentialId,
   generateSecret,
+  hmacScript,
   holdsCredential,
   type Restriction,
   shellQuote,
+  signJwt,
   usableHeader,
 } from '@/utils/auth-clients';
 import IconAdd from '~icons/material-symbols/add';
@@ -118,7 +120,22 @@ const CopyValue = ({ value }: { value: string }) => {
   );
 };
 
-type Created = { name: string; secret: string };
+type Created = {
+  name: string;
+  secret: string;
+  /** For jwt-auth: a token signed with the secret, to try the route with. */
+  token?: string;
+};
+
+/** A command or script, with a button that copies it. */
+const CopyBlock = ({ value }: { value: string }) => (
+  <Group gap={4} wrap="nowrap" align="flex-start">
+    <Code block style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+      {value}
+    </Code>
+    <CopyValue value={value} />
+  </Group>
+);
 
 /** How a caller presents what it was given, for the plugin's settings. */
 const Usage = ({
@@ -130,20 +147,52 @@ const Usage = ({
   config: Record<string, unknown>;
   created: Created;
 }) => {
+  const { t } = useTranslation();
+  if (plugin === 'hmac-auth') {
+    return (
+      <>
+        <Text size="xs" c="dimmed">
+          {t('form.plugins.clients.hmacTry')}
+        </Text>
+        <CopyBlock value={hmacScript(created.name, created.secret)} />
+      </>
+    );
+  }
+  if (plugin === 'jwt-auth') {
+    // The header jwt-auth reads, as the form holds it; the gateway takes the
+    // token with or without the Bearer word.
+    const header = usableHeader(config.header, 'authorization');
+    return (
+      <>
+        <Text size="xs" c="dimmed">
+          {t('form.plugins.clients.jwtHow', { name: created.name })}
+        </Text>
+        {created.token && (
+          <>
+            <Text size="xs" c="dimmed">
+              {t('form.plugins.clients.jwtTry')}
+            </Text>
+            <CopyBlock
+              value={`curl -H ${shellQuote(`${header}: Bearer ${created.token}`)} http://<gateway>/<path>`}
+            />
+          </>
+        )}
+      </>
+    );
+  }
   // Quoted for the shell it is pasted into: the header is whatever the
   // plugin's form holds, and a quote in it would end the argument early.
   const credential =
     plugin === 'key-auth'
       ? `-H ${shellQuote(`${usableHeader(config.header)}: ${created.secret}`)}`
       : `-u ${shellQuote(`${created.name}:${created.secret}`)}`;
-  const line = `curl ${credential} http://<gateway>/<path>`;
   return (
-    <Group gap={4} wrap="nowrap" align="flex-start">
-      <Code block style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-        {line}
-      </Code>
-      <CopyValue value={line} />
-    </Group>
+    <>
+      <Text size="xs" c="dimmed">
+        {t('form.plugins.clients.tryIt')}
+      </Text>
+      <CopyBlock value={`curl ${credential} http://<gateway>/<path>`} />
+    </>
   );
 };
 
@@ -307,9 +356,16 @@ export const AuthClientsSection = ({
         }
         throw e;
       }
+      // A token to try the route with, signed here: the secret is not
+      // stored readable, so it cannot be signed with later.
+      const token =
+        plugin === 'jwt-auth'
+          ? await signJwt(name, secret, 3600).catch(() => undefined)
+          : undefined;
+      return token;
     },
-    onSuccess: () => {
-      setCreated({ name, secret });
+    onSuccess: (token) => {
+      setCreated({ name, secret, token });
       // Made from this form to call this route: on its list at once.
       if (access.mode === 'only' && !access.names.includes(name)) {
         onAccessChange({ mode: 'only', names: [...access.names, name] });
@@ -329,7 +385,17 @@ export const AuthClientsSection = ({
   const secretLabel =
     plugin === 'key-auth'
       ? t('form.plugins.clients.key')
-      : t('form.plugins.clients.password');
+      : plugin === 'basic-auth'
+        ? t('form.plugins.clients.password')
+        : t('form.plugins.clients.secret');
+  const description =
+    plugin === 'key-auth'
+      ? t('form.plugins.clients.descKey')
+      : plugin === 'basic-auth'
+        ? t('form.plugins.clients.descBasic')
+        : plugin === 'jwt-auth'
+          ? t('form.plugins.clients.descJwt')
+          : t('form.plugins.clients.descHmac');
 
   return (
     <Paper withBorder radius="md" p="md" mt="md" data-testid="auth-clients">
@@ -337,9 +403,7 @@ export const AuthClientsSection = ({
         <div>
           <Title order={5}>{t('form.plugins.clients.title')}</Title>
           <Text size="sm" c="dimmed">
-            {plugin === 'key-auth'
-              ? t('form.plugins.clients.descKey')
-              : t('form.plugins.clients.descBasic')}
+            {description}
           </Text>
         </div>
 
@@ -419,15 +483,14 @@ export const AuthClientsSection = ({
               <Text size="sm" fw={600}>
                 {plugin === 'key-auth'
                   ? t('form.plugins.clients.createdKey', { name: created.name })
-                  : t('form.plugins.clients.createdPassword', { name: created.name })}
+                  : plugin === 'basic-auth'
+                    ? t('form.plugins.clients.createdPassword', { name: created.name })
+                    : t('form.plugins.clients.createdSecret', { name: created.name })}
               </Text>
               <Group gap={4} wrap="nowrap">
                 <Code style={{ flex: 1 }}>{created.secret}</Code>
                 <CopyValue value={created.secret} />
               </Group>
-              <Text size="xs" c="dimmed">
-                {t('form.plugins.clients.tryIt')}
-              </Text>
               <Usage plugin={plugin} config={config} created={created} />
             </Stack>
           </Alert>

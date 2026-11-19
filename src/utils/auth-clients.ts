@@ -18,11 +18,12 @@
 /**
  * The authentication plugins whose callers are held by the gateway itself:
  * a route carries the plugin, and each consumer that may get through holds a
- * credential of it - a key, a username and a password. The plugin's own form
+ * credential of it - a key, a username and a password, a secret it signs
+ * tokens or requests with. The plugin's own form
  * lists those consumers and makes a new one, so nobody has to know that a
  * key lives on a consumer, two menus away from the route it opens.
  */
-export const AUTH_CLIENT_PLUGINS = ['key-auth', 'basic-auth'] as const;
+export const AUTH_CLIENT_PLUGINS = ['key-auth', 'basic-auth', 'jwt-auth', 'hmac-auth'] as const;
 export type AuthClientPlugin = (typeof AUTH_CLIENT_PLUGINS)[number];
 
 export const isAuthClientPlugin = (name: string): name is AuthClientPlugin =>
@@ -35,6 +36,8 @@ export const isAuthClientPlugin = (name: string): name is AuthClientPlugin =>
 export const AUTH_PRIMARY_FIELDS: Record<AuthClientPlugin, string[]> = {
   'key-auth': ['header', 'hide_credentials'],
   'basic-auth': ['hide_credentials'],
+  'jwt-auth': ['hide_credentials'],
+  'hmac-auth': ['hide_credentials'],
 };
 
 /** A consumer's name, as APISIX accepts it. */
@@ -60,13 +63,27 @@ export const holdsCredential = (
   !!consumer.plugins?.[plugin] ||
   credentials.some((c) => !!c.plugins?.[plugin]);
 
-/** What a new client's credential carries, by plugin. */
+/**
+ * What a new client's credential carries, by plugin. A JWT names its client
+ * by the token's `key` claim and an HMAC signature by its keyId: both are the
+ * client's name, which the gateway already holds unique.
+ */
 export const credentialConfig = (
   plugin: AuthClientPlugin,
   name: string,
   secret: string
-): Record<string, string> =>
-  plugin === 'key-auth' ? { key: secret } : { username: name, password: secret };
+): Record<string, string> => {
+  switch (plugin) {
+    case 'key-auth':
+      return { key: secret };
+    case 'basic-auth':
+      return { username: name, password: secret };
+    case 'jwt-auth':
+      return { key: name, secret };
+    case 'hmac-auth':
+      return { key_id: name, secret_key: secret };
+  }
+};
 
 /** The credential's id: the plugin, and a suffix that keeps it unique. */
 export const credentialId = (plugin: AuthClientPlugin): string =>
@@ -80,8 +97,61 @@ export const shellQuote = (value: string): string =>
  * The header a key-auth configuration names, when it is one a header can be:
  * anything else is not shown to be pasted, and the plugin's default is.
  */
-export const usableHeader = (header: unknown): string =>
-  typeof header === 'string' && /^[A-Za-z0-9-]+$/.test(header) ? header : 'apikey';
+export const usableHeader = (header: unknown, fallback = 'apikey'): string =>
+  typeof header === 'string' && /^[A-Za-z0-9-]+$/.test(header) ? header : fallback;
+
+const base64url = (bytes: Uint8Array): string =>
+  btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+/**
+ * A JWT signed HS256 with the client's secret, as jwt-auth checks it: the
+ * client named by the `key` claim, valid for the seconds given. Made in the
+ * browser, for trying the route; the application makes its own.
+ */
+export const signJwt = async (
+  key: string,
+  secret: string,
+  seconds: number,
+  now = Date.now()
+): Promise<string> => {
+  const enc = new TextEncoder();
+  const part = (o: object) => base64url(enc.encode(JSON.stringify(o)));
+  const body = `${part({ alg: 'HS256', typ: 'JWT' })}.${part({
+    key,
+    exp: Math.floor(now / 1000) + seconds,
+  })}`;
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(body));
+  return `${body}.${base64url(new Uint8Array(sig))}`;
+};
+
+/**
+ * A shell script that signs one request as hmac-auth checks it: the keyId,
+ * the method and path, and the Date header, each on its own line, signed
+ * HMAC-SHA256 with the secret. The date is written in the C locale - the
+ * gateway refuses a day or month name in another language.
+ */
+export const hmacScript = (keyId: string, secret: string): string =>
+  [
+    `KEY_ID=${shellQuote(keyId)}`,
+    `SECRET=${shellQuote(secret)}`,
+    'REQ_PATH=/your/path',
+    'DATE=$(LC_ALL=C date -u \'+%a, %d %b %Y %H:%M:%S GMT\')',
+    'SIG=$(printf \'%s\\n%s %s\\ndate: %s\\n\' "$KEY_ID" GET "$REQ_PATH" "$DATE" \\',
+    '  | openssl dgst -sha256 -hmac "$SECRET" -binary | base64)',
+    'curl -H "Date: $DATE" \\',
+    '  -H "Authorization: Signature keyId=\\"$KEY_ID\\",algorithm=\\"hmac-sha256\\",headers=\\"@request-target date\\",signature=\\"$SIG\\"" \\',
+    '  "http://<gateway>$REQ_PATH"',
+  ].join('\n');
 
 /**
  * Which clients the route lets through, as its consumer-restriction plugin

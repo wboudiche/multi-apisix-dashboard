@@ -454,7 +454,14 @@
         "accessPending": "Quién puede llamarla se cambió en la pestaña Formulario y se guarda con este plugin.",
         "accessEmptyJson": "Quién puede llamarla: marque al menos un cliente en la pestaña Formulario.",
         "notFound": "No existe ese cliente en esta pasarela",
-        "alsoAsks": "Esta ruta también pide {{plugins}}: un cliente solo pasa con una credencial de cada uno."
+        "alsoAsks": "Esta ruta también pide {{plugins}}: un cliente solo pasa con una credencial de cada uno.",
+        "descJwt": "Clientes que tienen un secreto: cada uno firma con él un JSON Web Token y lo envía con cada petición. Solo se listan los clientes que puede ver.",
+        "descHmac": "Clientes que tienen una clave secreta: cada uno firma con ella cada petición (HMAC). Solo se listan los clientes que puede ver.",
+        "secret": "Secreto",
+        "createdSecret": "Cliente {{name}} creado. Copie su secreto ahora: no se vuelve a mostrar aquí.",
+        "jwtHow": "La aplicación firma sus tokens con este secreto, HS256, con los claims \"key\": \"{{name}}\" y \"exp\", el momento en que caduca.",
+        "jwtTry": "Una vez guardado, un token válido durante una hora pasa así:",
+        "hmacTry": "Una vez guardado, una petición firmada así pasa (un script de shell: defina primero la ruta):"
       }
     },
     "protos": {

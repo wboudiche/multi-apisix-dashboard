@@ -452,7 +452,14 @@
         "accessPending": "Kimin çağırabileceği Form sekmesinde değiştirildi ve bu eklentiyle kaydedilir.",
         "accessEmptyJson": "Kimin çağırabileceği: Form sekmesinde en az bir istemci işaretleyin.",
         "notFound": "Bu ağ geçidinde böyle bir istemci yok",
-        "alsoAsks": "Bu rota ayrıca {{plugins}} istiyor: bir istemci yalnızca her biri için kimlik bilgisiyle geçebilir."
+        "alsoAsks": "Bu rota ayrıca {{plugins}} istiyor: bir istemci yalnızca her biri için kimlik bilgisiyle geçebilir.",
+        "descJwt": "Bir sırrı olan istemciler: her biri onunla bir JSON Web Token imzalar ve her istekle gönderir. Yalnızca görebildiğiniz istemciler listelenir.",
+        "descHmac": "Gizli anahtarı olan istemciler: her biri her isteği onunla imzalar (HMAC). Yalnızca görebildiğiniz istemciler listelenir.",
+        "secret": "Sır",
+        "createdSecret": "{{name}} istemcisi oluşturuldu. Sırrını şimdi kopyalayın: burada bir daha gösterilmez.",
+        "jwtHow": "Uygulama, tokenlarını bu sırla HS256 ile imzalar; \"key\": \"{{name}}\" ve sona erme zamanı \"exp\" claim'lerini taşır.",
+        "jwtTry": "Kaydedildikten sonra, bir saat geçerli bir token şöyle geçer:",
+        "hmacTry": "Kaydedildikten sonra, böyle imzalanan bir istek geçer (bir kabuk betiği: önce yolu ayarlayın):"
       }
     },
     "protos": {

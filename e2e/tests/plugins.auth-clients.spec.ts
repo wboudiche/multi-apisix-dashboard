@@ -149,3 +149,42 @@ test('an auth plugin narrows who may call to the clients ticked', async ({ page 
     await removeClient(other);
   }
 });
+
+const SIGNING = [
+  // A token signed in the browser, sent with the Bearer word.
+  { plugin: 'jwt-auth', field: 'key', usage: () => /curl -H 'authorization: Bearer [\w-]+\.[\w-]+\.[\w-]+'/ },
+  // A script that signs a request, with the client's keyId.
+  { plugin: 'hmac-auth', field: 'key_id', usage: (name: string) => `KEY_ID='${name}'` },
+] as const;
+
+for (const { plugin, field, usage } of SIGNING) {
+  test(`${plugin} makes a client with a secret and shows how to sign with it`, async ({ page }) => {
+    const name = `${PREFIX}-${plugin.slice(0, 4)}-${nanoid()}`;
+    try {
+      await page.goto('plugin_configs/add');
+      await page.getByRole('button', { name: 'Select Plugins' }).click();
+      const picker = page.getByRole('dialog', { name: 'Select Plugins' });
+      await picker.getByPlaceholder('Search').fill(plugin);
+      await picker.getByTestId(`plugin-${plugin}`).getByRole('button', { name: 'Add' }).click();
+
+      const clients = page.getByRole('dialog', { name: 'Add Plugin' }).getByTestId('auth-clients');
+      await clients.getByRole('button', { name: 'New client' }).click();
+      await clients.getByRole('textbox', { name: 'Client name' }).fill(name);
+      const secret = await clients.getByRole('textbox', { name: 'Secret' }).inputValue();
+      expect(secret).toMatch(/^[0-9a-f]{32}$/);
+      await clients.getByRole('button', { name: 'Create client' }).click();
+      await expect(clients.getByText(`Client ${name} created.`)).toBeVisible();
+
+      await expect(clients.getByText(usage(name))).toBeVisible();
+
+      // The client is named in the credential by its name: the token's key
+      // claim, the signature's keyId.
+      const creds = await e2eReq
+        .get<unknown, { data: Credentials }>(API_CREDENTIALS(name))
+        .then((r) => r.data.list);
+      expect(creds.map((c) => c.value.plugins[plugin]?.[field])).toContain(name);
+    } finally {
+      await removeClient(name);
+    }
+  });
+}

@@ -452,7 +452,14 @@
         "accessPending": "Wer sie aufrufen darf, wurde im Formular-Tab geändert und wird mit diesem Plugin gespeichert.",
         "accessEmptyJson": "Wer sie aufrufen darf: Wählen Sie im Formular-Tab mindestens einen Client aus.",
         "notFound": "Kein solcher Client auf diesem Gateway",
-        "alsoAsks": "Diese Route verlangt auch {{plugins}}: Ein Client kommt nur mit Zugangsdaten für jedes davon durch."
+        "alsoAsks": "Diese Route verlangt auch {{plugins}}: Ein Client kommt nur mit Zugangsdaten für jedes davon durch.",
+        "descJwt": "Clients mit einem Geheimnis: Jeder signiert damit ein JSON Web Token und sendet es mit jeder Anfrage. Nur die Clients, die Sie sehen, werden aufgeführt.",
+        "descHmac": "Clients mit einem geheimen Schlüssel: Jeder signiert damit jede Anfrage (HMAC). Nur die Clients, die Sie sehen, werden aufgeführt.",
+        "secret": "Geheimnis",
+        "createdSecret": "Client {{name}} erstellt. Kopieren Sie sein Geheimnis jetzt: Es wird hier nicht noch einmal angezeigt.",
+        "jwtHow": "Die Anwendung signiert ihre Tokens mit diesem Geheimnis, HS256, mit den Claims \"key\": \"{{name}}\" und \"exp\", dem Ablaufzeitpunkt.",
+        "jwtTry": "Nach dem Speichern kommt ein eine Stunde gültiges Token so durch:",
+        "hmacTry": "Nach dem Speichern kommt eine so signierte Anfrage durch (ein Shell-Skript: zuerst den Pfad setzen):"
       }
     },
     "protos": {
