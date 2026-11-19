@@ -955,7 +955,6 @@
     },
     "quickRoute": {
       "title": "Nueva ruta",
-      "intro": "Una ruta y adónde enviarla. Todo lo demás puede esperar, o configurarse ahora en Más opciones.",
       "path": "Ruta",
       "pathHint": "Termínela con * para abarcar todo lo que hay debajo.",
       "methods": "Métodos",
@@ -969,7 +968,7 @@
       "hostHint": "Opcional: solo las peticiones para este nombre de host.",
       "name": "Nombre",
       "nameHint": "Propuesto a partir de la ruta hasta que lo cambie.",
-      "moreOptions": "Más opciones…",
+      "moreOptions": "Plugins y opciones avanzadas",
       "create": "Crear",
       "createOffline": "Crear sin publicar",
       "replaceDraftTitle": "¿Reemplazar su borrador?",

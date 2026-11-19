@@ -947,7 +947,6 @@
     },
     "quickRoute": {
       "title": "新建路由",
-      "intro": "一个路径及其转发目标。其余设置可以稍后再做，也可以现在在“更多选项”中设置。",
       "path": "路径",
       "pathHint": "以 * 结尾可匹配其下的所有路径。",
       "methods": "方法",
@@ -961,7 +960,7 @@
       "hostHint": "可选：仅匹配此主机名的请求。",
       "name": "名称",
       "nameHint": "在您修改之前，根据路径自动建议。",
-      "moreOptions": "更多选项…",
+      "moreOptions": "插件和高级选项",
       "create": "创建",
       "createOffline": "创建为未发布",
       "replaceDraftTitle": "替换您的草稿？",

@@ -60,6 +60,7 @@ import { errorText } from '@/utils/error-text';
 import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
 import { proxyFailureText } from '@/utils/team-refusal';
+import IconTune from '~icons/material-symbols/tune';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
 // The methods a route is most often limited to; the wizard offers the rest.
@@ -288,11 +289,12 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
       centered
     >
       <Stack gap="md">
-        <Text size="sm" c="dimmed">
-          {duplicating
-            ? t('form.quickRoute.duplicateIntro', { name: sourceName })
-            : t('form.quickRoute.intro')}
-        </Text>
+        {/* A copy says what it carries; a new route's fields say enough. */}
+        {duplicating && (
+          <Text size="sm" c="dimmed">
+            {t('form.quickRoute.duplicateIntro', { name: sourceName })}
+          </Text>
+        )}
 
         <TextInput
           label={t('form.quickRoute.path')}
@@ -458,7 +460,14 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           {duplicating ? (
             <span />
           ) : (
-            <Button variant="subtle" onClick={openWizard} disabled={submitting}>
+            // A button, and named for what it opens: as grey text it read as
+            // a note, and "More options" said nothing of plugins.
+            <Button
+              variant="default"
+              leftSection={<IconTune width="16" height="16" />}
+              onClick={openWizard}
+              disabled={submitting}
+            >
               {t('form.quickRoute.moreOptions')}
             </Button>
           )}

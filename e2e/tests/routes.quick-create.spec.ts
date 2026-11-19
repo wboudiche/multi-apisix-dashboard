@@ -146,7 +146,7 @@ test('hands what was typed over to the wizard', async ({ page }) => {
 
   await dialog.getByRole('textbox', { name: 'Path' }).fill(path);
   await dialog.getByRole('textbox', { name: 'Address' }).fill('https://backend.example.com');
-  await dialog.getByRole('button', { name: 'More options…' }).click();
+  await dialog.getByRole('button', { name: 'Plugins & advanced options' }).click();
 
   await routesPom.isAddPage(page);
   await expect(page.locator('input[name="uri"]')).toHaveValue(path);

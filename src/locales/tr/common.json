@@ -953,7 +953,6 @@
     },
     "quickRoute": {
       "title": "Yeni rota",
-      "intro": "Bir yol ve nereye gönderileceği. Geri kalan her şey bekleyebilir ya da şimdi Diğer seçenekler altında ayarlanabilir.",
       "path": "Yol",
       "pathHint": "Altındaki her şeyi eşleştirmek için * ile bitirin.",
       "methods": "Yöntemler",
@@ -967,7 +966,7 @@
       "hostHint": "İsteğe bağlı: yalnızca bu ana makine adına gelen istekler.",
       "name": "Ad",
       "nameHint": "Siz değiştirene kadar yoldan önerilir.",
-      "moreOptions": "Diğer seçenekler…",
+      "moreOptions": "Eklentiler ve gelişmiş seçenekler",
       "create": "Oluştur",
       "createOffline": "Çevrimdışı oluştur",
       "replaceDraftTitle": "Taslağınız değiştirilsin mi?",

@@ -953,7 +953,6 @@
     },
     "quickRoute": {
       "title": "Neue Route",
-      "intro": "Ein Pfad und das Ziel, an das er weiterleitet. Alles andere kann warten oder jetzt unter Weitere Optionen festgelegt werden.",
       "path": "Pfad",
       "pathHint": "Mit * enden lassen, um alles darunter abzudecken.",
       "methods": "Methoden",
@@ -967,7 +966,7 @@
       "hostHint": "Optional: nur Anfragen für diesen Hostnamen.",
       "name": "Name",
       "nameHint": "Aus dem Pfad vorgeschlagen, bis Sie ihn ändern.",
-      "moreOptions": "Weitere Optionen…",
+      "moreOptions": "Plugins & erweiterte Optionen",
       "create": "Erstellen",
       "createOffline": "Offline erstellen",
       "replaceDraftTitle": "Entwurf ersetzen?",
