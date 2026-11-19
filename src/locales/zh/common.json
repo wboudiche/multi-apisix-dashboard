@@ -459,11 +459,13 @@
         "createdSecret": "客户端 {{name}} 已创建。请立即复制其密钥：此处不会再次显示。",
         "jwtHow": "应用使用此密钥以 HS256 签发令牌，携带声明 \"{{claim}}\": \"{{identifier}}\" 和过期时间 \"exp\"。",
         "jwtTry": "保存后，此令牌在 {{time}} 之前可以通过：",
-        "hmacTry": "保存后，这样签名的请求可以通过（一个 shell 脚本：请先设置网关、方法和路径）：",
-        "jwtNoSign": "此浏览器无法在此签发用于尝试的令牌：页面未通过 HTTPS 提供。",
+        "hmacTry": "保存后，这样签名的请求可以通过（一个 shell 脚本：请先设置网关、方法、路径以及所有仍为 'value' 的值）：",
+        "jwtNoSign": "此页面无法签发用于尝试的令牌：签发需要页面通过 HTTPS 提供。",
         "identifierBasic": "其用户名：",
         "identifierJwt": "其 key，即令牌携带的声明：",
-        "identifierHmac": "其 keyId，在每次签名中注明："
+        "identifierHmac": "其 keyId，在每次签名中注明：",
+        "jwtSignFailed": "无法在此签发用于尝试的令牌。",
+        "jwtClaimChanged": "声明已被修改：请再创建一个客户端以获得携带该声明的令牌。"
       }
     },
     "protos": {

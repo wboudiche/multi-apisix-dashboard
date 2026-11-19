@@ -486,11 +486,13 @@
         "createdSecret": "Client {{name}} created. Copy its secret now: it is not shown again here.",
         "jwtHow": "The application signs its tokens with this secret, HS256, carrying the claims \"{{claim}}\": \"{{identifier}}\" and \"exp\", the time it expires.",
         "jwtTry": "Once saved, this token gets through until {{time}}:",
-        "hmacTry": "Once saved, a request signed like this gets through (a shell script: set the gateway, the method and the path first):",
-        "jwtNoSign": "This browser cannot sign a token to try it with here: the page is not served over HTTPS.",
+        "hmacTry": "Once saved, a request signed like this gets through (a shell script: set the gateway, the method, the path and any value left as 'value' first):",
+        "jwtNoSign": "This page cannot sign a token to try it with: signing needs the page served over HTTPS.",
         "identifierBasic": "Its username:",
         "identifierJwt": "Its key, the claim its tokens carry:",
-        "identifierHmac": "Its keyId, named in each signature:"
+        "identifierHmac": "Its keyId, named in each signature:",
+        "jwtSignFailed": "No token could be signed here to try it with.",
+        "jwtClaimChanged": "The claim was changed since: create another client to get a token that carries it."
       }
     },
     "protos": {

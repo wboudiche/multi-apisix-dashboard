@@ -177,8 +177,9 @@ for (const { plugin, field, usage } of SIGNING) {
 
       await expect(clients.getByText(usage(name))).toBeVisible();
 
-      // The client is named in the credential by its name: the token's key
-      // claim, the signature's keyId.
+      // The credential names the client by its name and a random suffix, so
+      // that a key or keyId made elsewhere from the same name cannot clash:
+      // the token's key claim, the signature's keyId.
       const creds = await e2eReq
         .get<unknown, { data: Credentials }>(API_CREDENTIALS(name))
         .then((r) => r.data.list);

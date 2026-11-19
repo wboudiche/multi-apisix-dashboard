@@ -50,6 +50,7 @@ import { listTeamIdAtom } from '@/stores/team';
 import type { APISIXType } from '@/types/schema/apisix';
 import {
   type AuthClientPlugin,
+  canSignJwt,
   CLIENT_NAME_PATTERN,
   clientIdentifier,
   credentialConfig,
@@ -128,10 +129,11 @@ type Created = {
   identifier: string;
   secret: string;
   /**
-   * For jwt-auth: a token signed with the secret, to try the route with, and
-   * when it expires; null where the browser could not sign one.
+   * For jwt-auth: a token signed with the secret, to try the route with -
+   * the claim it was signed in, kept with it, since the form's may change
+   * after, and when it expires - or why none could be signed.
    */
-  token?: { value: string; exp: number } | null;
+  token?: { value: string; exp: number; claim: string } | 'insecure' | 'failed';
 };
 
 /** A command or script, with a button that copies it. */
@@ -154,7 +156,7 @@ const Usage = ({
   config: Record<string, unknown>;
   created: Created;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   if (plugin === 'hmac-auth') {
     return (
       <>
@@ -169,6 +171,8 @@ const Usage = ({
     // The header jwt-auth reads, as the form holds it; the gateway takes the
     // token with or without the Bearer word.
     const header = usableHeader(config.header, 'authorization');
+    const { token } = created;
+    const signed = typeof token === 'object' ? token : undefined;
     return (
       <>
         <Text size="xs" c="dimmed">
@@ -177,20 +181,36 @@ const Usage = ({
             identifier: created.identifier,
           })}
         </Text>
-        {created.token === null && (
+        {token === 'insecure' && (
           <Text size="xs" c="dimmed">
             {t('form.plugins.clients.jwtNoSign')}
           </Text>
         )}
-        {created.token && (
+        {token === 'failed' && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.jwtSignFailed')}
+          </Text>
+        )}
+        {/* Only while the route reads the claim the token carries. */}
+        {signed && signed.claim !== jwtKeyClaim(config) && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.jwtClaimChanged')}
+          </Text>
+        )}
+        {signed && signed.claim === jwtKeyClaim(config) && (
           <>
             <Text size="xs" c="dimmed">
               {t('form.plugins.clients.jwtTry', {
-                time: new Date(created.token.exp * 1000).toLocaleTimeString(),
+                // In the page's language, with the day: an hour from now
+                // may be tomorrow.
+                time: new Date(signed.exp * 1000).toLocaleString(i18n.language, {
+                  dateStyle: 'short',
+                  timeStyle: 'short',
+                }),
               })}
             </Text>
             <CopyBlock
-              value={`curl -H ${shellQuote(`${header}: Bearer ${created.token.value}`)} http://<gateway>/<path>`}
+              value={`curl -H ${shellQuote(`${header}: Bearer ${signed.value}`)} http://<gateway>/<path>`}
             />
           </>
         )}
@@ -377,11 +397,14 @@ export const AuthClientsSection = ({
       // A token to try the route with, signed now, while the secret is at
       // hand, and valid an hour from now: the text says until when.
       let token: Created['token'];
-      if (plugin === 'jwt-auth') {
+      if (plugin === 'jwt-auth' && !canSignJwt()) {
+        token = 'insecure';
+      } else if (plugin === 'jwt-auth') {
         const exp = Math.floor(Date.now() / 1000) + 3600;
-        token = await signJwt(jwtKeyClaim(config), identifier, secret, exp)
-          .then((value) => ({ value, exp }))
-          .catch(() => null);
+        const claim = jwtKeyClaim(config);
+        token = await signJwt(claim, identifier, secret, exp)
+          .then((value) => ({ value, exp, claim }))
+          .catch(() => 'failed' as const);
       }
       return { identifier, token };
     },

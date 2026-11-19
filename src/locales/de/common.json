@@ -459,11 +459,13 @@
         "createdSecret": "Client {{name}} erstellt. Kopieren Sie sein Geheimnis jetzt: Es wird hier nicht noch einmal angezeigt.",
         "jwtHow": "Die Anwendung signiert ihre Tokens mit diesem Geheimnis, HS256, mit den Claims \"{{claim}}\": \"{{identifier}}\" und \"exp\", dem Ablaufzeitpunkt.",
         "jwtTry": "Nach dem Speichern kommt dieses Token bis {{time}} durch:",
-        "hmacTry": "Nach dem Speichern kommt eine so signierte Anfrage durch (ein Shell-Skript: zuerst Gateway, Methode und Pfad setzen):",
-        "jwtNoSign": "Dieser Browser kann hier kein Token zum Ausprobieren signieren: Die Seite wird nicht über HTTPS ausgeliefert.",
+        "hmacTry": "Nach dem Speichern kommt eine so signierte Anfrage durch (ein Shell-Skript: zuerst Gateway, Methode, Pfad und jeden als 'value' belassenen Wert setzen):",
+        "jwtNoSign": "Diese Seite kann kein Token zum Ausprobieren signieren: Dafür muss sie über HTTPS ausgeliefert werden.",
         "identifierBasic": "Sein Benutzername:",
         "identifierJwt": "Sein Schlüssel, der Claim seiner Tokens:",
-        "identifierHmac": "Seine keyId, in jeder Signatur genannt:"
+        "identifierHmac": "Seine keyId, in jeder Signatur genannt:",
+        "jwtSignFailed": "Hier konnte kein Token zum Ausprobieren signiert werden.",
+        "jwtClaimChanged": "Der Claim wurde inzwischen geändert: Erstellen Sie einen weiteren Client, um ein Token mit ihm zu erhalten."
       }
     },
     "protos": {

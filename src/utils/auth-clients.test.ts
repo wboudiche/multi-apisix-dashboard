@@ -171,6 +171,24 @@ describe('auth clients', () => {
     expect(script).toContain('openssl dgst -sha256');
   });
 
+  it('works out the host, the digest and the length, and sends each header once', () => {
+    const script = hmacScript('app', 's', {
+      signed_headers: ['date', 'host', 'Digest', 'content-length', 'X-App', 'x-app', 'x tenant'],
+    });
+    // Worked out, not left as a value to fill in.
+    expect(script).toContain('H_HOST=${GATEWAY#*://}');
+    expect(script).toContain('H_CONTENT_LENGTH=$(printf');
+    expect(script).not.toContain("H_HOST='value'");
+    expect(script).not.toContain("H_DIGEST='value'");
+    // Signed under the route's spelling, sent once.
+    expect(script).toContain('headers=\\"@request-target date host Digest content-length X-App\\"');
+    expect(script.match(/-H "Digest:/g)).toHaveLength(1);
+    expect(script.match(/-H "X-App:/g)).toHaveLength(1);
+    expect(script).not.toContain('-H "x-app:');
+    // A name a shell line cannot carry is said, not dropped.
+    expect(script).toContain('# Also required, and to be added by hand: x tenant');
+  });
+
   it('signs what the route requires: its headers, spelt its way, its algorithm, the body', () => {
     const script = hmacScript('app', 's', {
       signed_headers: ['Date', 'X-App'],
