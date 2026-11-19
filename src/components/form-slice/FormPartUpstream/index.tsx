@@ -338,14 +338,26 @@ const ADVANCED_UPSTREAM_FIELDS = [
   'retry_timeout',
   'timeout',
   'keepalive_pool',
-  'checks',
 ];
+
+// Health checks are on when their switches are, whatever the check fields
+// hold: a service's new upstream starts with them filled in and off.
+const CHECK_SWITCHES = ['__checksEnabled', '__checksPassiveEnabled'];
 
 // What a new upstream starts with: a default alone does not open the section.
 const isDefaultUpstream = (field: string, value: unknown) => {
   if (field === 'type') return value === APISIX.UpstreamBalancer.options[0].value;
   if (field === 'hash_on') return value === APISIX.UpstreamHashOn.options[0].value;
   if (field === 'pass_host') return value === APISIX.UpstreamPassHost.options[0].value;
+  // APISIX's own pool, which a service's new upstream is given.
+  if (field === 'keepalive_pool') {
+    const pool = value as Record<string, unknown> | undefined;
+    return (
+      (pool?.size === undefined || pool.size === 320) &&
+      (pool?.idle_timeout === undefined || pool.idle_timeout === 60) &&
+      (pool?.requests === undefined || pool.requests === 1000)
+    );
+  }
   if (field === 'timeout') {
     const timeout = value as Record<string, unknown> | undefined;
     return ['connect', 'send', 'read'].every((k) => timeout?.[k] === undefined || timeout[k] === 6);
@@ -369,7 +381,7 @@ export const FormPartUpstreamFlat = () => {
 
       <AdvancedSection
         label={t('form.upstreams.advancedSettings')}
-        names={ADVANCED_UPSTREAM_FIELDS.map(np)}
+        names={[...ADVANCED_UPSTREAM_FIELDS.map(np), ...CHECK_SWITCHES]}
         isDefault={(name, value) => isDefaultUpstream(name.slice(name.lastIndexOf('.') + 1), value)}
       >
         <FormItemSelect

@@ -132,7 +132,9 @@ const RouteDetailForm = (props: Props) => {
           <FormSectionMatchRules />
         </>
       ),
-      fields: ['name', 'uri', 'uris', 'methods', 'priority', 'vars'],
+      // Every field the step holds: one left out is one a Submit from a later
+      // step would find refused with nothing on screen to say so.
+      fields: ['name', 'desc', 'labels', 'status', 'methods', 'uri', 'host', 'enable_websocket', 'uris', 'hosts', 'remote_addr', 'remote_addrs', 'vars', 'filter_func', 'priority'],
     },
     {
       label: t('form.routes.steps.upstream'),

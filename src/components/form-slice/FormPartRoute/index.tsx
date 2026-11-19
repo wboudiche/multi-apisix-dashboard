@@ -86,6 +86,9 @@ export const FormSectionMatchRules = () => {
     name: ['methods', 'enable_websocket', 'uri', 'uris', 'host', 'hosts', 'remote_addr', 'remote_addrs', 'vars', 'filter_func'],
   });
   const [methods, enableWebsocket, uri, uris, host, hosts, remoteAddr, remoteAddrs, vars, filterFunc] = watched;
+  const priority = useWatch({ control, name: 'priority' });
+  // Read-only, a priority of 0 is no setting of the route's own.
+  const showPriority = !isReadOnly || !isDefaultMatch('priority', priority);
 
   const hasValue = (v: unknown) =>
     v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
@@ -181,13 +184,15 @@ export const FormSectionMatchRules = () => {
             disabled={readOnlyFields.includes('filter_func') || undefined}
           />
         )}
-        <FormItemNumberInput
-          control={control}
-          name="priority"
-          label={<LabelWithTooltip label={t('form.routes.priority')} tooltip={t('form.routes.tooltip.priority')} />}
-          defaultValue={zGetDefault(APISIX.Route).priority!}
-          disabled={readOnlyFields.includes('priority') || undefined}
-        />
+        {showPriority && (
+          <FormItemNumberInput
+            control={control}
+            name="priority"
+            label={<LabelWithTooltip label={t('form.routes.priority')} tooltip={t('form.routes.tooltip.priority')} />}
+            defaultValue={zGetDefault(APISIX.Route).priority!}
+            disabled={readOnlyFields.includes('priority') || undefined}
+          />
+        )}
       </AdvancedSection>
     </FormSection>
   );

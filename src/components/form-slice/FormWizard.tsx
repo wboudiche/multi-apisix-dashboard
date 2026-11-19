@@ -139,6 +139,12 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
         return;
       }
     }
+    // What no step lists can still be refused: rather than a Submit that
+    // does nothing on screen, back to the first step to see it.
+    if (!(await trigger())) {
+      setActive(0);
+      return;
+    }
     handleComplete();
   };
 
@@ -377,7 +383,9 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
       </Box>
 
       {/* [Feature 8] Error feedback on submit failure */}
-      {error && isLastStep && (
+      {/* Where the submit came from: with Submit on every step, a refusal
+          shown on the last step only went unseen. */}
+      {error && (isLastStep || submitFromAnyStep) && (
         <Alert
           variant="light"
           color="red"

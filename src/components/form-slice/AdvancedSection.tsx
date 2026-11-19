@@ -57,8 +57,18 @@ export const AdvancedSection = ({ label, names, isDefault, children }: Props) =>
 
   const set = names.some((name, i) => hasValue(values[i]) && !isDefault?.(name, values[i]));
   const refused = names.some((name) => get(errors, name) !== undefined);
-  const [opened, setOpened] = useState(false);
-  const shown = opened || set || refused;
+  // Opened by what it holds, it stays open: emptying a field to retype it,
+  // or putting right what was refused, must not fold it under the cursor.
+  const holds = set || refused;
+  const [opened, setOpened] = useState(holds);
+  // Adjusted while rendering, as React would have it rather than in an
+  // effect: the render that sees it start holding something opens it.
+  const [held, setHeld] = useState(holds);
+  if (holds !== held) {
+    setHeld(holds);
+    if (holds) setOpened(true);
+  }
+  const shown = opened || refused;
 
   if (formState.disabled) return set ? <Stack gap="md">{children}</Stack> : null;
 
@@ -69,8 +79,8 @@ export const AdvancedSection = ({ label, names, isDefault, children }: Props) =>
         size="compact-sm"
         px={0}
         onClick={() => setOpened((o) => !o)}
-        // Open because something in it is set or refused: it stays open.
-        disabled={shown && !opened}
+        // Not while something in it is refused: the error would be folded away.
+        disabled={refused}
         rightSection={shown ? <IconExpandLess width="18" height="18" /> : <IconExpandMore width="18" height="18" />}
         aria-expanded={shown}
       >
