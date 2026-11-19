@@ -37,6 +37,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { ownerOf } from '@/utils/owner';
+import { usePaginationControlProps } from '@/utils/usePaginationControlProps';
 
 /**
  * Which view the list is in, carried in the URL.
@@ -61,6 +62,7 @@ const ServiceList = () => {
     navigate({ search: (prev) => ({ ...prev, view: next }) });
   };
   const { t } = useTranslation();
+  const paginationControlProps = usePaginationControlProps();
   const { canWriteOwner } = usePermission();
   // Never more than the rows on screen: see useRowSelection (#371).
   const selectable = useCallback(
@@ -208,6 +210,7 @@ const ServiceList = () => {
         {(pagination.total ?? 0) > (pagination.pageSize ?? 10) && (
           <Group justify="center">
             <Pagination
+              getControlProps={paginationControlProps}
               value={pagination.current ?? 1}
               total={Math.ceil((pagination.total ?? 0) / (pagination.pageSize ?? 10))}
               onChange={(page) =>

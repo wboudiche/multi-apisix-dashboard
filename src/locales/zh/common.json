@@ -163,7 +163,8 @@
       "unreachable": "控制台无法连接到此网关的 Admin API",
       "notRead": "未读取：本次刷新时控制台已超时",
       "unreadable": "无法读取 Admin API"
-    }
+    },
+    "activeManagerFor": "当前管理：{{name}}"
   },
   "login": {
     "adminNote": "账户由您的管理员创建。",
@@ -244,7 +245,8 @@
       "previous": "上一步",
       "backToList": "返回列表",
       "next": "下一步",
-      "submit": "提交"
+      "submit": "提交",
+      "close": "关闭"
     },
     "consumers": {
       "groupId": "分组 ID",
@@ -1145,7 +1147,9 @@
     "enabled": "已启用",
     "selectAll": "全选",
     "selectRow": "选择 {{name}}",
-    "nameWithId": "{{name}}（{{id}}）"
+    "nameWithId": "{{name}}（{{id}}）",
+    "previousPage": "上一页",
+    "nextPage": "下一页"
   },
   "upstreams": {
     "health": "健康状态",

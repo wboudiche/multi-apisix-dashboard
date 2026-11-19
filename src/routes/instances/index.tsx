@@ -589,6 +589,9 @@ const InstancesPage = () => {
                       onChange={() => handleSetActive(instance)}
                       color="apisix-red"
                       size="md"
+                      // One per row, with no label of its own: named for the
+                      // instance it makes the one managed.
+                      aria-label={t('instances.activeManagerFor', { name: instance.name })}
                     />
                   </Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
@@ -768,6 +771,8 @@ const InstancesPage = () => {
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 size="md"
+                // The text beside it names it on screen, not to a reader.
+                aria-label={t('instances.enabledFieldLabel')}
               />
             </Group>
           </Paper>

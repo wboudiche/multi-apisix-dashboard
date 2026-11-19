@@ -73,6 +73,7 @@ import { ownerOf } from '@/utils/owner';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
 import { useOverflowX } from '@/utils/useOverflowX';
+import { usePaginationControlProps } from '@/utils/usePaginationControlProps';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconPlus from '~icons/material-symbols/add';
@@ -123,6 +124,7 @@ export const RouteList = (props: RouteListProps) => {
   const { params: rawParams } = useSearchParams(routeKey);
   const params = rawParams as { page?: number; page_size?: number };
   const { t } = useTranslation();
+  const paginationControlProps = usePaginationControlProps();
   const { isAdmin, canCreate, canWriteResource, canWriteOwner } = usePermission();
   const [currentInstanceId] = useAtom(currentInstanceIdAtom);
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
@@ -733,6 +735,7 @@ export const RouteList = (props: RouteListProps) => {
 
       <Group justify="flex-end" p="md" style={{ borderTop: '1px solid #eee' }}>
         <Pagination
+          getControlProps={paginationControlProps}
           total={Math.ceil((data?.total || 0) / (params.page_size || 10))}
           value={params.page || 1}
           onChange={(page) => setParams({ page })}

@@ -157,6 +157,8 @@ const TeamSwitcher: FC<TeamSwitcherProps> = ({ teams, isAdmin }) => {
     return (
       <Select
         data-testid="team-switcher"
+        // A name of its own: the placeholder is no label to a screen reader.
+        aria-label={t('header.teamSwitcher')}
         placeholder={t('header.allTeams')}
         data={teamData}
         value={currentTeamId}
@@ -404,6 +406,7 @@ export const Header: FC<HeaderProps> = (props) => {
               <HealthDot health={currentHealth} />
               <Select
                 data-testid="instance-switcher"
+                aria-label={t('header.selectInstance')}
                 placeholder={t('header.selectInstance')}
                 data={instanceData}
                 value={currentInstanceId}

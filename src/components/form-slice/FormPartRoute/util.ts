@@ -24,15 +24,18 @@ import type { RoutePostType, RoutePutType } from './schema';
 export const UPSTREAM_CUSTOM = 'custom';
 export const SERVICE_NONE = 'none';
 
+// Dark enough for the white of a filled badge: Mantine's shade 6 of each
+// colour, the default, carried white text at 2.4 to 3.6:1, under the 4.5:1
+// text needs. Each method keeps its hue.
 export const METHOD_COLORS: Record<string, string> = {
-  GET: 'green',
-  POST: 'blue',
-  PUT: 'orange',
-  DELETE: 'red',
-  PATCH: 'yellow',
-  HEAD: 'gray',
-  OPTIONS: 'cyan',
-  TRACE: 'pink',
+  GET: 'teal.9',
+  POST: 'blue.8',
+  PUT: '#c2410c',
+  DELETE: 'red.9',
+  PATCH: '#a16207',
+  HEAD: 'gray.7',
+  OPTIONS: 'cyan.9',
+  TRACE: 'pink.9',
 };
 
 export const produceVarsToForm = produce((draft: RoutePostType) => {
