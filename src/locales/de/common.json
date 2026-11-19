@@ -439,7 +439,20 @@
         "createFailed": "Der Client konnte nicht angelegt werden.",
         "createdAtOnce": "Der Client wird sofort auf diesem Gateway angelegt, auch wenn Sie dieses Formular nicht speichern.",
         "create": "Client anlegen",
-        "nameHeldElsewhere": "Dieser Name ist auf diesem Gateway bereits vergeben, von einem Client, den Sie nicht sehen. Wählen Sie einen anderen."
+        "nameHeldElsewhere": "Dieser Name ist auf diesem Gateway bereits vergeben, von einem Client, den Sie nicht sehen. Wählen Sie einen anderen.",
+        "accessAny": "Jeder Client mit Zugangsdaten",
+        "accessAnyHelp": "Zugangsdaten öffnen jede Route, die diese Art der Authentifizierung verlangt.",
+        "accessOnly": "Nur die ausgewählten Clients",
+        "accessOnlyHelp": "Die anderen erhalten 403, auch mit gültigen Zugangsdaten.",
+        "accessEmpty": "Wählen Sie mindestens einen Client aus.",
+        "accessCustom": "Diese Route beschränkt ihre Aufrufer bereits mit dem Plugin consumer-restriction, auf eine Weise, die diese Liste nicht darstellen kann. Ändern Sie es über dieses Plugin.",
+        "noCredential": "Hat keine Zugangsdaten für dieses Plugin",
+        "notVisible": "Nicht unter den Clients, die Sie sehen: der eines anderen Teams oder ein inzwischen gelöschter",
+        "accessOrder": "Dieses Plugin läuft nach consumer-restriction, die dann keinen Client findet und jede Anfrage ablehnt. Geben Sie ihm eine höhere Priorität als die der Beschränkung.",
+        "accessPending": "Wer sie aufrufen darf, wurde im Formular-Tab geändert und wird mit diesem Plugin gespeichert.",
+        "accessEmptyJson": "Wer sie aufrufen darf: Wählen Sie im Formular-Tab mindestens einen Client aus.",
+        "notFound": "Kein solcher Client auf diesem Gateway",
+        "alsoAsks": "Diese Route verlangt auch {{plugins}}: Ein Client kommt nur mit Zugangsdaten für jedes davon durch."
       }
     },
     "protos": {

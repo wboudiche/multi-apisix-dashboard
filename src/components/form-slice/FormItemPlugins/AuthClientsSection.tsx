@@ -19,12 +19,14 @@ import {
   Alert,
   Badge,
   Button,
+  Checkbox,
   Code,
   CopyButton,
   Divider,
   Group,
   Loader,
   Paper,
+  Radio,
   Stack,
   Text,
   TextInput,
@@ -53,6 +55,7 @@ import {
   credentialId,
   generateSecret,
   holdsCredential,
+  type Restriction,
   shellQuote,
   usableHeader,
 } from '@/utils/auth-clients';
@@ -61,7 +64,12 @@ import IconCheck from '~icons/material-symbols/check';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
 import IconRefresh from '~icons/material-symbols/refresh';
 
-type Clients = { holders: string[]; all: string[] };
+type Clients = {
+  /** Who holds a credential of the plugin edited. */
+  holders: string[];
+  /** Every consumer this account sees. */
+  all: string[];
+};
 
 // Every consumer of the gateway, with what each holds. APISIX lists a
 // consumer's credentials separately, so this is one request per consumer:
@@ -139,12 +147,82 @@ const Usage = ({
   );
 };
 
+/**
+ * The clients the route lets through, ticked: those holding a credential of
+ * the plugin, and any name already on the list - another plugin's client, or
+ * one this account cannot see - so that saving does not drop it unseen.
+ */
+const ClientChecklist = ({
+  clients,
+  names,
+  readOnly,
+  onChange,
+}: {
+  clients: Clients | undefined;
+  names: string[];
+  readOnly?: boolean;
+  onChange: (names: string[]) => void;
+}) => {
+  const { t } = useTranslation();
+  // An admin of the instance sees every client, as a super admin does: for
+  // them a name nobody holds is gone, not out of sight.
+  const { isAdmin } = usePermission();
+  const holders = clients?.holders ?? [];
+  const options = [...new Set([...holders, ...names])].sort();
+  // Why a name is on the list and cannot get through this plugin: it holds
+  // no credential of it, or it is no client at all. One this account cannot
+  // see may well hold one, and is not to be taken for dead; a super admin
+  // sees every client, so for them a name nobody holds is gone.
+  const hint = (option: string): string | undefined => {
+    if (!clients || holders.includes(option)) return undefined;
+    if (clients.all.includes(option)) return t('form.plugins.clients.noCredential');
+    return isAdmin
+      ? t('form.plugins.clients.notFound')
+      : t('form.plugins.clients.notVisible');
+  };
+  return (
+    <Stack gap="xs">
+      {options.length === 0 && !clients ? null : options.length === 0 ? (
+        <Alert color="yellow" variant="light">
+          {t('form.plugins.clients.none')}
+        </Alert>
+      ) : (
+        <Checkbox.Group value={names} onChange={onChange}>
+          <Stack gap={6}>
+            {options.map((option) => (
+              <Checkbox
+                key={option}
+                value={option}
+                disabled={readOnly}
+                label={option}
+                description={hint(option)}
+              />
+            ))}
+          </Stack>
+        </Checkbox.Group>
+      )}
+      {names.length === 0 && (
+        <Text size="sm" c="red">
+          {t('form.plugins.clients.accessEmpty')}
+        </Text>
+      )}
+    </Stack>
+  );
+};
+
 export type AuthClientsSectionProps = {
   plugin: AuthClientPlugin;
   /** The plugin's configuration as edited, for the header a key goes in. */
   config: Record<string, unknown>;
   /** The plugin is only being looked at: its clients are listed, none made. */
   readOnly?: boolean;
+  /** Who the route lets through: every client, or the ones ticked. */
+  access: Restriction;
+  onAccessChange: (next: Restriction) => void;
+  /** The names the route held, ticked again when "only" is picked back. */
+  storedNames: string[];
+  /** The route's other authentication plugins, which a client must pass too. */
+  otherPlugins: string[];
 };
 
 /** The name is a consumer already, one this account cannot see. */
@@ -159,6 +237,10 @@ export const AuthClientsSection = ({
   plugin,
   config,
   readOnly,
+  access,
+  onAccessChange,
+  storedNames,
+  otherPlugins,
 }: AuthClientsSectionProps) => {
   const { t } = useTranslation();
   const instanceId = useAtomValue(currentInstanceIdAtom);
@@ -228,6 +310,10 @@ export const AuthClientsSection = ({
     },
     onSuccess: () => {
       setCreated({ name, secret });
+      // Made from this form to call this route: on its list at once.
+      if (access.mode === 'only' && !access.names.includes(name)) {
+        onAccessChange({ mode: 'only', names: [...access.names, name] });
+      }
       setFormOpened(false);
       setName('');
       setSecret(generateSecret());
@@ -263,7 +349,56 @@ export const AuthClientsSection = ({
             {t('form.plugins.clients.loadFailed')}
           </Alert>
         )}
+        {access.mode !== 'custom' && (
+          <Radio.Group
+            value={access.mode}
+            onChange={(mode) =>
+              onAccessChange(
+                mode === 'only'
+                  ? { mode: 'only', names: storedNames }
+                  : { mode: 'any' }
+              )
+            }
+          >
+            <Stack gap="xs">
+              <Radio
+                value="any"
+                disabled={readOnly}
+                label={t('form.plugins.clients.accessAny')}
+                description={t('form.plugins.clients.accessAnyHelp')}
+              />
+              <Radio
+                value="only"
+                disabled={readOnly}
+                label={t('form.plugins.clients.accessOnly')}
+                description={t('form.plugins.clients.accessOnlyHelp')}
+              />
+            </Stack>
+          </Radio.Group>
+        )}
+        {access.mode === 'custom' && (
+          <Alert color="blue" variant="light">
+            {t('form.plugins.clients.accessCustom')}
+          </Alert>
+        )}
+
+        {access.mode === 'only' && (
+          <ClientChecklist
+            // While the clients are read, or when they could not be, the
+            // names already on the list are still shown, and can be ticked.
+            clients={clients.data}
+            names={access.names}
+            readOnly={readOnly}
+            onChange={(names) => onAccessChange({ mode: 'only', names })}
+          />
+        )}
+        {otherPlugins.length > 0 && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.alsoAsks', { plugins: otherPlugins.join(', ') })}
+          </Text>
+        )}
         {clients.data &&
+          access.mode !== 'only' &&
           (clients.data.holders.length === 0 ? (
             <Alert color="yellow" variant="light">
               {t('form.plugins.clients.none')}

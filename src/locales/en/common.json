@@ -466,7 +466,20 @@
         "createFailed": "The client could not be created.",
         "createdAtOnce": "The client is created on this gateway at once, whether or not you save this form.",
         "create": "Create client",
-        "nameHeldElsewhere": "This name is already taken on this gateway, by a client you cannot see. Choose another."
+        "nameHeldElsewhere": "This name is already taken on this gateway, by a client you cannot see. Choose another.",
+        "accessAny": "Every client holding a credential",
+        "accessAnyHelp": "A credential opens every route that asks for this kind of authentication.",
+        "accessOnly": "Only the clients ticked",
+        "accessOnlyHelp": "The others get a 403, even with a valid credential.",
+        "accessEmpty": "Tick at least one client.",
+        "accessCustom": "This route already limits its callers with its consumer-restriction plugin, in a way this list cannot show. Change it from that plugin.",
+        "noCredential": "Holds no credential for this plugin",
+        "notVisible": "Not among the clients you can see: another team's, or one since deleted",
+        "accessOrder": "This plugin runs after the consumer-restriction, which then finds no client and refuses every request. Give it a priority above the restriction's.",
+        "accessPending": "Who can call it was changed in the Form tab, and is saved with this plugin.",
+        "accessEmptyJson": "Who can call it: tick at least one client in the Form tab.",
+        "notFound": "No such client on this gateway",
+        "alsoAsks": "This route also asks for {{plugins}}: a client gets through only with a credential of each."
       }
     },
     "protos": {

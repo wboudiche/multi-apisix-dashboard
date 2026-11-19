@@ -82,3 +82,89 @@ export const shellQuote = (value: string): string =>
  */
 export const usableHeader = (header: unknown): string =>
   typeof header === 'string' && /^[A-Za-z0-9-]+$/.test(header) ? header : 'apikey';
+
+/**
+ * Which clients the route lets through, as its consumer-restriction plugin
+ * says. Holding a key opens every route that asks for one; the plugin is what
+ * narrows a route to some of them - what an API manager calls a subscription.
+ *
+ * - `any`: no restriction, every client holding a credential gets through.
+ * - `only`: an allow-list of consumer names, the shape this form writes.
+ * - `custom`: a restriction this form does not write - a deny-list, by
+ *   method, by group, switched off - left to the plugin's own form.
+ */
+export type Restriction =
+  | { mode: 'any' }
+  | { mode: 'only'; names: string[] }
+  | { mode: 'custom' };
+
+export const RESTRICTION_PLUGIN = 'consumer-restriction';
+
+/**
+ * Where the gateway runs consumer-restriction by default: below the
+ * authentication plugins, so the consumer is known by the time it looks.
+ */
+export const RESTRICTION_DEFAULT_PRIORITY = 2400;
+
+/** The keys of a consumer-restriction this form can read and write back. */
+const OWN_KEYS = new Set(['type', 'whitelist', 'rejected_code', 'rejected_msg', '_meta']);
+
+export const readRestriction = (config: unknown): Restriction => {
+  if (config === undefined || config === null) return { mode: 'any' };
+  if (typeof config !== 'object') return { mode: 'custom' };
+  const c = config as Record<string, unknown>;
+  const meta = c._meta;
+  if (
+    Object.keys(c).some((k) => !OWN_KEYS.has(k)) ||
+    (c.type !== undefined && c.type !== 'consumer_name') ||
+    !Array.isArray(c.whitelist) ||
+    !c.whitelist.every((n) => typeof n === 'string') ||
+    // Switched off, or run on a filter: not a plain list of who gets in.
+    (meta !== undefined &&
+      (meta === null ||
+        typeof meta !== 'object' ||
+        (meta as Record<string, unknown>).disable === true ||
+        (meta as Record<string, unknown>).filter !== undefined))
+  ) {
+    return { mode: 'custom' };
+  }
+  return { mode: 'only', names: c.whitelist as string[] };
+};
+
+/** Whether two choices let the same clients in, whatever the order ticked. */
+export const sameRestriction = (a: Restriction, b: Restriction): boolean => {
+  if (a.mode !== b.mode) return false;
+  if (a.mode !== 'only' || b.mode !== 'only') return true;
+  const x = [...a.names].sort();
+  const y = [...b.names].sort();
+  return x.length === y.length && x.every((n, i) => n === y[i]);
+};
+
+/**
+ * Whether an authentication plugin runs too late for the restriction: the
+ * restriction looks at the consumer the plugin found, and the gateway runs
+ * the higher priority first. At or below the restriction's, the plugin has
+ * found nobody yet when the restriction looks, and every request is refused.
+ */
+export const runsAfterRestriction = (
+  pluginPriority: number | undefined,
+  restrictionPriority: number
+): boolean => pluginPriority !== undefined && pluginPriority <= restrictionPriority;
+
+/**
+ * The consumer-restriction a choice comes to: none at all for every client,
+ * or an allow-list of the names, keeping what else the plugin was given - its
+ * rejection code and message, its priority.
+ */
+export const writeRestriction = (
+  current: unknown,
+  names: string[] | null
+): Record<string, unknown> | null => {
+  if (names === null) return null;
+  const kept =
+    current && typeof current === 'object'
+      ? { ...(current as Record<string, unknown>) }
+      : {};
+  delete kept.type;
+  return { ...kept, whitelist: names };
+};

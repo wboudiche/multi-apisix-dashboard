@@ -42,6 +42,7 @@ import {
 import { genControllerProps } from '@/components/form/util';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
+import { RESTRICTION_PLUGIN } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { effectivePriority, inExecutionOrder } from '@/utils/plugin-priority';
@@ -168,8 +169,12 @@ export const FormItemPlugins = <T extends FieldValues>(
       fOnChange(obj);
     },
     update(config: PluginConfig) {
-      const { name, config: pluginConfig } = config;
+      const { name, config: pluginConfig, restriction } = config;
       this.__map.set(name, pluginConfig);
+      // Who may call is the route's consumer-restriction, set from the form
+      // of the authentication plugin it narrows.
+      if (restriction === null) this.__map.delete(RESTRICTION_PLUGIN);
+      else if (restriction) this.__map.set(RESTRICTION_PLUGIN, restriction);
       this.save();
       this.setSelectPluginsOpened(false);
     },
@@ -268,6 +273,13 @@ export const FormItemPlugins = <T extends FieldValues>(
         <PluginEditorDrawer
           showPriority
           showClients={context !== 'consumer' && schema === 'schema'}
+          restriction={toJS(pluginsOb.__map.get(RESTRICTION_PLUGIN))}
+          restrictionDefaultPriority={pluginsOb.priorityDefaults[RESTRICTION_PLUGIN]}
+          otherAuthPlugins={pluginsOb.selected.filter(
+            (n) =>
+              n !== pluginsOb.curPlugin.name &&
+              getPluginCategory(n) === 'authentication'
+          )}
           defaultPriority={pluginsOb.priorityDefaults[pluginsOb.curPlugin.name]}
           mode={isView ? 'view' : pluginsOb.mode}
           schema={toJS(pluginsOb.curPluginSchema)}
