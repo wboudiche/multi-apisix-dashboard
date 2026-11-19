@@ -40,7 +40,6 @@ import {
 import { UpstreamModeSelector } from '@/components/form-slice/FormPartRoute/UpstreamModeSelector';
 import { useDuplicateRouteCheck } from '@/components/form-slice/FormPartRoute/useDuplicateRouteCheck';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
-import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
 import { FormWizard } from '@/components/form-slice/FormWizard';
 import PageHeader from '@/components/page/PageHeader';
 import { PAGE_SIZE_MAX } from '@/config/constant';
@@ -202,7 +201,6 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
   const steps = [
     {
       label: t('form.routes.steps.apiInfo'),
-      description: t('form.routes.steps.apiInfoDesc'),
       content: (
         <>
           {/* [Feature 7] Live URI/Methods preview */}
@@ -216,39 +214,17 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
       // Every field the step holds: one left out is one a Submit from a later
       // step would find refused with nothing on screen to say so.
       fields: ['name', 'desc', 'labels', 'status', 'methods', 'uri', 'host', 'enable_websocket', 'uris', 'hosts', 'remote_addr', 'remote_addrs', 'vars', 'filter_func', 'priority'],
-      // [Feature 4] Step summary
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getSummary: (values: Record<string, any>) => {
-        const methods = values.methods?.length ? values.methods.join(', ') : 'ALL';
-        const uri = values.uri || values.uris?.[0] || '';
-        return uri ? `${methods} ${uri}` : null;
-      },
     },
     {
       label: t('form.routes.steps.upstream'),
-      description: t('form.routes.steps.upstreamDesc'),
       content: <UpstreamModeSelector />,
       fields: ['upstream', 'upstream_id', 'service_id'],
-      // [Feature 4] Step summary
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getSummary: (values: Record<string, any>) => {
-        if (values.service_id && values.service_id !== 'none') return t('form.routes.steps.summaryBoundToService');
-        if (values.upstream_id === 'custom') {
-          const nodes = parseToNodes(values.upstream?.nodes);
-          return nodes.length
-            ? t('form.routes.steps.summaryCustomNodes', { count: nodes.length })
-            : t('form.routes.steps.summaryCustom');
-        }
-        if (values.upstream_id) return t('form.routes.steps.summaryExisting');
-        return null;
-      },
     },
     {
       // Request rewrite and plugins, one step: both optional, and two steps
       // of them made a route that needs neither five screens long.
       // [Feature 12] Plugin count badge
       label: <OptionsStepLabel />,
-      description: t('form.routes.steps.optionsDesc'),
       content: (
         <>
           <FormSectionRequestOverride />
@@ -256,18 +232,9 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
         </>
       ),
       fields: ['plugins', 'plugin_config_id'],
-      // [Feature 4] Step summary
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getSummary: (values: Record<string, any>) => {
-        const count = values.plugins ? Object.keys(values.plugins).length : 0;
-        if (values.plugin_config_id)
-          return t('form.routes.steps.summaryPluginConfig', { id: values.plugin_config_id });
-        return count > 0 ? t('form.upstreamMode.pluginsCount', { count }) : null;
-      },
     },
     {
       label: t('form.routes.steps.preview'),
-      description: t('form.routes.steps.previewDesc'),
       // [Feature 1] Structured preview
       content: <RoutePreviewSummary />,
     },

@@ -124,7 +124,6 @@ const RouteDetailForm = (props: Props) => {
   const steps = [
     {
       label: t('form.routes.steps.apiInfo'),
-      description: t('form.routes.steps.apiInfoDesc'),
       content: (
         <>
           <FormSectionGeneral readOnly />
@@ -138,7 +137,6 @@ const RouteDetailForm = (props: Props) => {
     },
     {
       label: t('form.routes.steps.upstream'),
-      description: t('form.routes.steps.upstreamDesc'),
       content: (
         <>
           <FormSectionService />
@@ -150,7 +148,6 @@ const RouteDetailForm = (props: Props) => {
     {
       // Request rewrite and plugins, one step, as on the add page.
       label: t('form.routes.steps.options'),
-      description: t('form.routes.steps.optionsDesc'),
       content: (
         <>
           <FormSectionRequestOverride />
@@ -161,7 +158,6 @@ const RouteDetailForm = (props: Props) => {
     },
     {
       label: t('form.routes.steps.preview'),
-      description: t('form.routes.steps.previewDesc'),
       content: <RoutePreviewSummary data={readOnly ? routeData?.value : undefined} />,
     },
   ];

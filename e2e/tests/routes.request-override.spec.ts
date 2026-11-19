@@ -68,8 +68,8 @@ test.describe('Route Add - Request Override on the Options step', () => {
     await page.goto(`${BASE_URL}/routes/add`);
     await page.waitForTimeout(1000);
     const options = page.locator('.mantine-Stepper-step').nth(2);
-    await expect(options).toContainText('Options');
-    await expect(options).toContainText('Request rewrite and plugins, both optional');
+    // Its name alone: the steps carry no description.
+    await expect(options).toHaveText(/^\d?Options$/);
   });
 
   test('Request Override shows all form fields', async ({ page }) => {

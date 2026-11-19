@@ -54,7 +54,8 @@ const saveFromJumpedStep = async (page: Page, url: string, name: string, step: R
   await page.getByRole('button', { name: step }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('button', { name: 'Next', exact: true }).click();
-  // Exact: the last step's own button is named "Preview Review and submit".
+  // Exact: the last step's own button is named "Preview", and the add page's
+  // other steps carry a Submit of their own.
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
 };
 

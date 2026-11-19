@@ -178,27 +178,6 @@ test.describe('Route Add - UX Improvements', () => {
     await page.screenshot({ path: '/tmp/ux-plugin-badge.png' });
   });
 
-  test('Feature 4: Step summaries show after completing steps', async ({ page }) => {
-    await goToAddRoute(page);
-
-    await page.locator('input[name="name"]').fill('test-step-summary');
-    await page.locator('input[name="uri"]').fill('/summary-test');
-    await clearMethods(page); // drop the GET/POST/PUT/DELETE defaults
-    await selectMethods(page, ['GET']);
-
-    // Go to step 2
-    await clickNext(page);
-
-    // Step 1 description should now show the summary
-    const stepDescription = page.locator('.mantine-Stepper-stepDescription').first();
-    await expect(stepDescription).toBeVisible();
-    const descText = await stepDescription.textContent();
-    expect(descText).toContain('GET');
-    expect(descText).toContain('/summary-test');
-
-    await page.screenshot({ path: '/tmp/ux-step-summary.png' });
-  });
-
   test('Feature 1: Preview step shows structured summary', async ({ page }) => {
     await goToAddRoute(page);
 

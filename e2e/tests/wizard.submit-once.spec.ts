@@ -163,8 +163,7 @@ test('Escape, Back and the steps do not leave a submit in flight', async ({ page
     await expect(page).toHaveURL(/\/services\/add$/);
     await expect(submit).toBeVisible();
 
-    // A step button, which otherwise goes back freely. Its name is the step's
-    // label followed by its description, "Basic Name and hosts".
+    // A step button, which otherwise goes back freely, named by its label.
     await page.getByRole('button', { name: /^Basic\b/ }).click();
     await nextFrame(page);
     await expect(submit).toBeVisible();

@@ -96,7 +96,6 @@ const UpstreamDetailForm = (
   const steps = [
     {
       label: t('form.upstreams.steps.basic'),
-      description: t('form.upstreams.steps.basicDesc'),
       content: (
         <>
           <FormSectionGeneral readOnly />
@@ -107,13 +106,11 @@ const UpstreamDetailForm = (
     },
     {
       label: t('form.upstreams.steps.nodes'),
-      description: t('form.upstreams.steps.nodesDesc'),
       content: <FormSectionNodesAndDiscovery />,
       fields: ['nodes', 'service_name', 'discovery_type'],
     },
     {
       label: t('form.upstreams.steps.connection'),
-      description: t('form.upstreams.steps.connectionDesc'),
       content: (
         <>
           <FormSectionConnection />
@@ -124,7 +121,6 @@ const UpstreamDetailForm = (
     },
     {
       label: t('form.upstreams.steps.preview'),
-      description: t('form.upstreams.steps.previewDesc'),
       content: <UpstreamPreviewSummary data={readOnly ? upstreamData : undefined} />,
     },
   ];
