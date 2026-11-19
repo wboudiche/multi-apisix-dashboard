@@ -326,8 +326,13 @@ table td.sticky-actions {
   right: 0;
   z-index: 1;
   background: var(--bg-card) !important;
-  /* Marked off from what scrolls under it: a column that stays put, not one
-     that cut the table short. */
+}
+
+/* Marked off from what scrolls under it, when something does: a column that
+   stays put, not one that cut the table short. A table that fits shows none,
+   which read as a panel set apart from its own rows. */
+[data-overflowing="true"] table th.sticky-actions,
+[data-overflowing="true"] table td.sticky-actions {
   border-left: 1px solid var(--border-light) !important;
   box-shadow: -10px 0 12px -10px rgba(0, 0, 0, 0.25);
 }

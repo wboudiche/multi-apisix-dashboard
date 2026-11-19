@@ -72,6 +72,7 @@ import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { ownerOf } from '@/utils/owner';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
+import { useOverflowX } from '@/utils/useOverflowX';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconPlus from '~icons/material-symbols/add';
@@ -291,6 +292,8 @@ export const RouteList = (props: RouteListProps) => {
     }
   }, [jsonDrawerData, t, refetch]);
 
+  // Whether the table scrolls: its pinned actions are set off only then.
+  const [scrollRef, overflowing] = useOverflowX<HTMLDivElement>();
   // The route being duplicated: the quick-create dialog, on its settings.
   // It used to post an identical copy at once, published, answering on the
   // original's path beside it before anyone chose where it should go.
@@ -378,7 +381,7 @@ export const RouteList = (props: RouteListProps) => {
       {/* Scrolled rather than clipped: with every column shown the table is
           wider than the card, whose overflow is hidden, and the actions at its
           end went out of reach. The actions column stays in view (sticky-actions). */}
-      <Table.ScrollContainer minWidth={0} type="native">
+      <Table.ScrollContainer ref={scrollRef} data-overflowing={overflowing} minWidth={0} type="native">
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
