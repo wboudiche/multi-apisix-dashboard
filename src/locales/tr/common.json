@@ -1155,7 +1155,9 @@
     "selectRow": "{{name}} seç",
     "nameWithId": "{{name}} ({{id}})",
     "previousPage": "Önceki sayfa",
-    "nextPage": "Sonraki sayfa"
+    "nextPage": "Sonraki sayfa",
+    "firstPage": "İlk sayfa",
+    "lastPage": "Son sayfa"
   },
   "upstreams": {
     "health": "Durum",

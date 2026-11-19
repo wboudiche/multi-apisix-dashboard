@@ -1075,7 +1075,9 @@
     "selectRow": "Select {{name}}",
     "nameWithId": "{{name}} ({{id}})",
     "previousPage": "Previous page",
-    "nextPage": "Next page"
+    "nextPage": "Next page",
+    "firstPage": "First page",
+    "lastPage": "Last page"
   },
   "upstreams": {
     "health": "Health",

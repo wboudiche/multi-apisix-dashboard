@@ -1155,7 +1155,9 @@
     "selectRow": "{{name}} auswählen",
     "nameWithId": "{{name}} ({{id}})",
     "previousPage": "Vorherige Seite",
-    "nextPage": "Nächste Seite"
+    "nextPage": "Nächste Seite",
+    "firstPage": "Erste Seite",
+    "lastPage": "Letzte Seite"
   },
   "upstreams": {
     "health": "Zustand",

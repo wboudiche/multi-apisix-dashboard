@@ -1149,7 +1149,9 @@
     "selectRow": "选择 {{name}}",
     "nameWithId": "{{name}}（{{id}}）",
     "previousPage": "上一页",
-    "nextPage": "下一页"
+    "nextPage": "下一页",
+    "firstPage": "第一页",
+    "lastPage": "最后一页"
   },
   "upstreams": {
     "health": "健康状态",

@@ -22,6 +22,9 @@ import { useTranslation } from 'react-i18next';
  * The theme, with what it says in the page's language: a notification's
  * close button is an icon alone, and read to a screen reader as a button
  * with no name until given one.
+ *
+ * As a default prop, it is replaced whole by a notification that passes
+ * closeButtonProps of its own: one that does must carry the aria-label too.
  */
 export const LocalizedMantineProvider = ({
   theme,

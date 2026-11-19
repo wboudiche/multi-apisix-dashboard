@@ -141,6 +141,9 @@ body::before {
   width: 100% !important;
 }
 
+/* The router marks the current page aria-current; nothing sets
+   data-active, so the bar and the fill keyed on it alone never showed. */
+[class*="NavLink-root"][aria-current="page"],
 [class*="NavLink-root"][data-active="true"] {
   background: linear-gradient(135deg, var(--brand-subtle) 0%, rgba(248, 66, 63, 0.05) 100%) !important;
   box-shadow: inset 3px 0 0 var(--brand) !important;
@@ -149,15 +152,13 @@ body::before {
   color: #b32626 !important;
 }
 
-/* The router marks the current page aria-current, not data-active. */
-[class*="NavLink-root"][aria-current="page"],
 [class*="NavLink-root"][aria-current="page"] [class*="NavLink-label"],
 [class*="NavLink-root"][data-active="true"] [class*="NavLink-label"],
 [class*="NavLink-root"][data-active="true"] [class*="NavLink-section"] {
   color: #b32626 !important;
 }
 
-[class*="NavLink-root"]:hover:not([data-active="true"]) {
+[class*="NavLink-root"]:hover:not([data-active="true"]):not([aria-current="page"]) {
   background: linear-gradient(135deg, rgba(248, 66, 63, 0.06) 0%, rgba(248, 66, 63, 0.02) 100%) !important;
 }
 
@@ -579,7 +580,7 @@ select:focus,
 /* Checked, by the input's own state: Mantine sets no data-checked on the
    track, so a rule keyed on it never matched, and a switch that was on
    showed the grey of one that is off. */
-.mantine-Switch-input:checked + .mantine-Switch-track {
+.mantine-Switch-input:checked:not(:disabled) + .mantine-Switch-track {
   background: var(--brand) !important;
   border-color: var(--brand) !important;
 }
@@ -596,7 +597,7 @@ select:focus,
 
 /* The options not chosen: Mantine's grey on the control's own grey was 3.9:1,
    under the 4.5:1 text needs. */
-.mantine-SegmentedControl-label:not([data-active]) {
+[data-mantine-color-scheme="light"] .mantine-SegmentedControl-label:not([data-active]):not([data-disabled]) {
   color: #565b61 !important;
 }
 

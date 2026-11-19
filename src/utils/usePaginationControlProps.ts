@@ -25,6 +25,12 @@ export const usePaginationControlProps = () => {
   const { t } = useTranslation();
   return (control: 'first' | 'previous' | 'last' | 'next') => ({
     'aria-label':
-      control === 'previous' || control === 'first' ? t('table.previousPage') : t('table.nextPage'),
+      control === 'first'
+        ? t('table.firstPage')
+        : control === 'previous'
+          ? t('table.previousPage')
+          : control === 'next'
+            ? t('table.nextPage')
+            : t('table.lastPage'),
   });
 };

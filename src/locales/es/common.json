@@ -1157,7 +1157,9 @@
     "selectRow": "Seleccionar {{name}}",
     "nameWithId": "{{name}} ({{id}})",
     "previousPage": "Página anterior",
-    "nextPage": "Página siguiente"
+    "nextPage": "Página siguiente",
+    "firstPage": "Primera página",
+    "lastPage": "Última página"
   },
   "upstreams": {
     "health": "Estado",
