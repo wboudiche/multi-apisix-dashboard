@@ -494,16 +494,17 @@
         "apiInfoDesc": "Protocol, Host, Path, etc.",
         "upstream": "Define Upstream",
         "upstreamDesc": "Target gateway configuration",
-        "plugins": "Plugins Config",
-        "pluginsDesc": "Add and configure plugins",
         "preview": "Preview",
         "previewDesc": "Review and finish",
         "summaryBoundToService": "Bound to service",
         "summaryCustomNodes": "Custom: {{count}} node(s)",
         "summaryCustom": "Custom upstream",
         "summaryExisting": "Existing upstream",
-        "summaryPluginConfig": "Plugin config: {{- id}}"
-      }
+        "summaryPluginConfig": "Plugin config: {{- id}}",
+        "options": "Options",
+        "optionsDesc": "Request rewrite and plugins, both optional"
+      },
+      "advancedMatching": "Advanced matching"
     },
     "reassignTeam": {
       "title": "Reassign Team",
@@ -520,7 +521,6 @@
     },
     "requestOverride": {
       "title": "Request Override",
-      "description": "Rewrite request properties before proxying",
       "scheme": "Scheme",
       "keepOriginal": "Keep Original",
       "uri": "URI Override",

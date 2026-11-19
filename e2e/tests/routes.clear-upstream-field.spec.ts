@@ -137,8 +137,7 @@ test('selecting an existing upstream stores upstream_id without inline upstream'
     await page.getByRole('textbox', { name: 'Upstream', exact: true }).click();
     await selectOption(page, upstreamName);
 
-    // Walk to Preview (Request Override -> Plugins -> Preview) and submit.
-    await uiRouteWizardNext(page);
+    // Walk to Preview (Options -> Preview) and submit.
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
     await uiRouteWizardSubmit(page);
@@ -167,8 +166,7 @@ test('binding a service stores service_id without inline upstream', async ({
     await page.getByRole('textbox', { name: 'Service', exact: true }).click();
     await selectOption(page, serviceName);
 
-    // Walk to Preview (Request Override -> Plugins -> Preview) and submit.
-    await uiRouteWizardNext(page);
+    // Walk to Preview (Options -> Preview) and submit.
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
     await uiRouteWizardSubmit(page);

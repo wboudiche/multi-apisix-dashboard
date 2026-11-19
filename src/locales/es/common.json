@@ -469,20 +469,20 @@
         "apiInfoDesc": "Protocolo, host, ruta, etc.",
         "upstream": "Definir el upstream",
         "upstreamDesc": "Configuración del destino",
-        "plugins": "Configuración de plugins",
-        "pluginsDesc": "Añadir y configurar plugins",
         "preview": "Vista previa",
         "previewDesc": "Revisar y finalizar",
         "summaryBoundToService": "Vinculado a un servicio",
         "summaryCustomNodes": "Personalizado: {{count}} nodo(s)",
         "summaryCustom": "Upstream personalizado",
         "summaryExisting": "Upstream existente",
-        "summaryPluginConfig": "Configuración de plugins: {{- id}}"
-      }
+        "summaryPluginConfig": "Configuración de plugins: {{- id}}",
+        "options": "Opciones",
+        "optionsDesc": "Reescritura de la petición y plugins, ambos opcionales"
+      },
+      "advancedMatching": "Coincidencia avanzada"
     },
     "requestOverride": {
       "title": "Reescritura de Solicitud",
-      "description": "Reescribir propiedades de la solicitud antes del proxy",
       "scheme": "Esquema",
       "keepOriginal": "Mantener Original",
       "uri": "Reescritura de URI",

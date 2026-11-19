@@ -127,9 +127,8 @@ test('should CRUD route with required fields', async ({ page }) => {
     await page.getByLabel('Description').first().fill('Updated description for testing');
     await page.getByLabel('URI', { exact: true }).fill(`${routeUri}-updated`);
 
-    // Walk to the Preview step (4 hops: Upstream, Request Override,
-    // Plugins, Preview) and submit the edit.
-    await uiRouteWizardNext(page);
+    // Walk to the Preview step (3 hops: Upstream, Options, Preview) and
+    // submit the edit.
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);

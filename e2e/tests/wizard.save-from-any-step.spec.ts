@@ -83,7 +83,7 @@ test('a route saves whole from a step reached while read-only', async ({ page })
   });
 
   try {
-    await saveFromJumpedStep(page, `/ui/routes/detail/${id}`, id, /^Plugins Config/);
+    await saveFromJumpedStep(page, `/ui/routes/detail/${id}`, id, /^Options/);
     await expect(page.getByText('Edit Route Successfully')).toBeVisible({ timeout: 15000 });
     expect(puts).toEqual([`${PROXY}/routes/${id}`]);
 
@@ -153,7 +153,7 @@ const PAGES = [
     type: 'routes',
     singular: 'route',
     body: (id: string) => ({ name: id, uri: `/${id}`, upstream }),
-    step: /^Plugins Config/,
+    step: /^Options/,
   },
   {
     type: 'services',

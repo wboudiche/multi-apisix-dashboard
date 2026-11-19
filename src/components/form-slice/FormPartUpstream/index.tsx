@@ -29,6 +29,7 @@ import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconChevronRight from '~icons/material-symbols/chevron-right';
 import IconExpandMore from '~icons/material-symbols/expand-more';
 
+import { AdvancedSection } from '../AdvancedSection';
 import { FormPartBasic } from '../FormPartBasic';
 import { FormSection } from '../FormSection';
 import { FormItemNodes } from './FormItemNodes';
@@ -325,6 +326,45 @@ const BALANCER_LABELS: Record<(typeof APISIX.UpstreamBalancer.options)[number]['
   least_conn: 'Least Conn',
 };
 
+// The settings an upstream works without, folded away until one is set: the
+// nodes and their scheme are what one needs.
+const ADVANCED_UPSTREAM_FIELDS = [
+  'type',
+  'hash_on',
+  'key',
+  'pass_host',
+  'upstream_host',
+  'retries',
+  'retry_timeout',
+  'timeout',
+  'keepalive_pool',
+];
+
+// Health checks are on when their switches are, whatever the check fields
+// hold: a service's new upstream starts with them filled in and off.
+const CHECK_SWITCHES = ['__checksEnabled', '__checksPassiveEnabled'];
+
+// What a new upstream starts with: a default alone does not open the section.
+const isDefaultUpstream = (field: string, value: unknown) => {
+  if (field === 'type') return value === APISIX.UpstreamBalancer.options[0].value;
+  if (field === 'hash_on') return value === APISIX.UpstreamHashOn.options[0].value;
+  if (field === 'pass_host') return value === APISIX.UpstreamPassHost.options[0].value;
+  // APISIX's own pool, which a service's new upstream is given.
+  if (field === 'keepalive_pool') {
+    const pool = value as Record<string, unknown> | undefined;
+    return (
+      (pool?.size === undefined || pool.size === 320) &&
+      (pool?.idle_timeout === undefined || pool.idle_timeout === 60) &&
+      (pool?.requests === undefined || pool.requests === 1000)
+    );
+  }
+  if (field === 'timeout') {
+    const timeout = value as Record<string, unknown> | undefined;
+    return ['connect', 'send', 'read'].every((k) => timeout?.[k] === undefined || timeout[k] === 6);
+  }
+  return false;
+};
+
 export const FormPartUpstreamFlat = () => {
   const { t } = useTranslation();
   const { control } = useFormContext<FormPartUpstreamType>();
@@ -335,143 +375,145 @@ export const FormPartUpstreamFlat = () => {
 
   return (
     <Stack gap="md">
-      <FormItemSelect
-        control={control}
-        name={np('type')}
-        label={t('form.upstreams.type')}
-        description={t('form.upstreams.typeDesc')}
-        withAsterisk
-        defaultValue={APISIX.UpstreamBalancer.options[0].value}
-        data={APISIX.UpstreamBalancer.options.map((v) => ({ value: v.value, label: BALANCER_LABELS[v.value] }))}
-      />
-
-      {loadBalancingType === 'chash' && (
-        <>
-          <FormItemSelect
-            control={control}
-            name={np('hash_on')}
-            label={t('form.upstreams.hashOn')}
-            defaultValue={APISIX.UpstreamHashOn.options[0].value}
-            data={APISIX.UpstreamHashOn.options.map((v) => v.value)}
-            description={t('form.upstreams.hashOnDesc')}
-          />
-          <FormItemTextInput
-            control={control}
-            name={np('key')}
-            label={t('form.upstreams.key')}
-            description={t('form.upstreams.keyDesc')}
-          />
-        </>
-      )}
-
       <FormItemNodes name={np('nodes')} label={t('form.upstreams.nodes.title')} description={t('form.upstreams.nodes.desc')} required withAsterisk />
       <TestConnectionButton />
-
-      <FormItemSelect
-        control={control}
-        name={np('pass_host')}
-        label={t('form.upstreams.passHost')}
-        description={t('form.upstreams.passHostDesc')}
-        defaultValue={APISIX.UpstreamPassHost.options[0].value}
-        data={APISIX.UpstreamPassHost.options.map((v) => ({
-          value: v.value,
-          label:
-            v.value === 'pass'
-              ? t('form.upstreams.passHostOptions.pass')
-              : v.value === 'node'
-                ? t('form.upstreams.passHostOptions.node')
-                : t('form.upstreams.passHostOptions.rewrite'),
-        }))}
-      />
-      {passHost === 'rewrite' && (
-        <FormItemTextInput
-          control={control}
-          name={np('upstream_host')}
-          label={t('form.upstreams.upstreamHost')}
-          description={t('form.upstreams.upstreamHostDesc')}
-        />
-      )}
-      <FormItemNumberInput
-        control={control}
-        name={np('retries')}
-        label={t('form.upstreams.retries')}
-        description={t('form.upstreams.retriesDesc')}
-        allowDecimal={false}
-        min={0}
-      />
-      <FormItemNumberInput
-        control={control}
-        name={np('retry_timeout')}
-        label={t('form.upstreams.retryTimeout')}
-        description={t('form.upstreams.retryTimeoutDesc')}
-        allowDecimal={false}
-        min={0}
-      />
-
       <FormItemScheme />
 
-      <FormItemNumberInput
-        control={control}
-        name={np('timeout.connect')}
-        label={t('form.upstreams.timeout.connect')}
-        description={t('form.upstreams.timeout.connectDesc')}
-        withAsterisk
-        suffix="s"
-        min={0}
-      />
-      <FormItemNumberInput
-        control={control}
-        name={np('timeout.send')}
-        label={t('form.upstreams.timeout.send')}
-        description={t('form.upstreams.timeout.sendDesc')}
-        withAsterisk
-        suffix="s"
-        min={0}
-      />
-      <FormItemNumberInput
-        control={control}
-        name={np('timeout.read')}
-        label={t('form.upstreams.timeout.read')}
-        description={t('form.upstreams.timeout.readDesc')}
-        withAsterisk
-        suffix="s"
-        min={0}
-      />
+      <AdvancedSection
+        label={t('form.upstreams.advancedSettings')}
+        names={[...ADVANCED_UPSTREAM_FIELDS.map(np), ...CHECK_SWITCHES]}
+        isDefault={(name, value) => isDefaultUpstream(name.slice(name.lastIndexOf('.') + 1), value)}
+      >
+        <FormItemSelect
+          control={control}
+          name={np('type')}
+          label={t('form.upstreams.type')}
+          description={t('form.upstreams.typeDesc')}
+          withAsterisk
+          defaultValue={APISIX.UpstreamBalancer.options[0].value}
+          data={APISIX.UpstreamBalancer.options.map((v) => ({ value: v.value, label: BALANCER_LABELS[v.value] }))}
+        />
 
-      <Divider my="sm" label={t('form.upstreams.keepalivePool.title')} labelPosition="left" />
-      <Grid>
-        <Grid.Col span={4}>
-          <FormItemNumberInput
+        {loadBalancingType === 'chash' && (
+          <>
+            <FormItemSelect
+              control={control}
+              name={np('hash_on')}
+              label={t('form.upstreams.hashOn')}
+              defaultValue={APISIX.UpstreamHashOn.options[0].value}
+              data={APISIX.UpstreamHashOn.options.map((v) => v.value)}
+              description={t('form.upstreams.hashOnDesc')}
+            />
+            <FormItemTextInput
+              control={control}
+              name={np('key')}
+              label={t('form.upstreams.key')}
+              description={t('form.upstreams.keyDesc')}
+            />
+          </>
+        )}
+        <FormItemSelect
+          control={control}
+          name={np('pass_host')}
+          label={t('form.upstreams.passHost')}
+          description={t('form.upstreams.passHostDesc')}
+          defaultValue={APISIX.UpstreamPassHost.options[0].value}
+          data={APISIX.UpstreamPassHost.options.map((v) => ({
+            value: v.value,
+            label:
+              v.value === 'pass'
+                ? t('form.upstreams.passHostOptions.pass')
+                : v.value === 'node'
+                  ? t('form.upstreams.passHostOptions.node')
+                  : t('form.upstreams.passHostOptions.rewrite'),
+          }))}
+        />
+        {passHost === 'rewrite' && (
+          <FormItemTextInput
             control={control}
-            name={np('keepalive_pool.size')}
-            label={t('form.upstreams.keepalivePool.size')}
-            description={t('form.upstreams.keepalivePool.sizeDesc')}
-            min={1}
+            name={np('upstream_host')}
+            label={t('form.upstreams.upstreamHost')}
+            description={t('form.upstreams.upstreamHostDesc')}
           />
-        </Grid.Col>
-        <Grid.Col span={4}>
-          <FormItemNumberInput
-            control={control}
-            name={np('keepalive_pool.idle_timeout')}
-            label={t('form.upstreams.keepalivePool.idleTimeout')}
-            description={t('form.upstreams.keepalivePool.idleTimeoutDesc')}
-            suffix="s"
-            min={0}
-          />
-        </Grid.Col>
-        <Grid.Col span={4}>
-          <FormItemNumberInput
-            control={control}
-            name={np('keepalive_pool.requests')}
-            label={t('form.upstreams.keepalivePool.requests')}
-            description={t('form.upstreams.keepalivePool.requestsDesc')}
-            allowDecimal={false}
-            min={1}
-          />
-        </Grid.Col>
-      </Grid>
+        )}
+        <FormItemNumberInput
+          control={control}
+          name={np('retries')}
+          label={t('form.upstreams.retries')}
+          description={t('form.upstreams.retriesDesc')}
+          allowDecimal={false}
+          min={0}
+        />
+        <FormItemNumberInput
+          control={control}
+          name={np('retry_timeout')}
+          label={t('form.upstreams.retryTimeout')}
+          description={t('form.upstreams.retryTimeoutDesc')}
+          allowDecimal={false}
+          min={0}
+        />
+        <FormItemNumberInput
+          control={control}
+          name={np('timeout.connect')}
+          label={t('form.upstreams.timeout.connect')}
+          description={t('form.upstreams.timeout.connectDesc')}
+          withAsterisk
+          suffix="s"
+          min={0}
+        />
+        <FormItemNumberInput
+          control={control}
+          name={np('timeout.send')}
+          label={t('form.upstreams.timeout.send')}
+          description={t('form.upstreams.timeout.sendDesc')}
+          withAsterisk
+          suffix="s"
+          min={0}
+        />
+        <FormItemNumberInput
+          control={control}
+          name={np('timeout.read')}
+          label={t('form.upstreams.timeout.read')}
+          description={t('form.upstreams.timeout.readDesc')}
+          withAsterisk
+          suffix="s"
+          min={0}
+        />
 
-      <FormSectionChecks />
+        <Divider my="sm" label={t('form.upstreams.keepalivePool.title')} labelPosition="left" />
+        <Grid>
+          <Grid.Col span={4}>
+            <FormItemNumberInput
+              control={control}
+              name={np('keepalive_pool.size')}
+              label={t('form.upstreams.keepalivePool.size')}
+              description={t('form.upstreams.keepalivePool.sizeDesc')}
+              min={1}
+            />
+          </Grid.Col>
+          <Grid.Col span={4}>
+            <FormItemNumberInput
+              control={control}
+              name={np('keepalive_pool.idle_timeout')}
+              label={t('form.upstreams.keepalivePool.idleTimeout')}
+              description={t('form.upstreams.keepalivePool.idleTimeoutDesc')}
+              suffix="s"
+              min={0}
+            />
+          </Grid.Col>
+          <Grid.Col span={4}>
+            <FormItemNumberInput
+              control={control}
+              name={np('keepalive_pool.requests')}
+              label={t('form.upstreams.keepalivePool.requests')}
+              description={t('form.upstreams.keepalivePool.requestsDesc')}
+              allowDecimal={false}
+              min={1}
+            />
+          </Grid.Col>
+        </Grid>
+        <FormSectionChecks />
+      </AdvancedSection>
     </Stack >
   );
 };

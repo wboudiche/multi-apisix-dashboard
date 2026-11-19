@@ -54,10 +54,11 @@ async function clickNext(page: import('@playwright/test').Page) {
 }
 
 /**
- * Navigate to the Plugins step (step 4) in the route wizard.
+ * Navigate to the plugins in the route wizard: the Options step (step 3),
+ * under its Request Override section.
  *
  * Steps: fill name + uri -> Next (to Upstream) -> add upstream node ->
- * Next (to Request Override) -> Next (to Plugins)
+ * Next (to Options)
  */
 async function navigateToPluginsStep(page: import('@playwright/test').Page) {
   await goToAddRoute(page);
@@ -77,10 +78,7 @@ async function navigateToPluginsStep(page: import('@playwright/test').Page) {
   await page.locator('input[placeholder="Hostname or IP"]').fill('httpbin.org');
   await page.locator('input[placeholder="Port"]').fill('80');
 
-  // Next -> Step 3: Request Override
-  await clickNext(page);
-
-  // Next -> Step 4: Plugins
+  // Next -> Step 3: Options (Request Override, then Plugins)
   await clickNext(page);
 }
 

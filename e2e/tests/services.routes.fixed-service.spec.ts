@@ -80,8 +80,7 @@ test('a route added on a service page keeps to that service', async ({ page }) =
     page.locator('.mantine-InputWrapper-root').filter({ has: service }).locator('button')
   ).toHaveCount(0);
 
-  // Walk to Preview (Request Override -> Plugins -> Preview) and submit.
-  await uiRouteWizardNext(page);
+  // Walk to Preview (Options -> Preview) and submit.
   await uiRouteWizardNext(page);
   await uiRouteWizardNext(page);
   await uiRouteWizardSubmit(page);

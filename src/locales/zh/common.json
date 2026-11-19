@@ -467,20 +467,20 @@
         "apiInfoDesc": "协议、主机、路径等",
         "upstream": "定义上游",
         "upstreamDesc": "目标配置",
-        "plugins": "插件配置",
-        "pluginsDesc": "添加并配置插件",
         "preview": "预览",
         "previewDesc": "检查并完成",
         "summaryBoundToService": "已绑定服务",
         "summaryCustomNodes": "自定义：{{count}} 个节点",
         "summaryCustom": "自定义上游",
         "summaryExisting": "已有上游",
-        "summaryPluginConfig": "插件配置：{{- id}}"
-      }
+        "summaryPluginConfig": "插件配置：{{- id}}",
+        "options": "选项",
+        "optionsDesc": "请求改写和插件，均为可选"
+      },
+      "advancedMatching": "高级匹配"
     },
     "requestOverride": {
       "title": "请求覆盖",
-      "description": "代理前重写请求属性",
       "scheme": "协议",
       "keepOriginal": "保持不变",
       "uri": "URI 覆盖",

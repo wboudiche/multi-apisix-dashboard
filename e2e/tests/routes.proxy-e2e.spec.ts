@@ -126,21 +126,18 @@ test.describe('Route Proxy E2E - Full Lifecycle', () => {
 
       await page.screenshot({ path: '/tmp/proxy-e2e-step2.png', fullPage: true });
 
-      // Next -> Step 3 (Request Override)
+      // Next -> Step 3 (Options: Request Override, then Plugins)
       await page.getByRole('button', { name: 'Next' }).click();
       await page.waitForTimeout(1000);
     });
 
     await test.step('3: Skip Request Override', async () => {
-      // Verify we're on Request Override step (use the form legend, not stepper)
+      // Verify we're on the Options step, at its Request Override section (use
+      // the form legend, not stepper); the plugins are below on the same step
       await expect(page.locator('legend:has-text("Request Override"), p:has-text("Request Override")').first()).toBeVisible();
-
-      // Next -> Step 4 (Plugins)
-      await page.getByRole('button', { name: 'Next' }).click();
-      await page.waitForTimeout(1000);
     });
 
-    await test.step('4: Add limit-count plugin via Form UI', async () => {
+    await test.step('3: Add limit-count plugin via Form UI', async () => {
       // Open plugin selector
       await page.getByRole('button', { name: 'Select Plugins' }).click();
       await page.waitForTimeout(1000);
@@ -173,12 +170,12 @@ test.describe('Route Proxy E2E - Full Lifecycle', () => {
       // Verify plugin card appears
       await expect(page.locator('[data-testid="plugin-limit-count"]')).toBeVisible();
 
-      // Next -> Step 5 (Preview)
+      // Next -> Step 4 (Preview)
       await page.getByRole('button', { name: 'Next' }).click();
       await page.waitForTimeout(1000);
     });
 
-    await test.step('5: Preview and Submit', async () => {
+    await test.step('4: Preview and Submit', async () => {
       await page.screenshot({ path: '/tmp/proxy-e2e-step5-preview.png', fullPage: true });
 
       // Submit the route

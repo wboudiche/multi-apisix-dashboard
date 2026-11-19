@@ -52,9 +52,15 @@ export type FormWizardProps = {
   readOnly?: boolean;
   allowFreeSelect?: boolean;
   error?: string | null;
+  /**
+   * Offer Submit on every step, not only the last: the later steps are
+   * optional where this is set, and walking through them only to submit is
+   * the cost of a wizard without the reason for one.
+   */
+  submitFromAnyStep?: boolean;
 };
 
-export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList, readOnly = false, allowFreeSelect = false, error }: FormWizardProps) => {
+export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList, readOnly = false, allowFreeSelect = false, error, submitFromAnyStep = false }: FormWizardProps) => {
   const { t } = useTranslation();
   const [active, setActive] = useState(0);
   const { trigger, formState, getValues, reset } = useFormContext();
@@ -121,6 +127,26 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
   };
 
   const prevStep = () => setActive((current) => (current > 0 ? current - 1 : current));
+
+  // Submit from where the operator is. A step not visited yet can hold what
+  // is refused, and its fields would show no error unmounted: the wizard goes
+  // to the first such step instead of submitting.
+  const submitNow = async () => {
+    for (let i = 0; i < steps.length; i++) {
+      const fields = steps[i].fields;
+      if (fields && fields.length > 0 && !(await trigger(fields))) {
+        setActive(i);
+        return;
+      }
+    }
+    // What no step lists can still be refused: rather than a Submit that
+    // does nothing on screen, back to the first step to see it.
+    if (!(await trigger())) {
+      setActive(0);
+      return;
+    }
+    handleComplete();
+  };
 
   const isLastStep = active === steps.length - 1;
 
@@ -357,7 +383,9 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
       </Box>
 
       {/* [Feature 8] Error feedback on submit failure */}
-      {error && isLastStep && (
+      {/* Where the submit came from: with Submit on every step, a refusal
+          shown on the last step only went unseen. */}
+      {error && (isLastStep || submitFromAnyStep) && (
         <Alert
           variant="light"
           color="red"
@@ -400,6 +428,16 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
             </Button>
           )}
 
+          {!isLastStep && submitFromAnyStep && !readOnly && (
+            <Button
+              variant="light"
+              onClick={submitNow}
+              loading={loading}
+              leftSection={<IconCheck width="18" height="18" />}
+            >
+              {t('form.btn.submit')}
+            </Button>
+          )}
           {!isLastStep ? (
             <Button
               onClick={nextStep}

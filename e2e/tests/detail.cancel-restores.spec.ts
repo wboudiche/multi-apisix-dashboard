@@ -48,7 +48,7 @@ const DESCRIPTION = { label: 'Description', key: 'desc', original: 'original', c
 const PROTO_CONTENT = 'syntax = "proto3"; package e2e; message A { string a = 1; }';
 
 const KINDS: Kind[] = [
-  { name: 'route', type: 'routes', singular: 'Route', steps: 5,
+  { name: 'route', type: 'routes', singular: 'Route', steps: 4,
     body: (id) => ({ name: id, desc: 'original', uri: `/${id}`, upstream }) },
   { name: 'service', type: 'services', singular: 'Service', steps: 4,
     body: (id) => ({ name: id, desc: 'original', upstream }) },
@@ -156,7 +156,8 @@ test('route: a cancelled request override is neither shown nor saved later', asy
     await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(id, {
       timeout: 15000,
     });
-    // To the Request Override step, the third, and add a scheme override.
+    // To the Options step, the third, where Request Override is, and add a
+    // scheme override.
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await saveEditTo(page, 2);
     await page.locator('label:has-text("HTTPS")').click();
@@ -166,11 +167,12 @@ test('route: a cancelled request override is neither shown nor saved later', asy
     await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
     await expect(page.getByText('Scheme', { exact: true })).toHaveCount(0);
 
-    // Edit again, change only the URI, and save: the scheme stays as stored.
+    // Edit again, still on Options, change only the URI, and save from the
+    // last step, one on: the scheme stays as stored.
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.locator('label:has-text("Static")').first().click();
     await page.locator('input[placeholder="/new/path"]').fill('/rewritten');
-    await saveEdit(page, 2);
+    await saveEdit(page, 1);
     await expect(page.getByText('Edit Route Successfully')).toBeVisible({ timeout: 15000 });
 
     const stored = (await apiFetch(`${PROXY}/routes/${id}`, token, { headers: onLocal() })) as {

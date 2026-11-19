@@ -34,7 +34,7 @@ import { teamsQueryOptions } from '@/apis/queries';
 import { putRouteReq } from '@/apis/routes';
 import {teamApi } from '@/apis/teams';
 import {
-  FormPartBasicWithPriority,
+  FormPartRouteBasic,
   FormSectionMatchRules,
   FormSectionPlugins,
   FormSectionRequestOverride,
@@ -128,11 +128,13 @@ const RouteDetailForm = (props: Props) => {
       content: (
         <>
           <FormSectionGeneral readOnly />
-          <FormPartBasicWithPriority />
+          <FormPartRouteBasic />
           <FormSectionMatchRules />
         </>
       ),
-      fields: ['name', 'uri', 'uris', 'methods', 'priority', 'vars'],
+      // Every field the step holds: one left out is one a Submit from a later
+      // step would find refused with nothing on screen to say so.
+      fields: ['name', 'desc', 'labels', 'status', 'methods', 'uri', 'host', 'enable_websocket', 'uris', 'hosts', 'remote_addr', 'remote_addrs', 'vars', 'filter_func', 'priority'],
     },
     {
       label: t('form.routes.steps.upstream'),
@@ -146,15 +148,15 @@ const RouteDetailForm = (props: Props) => {
       fields: ['upstream', 'upstream_id', 'service_id'],
     },
     {
-      label: t('form.requestOverride.title'),
-      description: t('form.requestOverride.description'),
-      content: <FormSectionRequestOverride />,
-      fields: [],
-    },
-    {
-      label: t('form.routes.steps.plugins'),
-      description: t('form.routes.steps.pluginsDesc'),
-      content: <FormSectionPlugins />,
+      // Request rewrite and plugins, one step, as on the add page.
+      label: t('form.routes.steps.options'),
+      description: t('form.routes.steps.optionsDesc'),
+      content: (
+        <>
+          <FormSectionRequestOverride />
+          <FormSectionPlugins />
+        </>
+      ),
       fields: ['plugins', 'plugin_config_id'],
     },
     {
