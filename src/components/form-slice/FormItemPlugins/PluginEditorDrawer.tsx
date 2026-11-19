@@ -36,7 +36,13 @@ import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { FormItemEditor } from '@/components/form/Editor';
-import { AUTH_PRIMARY_FIELDS, isAuthClientPlugin } from '@/utils/auth-clients';
+import {
+  AUTH_PRIMARY_FIELDS,
+  isAuthClientPlugin,
+  readRestriction,
+  type Restriction,
+  writeRestriction,
+} from '@/utils/auth-clients';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { withPriority } from '@/utils/plugin-priority';
 import IconChevronRight from '~icons/material-symbols/chevron-right';
@@ -52,7 +58,16 @@ import {
 import { PluginSchemaForm } from './PluginSchemaForm';
 import { PLUGIN_TEMPLATES } from './pluginTemplates';
 
-export type PluginConfig = { name: string; config: object };
+export type PluginConfig = {
+  name: string;
+  config: object;
+  /**
+   * The route's consumer-restriction, when the clients section changed who
+   * may call: an object to set, null to take it away. Absent, it is left as
+   * it is.
+   */
+  restriction?: Record<string, unknown> | null;
+};
 export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
   opened: boolean;
   onClose: () => void;
@@ -82,6 +97,11 @@ export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
    * lists them, and makes a new one.
    */
   showClients?: boolean;
+  /**
+   * The consumer-restriction the route holds now, beside this plugin: the
+   * clients section reads who it lets through from it, and changes it.
+   */
+  restriction?: unknown;
 };
 
 const isEmptyConfig = (p: object): boolean => isEmpty(p) || isNil(p);
@@ -208,6 +228,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     showPriority,
     defaultPriority,
     showClients,
+    restriction,
   } = props;
   const { name, config } = plugin;
   const { t } = useTranslation();
@@ -229,16 +250,48 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
   // while rendering, compared with the plugin it last reset for; the JSON
   // field lives in react-hook-form, outside React state, and is still set from
   // an effect.
-  const [lastPlugin, setLastPlugin] = useState({ name, config, canShowForm });
+  // Who may call, as the clients section shows it: read from the route's
+  // consumer-restriction, and written back to it on save once changed.
+  const [access, setAccess] = useState<Restriction>(() => readRestriction(restriction));
+  const [accessChanged, setAccessChanged] = useState(false);
+
+  // Compared by value: the parent hands a fresh copy of it on each render,
+  // and a choice made here is not to be reset by a render that changed
+  // nothing.
+  const restrictionKey = JSON.stringify(restriction ?? null);
+  const [lastPlugin, setLastPlugin] = useState({ name, config, canShowForm, restrictionKey });
   if (
     lastPlugin.name !== name ||
     lastPlugin.config !== config ||
-    lastPlugin.canShowForm !== canShowForm
+    lastPlugin.canShowForm !== canShowForm ||
+    lastPlugin.restrictionKey !== restrictionKey
   ) {
-    setLastPlugin({ name, config, canShowForm });
+    setLastPlugin({ name, config, canShowForm, restrictionKey });
     setFormValue(getDefaultConfigObj(name, config));
     setEditorMode(canShowForm ? 'form' : 'json');
+    setAccess(readRestriction(restriction));
+    setAccessChanged(false);
   }
+
+  const changeAccess = useCallback((next: Restriction) => {
+    setAccess(next);
+    setAccessChanged(true);
+  }, []);
+
+  const clientsShown = !!showClients && isAuthClientPlugin(name);
+  // A list with nobody on it would let no client through, and the gateway
+  // refuses an empty one: the save waits for a name.
+  const accessIncomplete =
+    clientsShown && accessChanged && access.mode === 'only' && access.names.length === 0;
+  const restrictionToSave = useCallback((): Pick<PluginConfig, 'restriction'> => {
+    if (!clientsShown || !accessChanged || access.mode === 'custom') return {};
+    return {
+      restriction: writeRestriction(
+        restriction,
+        access.mode === 'only' ? access.names : null
+      ),
+    };
+  }, [clientsShown, accessChanged, access, restriction]);
 
   useEffect(() => {
     methods.setValue('config', getDefaultConfig(name, config));
@@ -307,13 +360,13 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
 
   const handleSave = useCallback(() => {
     if (editorMode === 'form') {
-      onSave({ name, config: formValue });
+      onSave({ name, config: formValue, ...restrictionToSave() });
     } else {
       const configStr = methods.getValues('config');
-      onSave({ name, config: JSON.parse(configStr) });
+      onSave({ name, config: JSON.parse(configStr), ...restrictionToSave() });
     }
     handleClose();
-  }, [editorMode, formValue, methods, name, onSave, handleClose]);
+  }, [editorMode, formValue, methods, name, onSave, handleClose, restrictionToSave]);
 
   const category = name ? getPluginCategory(name) : 'other';
   const categoryColor = CATEGORY_COLORS[category];
@@ -412,16 +465,24 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
                 isAuthClientPlugin(name) ? AUTH_PRIMARY_FIELDS[name] : undefined
               }
             />
-            {showClients && isAuthClientPlugin(name) && (
+            {clientsShown && (
               <AuthClientsSection
                 plugin={name}
                 config={formValue}
                 readOnly={mode === 'view'}
+                access={access}
+                onAccessChange={changeAccess}
               />
             )}
           </ScrollArea.Autosize>
           {mode !== 'view' && (
-            <Button fullWidth mt="md" size="md" onClick={handleSave}>
+            <Button
+              fullWidth
+              mt="md"
+              size="md"
+              onClick={handleSave}
+              disabled={accessIncomplete}
+            >
               {mode === 'add' && t('form.btn.add')}
               {mode === 'edit' && t('form.btn.save')}
             </Button>
@@ -444,8 +505,9 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
               fullWidth
               mt="md"
               size="md"
+              disabled={accessIncomplete}
               onClick={methods.handleSubmit(({ config: configStr }) => {
-                onSave({ name, config: JSON.parse(configStr) });
+                onSave({ name, config: JSON.parse(configStr), ...restrictionToSave() });
                 handleClose();
               })}
             >

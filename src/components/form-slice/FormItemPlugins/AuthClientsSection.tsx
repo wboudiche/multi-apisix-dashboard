@@ -19,12 +19,14 @@ import {
   Alert,
   Badge,
   Button,
+  Checkbox,
   Code,
   CopyButton,
   Divider,
   Group,
   Loader,
   Paper,
+  Radio,
   Stack,
   Text,
   TextInput,
@@ -53,6 +55,7 @@ import {
   credentialId,
   generateSecret,
   holdsCredential,
+  type Restriction,
   shellQuote,
   usableHeader,
 } from '@/utils/auth-clients';
@@ -139,12 +142,67 @@ const Usage = ({
   );
 };
 
+/**
+ * The clients the route lets through, ticked: those holding a credential of
+ * the plugin, and any name already on the list - another plugin's client, or
+ * one this account cannot see - so that saving does not drop it unseen.
+ */
+const ClientChecklist = ({
+  holders,
+  names,
+  readOnly,
+  onChange,
+}: {
+  holders: string[];
+  names: string[];
+  readOnly?: boolean;
+  onChange: (names: string[]) => void;
+}) => {
+  const { t } = useTranslation();
+  const options = [...new Set([...holders, ...names])].sort();
+  return (
+    <Stack gap="xs">
+      {options.length === 0 ? (
+        <Alert color="yellow" variant="light">
+          {t('form.plugins.clients.none')}
+        </Alert>
+      ) : (
+        <Checkbox.Group value={names} onChange={onChange}>
+          <Stack gap={6}>
+            {options.map((option) => (
+              <Checkbox
+                key={option}
+                value={option}
+                disabled={readOnly}
+                label={option}
+                description={
+                  holders.includes(option)
+                    ? undefined
+                    : t('form.plugins.clients.noCredential')
+                }
+              />
+            ))}
+          </Stack>
+        </Checkbox.Group>
+      )}
+      {names.length === 0 && (
+        <Text size="sm" c="red">
+          {t('form.plugins.clients.accessEmpty')}
+        </Text>
+      )}
+    </Stack>
+  );
+};
+
 export type AuthClientsSectionProps = {
   plugin: AuthClientPlugin;
   /** The plugin's configuration as edited, for the header a key goes in. */
   config: Record<string, unknown>;
   /** The plugin is only being looked at: its clients are listed, none made. */
   readOnly?: boolean;
+  /** Who the route lets through: every client, or the ones ticked. */
+  access: Restriction;
+  onAccessChange: (next: Restriction) => void;
 };
 
 /** The name is a consumer already, one this account cannot see. */
@@ -159,6 +217,8 @@ export const AuthClientsSection = ({
   plugin,
   config,
   readOnly,
+  access,
+  onAccessChange,
 }: AuthClientsSectionProps) => {
   const { t } = useTranslation();
   const instanceId = useAtomValue(currentInstanceIdAtom);
@@ -228,6 +288,10 @@ export const AuthClientsSection = ({
     },
     onSuccess: () => {
       setCreated({ name, secret });
+      // Made from this form to call this route: on its list at once.
+      if (access.mode === 'only' && !access.names.includes(name)) {
+        onAccessChange({ mode: 'only', names: [...access.names, name] });
+      }
       setFormOpened(false);
       setName('');
       setSecret(generateSecret());
@@ -263,7 +327,49 @@ export const AuthClientsSection = ({
             {t('form.plugins.clients.loadFailed')}
           </Alert>
         )}
+        {access.mode !== 'custom' && (
+          <Radio.Group
+            value={access.mode}
+            onChange={(mode) =>
+              onAccessChange(
+                mode === 'only'
+                  ? { mode: 'only', names: [] }
+                  : { mode: 'any' }
+              )
+            }
+          >
+            <Stack gap="xs">
+              <Radio
+                value="any"
+                disabled={readOnly}
+                label={t('form.plugins.clients.accessAny')}
+                description={t('form.plugins.clients.accessAnyHelp')}
+              />
+              <Radio
+                value="only"
+                disabled={readOnly}
+                label={t('form.plugins.clients.accessOnly')}
+                description={t('form.plugins.clients.accessOnlyHelp')}
+              />
+            </Stack>
+          </Radio.Group>
+        )}
+        {access.mode === 'custom' && (
+          <Alert color="blue" variant="light">
+            {t('form.plugins.clients.accessCustom')}
+          </Alert>
+        )}
+
+        {clients.data && access.mode === 'only' && (
+          <ClientChecklist
+            holders={clients.data.holders}
+            names={access.names}
+            readOnly={readOnly}
+            onChange={(names) => onAccessChange({ mode: 'only', names })}
+          />
+        )}
         {clients.data &&
+          access.mode !== 'only' &&
           (clients.data.holders.length === 0 ? (
             <Alert color="yellow" variant="light">
               {t('form.plugins.clients.none')}

@@ -82,3 +82,59 @@ export const shellQuote = (value: string): string =>
  */
 export const usableHeader = (header: unknown): string =>
   typeof header === 'string' && /^[A-Za-z0-9-]+$/.test(header) ? header : 'apikey';
+
+/**
+ * Which clients the route lets through, as its consumer-restriction plugin
+ * says. Holding a key opens every route that asks for one; the plugin is what
+ * narrows a route to some of them - what an API manager calls a subscription.
+ *
+ * - `any`: no restriction, every client holding a credential gets through.
+ * - `only`: an allow-list of consumer names, the shape this form writes.
+ * - `custom`: a restriction this form does not write - a deny-list, by
+ *   method, by group, switched off - left to the plugin's own form.
+ */
+export type Restriction =
+  | { mode: 'any' }
+  | { mode: 'only'; names: string[] }
+  | { mode: 'custom' };
+
+export const RESTRICTION_PLUGIN = 'consumer-restriction';
+
+/** The keys of a consumer-restriction this form can read and write back. */
+const OWN_KEYS = new Set(['type', 'whitelist', 'rejected_code', 'rejected_msg', '_meta']);
+
+export const readRestriction = (config: unknown): Restriction => {
+  if (config === undefined || config === null) return { mode: 'any' };
+  if (typeof config !== 'object') return { mode: 'custom' };
+  const c = config as Record<string, unknown>;
+  const meta = c._meta as Record<string, unknown> | undefined;
+  if (
+    Object.keys(c).some((k) => !OWN_KEYS.has(k)) ||
+    (c.type !== undefined && c.type !== 'consumer_name') ||
+    !Array.isArray(c.whitelist) ||
+    !c.whitelist.every((n) => typeof n === 'string') ||
+    // Switched off, or run on a filter: not a plain list of who gets in.
+    (meta !== undefined && (meta.disable !== undefined || meta.filter !== undefined))
+  ) {
+    return { mode: 'custom' };
+  }
+  return { mode: 'only', names: c.whitelist as string[] };
+};
+
+/**
+ * The consumer-restriction a choice comes to: none at all for every client,
+ * or an allow-list of the names, keeping what else the plugin was given - its
+ * rejection code and message, its priority.
+ */
+export const writeRestriction = (
+  current: unknown,
+  names: string[] | null
+): Record<string, unknown> | null => {
+  if (names === null) return null;
+  const kept =
+    current && typeof current === 'object'
+      ? { ...(current as Record<string, unknown>) }
+      : {};
+  delete kept.type;
+  return { ...kept, whitelist: names };
+};

@@ -20,7 +20,7 @@ import { test } from '@e2e/utils/test';
 import { expect } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
-import { API_CONSUMERS, API_CREDENTIALS } from '@/config/constant';
+import { API_CONSUMERS, API_CREDENTIALS, API_PLUGIN_CONFIGS } from '@/config/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
 const PREFIX = 'e2e-authclient';
@@ -39,6 +39,7 @@ const removeClient = async (username: string) => {
 };
 
 test.afterAll(async () => {
+  await deleteByPrefix(API_PLUGIN_CONFIGS, 'name', PREFIX);
   await deleteByPrefix(API_CONSUMERS, 'username', PREFIX);
 });
 
@@ -89,5 +90,62 @@ test('an auth plugin lists who can call it and makes a client with a key', async
 
   } finally {
     await removeClient(name);
+  }
+});
+
+type PluginConfigList = {
+  list: { value: { id: string; name?: string; plugins: Record<string, Record<string, unknown>> } }[];
+};
+
+test('an auth plugin narrows who may call to the clients ticked', async ({ page }) => {
+  const id = nanoid();
+  const allowed = `${PREFIX}-a-${id}`;
+  const other = `${PREFIX}-b-${id}`;
+  const configName = `${PREFIX}-cfg-${id}`;
+  for (const username of [allowed, other]) {
+    await e2eReq.put(API_CONSUMERS, {
+      username,
+      plugins: { 'key-auth': { key: `${username}-key` } },
+    });
+  }
+  try {
+    await page.goto('plugin_configs/add');
+    await page.getByRole('textbox', { name: 'Name', exact: true }).first().fill(configName);
+    await page.getByRole('button', { name: 'Select Plugins' }).click();
+    const picker = page.getByRole('dialog', { name: 'Select Plugins' });
+    await picker.getByPlaceholder('Search').fill('key-auth');
+    await picker.getByTestId('plugin-key-auth').getByRole('button', { name: 'Add' }).click();
+
+    const drawer = page.getByRole('dialog', { name: 'Add Plugin' });
+    const clients = drawer.getByTestId('auth-clients');
+
+    await test.step('every client holding a key, until said otherwise', async () => {
+      await expect(clients.getByRole('radio', { name: 'Every client holding a credential' })).toBeChecked();
+      await expect(clients.getByText(allowed, { exact: true })).toBeVisible();
+    });
+
+    await test.step('narrowed to one, the plugin waits for a name', async () => {
+      await clients.getByRole('radio', { name: 'Only the clients ticked' }).check();
+      await expect(clients.getByText('Tick at least one client.')).toBeVisible();
+      await expect(drawer.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
+      await clients.getByRole('checkbox', { name: allowed }).check();
+      await expect(clients.getByRole('checkbox', { name: other })).not.toBeChecked();
+      await drawer.getByRole('button', { name: 'Add', exact: true }).click();
+      await expect(drawer).toBeHidden();
+    });
+
+    await test.step('saved as the consumer-restriction beside the plugin', async () => {
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
+      await expect(page).toHaveURL(/plugin_configs\/detail\//);
+      const configs = await e2eReq
+        .get<unknown, { data: PluginConfigList }>(API_PLUGIN_CONFIGS)
+        .then((r) => r.data.list);
+      const saved = configs.find((c) => c.value.name === configName);
+      expect(saved?.value.plugins['consumer-restriction']).toEqual({ whitelist: [allowed] });
+      expect(saved?.value.plugins['key-auth']).toBeDefined();
+    });
+  } finally {
+    await removeClient(allowed);
+    await removeClient(other);
   }
 });

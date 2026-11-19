@@ -439,7 +439,14 @@
         "createFailed": "无法创建客户端。",
         "createdAtOnce": "无论是否保存此表单，客户端都会立即在此网关上创建。",
         "create": "创建客户端",
-        "nameHeldElsewhere": "此名称已在此网关上被一个您看不到的客户端占用。请换一个名称。"
+        "nameHeldElsewhere": "此名称已在此网关上被一个您看不到的客户端占用。请换一个名称。",
+        "accessAny": "所有持有凭证的客户端",
+        "accessAnyHelp": "凭证可以打开所有要求此类认证的路由。",
+        "accessOnly": "仅勾选的客户端",
+        "accessOnlyHelp": "其他客户端即使持有有效凭证也会收到 403。",
+        "accessEmpty": "请至少勾选一个客户端。",
+        "accessCustom": "此路由已通过 consumer-restriction 插件限制调用方，其方式无法在此列表中显示。请在该插件中修改。",
+        "noCredential": "没有此插件的凭证"
       }
     },
     "protos": {

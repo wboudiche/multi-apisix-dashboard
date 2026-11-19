@@ -439,7 +439,14 @@
         "createFailed": "İstemci oluşturulamadı.",
         "createdAtOnce": "İstemci, bu formu kaydetseniz de kaydetmeseniz de bu ağ geçidinde hemen oluşturulur.",
         "create": "İstemci oluştur",
-        "nameHeldElsewhere": "Bu ad bu ağ geçidinde, göremediğiniz bir istemci tarafından zaten kullanılıyor. Başka bir ad seçin."
+        "nameHeldElsewhere": "Bu ad bu ağ geçidinde, göremediğiniz bir istemci tarafından zaten kullanılıyor. Başka bir ad seçin.",
+        "accessAny": "Kimlik bilgisi olan her istemci",
+        "accessAnyHelp": "Bir kimlik bilgisi, bu tür kimlik doğrulama isteyen her rotayı açar.",
+        "accessOnly": "Yalnızca işaretlenen istemciler",
+        "accessOnlyHelp": "Diğerleri, geçerli bir kimlik bilgisiyle bile 403 alır.",
+        "accessEmpty": "En az bir istemci işaretleyin.",
+        "accessCustom": "Bu rota, çağıranlarını consumer-restriction eklentisiyle bu listenin gösteremeyeceği bir şekilde zaten sınırlıyor. Bunu o eklentiden değiştirin.",
+        "noCredential": "Bu eklenti için kimlik bilgisi yok"
       }
     },
     "protos": {

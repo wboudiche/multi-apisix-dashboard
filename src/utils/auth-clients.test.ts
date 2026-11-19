@@ -22,8 +22,10 @@ import {
   generateSecret,
   holdsCredential,
   isAuthClientPlugin,
+  readRestriction,
   shellQuote,
   usableHeader,
+  writeRestriction,
 } from './auth-clients';
 
 describe('auth clients', () => {
@@ -71,5 +73,31 @@ describe('auth clients', () => {
     expect(usableHeader('X-Api-Key')).toBe('X-Api-Key');
     expect(usableHeader("x'; rm -rf ~")).toBe('apikey');
     expect(usableHeader(undefined)).toBe('apikey');
+  });
+
+  it('reads an allow-list of consumer names as the clients ticked', () => {
+    expect(readRestriction(undefined)).toEqual({ mode: 'any' });
+    expect(readRestriction({ whitelist: ['a', 'b'] })).toEqual({ mode: 'only', names: ['a', 'b'] });
+    expect(
+      readRestriction({ type: 'consumer_name', whitelist: ['a'], rejected_code: 401, _meta: { priority: 1 } })
+    ).toEqual({ mode: 'only', names: ['a'] });
+  });
+
+  it('leaves to the plugin form what is not a plain allow-list', () => {
+    expect(readRestriction({ blacklist: ['a'] })).toEqual({ mode: 'custom' });
+    expect(readRestriction({ whitelist: ['a'], blacklist: ['b'] })).toEqual({ mode: 'custom' });
+    expect(readRestriction({ type: 'consumer_group_id', whitelist: ['g'] })).toEqual({ mode: 'custom' });
+    expect(readRestriction({ whitelist: ['a'], allowed_by_methods: [] })).toEqual({ mode: 'custom' });
+    expect(readRestriction({ whitelist: ['a'], _meta: { disable: true } })).toEqual({ mode: 'custom' });
+    expect(readRestriction('x')).toEqual({ mode: 'custom' });
+  });
+
+  it('writes the choice back, keeping the rest of the plugin', () => {
+    expect(writeRestriction(undefined, null)).toBeNull();
+    expect(writeRestriction({ whitelist: ['a'] }, null)).toBeNull();
+    expect(writeRestriction(undefined, ['a'])).toEqual({ whitelist: ['a'] });
+    expect(
+      writeRestriction({ type: 'consumer_name', whitelist: ['a'], rejected_code: 401 }, ['b', 'c'])
+    ).toEqual({ whitelist: ['b', 'c'], rejected_code: 401 });
   });
 });

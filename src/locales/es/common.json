@@ -441,7 +441,14 @@
         "createFailed": "No se pudo crear el cliente.",
         "createdAtOnce": "El cliente se crea en este gateway de inmediato, guarde o no este formulario.",
         "create": "Crear cliente",
-        "nameHeldElsewhere": "Este nombre ya está en uso en este gateway, por un cliente que no puede ver. Elija otro."
+        "nameHeldElsewhere": "Este nombre ya está en uso en este gateway, por un cliente que no puede ver. Elija otro.",
+        "accessAny": "Cualquier cliente que tenga una credencial",
+        "accessAnyHelp": "Una credencial abre todas las rutas que piden este tipo de autenticación.",
+        "accessOnly": "Solo los clientes marcados",
+        "accessOnlyHelp": "Los demás reciben un 403, incluso con una credencial válida.",
+        "accessEmpty": "Marque al menos un cliente.",
+        "accessCustom": "Esta ruta ya limita quién la llama con su plugin consumer-restriction, de una forma que esta lista no puede mostrar. Cámbielo desde ese plugin.",
+        "noCredential": "No tiene credencial para este plugin"
       }
     },
     "protos": {
