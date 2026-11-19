@@ -67,8 +67,6 @@ import IconRefresh from '~icons/material-symbols/refresh';
 type Clients = {
   /** Who holds a credential of the plugin edited. */
   holders: string[];
-  /** Who holds one of the route's other authentication plugins. */
-  otherHolders: string[];
   /** Every consumer this account sees. */
   all: string[];
 };
@@ -76,28 +74,26 @@ type Clients = {
 // Every consumer of the gateway, with what each holds. APISIX lists a
 // consumer's credentials separately, so this is one request per consumer:
 // fine for the tens a gateway has, and only asked for while the form is open.
-const fetchClients = async (
-  plugin: AuthClientPlugin,
-  otherPlugins: string[]
-): Promise<Clients> => {
+const fetchClients = async (plugin: AuthClientPlugin): Promise<Clients> => {
   const consumers = await req
     // No page asked for: the gateway then answers with every consumer.
     .get<unknown, APISIXType['RespConsumerList']>(API_CONSUMERS)
     .then((v) => v.data.list.map((item) => item.value));
-  const held = await Promise.all(
+  const holders = await Promise.all(
     consumers.map(async (consumer) => {
-      const creds = await getCredentialListReq(req, { username: consumer.username })
-        .then((r) => r.list.map((item) => item.value));
-      return {
-        name: consumer.username,
-        own: holdsCredential(plugin, consumer, creds),
-        other: otherPlugins.some((p) => holdsCredential(p, consumer, creds)),
-      };
+      if (holdsCredential(plugin, consumer, [])) return consumer.username;
+      const creds = await getCredentialListReq(req, { username: consumer.username });
+      return holdsCredential(
+        plugin,
+        consumer,
+        creds.list.map((item) => item.value)
+      )
+        ? consumer.username
+        : undefined;
     })
   );
   return {
-    holders: held.filter((h) => h.own).map((h) => h.name).sort(),
-    otherHolders: held.filter((h) => h.other).map((h) => h.name).sort(),
+    holders: holders.filter((n): n is string => !!n).sort(),
     all: consumers.map((c) => c.username),
   };
 };
@@ -168,14 +164,18 @@ const ClientChecklist = ({
   onChange: (names: string[]) => void;
 }) => {
   const { t } = useTranslation();
-  const holders = clients ? [...clients.holders, ...clients.otherHolders] : [];
+  const { isSuperAdmin } = usePermission();
+  const holders = clients?.holders ?? [];
   const options = [...new Set([...holders, ...names])].sort();
-  // Why a name is on the list without holding a credential here: one this
-  // account cannot see may well hold one, and is not to be taken for dead.
+  // Why a name is on the list and cannot get through this plugin: it holds
+  // no credential of it, or it is no client at all. One this account cannot
+  // see may well hold one, and is not to be taken for dead; a super admin
+  // sees every client, so for them a name nobody holds is gone.
   const hint = (option: string): string | undefined => {
     if (!clients || holders.includes(option)) return undefined;
-    return clients.all.includes(option)
-      ? t('form.plugins.clients.noCredential')
+    if (clients.all.includes(option)) return t('form.plugins.clients.noCredential');
+    return isSuperAdmin
+      ? t('form.plugins.clients.notFound')
       : t('form.plugins.clients.notVisible');
   };
   return (
@@ -219,10 +219,6 @@ export type AuthClientsSectionProps = {
   onAccessChange: (next: Restriction) => void;
   /** The names the route held, ticked again when "only" is picked back. */
   storedNames: string[];
-  /** The route's other authentication plugins, whose clients it also narrows. */
-  otherPlugins: string[];
-  /** Where the route's consumer-restriction runs. */
-  restrictionPriority: number;
 };
 
 /** The name is a consumer already, one this account cannot see. */
@@ -240,8 +236,6 @@ export const AuthClientsSection = ({
   access,
   onAccessChange,
   storedNames,
-  otherPlugins,
-  restrictionPriority,
 }: AuthClientsSectionProps) => {
   const { t } = useTranslation();
   const instanceId = useAtomValue(currentInstanceIdAtom);
@@ -252,8 +246,8 @@ export const AuthClientsSection = ({
   const mayCreate = !readOnly && canCreate && canWriteResource('consumers');
 
   const clients = useQuery({
-    queryKey: ['auth-clients', instanceId, teamId, plugin, otherPlugins],
-    queryFn: () => fetchClients(plugin, otherPlugins),
+    queryKey: ['auth-clients', instanceId, teamId, plugin],
+    queryFn: () => fetchClients(plugin),
   });
 
   const [formOpened, setFormOpened] = useState(false);
@@ -327,12 +321,6 @@ export const AuthClientsSection = ({
     },
   });
 
-  // The restriction looks at the consumer the plugin found: run first, it
-  // finds none and turns every request away.
-  const ownPriority = (config._meta as { priority?: unknown } | undefined)?.priority;
-  const runsBeforeRestriction =
-    typeof ownPriority === 'number' && ownPriority <= restrictionPriority;
-
   const secretLabel =
     plugin === 'key-auth'
       ? t('form.plugins.clients.key')
@@ -399,16 +387,7 @@ export const AuthClientsSection = ({
             onChange={(names) => onAccessChange({ mode: 'only', names })}
           />
         )}
-        {access.mode === 'only' && otherPlugins.length > 0 && (
-          <Text size="xs" c="dimmed">
-            {t('form.plugins.clients.accessShared', { plugins: otherPlugins.join(', ') })}
-          </Text>
-        )}
-        {access.mode === 'only' && runsBeforeRestriction && (
-          <Alert color="yellow" variant="light">
-            {t('form.plugins.clients.accessOrder')}
-          </Alert>
-        )}
+
         {clients.data &&
           access.mode !== 'only' &&
           (clients.data.holders.length === 0 ? (

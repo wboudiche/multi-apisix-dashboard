@@ -274,12 +274,7 @@ export const FormItemPlugins = <T extends FieldValues>(
           showPriority
           showClients={context !== 'consumer' && schema === 'schema'}
           restriction={toJS(pluginsOb.__map.get(RESTRICTION_PLUGIN))}
-          otherAuthPlugins={pluginsOb.selected.filter(
-            (n) =>
-              n !== pluginsOb.curPlugin.name &&
-              n !== RESTRICTION_PLUGIN &&
-              getPluginCategory(n) === 'authentication'
-          )}
+          restrictionDefaultPriority={pluginsOb.priorityDefaults[RESTRICTION_PLUGIN]}
           defaultPriority={pluginsOb.priorityDefaults[pluginsOb.curPlugin.name]}
           mode={isView ? 'view' : pluginsOb.mode}
           schema={toJS(pluginsOb.curPluginSchema)}

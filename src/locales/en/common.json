@@ -474,11 +474,11 @@
         "accessEmpty": "Tick at least one client.",
         "accessCustom": "This route already limits its callers with its consumer-restriction plugin, in a way this list cannot show. Change it from that plugin.",
         "noCredential": "Holds no credential for this plugin",
-        "notVisible": "Not among the clients you can see",
-        "accessShared": "The list also applies to the clients of {{plugins}} on this route: they are listed too.",
-        "accessOrder": "This plugin runs before the restriction, which then finds no client and refuses every request. Leave its priority empty, or above the restriction's.",
+        "notVisible": "Not among the clients you can see: another team's, or one since deleted",
+        "accessOrder": "This plugin runs after the consumer-restriction, which then finds no client and refuses every request. Give it a priority above the restriction's.",
         "accessPending": "Who can call it was changed in the Form tab, and is saved with this plugin.",
-        "accessEmptyJson": "Who can call it: tick at least one client in the Form tab."
+        "accessEmptyJson": "Who can call it: tick at least one client in the Form tab.",
+        "notFound": "No such client on this gateway"
       }
     },
     "protos": {

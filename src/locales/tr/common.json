@@ -447,11 +447,11 @@
         "accessEmpty": "En az bir istemci işaretleyin.",
         "accessCustom": "Bu rota, çağıranlarını consumer-restriction eklentisiyle bu listenin gösteremeyeceği bir şekilde zaten sınırlıyor. Bunu o eklentiden değiştirin.",
         "noCredential": "Bu eklenti için kimlik bilgisi yok",
-        "notVisible": "Görebildiğiniz istemciler arasında değil",
-        "accessShared": "Liste bu rotadaki {{plugins}} istemcilerine de uygulanır: onlar da listelenir.",
-        "accessOrder": "Bu eklenti kısıtlamadan önce çalışır; kısıtlama da hiçbir istemci bulamaz ve her isteği reddeder. Önceliğini boş bırakın ya da kısıtlamanınkinden yüksek tutun.",
+        "notVisible": "Görebildiğiniz istemciler arasında değil: başka bir ekibin ya da sonradan silinmiş",
+        "accessOrder": "Bu eklenti consumer-restriction'dan sonra çalışır; kısıtlama da hiçbir istemci bulamaz ve her isteği reddeder. Ona kısıtlamanınkinden yüksek bir öncelik verin.",
         "accessPending": "Kimin çağırabileceği Form sekmesinde değiştirildi ve bu eklentiyle kaydedilir.",
-        "accessEmptyJson": "Kimin çağırabileceği: Form sekmesinde en az bir istemci işaretleyin."
+        "accessEmptyJson": "Kimin çağırabileceği: Form sekmesinde en az bir istemci işaretleyin.",
+        "notFound": "Bu ağ geçidinde böyle bir istemci yok"
       }
     },
     "protos": {

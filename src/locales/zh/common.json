@@ -447,11 +447,11 @@
         "accessEmpty": "请至少勾选一个客户端。",
         "accessCustom": "此路由已通过 consumer-restriction 插件限制调用方，其方式无法在此列表中显示。请在该插件中修改。",
         "noCredential": "没有此插件的凭证",
-        "notVisible": "不在您可见的客户端中",
-        "accessShared": "此列表也适用于此路由上 {{plugins}} 的客户端：它们也会列出。",
-        "accessOrder": "此插件在限制之前运行，限制将找不到客户端并拒绝所有请求。请将其优先级留空，或高于限制的优先级。",
+        "notVisible": "不在您可见的客户端中：属于其他团队，或已被删除",
+        "accessOrder": "此插件在 consumer-restriction 之后运行，限制将找不到客户端并拒绝所有请求。请为它设置高于限制的优先级。",
         "accessPending": "谁可以调用已在表单标签页中修改，并会随此插件保存。",
-        "accessEmptyJson": "谁可以调用：请在表单标签页中至少勾选一个客户端。"
+        "accessEmptyJson": "谁可以调用：请在表单标签页中至少勾选一个客户端。",
+        "notFound": "此网关上没有该客户端"
       }
     },
     "protos": {
