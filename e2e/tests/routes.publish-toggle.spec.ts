@@ -69,12 +69,15 @@ test('Offline takes the route offline, and Publish brings it back', async ({ pag
   await openList(page);
   await expect(row(page)).toContainText('Published');
 
-  await row(page).getByRole('button', { name: 'Offline', exact: true }).click();
+  // In the row's menu, the Status column saying which it is.
+  await row(page).getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Offline', exact: true }).click();
 
   await expect(row(page)).toContainText('Unpublished');
   expect(await statusOf()).toBe(0);
 
-  await row(page).getByRole('button', { name: 'Publish', exact: true }).click();
+  await row(page).getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Publish', exact: true }).click();
 
   await expect(row(page)).toContainText('Published');
   expect(await statusOf()).toBe(1);

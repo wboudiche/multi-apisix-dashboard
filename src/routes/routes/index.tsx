@@ -75,12 +75,14 @@ import { isResourceEnabled } from '@/utils/status';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconPlus from '~icons/material-symbols/add';
-import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
+import IconOffline from '~icons/material-symbols/cloud-off-outline';
 import IconCode from '~icons/material-symbols/code';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
 import IconDelete from '~icons/material-symbols/delete-outline';
 import IconExport from '~icons/material-symbols/download';
+import IconMoreHoriz from '~icons/material-symbols/more-horiz';
 import IconPlayArrow from '~icons/material-symbols/play-arrow';
+import IconPublish from '~icons/material-symbols/publish';
 import IconRefresh from '~icons/material-symbols/refresh';
 import IconSettings from '~icons/material-symbols/settings-outline';
 import IconUpload from '~icons/material-symbols/upload';
@@ -99,6 +101,18 @@ export type RouteListProps = {
   ToDetailBtn?: React.ComponentType<{ record: any }>;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+// The widths a column keeps between: room enough to read, no more than a
+// long value needs to be told apart. Past the most, a badge ends in an
+// ellipsis and shows the whole on hover; minWidth 0 lets it, against the
+// table cells' max-content rule.
+const PATH_BADGE = { maxWidth: 280, minWidth: 0 };
+const LABEL_BADGE = { maxWidth: 240, minWidth: 0 };
+const TEAM_BADGE = { maxWidth: 200, minWidth: 0 };
+const NAME_CELL = { minWidth: 160 };
+const PATH_CELL = { minWidth: 140 };
+const LABEL_CELL = { minWidth: 160 };
+const TEAM_CELL = { minWidth: 120 };
 
 export const RouteList = (props: RouteListProps) => {
   const { routeKey, data, isLoading, refetch, setParams, visibleColumns, listKey } = props;
@@ -407,9 +421,12 @@ export const RouteList = (props: RouteListProps) => {
                 />
               </Table.Td>
               {isVisible('name') && (
-                <Table.Td>
+                <Table.Td style={NAME_CELL}>
                   {record.value.name ? (
-                    <Text fw={600} size="sm">
+                    // Wrapped at a width, not as wide as the longest name: a
+                    // generated name 40 characters long took the room of the
+                    // columns the actions then covered.
+                    <Text fw={600} size="sm" maw={280} style={{ overflowWrap: 'break-word' }}>
                       {record.value.name}
                     </Text>
                   ) : (
@@ -442,15 +459,17 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
               {isVisible('path') && (
-                <Table.Td>
+                <Table.Td style={PATH_CELL}>
                   {record.value.uri ? (
-                    <Badge variant="light" color="blue" radius="sm" ff="monospace" tt="none">
+                    // A long path ends in an ellipsis at a width and reads
+                    // whole on hover; a short one, the usual, is unchanged.
+                    <Badge variant="light" color="blue" radius="sm" ff="monospace" tt="none" title={record.value.uri} style={PATH_BADGE}>
                       {record.value.uri}
                     </Badge>
                   ) : record.value.uris && record.value.uris.length > 0 ? (
                     <Group gap={4}>
                       {record.value.uris.map((uri: string, i: number) => (
-                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace" tt="none">
+                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace" tt="none" title={uri} style={PATH_BADGE}>
                           {uri}
                         </Badge>
                       ))}
@@ -507,11 +526,11 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
               {isVisible('label') && (
-                <Table.Td>
+                <Table.Td style={LABEL_CELL}>
                   {record.value.labels && Object.keys(record.value.labels).length > 0 ? (
                     <Group gap={4}>
                       {Object.entries(record.value.labels).map(([key, value]) => (
-                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none">
+                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none" title={`${key}:${value as string}`} style={LABEL_BADGE}>
                           {key}:{value as string}
                         </Badge>
                       ))}
@@ -558,9 +577,9 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
               {isVisible('team') && (
-                <Table.Td>
+                <Table.Td style={TEAM_CELL}>
                   {record.value.__team_id ? (
-                    <Badge variant="light" color="teal" size="sm">
+                    <Badge variant="light" color="teal" size="sm" title={teamMap.get(record.value.__team_id) || record.value.__team_id} style={TEAM_BADGE}>
                       {teamMap.get(record.value.__team_id) || record.value.__team_id}
                     </Badge>
                   ) : (
@@ -571,27 +590,6 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('operation') && (
                 <Table.Td className="sticky-actions">
                   <Group gap={8} wrap="nowrap">
-                    {canWriteOwner(ownerOf(record.value)) && (
-                      <Button
-                        size="xs"
-                        color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
-                        variant="light"
-                        radius="sm"
-                        styles={{ root: { padding: '0 12px' } }}
-                        onClick={() =>
-                          handleSetStatus(
-                            record.value.id,
-                            isResourceEnabled(record.value.status) ? 0 : 1
-                          )
-                        }
-                      >
-                        {t(
-                          isResourceEnabled(record.value.status)
-                            ? 'routes.list.actionOffline'
-                            : 'routes.list.actionPublish'
-                        )}
-                      </Button>
-                    )}
                     {/* Configure, or View for an account that may only read
                         it (#188): the row's primary action either way. */}
                     <ToDetailPageBtn
@@ -602,11 +600,36 @@ export const RouteList = (props: RouteListProps) => {
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}
                     />
-                    <Menu shadow="md" width={160}>
+                    {/* Configure and one menu: the status toggle beside them
+                        made the pinned column 300px wide, over five columns
+                        of the table. The Status column says which it is. */}
+                    <Menu shadow="md" width={180} position="bottom-end">
                       <Menu.Target>
-                        <Button size="xs" variant="default" radius="sm" rightSection={<IconArrowDropDown width="14" height="14" />}>{t('routes.list.actionMore')}</Button>
+                        <ActionIcon variant="default" size="md" aria-label={t('routes.list.actionMore')}>
+                          <IconMoreHoriz width="18" height="18" />
+                        </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
+                        {canWriteOwner(ownerOf(record.value)) && (<>
+                          <Menu.Item
+                            leftSection={
+                              isResourceEnabled(record.value.status)
+                                ? <IconOffline width="14" height="14" />
+                                : <IconPublish width="14" height="14" />
+                            }
+                            color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
+                            onClick={() =>
+                              handleSetStatus(record.value.id, isResourceEnabled(record.value.status) ? 0 : 1)
+                            }
+                          >
+                            {t(
+                              isResourceEnabled(record.value.status)
+                                ? 'routes.list.actionOffline'
+                                : 'routes.list.actionPublish'
+                            )}
+                          </Menu.Item>
+                          <Menu.Divider />
+                        </>)}
                         {/* The backend keeps the route test for those who can
                             write routes on the instance: it sends a request
                             of any method through the gateway (#307). */}

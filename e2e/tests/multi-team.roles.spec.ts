@@ -248,9 +248,9 @@ test('the routes page offers a write only on the team she develops in', async ({
   });
   await expect(rowOf(routeOf.viewed).getByRole('button', { name: 'View' })).toBeVisible();
   await expect(rowOf(routeOf.viewed).getByRole('button', { name: 'Configure' })).toHaveCount(0);
-  await expect(rowOf(routeOf.viewed).getByRole('button', { name: 'Offline' })).toHaveCount(0);
-  // Nor is Delete behind its More menu.
+  // Nor are Offline and Delete behind its More menu.
   await rowOf(routeOf.viewed).getByRole('button', { name: 'More' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Offline' })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'Delete' })).toHaveCount(0);
 });
 
