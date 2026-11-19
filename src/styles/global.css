@@ -292,7 +292,7 @@ table th {
   letter-spacing: 0.1em;
   color: var(--text-secondary) !important;
   border-bottom: 2px solid var(--brand) !important;
-  padding: 14px 16px !important;
+  padding: 14px 12px !important;
   background: transparent !important;
   white-space: nowrap;
 }
@@ -343,7 +343,7 @@ table tbody tr:hover td.sticky-actions {
 }
 
 table td {
-  padding: 14px 16px !important;
+  padding: 14px 12px !important;
   border-bottom: 1px solid var(--border-light) !important;
   color: var(--text-primary) !important;
   font-family: 'DM Sans', sans-serif !important;

@@ -393,10 +393,13 @@ export const RouteList = (props: RouteListProps) => {
               </Table.Th>
             )}
             {isVisible('desc') && <Table.Th>{t('routes.list.headerDescription')}</Table.Th>}
-            {isVisible('label') && <Table.Th>{t('routes.list.headerLabels')}</Table.Th>}
             {isVisible('version') && <Table.Th>{t('routes.list.headerVersion')}</Table.Th>}
+            {/* What a route is and where it stands first; labels, plugins and
+                the team after, where the table scrolls when the page is
+                narrow. */}
             {isVisible('status') && <Table.Th>{t('routes.list.headerStatus')}</Table.Th>}
             {isVisible('update_time') && <Table.Th>{t('routes.list.headerUpdateTime')}</Table.Th>}
+            {isVisible('label') && <Table.Th>{t('routes.list.headerLabels')}</Table.Th>}
             {isVisible('plugin') && <Table.Th>{t('routes.list.headerPlugin')}</Table.Th>}
             {isVisible('team') && <Table.Th>{t('routes.list.headerTeam')}</Table.Th>}
             {isVisible('operation') && <Table.Th className="sticky-actions" style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
@@ -531,21 +534,6 @@ export const RouteList = (props: RouteListProps) => {
                   </Text>
                 </Table.Td>
               )}
-              {isVisible('label') && (
-                <Table.Td style={LABEL_CELL}>
-                  {record.value.labels && Object.keys(record.value.labels).length > 0 ? (
-                    <Group gap={4}>
-                      {Object.entries(record.value.labels).map(([key, value]) => (
-                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none" title={`${key}:${value as string}`} style={LABEL_BADGE}>
-                          {key}:{value as string}
-                        </Badge>
-                      ))}
-                    </Group>
-                  ) : (
-                    <Text size="sm" c="dimmed">-</Text>
-                  )}
-                </Table.Td>
-              )}
               {isVisible('version') && (
                 <Table.Td>
                   <Text size="sm" c="dimmed">-</Text>
@@ -565,6 +553,21 @@ export const RouteList = (props: RouteListProps) => {
                   <Text size="xs" c="dimmed">
                     {record.value.update_time ? new Date(record.value.update_time * 1000).toLocaleString() : '-'}
                   </Text>
+                </Table.Td>
+              )}
+              {isVisible('label') && (
+                <Table.Td style={LABEL_CELL}>
+                  {record.value.labels && Object.keys(record.value.labels).length > 0 ? (
+                    <Group gap={4}>
+                      {Object.entries(record.value.labels).map(([key, value]) => (
+                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none" title={`${key}:${value as string}`} style={LABEL_BADGE}>
+                          {key}:{value as string}
+                        </Badge>
+                      ))}
+                    </Group>
+                  ) : (
+                    <Text size="sm" c="dimmed">-</Text>
+                  )}
                 </Table.Td>
               )}
               {isVisible('plugin') && (
@@ -825,15 +828,15 @@ function RouteComponent() {
     { label: t('routes.list.headerPath'), value: 'path' },
     { label: t('routes.list.columnUpstream'), value: 'upstream' },
     { label: t('routes.list.headerDescription'), value: 'desc' },
-    { label: t('routes.list.headerLabels'), value: 'label' },
     { label: t('routes.list.headerVersion'), value: 'version' },
     { label: t('routes.list.headerStatus'), value: 'status' },
     { label: t('routes.list.headerUpdateTime'), value: 'update_time' },
+    { label: t('routes.list.headerLabels'), value: 'label' },
     { label: t('routes.list.headerPlugin'), value: 'plugin' },
     { label: t('routes.list.headerTeam'), value: 'team' },
   ];
 
-  const DEFAULT_COLUMNS = ['name', 'path', 'upstream', 'label', 'status', 'update_time', 'plugin', 'team', 'operation'];
+  const DEFAULT_COLUMNS = ['name', 'path', 'upstream', 'status', 'update_time', 'label', 'plugin', 'team', 'operation'];
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
 
   return (
