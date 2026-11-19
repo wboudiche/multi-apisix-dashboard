@@ -72,15 +72,18 @@ import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
 import { ownerOf } from '@/utils/owner';
 import { extractSoapAction } from '@/utils/soap-route';
 import { isResourceEnabled } from '@/utils/status';
+import { useOverflowX } from '@/utils/useOverflowX';
 import { useSearchParams } from '@/utils/useSearchParams';
 import type { ListPageKeys } from '@/utils/useTablePagination';
 import IconPlus from '~icons/material-symbols/add';
-import IconArrowDropDown from '~icons/material-symbols/arrow-drop-down';
+import IconOffline from '~icons/material-symbols/cloud-off-outline';
 import IconCode from '~icons/material-symbols/code';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
 import IconDelete from '~icons/material-symbols/delete-outline';
 import IconExport from '~icons/material-symbols/download';
+import IconMoreHoriz from '~icons/material-symbols/more-horiz';
 import IconPlayArrow from '~icons/material-symbols/play-arrow';
+import IconPublish from '~icons/material-symbols/publish';
 import IconRefresh from '~icons/material-symbols/refresh';
 import IconSettings from '~icons/material-symbols/settings-outline';
 import IconUpload from '~icons/material-symbols/upload';
@@ -99,6 +102,21 @@ export type RouteListProps = {
   ToDetailBtn?: React.ComponentType<{ record: any }>;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+// The widths a column keeps between: room enough to read, no more than a
+// long value needs to be told apart. Past the most, a badge ends in an
+// ellipsis and shows the whole on hover; minWidth 0 lets it, against the
+// table cells' max-content rule.
+const PATH_BADGE = { maxWidth: 280, minWidth: 0 };
+// Text past its maximum wraps, inside a word when it has to: a generated
+// name, an id, a list of hosts.
+const WRAP = { overflowWrap: 'break-word' } as const;
+const LABEL_BADGE = { maxWidth: 240, minWidth: 0 };
+const TEAM_BADGE = { maxWidth: 200, minWidth: 0 };
+const NAME_CELL = { minWidth: 160 };
+const PATH_CELL = { minWidth: 140 };
+const LABEL_CELL = { minWidth: 160 };
+const TEAM_CELL = { minWidth: 120 };
 
 export const RouteList = (props: RouteListProps) => {
   const { routeKey, data, isLoading, refetch, setParams, visibleColumns, listKey } = props;
@@ -274,6 +292,8 @@ export const RouteList = (props: RouteListProps) => {
     }
   }, [jsonDrawerData, t, refetch]);
 
+  // Whether the table scrolls: its pinned actions are set off only then.
+  const [scrollRef, overflowing] = useOverflowX<HTMLDivElement>();
   // The route being duplicated: the quick-create dialog, on its settings.
   // It used to post an identical copy at once, published, answering on the
   // original's path beside it before anyone chose where it should go.
@@ -361,7 +381,7 @@ export const RouteList = (props: RouteListProps) => {
       {/* Scrolled rather than clipped: with every column shown the table is
           wider than the card, whose overflow is hidden, and the actions at its
           end went out of reach. The actions column stays in view (sticky-actions). */}
-      <Table.ScrollContainer minWidth={0} type="native">
+      <Table.ScrollContainer ref={scrollRef} data-overflowing={overflowing} minWidth={0} type="native">
       <Table horizontalSpacing="lg" verticalSpacing="md">
         <Table.Thead>
           <Table.Tr>
@@ -376,10 +396,13 @@ export const RouteList = (props: RouteListProps) => {
               </Table.Th>
             )}
             {isVisible('desc') && <Table.Th>{t('routes.list.headerDescription')}</Table.Th>}
-            {isVisible('label') && <Table.Th>{t('routes.list.headerLabels')}</Table.Th>}
             {isVisible('version') && <Table.Th>{t('routes.list.headerVersion')}</Table.Th>}
+            {/* What a route is and where it stands first; labels, plugins and
+                the team after, where the table scrolls when the page is
+                narrow. */}
             {isVisible('status') && <Table.Th>{t('routes.list.headerStatus')}</Table.Th>}
             {isVisible('update_time') && <Table.Th>{t('routes.list.headerUpdateTime')}</Table.Th>}
+            {isVisible('label') && <Table.Th>{t('routes.list.headerLabels')}</Table.Th>}
             {isVisible('plugin') && <Table.Th>{t('routes.list.headerPlugin')}</Table.Th>}
             {isVisible('team') && <Table.Th>{t('routes.list.headerTeam')}</Table.Th>}
             {isVisible('operation') && <Table.Th className="sticky-actions" style={{ width: 1, whiteSpace: 'nowrap' }}>{t('routes.list.headerOperation')}</Table.Th>}
@@ -390,6 +413,9 @@ export const RouteList = (props: RouteListProps) => {
           {data?.list.map((record: any, index: number) => {
             const writable =
               canWriteResource('routes') && canWriteOwner(ownerOf(record.value));
+            const teamLabel = record.value.__team_id
+              ? teamMap.get(record.value.__team_id) || record.value.__team_id
+              : '';
             return (
             <Table.Tr key={record.value.id} className={`stagger-${(index % 5) + 1}`}>
               <Table.Td>
@@ -407,9 +433,12 @@ export const RouteList = (props: RouteListProps) => {
                 />
               </Table.Td>
               {isVisible('name') && (
-                <Table.Td>
+                <Table.Td style={NAME_CELL}>
                   {record.value.name ? (
-                    <Text fw={600} size="sm">
+                    // Wrapped at a width, not as wide as the longest name: a
+                    // generated name 40 characters long took the room of the
+                    // columns the actions then covered.
+                    <Text fw={600} size="sm" maw={280} style={WRAP}>
                       {record.value.name}
                     </Text>
                   ) : (
@@ -417,7 +446,7 @@ export const RouteList = (props: RouteListProps) => {
                     // guarantee nothing if it rendered a dash for the routes
                     // that have none, so fall back to the id — always present,
                     // and styled like the ID column so it does not read as one.
-                    <Text size="xs" ff="monospace" c="dimmed">
+                    <Text size="xs" ff="monospace" c="dimmed" maw={280} style={WRAP}>
                       {record.value.id}
                     </Text>
                   )}
@@ -425,7 +454,7 @@ export const RouteList = (props: RouteListProps) => {
               )}
               {isVisible('id') && (
                 <Table.Td>
-                  <Text size="xs" ff="monospace" c="dimmed">
+                  <Text size="xs" ff="monospace" c="dimmed" maw={280} style={WRAP}>
                     {record.value.id}
                   </Text>
                 </Table.Td>
@@ -433,24 +462,26 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('host') && (
                 <Table.Td>
                   {record.value.host ? (
-                    <Text size="sm">{record.value.host}</Text>
+                    <Text size="sm" maw={280} style={WRAP}>{record.value.host}</Text>
                   ) : record.value.hosts && record.value.hosts.length > 0 ? (
-                    <Text size="sm">{record.value.hosts.join(', ')}</Text>
+                    <Text size="sm" maw={280} style={WRAP}>{record.value.hosts.join(', ')}</Text>
                   ) : (
                     <Text size="sm" c="dimmed">-</Text>
                   )}
                 </Table.Td>
               )}
               {isVisible('path') && (
-                <Table.Td>
+                <Table.Td style={PATH_CELL}>
                   {record.value.uri ? (
-                    <Badge variant="light" color="blue" radius="sm" ff="monospace" tt="none">
+                    // A long path ends in an ellipsis at a width and reads
+                    // whole on hover; a short one, the usual, is unchanged.
+                    <Badge variant="light" color="blue" radius="sm" ff="monospace" tt="none" title={record.value.uri} style={PATH_BADGE}>
                       {record.value.uri}
                     </Badge>
                   ) : record.value.uris && record.value.uris.length > 0 ? (
                     <Group gap={4}>
                       {record.value.uris.map((uri: string, i: number) => (
-                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace" tt="none">
+                        <Badge key={i} variant="light" color="blue" radius="sm" ff="monospace" tt="none" title={uri} style={PATH_BADGE}>
                           {uri}
                         </Badge>
                       ))}
@@ -506,21 +537,6 @@ export const RouteList = (props: RouteListProps) => {
                   </Text>
                 </Table.Td>
               )}
-              {isVisible('label') && (
-                <Table.Td>
-                  {record.value.labels && Object.keys(record.value.labels).length > 0 ? (
-                    <Group gap={4}>
-                      {Object.entries(record.value.labels).map(([key, value]) => (
-                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none">
-                          {key}:{value as string}
-                        </Badge>
-                      ))}
-                    </Group>
-                  ) : (
-                    <Text size="sm" c="dimmed">-</Text>
-                  )}
-                </Table.Td>
-              )}
               {isVisible('version') && (
                 <Table.Td>
                   <Text size="sm" c="dimmed">-</Text>
@@ -542,6 +558,21 @@ export const RouteList = (props: RouteListProps) => {
                   </Text>
                 </Table.Td>
               )}
+              {isVisible('label') && (
+                <Table.Td style={LABEL_CELL}>
+                  {record.value.labels && Object.keys(record.value.labels).length > 0 ? (
+                    <Group gap={4}>
+                      {Object.entries(record.value.labels).map(([key, value]) => (
+                        <Badge key={key} variant="dot" size="sm" color="gray" tt="none" title={`${key}:${value as string}`} style={LABEL_BADGE}>
+                          {key}:{value as string}
+                        </Badge>
+                      ))}
+                    </Group>
+                  ) : (
+                    <Text size="sm" c="dimmed">-</Text>
+                  )}
+                </Table.Td>
+              )}
               {isVisible('plugin') && (
                 <Table.Td>
                   {record.value.plugins && Object.keys(record.value.plugins).length > 0 ? (
@@ -558,10 +589,10 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
               {isVisible('team') && (
-                <Table.Td>
+                <Table.Td style={TEAM_CELL}>
                   {record.value.__team_id ? (
-                    <Badge variant="light" color="teal" size="sm">
-                      {teamMap.get(record.value.__team_id) || record.value.__team_id}
+                    <Badge variant="light" color="teal" size="sm" title={teamLabel} style={TEAM_BADGE}>
+                      {teamLabel}
                     </Badge>
                   ) : (
                     <Text size="xs" c="dimmed" fs="italic">{t('noData')}</Text>
@@ -571,27 +602,6 @@ export const RouteList = (props: RouteListProps) => {
               {isVisible('operation') && (
                 <Table.Td className="sticky-actions">
                   <Group gap={8} wrap="nowrap">
-                    {canWriteOwner(ownerOf(record.value)) && (
-                      <Button
-                        size="xs"
-                        color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
-                        variant="light"
-                        radius="sm"
-                        styles={{ root: { padding: '0 12px' } }}
-                        onClick={() =>
-                          handleSetStatus(
-                            record.value.id,
-                            isResourceEnabled(record.value.status) ? 0 : 1
-                          )
-                        }
-                      >
-                        {t(
-                          isResourceEnabled(record.value.status)
-                            ? 'routes.list.actionOffline'
-                            : 'routes.list.actionPublish'
-                        )}
-                      </Button>
-                    )}
                     {/* Configure, or View for an account that may only read
                         it (#188): the row's primary action either way. */}
                     <ToDetailPageBtn
@@ -602,11 +612,38 @@ export const RouteList = (props: RouteListProps) => {
                       to="/routes/detail/$id"
                       params={{ id: record.value.id }}
                     />
-                    <Menu shadow="md" width={160}>
+                    {/* Configure and one menu: the status toggle beside them
+                        made the pinned column 300px wide, over five columns
+                        of the table. The Status column says which it is. */}
+                    <Menu shadow="md" width={180} position="bottom-end">
                       <Menu.Target>
-                        <Button size="xs" variant="default" radius="sm" rightSection={<IconArrowDropDown width="14" height="14" />}>{t('routes.list.actionMore')}</Button>
+                        <ActionIcon variant="default" size="md" aria-label={t('routes.list.actionMore')}>
+                          <IconMoreHoriz width="18" height="18" />
+                        </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
+                        {/* Writes, offered as the route test is: to those who
+                            may write routes and this one's team. */}
+                        {writable && (<>
+                          <Menu.Item
+                            leftSection={
+                              isResourceEnabled(record.value.status)
+                                ? <IconOffline width="14" height="14" />
+                                : <IconPublish width="14" height="14" />
+                            }
+                            color={isResourceEnabled(record.value.status) ? 'orange' : 'green'}
+                            onClick={() =>
+                              handleSetStatus(record.value.id, isResourceEnabled(record.value.status) ? 0 : 1)
+                            }
+                          >
+                            {t(
+                              isResourceEnabled(record.value.status)
+                                ? 'routes.list.actionOffline'
+                                : 'routes.list.actionPublish'
+                            )}
+                          </Menu.Item>
+                          <Menu.Divider />
+                        </>)}
                         {/* The backend keeps the route test for those who can
                             write routes on the instance: it sends a request
                             of any method through the gateway (#307). */}
@@ -640,13 +677,13 @@ export const RouteList = (props: RouteListProps) => {
                             {t('form.json.duplicate')}
                           </Menu.Item>
                         )}
-                        {canWriteOwner(ownerOf(record.value)) && (<>
+                        {writable && (<>
                           <Menu.Divider />
                           {/* The same confirmation every other delete opens,
                               worn as a menu item: it names the route, and it
                               invalidates the caches other pages read. */}
                           <DeleteResourceBtn
-                            allowed={canWriteOwner(ownerOf(record.value))}
+                            allowed={writable}
                             name={t('routes.singular')}
                             target={record.value.id}
                             api={`${API_ROUTES}/${record.value.id}`}
@@ -794,15 +831,15 @@ function RouteComponent() {
     { label: t('routes.list.headerPath'), value: 'path' },
     { label: t('routes.list.columnUpstream'), value: 'upstream' },
     { label: t('routes.list.headerDescription'), value: 'desc' },
-    { label: t('routes.list.headerLabels'), value: 'label' },
     { label: t('routes.list.headerVersion'), value: 'version' },
     { label: t('routes.list.headerStatus'), value: 'status' },
     { label: t('routes.list.headerUpdateTime'), value: 'update_time' },
+    { label: t('routes.list.headerLabels'), value: 'label' },
     { label: t('routes.list.headerPlugin'), value: 'plugin' },
     { label: t('routes.list.headerTeam'), value: 'team' },
   ];
 
-  const DEFAULT_COLUMNS = ['name', 'path', 'upstream', 'label', 'status', 'update_time', 'plugin', 'team', 'operation'];
+  const DEFAULT_COLUMNS = ['name', 'path', 'upstream', 'status', 'update_time', 'label', 'plugin', 'team', 'operation'];
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
 
   return (

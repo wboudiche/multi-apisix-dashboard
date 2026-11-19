@@ -241,16 +241,22 @@ test('the routes page offers a write only on the team she develops in', async ({
   await permission.switchInstance(page, 'Local APISIX');
   await page.goto(`${new URL(page.url()).origin}/ui/routes?name=${ROUTE}`);
   const rowOf = (id: string) => routesPom.rowByName(page, id);
-  // The developer team's row is offered Configure and Offline; the viewer
-  // team's only View.
+  // The developer team's row is offered Configure, and Offline in its menu;
+  // the viewer team's only View, and neither Offline nor Delete.
   await expect(rowOf(routeOf.developed).getByRole('button', { name: 'Configure' })).toBeVisible({
     timeout: 20000,
   });
+  await rowOf(routeOf.developed).getByRole('button', { name: 'More' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Offline' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menuitem')).toHaveCount(0);
+
   await expect(rowOf(routeOf.viewed).getByRole('button', { name: 'View' })).toBeVisible();
   await expect(rowOf(routeOf.viewed).getByRole('button', { name: 'Configure' })).toHaveCount(0);
-  await expect(rowOf(routeOf.viewed).getByRole('button', { name: 'Offline' })).toHaveCount(0);
-  // Nor is Delete behind its More menu.
   await rowOf(routeOf.viewed).getByRole('button', { name: 'More' }).click();
+  // Open first, then absent: a count of 0 on a menu not drawn yet proves nothing.
+  await expect(page.getByRole('menuitem', { name: 'View JSON' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Offline' })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'Delete' })).toHaveCount(0);
 });
 

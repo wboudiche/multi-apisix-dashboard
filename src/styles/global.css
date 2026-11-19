@@ -292,7 +292,7 @@ table th {
   letter-spacing: 0.1em;
   color: var(--text-secondary) !important;
   border-bottom: 2px solid var(--brand) !important;
-  padding: 14px 16px !important;
+  padding: 14px 12px !important;
   background: transparent !important;
   white-space: nowrap;
 }
@@ -326,7 +326,15 @@ table td.sticky-actions {
   right: 0;
   z-index: 1;
   background: var(--bg-card) !important;
-  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.15);
+}
+
+/* Marked off from what scrolls under it, when something does: a column that
+   stays put, not one that cut the table short. A table that fits shows none,
+   which read as a panel set apart from its own rows. */
+[data-overflowing="true"] table th.sticky-actions,
+[data-overflowing="true"] table td.sticky-actions {
+  border-left: 1px solid var(--border-light) !important;
+  box-shadow: -10px 0 12px -10px rgba(0, 0, 0, 0.25);
 }
 
 table th.sticky-actions {
@@ -340,7 +348,7 @@ table tbody tr:hover td.sticky-actions {
 }
 
 table td {
-  padding: 14px 16px !important;
+  padding: 14px 12px !important;
   border-bottom: 1px solid var(--border-light) !important;
   color: var(--text-primary) !important;
   font-family: 'DM Sans', sans-serif !important;

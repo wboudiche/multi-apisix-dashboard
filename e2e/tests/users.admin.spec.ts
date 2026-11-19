@@ -436,7 +436,9 @@ test('a deleted user can no longer log in', async ({ page }) => {
   const row = adminPom.rowByText(page, username);
   await expect(row).toBeVisible();
   page.on('dialog', (dialog) => void dialog.accept());
-  await row.getByRole('button', { name: 'Delete' }).click();
+  // In the row's menu, beside Reset password.
+  await row.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
   await expect(adminPom.rowByText(page, username)).toHaveCount(0);
 
   // A login attempt with the deleted credentials stays on /login
@@ -529,7 +531,9 @@ test('a delete the backend refuses is reported, and the user stays listed', asyn
   const row = adminPom.rowByText(page, username);
   await expect(row).toBeVisible();
   page.on('dialog', (dialog) => void dialog.accept());
-  await row.getByRole('button', { name: 'Delete' }).click();
+  // In the row's menu, beside Reset password.
+  await row.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
 
   await expect(
     page.locator('.mantine-Notification-root').filter({ hasText: refusal })

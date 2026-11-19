@@ -15,12 +15,14 @@
  * limitations under the License.
  */
 import {
+  ActionIcon,
   Badge,
   Box,
   Button,
   Checkbox,
   Container,
   Group,
+  Menu,
   Modal,
   MultiSelect,
   Paper,
@@ -54,10 +56,13 @@ import { instancesAtom } from '@/stores/instance';
 import { describeError } from '@/utils/api-error';
 import { policyRefusal } from '@/utils/policy-refusal';
 import { recordDate } from '@/utils/record-date';
+import { useOverflowX } from '@/utils/useOverflowX';
 import IconPlus from '~icons/material-symbols/add';
+import IconDelete from '~icons/material-symbols/delete-outline';
 import IconInstance from '~icons/material-symbols/dns-outline';
 import IconGroup from '~icons/material-symbols/group-outline';
 import IconKey from '~icons/material-symbols/key-outline';
+import IconMoreHoriz from '~icons/material-symbols/more-horiz';
 import IconUser from '~icons/material-symbols/person-outline';
 import IconShield from '~icons/material-symbols/shield-outline';
 
@@ -103,6 +108,8 @@ const UsersPage = () => {
   const [currentUser] = useAtom(currentUserAtom);
   const [availableInstances] = useAtom(instancesAtom);
   const [users, setUsers] = useState<User[]>([]);
+  // Whether the table scrolls: its pinned actions are set off only then.
+  const [scrollRef, overflowing] = useOverflowX<HTMLDivElement>();
   const [teams, setTeams] = useState<Team[]>([]);
   // Whether the teams have been read at all: until then a team the list does
   // not hold is one that has not arrived, not one that is gone.
@@ -500,7 +507,7 @@ const UsersPage = () => {
 
       <Paper className="Card-root" p={0}>
         {/* Scrolled rather than clipped by the card, as on the routes list. */}
-        <Table.ScrollContainer minWidth={0} type="native">
+        <Table.ScrollContainer ref={scrollRef} data-overflowing={overflowing} minWidth={0} type="native">
         <Table horizontalSpacing="lg" verticalSpacing="md">
           <Table.Thead>
             <Table.Tr>
@@ -606,19 +613,37 @@ const UsersPage = () => {
                   </Text>
                 </Table.Td>
                 <Table.Td className="sticky-actions" style={{ textAlign: 'right' }}>
-                  <Group gap="xs" justify="flex-end">
+                  {/* Permissions and one menu, as on the routes list: three
+                      buttons wrapped onto two lines, doubled every row and
+                      widened the pinned column. */}
+                  <Group gap="xs" justify="flex-end" wrap="nowrap">
                     <Button size="xs" variant="filled" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openEditModal(user)}>
                       {t('users.permissions')}
                     </Button>
                     {user.id !== currentUser?.id && (
-                      <Button size="xs" variant="light" color="orange" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => openResetModal(user)}>
-                        {t('users.resetPassword')}
-                      </Button>
-                    )}
-                    {user.id !== currentUser?.id && (
-                      <Button size="xs" variant="light" color="red" radius="sm" styles={{ root: { padding: '0 12px' } }} onClick={() => handleDelete(user.id)}>
-                        {t('form.btn.delete')}
-                      </Button>
+                      <Menu shadow="md" width={180} position="bottom-end">
+                        <Menu.Target>
+                          <ActionIcon variant="default" size="md" aria-label={t('routes.list.actionMore')}>
+                            <IconMoreHoriz width="18" height="18" />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconKey width="14" height="14" />}
+                            onClick={() => openResetModal(user)}
+                          >
+                            {t('users.resetPassword')}
+                          </Menu.Item>
+                          <Menu.Divider />
+                          <Menu.Item
+                            color="red"
+                            leftSection={<IconDelete width="14" height="14" />}
+                            onClick={() => handleDelete(user.id)}
+                          >
+                            {t('form.btn.delete')}
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
                     )}
                   </Group>
                 </Table.Td>
