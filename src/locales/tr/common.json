@@ -416,6 +416,29 @@
         "brokers": "Broker: {{number}}",
         "endpoints": "Uç noktalar: {{number}}",
         "fieldsConfigured": "Yapılandırılan alanlar: {{number}}"
+      },
+      "moreOptions": "Diğer seçenekler",
+      "clients": {
+        "title": "Kimler çağırabilir",
+        "descKey": "Anahtarı olan istemciler. Her biri anahtarını her istekte gönderir.",
+        "descBasic": "Kullanıcı adı ve parolası olan istemciler; HTTP Basic kimlik doğrulamasıyla gönderilir.",
+        "loadFailed": "Bu ağ geçidinin istemcileri okunamadı.",
+        "none": "Henüz kimse çağıramaz: hiçbir istemcinin bu eklenti için kimlik bilgisi yok. Aşağıdan bir tane oluşturun.",
+        "createdKey": "{{name}} istemcisi oluşturuldu. Anahtarını şimdi kopyalayın: burada bir daha gösterilmeyecek.",
+        "createdPassword": "{{name}} istemcisi oluşturuldu. Parolasını şimdi kopyalayın: burada bir daha gösterilmeyecek.",
+        "tryIt": "Kaydedildikten sonra bir istek şu şekilde geçer:",
+        "newClient": "Yeni istemci",
+        "name": "İstemci adı",
+        "nameHelp": "Kim çağıracak: bir uygulama, bir iş ortağı, bir ekip.",
+        "nameInvalid": "Yalnızca harf, rakam, - ve _.",
+        "nameTaken": "Bu istemcinin bu eklenti için zaten kimlik bilgisi var.",
+        "key": "Anahtar",
+        "password": "Parola",
+        "secretHelp": "Rastgele üretildi. Olduğu gibi bırakın ya da kendinizinkini yazın.",
+        "regenerate": "Yenisini üret",
+        "createFailed": "İstemci oluşturulamadı.",
+        "createdAtOnce": "İstemci, bu formu kaydetseniz de kaydetmeseniz de bu ağ geçidinde hemen oluşturulur.",
+        "create": "İstemci oluştur"
       }
     },
     "protos": {

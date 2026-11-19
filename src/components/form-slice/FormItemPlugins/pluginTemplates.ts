@@ -69,11 +69,11 @@ export const PLUGIN_TEMPLATES: PluginTemplate[] = [
   // --- Authentication ---
   {
     plugin: 'key-auth',
-    config: { header: 'apikey', query: 'apikey', hide_credentials: false },
+    config: { header: 'apikey', query: 'apikey', hide_credentials: true },
   },
   {
     plugin: 'basic-auth',
-    config: { hide_credentials: false },
+    config: { hide_credentials: true },
   },
   {
     plugin: 'jwt-auth',

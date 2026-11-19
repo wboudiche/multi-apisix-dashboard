@@ -418,6 +418,29 @@
         "brokers": "Brokers: {{number}}",
         "endpoints": "Endpoints: {{number}}",
         "fieldsConfigured": "Campos configurados: {{number}}"
+      },
+      "moreOptions": "Más opciones",
+      "clients": {
+        "title": "Quién puede llamarla",
+        "descKey": "Clientes con una clave. Cada uno envía su clave en cada petición.",
+        "descBasic": "Clientes con un usuario y una contraseña, enviados como autenticación HTTP Basic.",
+        "loadFailed": "No se pudieron leer los clientes de este gateway.",
+        "none": "Nadie puede llamarla todavía: ningún cliente tiene credenciales para este plugin. Cree uno abajo.",
+        "createdKey": "Cliente {{name}} creado. Copie su clave ahora: no se volverá a mostrar aquí.",
+        "createdPassword": "Cliente {{name}} creado. Copie su contraseña ahora: no se volverá a mostrar aquí.",
+        "tryIt": "Una vez guardado, una petición pasa así:",
+        "newClient": "Nuevo cliente",
+        "name": "Nombre del cliente",
+        "nameHelp": "Quién la llamará: una aplicación, un socio, un equipo.",
+        "nameInvalid": "Solo letras, dígitos, - y _.",
+        "nameTaken": "Este cliente ya tiene credenciales para este plugin.",
+        "key": "Clave",
+        "password": "Contraseña",
+        "secretHelp": "Generada al azar. Consérvela o escriba la suya.",
+        "regenerate": "Generar otra",
+        "createFailed": "No se pudo crear el cliente.",
+        "createdAtOnce": "El cliente se crea en este gateway de inmediato, guarde o no este formulario.",
+        "create": "Crear cliente"
       }
     },
     "protos": {

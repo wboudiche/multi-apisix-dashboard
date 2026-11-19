@@ -16,6 +16,8 @@
  */
 import {
   ActionIcon,
+  Button,
+  Collapse,
   Group,
   NumberInput,
   Select,
@@ -30,7 +32,9 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import IconAdd from '~icons/material-symbols/add';
+import IconChevronRight from '~icons/material-symbols/chevron-right';
 import IconDelete from '~icons/material-symbols/delete-outline';
+import IconExpandMore from '~icons/material-symbols/expand-more';
 import IconHelp from '~icons/material-symbols/help-outline';
 
 type JSONSchema = {
@@ -54,6 +58,12 @@ type PluginSchemaFormProps = {
   value: Record<string, unknown>;
   onChange: (value: Record<string, unknown>) => void;
   disabled?: boolean;
+  /**
+   * The fields most configurations set, shown first and in this order. The
+   * others fold away under More options, with the required ones kept in
+   * view. Absent, every field shows, as before.
+   */
+  primaryKeys?: string[];
 };
 
 const FieldLabel = ({ name, required, description }: { name: string; required?: boolean; description?: string }) => (
@@ -350,7 +360,9 @@ const SchemaField = ({
 };
 
 export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
-  const { schema, value: externalValue, onChange, disabled } = props;
+  const { schema, value: externalValue, onChange, disabled, primaryKeys } = props;
+  const { t } = useTranslation();
+  const [moreOpened, setMoreOpened] = useState(false);
   const [localValue, setLocalValue] = useState<Record<string, unknown>>(externalValue);
 
   // Follow the value handed in whenever it changes, while rendering rather
@@ -388,19 +400,57 @@ export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
     return a.localeCompare(b);
   });
 
+  const renderField = (key: string) => (
+    <SchemaField
+      key={key}
+      name={key}
+      schema={properties[key]}
+      value={localValue[key]}
+      onChange={(v) => handleFieldChange(key, v)}
+      required={requiredSet.has(key)}
+      disabled={disabled}
+    />
+  );
+
+  if (!primaryKeys) {
+    return <Stack gap="sm">{sortedKeys.map(renderField)}</Stack>;
+  }
+
+  const primary = [
+    ...sortedKeys.filter((k) => requiredSet.has(k) && !primaryKeys.includes(k)),
+    ...primaryKeys.filter((k) => k in properties),
+  ];
+  const rest = sortedKeys.filter((k) => !primary.includes(k));
+
   return (
     <Stack gap="sm">
-      {sortedKeys.map((key) => (
-        <SchemaField
-          key={key}
-          name={key}
-          schema={properties[key]}
-          value={localValue[key]}
-          onChange={(v) => handleFieldChange(key, v)}
-          required={requiredSet.has(key)}
-          disabled={disabled}
-        />
-      ))}
+      {primary.map(renderField)}
+      {rest.length > 0 && (
+        <>
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            color="gray"
+            justify="flex-start"
+            w="fit-content"
+            px={0}
+            leftSection={
+              moreOpened ? (
+                <IconExpandMore width="16" height="16" />
+              ) : (
+                <IconChevronRight width="16" height="16" />
+              )
+            }
+            aria-expanded={moreOpened}
+            onClick={() => setMoreOpened((o) => !o)}
+          >
+            {t('form.plugins.moreOptions')}
+          </Button>
+          <Collapse in={moreOpened}>
+            <Stack gap="sm">{rest.map(renderField)}</Stack>
+          </Collapse>
+        </>
+      )}
     </Stack>
   );
 };

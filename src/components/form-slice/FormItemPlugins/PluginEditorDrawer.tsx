@@ -36,11 +36,13 @@ import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { FormItemEditor } from '@/components/form/Editor';
+import { AUTH_PRIMARY_FIELDS, isAuthClientPlugin } from '@/utils/auth-clients';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { withPriority } from '@/utils/plugin-priority';
 import IconChevronRight from '~icons/material-symbols/chevron-right';
 import IconExpandMore from '~icons/material-symbols/expand-more';
 
+import { AuthClientsSection } from './AuthClientsSection';
 import type { PluginCardListProps } from './PluginCardList';
 import {
   CATEGORY_COLORS,
@@ -73,6 +75,13 @@ export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
    * rather than offering a number nobody here knows.
    */
   defaultPriority?: number;
+  /**
+   * Whether this form edits what callers must get through - on a route, a
+   * service, a plugin config, a global rule - rather than a consumer's own
+   * credential. An authentication plugin whose callers the gateway holds then
+   * lists them, and makes a new one.
+   */
+  showClients?: boolean;
 };
 
 const isEmptyConfig = (p: object): boolean => isEmpty(p) || isNil(p);
@@ -198,6 +207,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     schema,
     showPriority,
     defaultPriority,
+    showClients,
   } = props;
   const { name, config } = plugin;
   const { t } = useTranslation();
@@ -398,7 +408,13 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
               value={formValue}
               onChange={setFormValue}
               disabled={mode === 'view'}
+              primaryKeys={
+                isAuthClientPlugin(name) ? AUTH_PRIMARY_FIELDS[name] : undefined
+              }
             />
+            {showClients && isAuthClientPlugin(name) && (
+              <AuthClientsSection plugin={name} config={formValue} />
+            )}
           </ScrollArea.Autosize>
           {mode !== 'view' && (
             <Button fullWidth mt="md" size="md" onClick={handleSave}>

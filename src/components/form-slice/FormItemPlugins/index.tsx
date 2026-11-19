@@ -267,6 +267,7 @@ export const FormItemPlugins = <T extends FieldValues>(
         />
         <PluginEditorDrawer
           showPriority
+          showClients={context !== 'consumer' && schema === 'schema'}
           defaultPriority={pluginsOb.priorityDefaults[pluginsOb.curPlugin.name]}
           mode={isView ? 'view' : pluginsOb.mode}
           schema={toJS(pluginsOb.curPluginSchema)}
