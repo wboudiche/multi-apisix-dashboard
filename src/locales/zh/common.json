@@ -973,7 +973,8 @@
       "nameCopy": "{{name}}（副本）",
       "hostsHint": "已复制：{{hosts}}。在此填写的主机会替换它们。",
       "urisHint": "已复制：{{uris}}。在此填写的路径会替换它们。",
-      "rewriteKept": "“{{name}}”会改写每个请求的路径（{{rewrite}}）。副本会保留该改写：请确认它适用于新的目标。"
+      "rewriteKept": "“{{name}}”会改写每个请求的路径（{{rewrite}}）。副本会保留该改写：请确认它适用于新的目标。",
+      "nameCopyHint": "根据原路由的名称建议。"
     }
   },
   "globalRules": {

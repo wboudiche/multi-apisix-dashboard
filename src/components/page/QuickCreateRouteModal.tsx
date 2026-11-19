@@ -399,7 +399,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           />
           <TextInput
             label={t('form.quickRoute.name')}
-            description={duplicating ? undefined : t('form.quickRoute.nameHint')}
+            // A hint either way: without one beside Host's, the two fields
+            // sat at different heights.
+            description={duplicating ? t('form.quickRoute.nameCopyHint') : t('form.quickRoute.nameHint')}
             required
             value={name}
             onChange={(e) => setTypedName(e.currentTarget.value)}

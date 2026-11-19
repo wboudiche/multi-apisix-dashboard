@@ -979,7 +979,8 @@
       "nameCopy": "{{name}} (Kopie)",
       "hostsHint": "Kopiert: {{hosts}}. Ein hier eingegebener Host ersetzt sie.",
       "urisHint": "Kopiert: {{uris}}. Ein hier eingegebener Pfad ersetzt sie.",
-      "rewriteKept": "„{{name}}“ schreibt den Pfad jeder Anfrage um ({{rewrite}}). Die Kopie behält diese Umschreibung: Prüfen Sie, ob sie zum neuen Ziel passt."
+      "rewriteKept": "„{{name}}“ schreibt den Pfad jeder Anfrage um ({{rewrite}}). Die Kopie behält diese Umschreibung: Prüfen Sie, ob sie zum neuen Ziel passt.",
+      "nameCopyHint": "Aus dem Namen des Originals vorgeschlagen."
     }
   },
   "globalRules": {

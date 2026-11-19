@@ -979,7 +979,8 @@
       "nameCopy": "{{name}} (kopya)",
       "hostsHint": "Kopyalanan: {{hosts}}. Buraya yazılan bir host bunların yerini alır.",
       "urisHint": "Kopyalanan: {{uris}}. Buraya yazılan bir yol bunların yerini alır.",
-      "rewriteKept": "“{{name}}” her isteğin yolunu yeniden yazar ({{rewrite}}). Kopya bu yeniden yazmayı korur: yeni hedefe uyduğunu kontrol edin."
+      "rewriteKept": "“{{name}}” her isteğin yolunu yeniden yazar ({{rewrite}}). Kopya bu yeniden yazmayı korur: yeni hedefe uyduğunu kontrol edin.",
+      "nameCopyHint": "Orijinalin adından önerilir."
     }
   },
   "globalRules": {

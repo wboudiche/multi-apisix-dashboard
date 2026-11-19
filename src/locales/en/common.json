@@ -899,7 +899,8 @@
       "nameCopy": "{{name}} (copy)",
       "hostsHint": "Copied: {{hosts}}. A host typed here replaces them.",
       "urisHint": "Copied: {{uris}}. A path typed here replaces them.",
-      "rewriteKept": "“{{name}}” rewrites each request's path ({{rewrite}}). The copy keeps that rewrite: check it fits the new destination."
+      "rewriteKept": "“{{name}}” rewrites each request's path ({{rewrite}}). The copy keeps that rewrite: check it fits the new destination.",
+      "nameCopyHint": "Proposed from the original's name."
     }
   },
   "globalRules": {
