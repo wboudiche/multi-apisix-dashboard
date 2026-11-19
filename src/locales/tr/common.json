@@ -458,7 +458,7 @@
         "secret": "Sır",
         "createdSecret": "{{name}} istemcisi oluşturuldu. Sırrını şimdi kopyalayın: burada bir daha gösterilmez.",
         "jwtHow": "Uygulama, tokenlarını bu sırla HS256 ile imzalar; \"{{claim}}\": \"{{identifier}}\" ve sona erme zamanı \"exp\" claim'lerini taşır.",
-        "jwtTry": "Kaydedildikten sonra bu token {{time}} saatine kadar geçer:",
+        "jwtTry": "Kaydedildikten sonra bu token şu zamana kadar geçer: {{time}}",
         "hmacTry": "Kaydedildikten sonra, böyle imzalanan bir istek geçer (bir kabuk betiği: önce ağ geçidini, yöntemi, yolu ve 'value' olarak bırakılan her değeri ayarlayın):",
         "jwtNoSign": "Bu sayfa denemek için bir token imzalayamıyor: imzalama, sayfanın HTTPS üzerinden sunulmasını gerektirir.",
         "identifierBasic": "Kullanıcı adı:",

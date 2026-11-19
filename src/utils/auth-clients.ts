@@ -187,7 +187,9 @@ export const hmacScript = (
   const seen = new Set<string>();
   const required: string[] = [];
   for (const h of Array.isArray(config.signed_headers) ? config.signed_headers : []) {
-    if (typeof h !== 'string' || seen.has(h.toLowerCase())) continue;
+    // The request target is signed first whatever the route says.
+    if (typeof h !== 'string' || h.toLowerCase() === '@request-target') continue;
+    if (seen.has(h.toLowerCase())) continue;
     seen.add(h.toLowerCase());
     required.push(h);
   }
@@ -200,11 +202,21 @@ export const hmacScript = (
   // A body is sent - empty unless set - whenever anything is worked out of it.
   const withBody =
     config.validate_request_body === true || !!digestName || !!lengthName;
-  const others = required.filter(
-    (h) =>
-      PLAIN_HEADER.test(h) &&
-      !['date', 'digest', 'content-length', 'host'].includes(h.toLowerCase())
-  );
+  // Each with a variable of its own: X-App and X_App would make the same
+  // one, as would content_length the worked-out length's.
+  const taken = new Set(['H_HOST', 'H_CONTENT_LENGTH']);
+  const others = required
+    .filter(
+      (h) =>
+        PLAIN_HEADER.test(h) &&
+        !['date', 'digest', 'content-length', 'host'].includes(h.toLowerCase())
+    )
+    .map((name) => {
+      let variable = headerVar(name);
+      for (let i = 2; taken.has(variable); i += 1) variable = `${headerVar(name)}_${i}`;
+      taken.add(variable);
+      return { name, variable };
+    });
 
   // Signed in the order the Authorization header lists them.
   const signedHeaders: { name: string; value: string }[] = [
@@ -212,7 +224,7 @@ export const hmacScript = (
     ...(hostName ? [{ name: hostName, value: '"$H_HOST"' }] : []),
     ...(digestName ? [{ name: digestName, value: '"$DIGEST"' }] : []),
     ...(lengthName ? [{ name: lengthName, value: '"$H_CONTENT_LENGTH"' }] : []),
-    ...others.map((h) => ({ name: h, value: `"$${headerVar(h)}"` })),
+    ...others.map((h) => ({ name: h.name, value: `"$${h.variable}"` })),
   ];
   const format =
     ['%s', '%s %s', ...signedHeaders.map((h) => `${h.name}: %s`)].join('\\n') + '\\n';
@@ -221,17 +233,25 @@ export const hmacScript = (
 
   return [
     ...(unwritable.length
-      ? [`# Also required, and to be added by hand: ${unwritable.join(', ')}`]
+      ? [
+          // Only printable characters, quoted: a line break in a route's
+          // header name would end the comment and run the rest as a command.
+          `# Also required, and to be added by hand: ${unwritable
+            .map((h) => JSON.stringify(h.replace(/[^\x20-\x7e]/g, '?')))
+            .join(', ')}`,
+        ]
       : []),
     'GATEWAY=\'http://<gateway>\'',
     'METHOD=GET',
     'REQ_PATH=/your/path',
-    ...others.map((h) => `${headerVar(h)}='value'`),
+    ...others.map((h) => `${h.variable}='value'`),
     ...(withBody ? ['BODY=\'\''] : []),
     `KEY_ID=${shellQuote(identifier)}`,
     `SECRET=${shellQuote(secret)}`,
     'DATE=$(LC_ALL=C date -u \'+%a, %d %b %Y %H:%M:%S GMT\')',
-    ...(hostName ? ['H_HOST=${GATEWAY#*://}', 'H_HOST=${H_HOST%%/*}'] : []),
+    ...(hostName
+      ? ['H_HOST=${GATEWAY#*://}', 'H_HOST=${H_HOST%%/*}', 'H_HOST=${H_HOST#*@}']
+      : []),
     ...(withBody
       ? ['DIGEST="SHA-256=$(printf \'%s\' "$BODY" | openssl dgst -sha256 -binary | openssl base64 -A)"']
       : []),
@@ -241,8 +261,11 @@ export const hmacScript = (
     `SIG=$(printf '${format}' ${args.join(' ')} \\`,
     `  | openssl dgst -${hash} -hmac "$SECRET" -binary | openssl base64 -A)`,
     'curl -X "$METHOD" -H "Date: $DATE" \\',
-    ...others.map((h) => `  -H "${h}: $${headerVar(h)}" \\`),
-    // curl sends the host and the length of the body itself, the same.
+    ...others.map((h) => `  -H "${h.name}: $${h.variable}" \\`),
+    // The host as signed: curl's own leaves out a default port, and a user
+    // and password, which the signed one would then not match.
+    ...(hostName ? ['  -H "Host: $H_HOST" \\'] : []),
+    // curl sends the length of the body itself, the same.
     ...(withBody ? ['  -H "Digest: $DIGEST" --data-binary "$BODY" \\'] : []),
     `  -H "Authorization: Signature keyId=\\"$KEY_ID\\",algorithm=\\"${algorithm}\\",headers=\\"${signed}\\",signature=\\"$SIG\\"" \\`,
     '  "$GATEWAY$REQ_PATH"',

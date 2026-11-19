@@ -186,7 +186,27 @@ describe('auth clients', () => {
     expect(script.match(/-H "X-App:/g)).toHaveLength(1);
     expect(script).not.toContain('-H "x-app:');
     // A name a shell line cannot carry is said, not dropped.
-    expect(script).toContain('# Also required, and to be added by hand: x tenant');
+    expect(script).toContain('# Also required, and to be added by hand: "x tenant"');
+  });
+
+  it('gives two headers that would share a variable one each, and skips the target', () => {
+    const script = hmacScript('app', 's', {
+      signed_headers: ['@request-target', 'date', 'X-App', 'X_App', 'content_length', 'host'],
+    });
+    expect(script).not.toContain('# Also required');
+    expect(script).toContain("H_X_APP='value'");
+    expect(script).toContain("H_X_APP_2='value'");
+    expect(script).toContain("H_CONTENT_LENGTH_2='value'");
+    expect(script).toContain('-H "X_App: $H_X_APP_2"');
+    // Sent as signed, not as curl would spell it.
+    expect(script).toContain('-H "Host: $H_HOST"');
+  });
+
+  it('keeps a header name with a line break inside its comment', () => {
+    const script = hmacScript('app', 's', { signed_headers: ['x\ntouch /tmp/pwned'] });
+    const lines = script.split('\n');
+    expect(lines[0]).toBe('# Also required, and to be added by hand: "x?touch /tmp/pwned"');
+    expect(lines.some((l) => l.startsWith('touch'))).toBe(false);
   });
 
   it('signs what the route requires: its headers, spelt its way, its algorithm, the body', () => {
