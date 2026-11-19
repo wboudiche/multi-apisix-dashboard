@@ -416,6 +416,30 @@
         "brokers": "Broker：{{number}}",
         "endpoints": "端点：{{number}}",
         "fieldsConfigured": "已配置字段：{{number}}"
+      },
+      "moreOptions": "更多选项",
+      "clients": {
+        "title": "谁可以调用",
+        "descKey": "持有密钥的客户端：每个客户端在每次请求中发送自己的密钥。仅列出您可见的客户端。",
+        "descBasic": "持有用户名和密码的客户端，以 HTTP Basic 认证方式发送。仅列出您可见的客户端。",
+        "loadFailed": "无法读取此网关的客户端。",
+        "none": "您可见的客户端中还没有任何一个持有此插件的凭证。请在下方创建一个。",
+        "createdKey": "已创建客户端 {{name}}。请立即复制其密钥：此处不会再次显示。",
+        "createdPassword": "已创建客户端 {{name}}。请立即复制其密码：此处不会再次显示。",
+        "tryIt": "保存后，请求可以这样通过：",
+        "newClient": "新建客户端",
+        "name": "客户端名称",
+        "nameHelp": "谁将调用它：一个应用、一个合作伙伴或一个团队。",
+        "nameInvalid": "只能包含字母、数字、- 和 _。",
+        "nameTaken": "此客户端已持有此插件的凭证。",
+        "key": "密钥",
+        "password": "密码",
+        "secretHelp": "已随机生成。可保留，也可输入您自己的。",
+        "regenerate": "重新生成",
+        "createFailed": "无法创建客户端。",
+        "createdAtOnce": "无论是否保存此表单，客户端都会立即在此网关上创建。",
+        "create": "创建客户端",
+        "nameHeldElsewhere": "此名称已在此网关上被一个您看不到的客户端占用。请换一个名称。"
       }
     },
     "protos": {

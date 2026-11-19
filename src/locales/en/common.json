@@ -443,6 +443,30 @@
         "brokers": "Brokers: {{number}}",
         "endpoints": "Endpoints: {{number}}",
         "fieldsConfigured": "Fields configured: {{number}}"
+      },
+      "moreOptions": "More options",
+      "clients": {
+        "title": "Who can call it",
+        "descKey": "Clients holding a key: each sends its key with every request. Only the clients you can see are listed.",
+        "descBasic": "Clients holding a username and a password, sent as HTTP Basic authentication. Only the clients you can see are listed.",
+        "loadFailed": "The clients of this gateway could not be read.",
+        "none": "None of the clients you can see holds a credential for this plugin yet. Create one below.",
+        "createdKey": "Client {{name}} created. Copy its key now: it is not shown again here.",
+        "createdPassword": "Client {{name}} created. Copy its password now: it is not shown again here.",
+        "tryIt": "Once saved, a request gets through like this:",
+        "newClient": "New client",
+        "name": "Client name",
+        "nameHelp": "Who will call it: an application, a partner, a team.",
+        "nameInvalid": "Letters, digits, - and _ only.",
+        "nameTaken": "This client already holds a credential for this plugin.",
+        "key": "Key",
+        "password": "Password",
+        "secretHelp": "Generated at random. Keep it, or type your own.",
+        "regenerate": "Generate another",
+        "createFailed": "The client could not be created.",
+        "createdAtOnce": "The client is created on this gateway at once, whether or not you save this form.",
+        "create": "Create client",
+        "nameHeldElsewhere": "This name is already taken on this gateway, by a client you cannot see. Choose another."
       }
     },
     "protos": {
