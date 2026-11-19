@@ -873,7 +873,6 @@
     },
     "quickRoute": {
       "title": "New route",
-      "intro": "A path and where to send it. Everything else can wait, or be set now under More options.",
       "path": "Path",
       "pathHint": "End it with * to match everything under it.",
       "methods": "Methods",
@@ -887,7 +886,7 @@
       "hostHint": "Optional: only requests for this host name.",
       "name": "Name",
       "nameHint": "Proposed from the path until you change it.",
-      "moreOptions": "More options…",
+      "moreOptions": "More options",
       "create": "Create",
       "createOffline": "Create offline",
       "replaceDraftTitle": "Replace your draft?",
@@ -899,7 +898,8 @@
       "nameCopy": "{{name}} (copy)",
       "hostsHint": "Copied: {{hosts}}. A host typed here replaces them.",
       "urisHint": "Copied: {{uris}}. A path typed here replaces them.",
-      "rewriteKept": "“{{name}}” rewrites each request's path ({{rewrite}}). The copy keeps that rewrite: check it fits the new destination."
+      "rewriteKept": "“{{name}}” rewrites each request's path ({{rewrite}}). The copy keeps that rewrite: check it fits the new destination.",
+      "nameCopyHint": "Proposed from the original's name."
     }
   },
   "globalRules": {
