@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 import {
-  Box,
   Button,
   Grid,
   Group,
@@ -263,32 +262,24 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
             <Grid.Col span={4}>{statusFilter}</Grid.Col>
 
             <Grid.Col span={4}>
-              {/* Given its own frame because it is the one an operator reaches
-                  for during an incident: the question is which routes touch the
-                  gateway that is failing. */}
-              <Box
-                p="xs"
-                style={{
-                  border: '1px solid var(--mantine-color-blue-4)',
-                  background: 'var(--mantine-color-blue-0)',
-                  borderRadius: 'var(--mantine-radius-sm)',
-                }}
-              >
-                <Group gap={6} mb={6} wrap="nowrap">
-                  <Text size="sm" fw={600}>{t('routes.list.filterUpstream')}</Text>
-                  <Text size="xs" c="dimmed">{t('routes.list.filterMultiHint')}</Text>
-                </Group>
-                <MultiSelect
-                  data={upstreamOptions}
-                  placeholder={t('routes.list.filterUpstreamPlaceholder')}
-                  size="sm"
-                  searchable
-                  clearable
-                  nothingFoundMessage={t('routes.list.filterUpstreamEmpty')}
-                  value={asList(draft.upstream_id)}
-                  onChange={(v) => set('upstream_id', v.length > 0 ? v : undefined)}
-                />
-              </Box>
+              {/* First of the second row: the one an operator reaches for during
+                  an incident - which routes touch the gateway that is failing.
+                  A blue frame of its own set it lower than the filters beside
+                  it, and read as a misalignment. */}
+              <Group gap={6} mb={6} wrap="nowrap">
+                <Text size="sm" fw={500}>{t('routes.list.filterUpstream')}</Text>
+                <Text size="xs" c="dimmed">{t('routes.list.filterMultiHint')}</Text>
+              </Group>
+              <MultiSelect
+                data={upstreamOptions}
+                placeholder={t('routes.list.filterUpstreamPlaceholder')}
+                size="sm"
+                searchable
+                clearable
+                nothingFoundMessage={t('routes.list.filterUpstreamEmpty')}
+                value={asList(draft.upstream_id)}
+                onChange={(v) => set('upstream_id', v.length > 0 ? v : undefined)}
+              />
             </Grid.Col>
 
             {isAdmin && (

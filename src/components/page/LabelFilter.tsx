@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { ActionIcon, Badge, Group, Select } from '@mantine/core';
+import { ActionIcon, Badge, Group, Select,Stack } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useAtomValue } from 'jotai';
 import { useCallback, useMemo, useState } from 'react';
@@ -108,7 +108,11 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
   }, []);
 
   return (
-    <Group gap="sm" wrap="wrap" align="center" style={{ flex: 1 }}>
+    // The key, the value and Add on one line, the labels picked under it: in
+    // one wrapping row, a narrow column sent Add onto a line of its own and
+    // set the fields off the line of the filters beside them.
+    <Stack gap="xs" style={{ flex: 1 }}>
+      <Group gap="sm" wrap="nowrap" align="center">
       <Select
         data={keyOptions}
         placeholder={
@@ -123,7 +127,7 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
         value={selectedKey}
         onChange={handleKeyChange}
         clearable
-        style={{ flex: 1, minWidth: 180, maxWidth: 300 }}
+        style={{ flex: 1, minWidth: 0, maxWidth: 300 }}
         comboboxProps={{ withinPortal: true }}
       />
       <Select
@@ -136,7 +140,7 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
         onChange={setSelectedValue}
         disabled={!selectedKey}
         clearable
-        style={{ flex: 1, minWidth: 180, maxWidth: 300 }}
+        style={{ flex: 1, minWidth: 0, maxWidth: 300 }}
         comboboxProps={{ withinPortal: true }}
       />
       <ActionIcon
@@ -148,6 +152,9 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
       >
         <IconPlus width="14" height="14" />
       </ActionIcon>
+      </Group>
+      {value.length > 0 && (
+      <Group gap="xs">
       {value.map((tag) => (
         <Badge
           key={tag}
@@ -167,6 +174,8 @@ export const LabelFilter = ({ value, onChange, inUse }: LabelFilterProps) => {
           {tag}
         </Badge>
       ))}
-    </Group>
+      </Group>
+      )}
+    </Stack>
   );
 };
