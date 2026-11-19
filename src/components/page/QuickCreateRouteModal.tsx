@@ -137,11 +137,11 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
     return target && target.nodes.length > 0 ? target : null;
   }, [kind, url, upstreamId, upstreams]);
 
-  // Shown from the start, greyed out until there is something to dial, so
-  // that it is found before it is needed. Not for an upstream picked with no
-  // node to dial - found through service discovery, or APISIX's empty {} -
-  // where it would stay greyed out for good.
-  const awaitingTarget = kind === 'url' || (kind === 'upstream' && !upstreamId);
+  // Shown once an address is being typed, greyed out until it is one that
+  // can be dialed; for an upstream, once one is picked. Not for an upstream
+  // with no node to dial - found through service discovery, or APISIX's
+  // empty {} - where it would stay greyed out for good.
+  const awaitingTarget = kind === 'url' && url.trim() !== '';
   const connectionTest = testTarget ? (
     // Keyed by what it dials: an answer about the last address is not one
     // about this one.

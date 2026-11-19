@@ -164,7 +164,9 @@ test('tests the address the way the upstream form does', async ({ page }) => {
   // Its own answers, not the dialog's other alerts (a duplicate, a refusal).
   const test = dialog.getByRole('region', { name: 'Test Connection' });
 
-  // Offered from the start, and greyed out until there is an address to dial.
+  // Offered once an address is being typed, greyed out until it is one.
+  await expect(test).toHaveCount(0);
+  await dialog.getByRole('textbox', { name: 'Address' }).fill('http://');
   await expect(test.getByRole('button', { name: 'Test Connection' })).toBeDisabled();
 
   // An internal address is not dialed (#304), and says so rather than failing.
