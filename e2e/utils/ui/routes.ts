@@ -23,14 +23,20 @@ import { uiAddNode } from './nodes';
 /**
  * The route add page (and the route detail page) were redesigned into a
  * multi-step FormWizard:
- *   step 1 "Define API Information" — name, uri, methods, host, priority, vars
- *   step 2 "Define Upstream"        — UpstreamModeSelector (custom/existing/service)
- *   step 3 "Request Override"
- *   step 4 "Plugins"                — FormSectionPlugins
- *   step 5 "Preview"                — read-only summary, "Submit" lives here
+ *   step 1 "Define API Information" — name, uri, methods, host; websocket,
+ *                                     uris, hosts, remote addrs, vars, filter
+ *                                     func and priority are folded behind the
+ *                                     "Advanced matching" toggle
+ *   step 2 "Define Upstream"        — UpstreamModeSelector (custom/existing/service);
+ *                                     the custom upstream shows nodes and scheme,
+ *                                     the rest is behind "Advanced Settings"
+ *   step 3 "Options"                — Request Override, then Plugins
+ *   step 4 "Preview"                — read-only summary
  *
  * Navigation is driven by the "Next" button (per-step validation blocks
- * silently). The final step exposes "Submit". There is no "Add" button on the
+ * silently). The final step exposes "Submit"; the add page also offers a
+ * light "Submit" next to "Next" on every earlier step, so an exact "Submit"
+ * locator is only unambiguous on Preview. There is no "Add" button on the
  * wizard. In read-only detail mode the wizard renders tab-style step buttons
  * (one per step label) that allow free navigation; only the active step's
  * content is mounted, so any field read in detail mode must first click its
@@ -42,16 +48,39 @@ import { uiAddNode } from './nodes';
 
 export const ROUTE_STEP_API_INFO = 'Define API Information';
 export const ROUTE_STEP_UPSTREAM = 'Define Upstream';
-export const ROUTE_STEP_REQUEST_OVERRIDE = 'Request Override';
+/** Request Override and Plugins, one step. */
+export const ROUTE_STEP_OPTIONS = 'Options';
 export const ROUTE_STEP_PREVIEW = 'Preview';
+
+/**
+ * Open a folded AdvancedSection by its toggle, unless it is already open (by a
+ * click, or by itself because one of its fields is set or refused).
+ */
+const uiOpenAdvancedSection = async (page: Page, name: string) => {
+  const toggle = page.getByRole('button', { name, exact: true });
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') {
+    await toggle.click();
+  }
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+};
+
+/** Unfold step 1's "Advanced matching": websocket, uris, hosts, vars, priority… */
+export const uiOpenAdvancedMatching = (page: Page) =>
+  uiOpenAdvancedSection(page, 'Advanced matching');
 
 /** Click the wizard "Next" button to advance one step. */
 export const uiRouteWizardNext = async (page: Page) => {
   await page.getByRole('button', { name: 'Next', exact: true }).click();
 };
 
-/** Click the wizard "Submit" button on the final (Preview) step. */
+/**
+ * Click the wizard "Submit" button on the final (Preview) step, the only step
+ * where an exact "Submit" is the one button of that name.
+ */
 export const uiRouteWizardSubmit = async (page: Page) => {
+  // The last step has no Next: wait for it to go, or a Next just pressed may
+  // still be validating and this would press the earlier step's Submit
+  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
 };
 
@@ -120,8 +149,8 @@ export const uiAddPluginWithJson = async (
 /**
  * Drive the route add wizard with the minimum required fields and submit.
  * Fills name + uri + methods on step 1, adds the given custom upstream nodes on
- * step 2, then walks through Request Override + Plugins to the Preview step and
- * submits.
+ * step 2, then walks through Options (Request Override + Plugins) to the
+ * Preview step and submits.
  */
 export const uiCreateRouteWithCustomUpstream = async (
   page: Page,
@@ -149,8 +178,7 @@ export const uiCreateRouteWithCustomUpstream = async (
   }
   await uiRouteWizardNext(page);
 
-  // Step 3 -> 4 -> 5 (Request Override / Plugins / Preview).
-  await uiRouteWizardNext(page);
+  // Step 3 -> 4 (Options / Preview).
   await uiRouteWizardNext(page);
   await uiRouteWizardSubmit(page);
 };

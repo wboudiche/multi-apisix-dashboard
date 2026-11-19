@@ -140,7 +140,7 @@ test('route: Discard Draft is off while the duplicate check runs', async ({ page
 
     await uiRouteWizardNext(page);
     await uiAddRouteNode(page, '127.0.0.1', 80);
-    await uiRouteWizardNext(page);
+    // Upstream -> Options -> Preview.
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
 

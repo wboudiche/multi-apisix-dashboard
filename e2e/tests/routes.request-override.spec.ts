@@ -54,20 +54,22 @@ async function navigateToRequestOverrideStep(page: import('@playwright/test').Pa
   await page.locator('input[placeholder="Hostname or IP"]').fill('httpbin.org');
   await page.locator('input[placeholder="Port"]').fill('80');
 
-  // Step 2 -> 3 (Request Override)
+  // Step 2 -> 3 (Options: Request Override, then Plugins)
   await page.getByRole('button', { name: 'Next' }).click();
   await page.waitForTimeout(1000);
 }
 
-test.describe('Route Add - Request Override Step', () => {
+test.describe('Route Add - Request Override on the Options step', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
 
-  test('Request Override step is visible in stepper', async ({ page }) => {
+  test('Options step, which holds Request Override, is visible in stepper', async ({ page }) => {
     await page.goto(`${BASE_URL}/routes/add`);
     await page.waitForTimeout(1000);
-    await expect(page.locator('text=Request Override')).toBeVisible();
+    const options = page.locator('.mantine-Stepper-step').nth(2);
+    await expect(options).toContainText('Options');
+    await expect(options).toContainText('Request rewrite and plugins, both optional');
   });
 
   test('Request Override shows all form fields', async ({ page }) => {
@@ -84,19 +86,23 @@ test.describe('Route Add - Request Override Step', () => {
   test('Changing scheme to HTTPS adds proxy-rewrite plugin', async ({ page }) => {
     await navigateToRequestOverrideStep(page);
 
+    // The plugins are below, on the same step: none until the scheme changes.
+    const proxyRewrite = page.getByTestId('plugin-proxy-rewrite');
+    await expect(proxyRewrite).toBeHidden();
+
     // Click HTTPS label (Mantine Radio renders as label, not role=radio)
     await page.locator('label:has-text("HTTPS")').click();
     await page.waitForTimeout(500);
 
-    // Step 3 -> 4 (Plugins)
-    await page.getByRole('button', { name: 'Next' }).click();
-    await page.waitForTimeout(1000);
-
-    await expect(page.getByText('proxy-rewrite')).toBeVisible({ timeout: 10000 });
+    await expect(proxyRewrite).toBeVisible({ timeout: 10000 });
   });
 
   test('Static URI override generates proxy-rewrite', async ({ page }) => {
     await navigateToRequestOverrideStep(page);
+
+    // The plugins are below, on the same step: none until the URI changes.
+    const proxyRewrite = page.getByTestId('plugin-proxy-rewrite');
+    await expect(proxyRewrite).toBeHidden();
 
     // Click "Static" label for URI Override (first Static label)
     await page.locator('label:has-text("Static")').first().click();
@@ -106,10 +112,6 @@ test.describe('Route Add - Request Override Step', () => {
     await page.locator('input[placeholder="/new/path"]').fill('/api/v2');
     await page.waitForTimeout(500);
 
-    // Step 3 -> 4 (Plugins)
-    await page.getByRole('button', { name: 'Next' }).click();
-    await page.waitForTimeout(1000);
-
-    await expect(page.getByText('proxy-rewrite')).toBeVisible({ timeout: 10000 });
+    await expect(proxyRewrite).toBeVisible({ timeout: 10000 });
   });
 });

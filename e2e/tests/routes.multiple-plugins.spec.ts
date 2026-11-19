@@ -47,10 +47,10 @@ test.afterEach(async () => {
   await e2eReq.delete(`${API_ROUTES}/${ROUTE_ID}`);
 });
 
-// The route wizard's Plugins step is the 4th of five, so three Next clicks from
-// step 1. Asserted below rather than assumed: if a step is ever inserted, the
+// The route wizard's plugins are on the Options step, the 3rd of four, so two
+// Next clicks from step 1. Asserted below rather than assumed: if a step is ever inserted, the
 // failure should name the wizard rather than surface as a stray locator error.
-const STEPS_TO_PLUGINS = 3;
+const STEPS_TO_PLUGINS = 2;
 
 const openPluginsStep = async (page: Page) => {
   await page.goto(DETAIL_URL);

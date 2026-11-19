@@ -46,8 +46,12 @@ test.afterAll(async () => {
 
 const wizardNext = (page: Page) =>
   page.getByRole('button', { name: 'Next', exact: true }).click();
-const wizardSubmit = (page: Page) =>
-  page.getByRole('button', { name: 'Submit', exact: true }).click();
+// The route add page also offers Submit on its earlier steps: wait for the
+// last step, which has no Next, so the Submit pressed is the Preview's.
+const wizardSubmit = async (page: Page) => {
+  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeHidden();
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+};
 
 const addPluginWithJson = async (
   page: Page,
@@ -217,10 +221,7 @@ test('can create upstream -> service -> route', async ({ page }) => {
     await page.getByRole('option', { name: service.name, exact: true }).click();
     await wizardNext(page);
 
-    // Step 3 — Request Override (skip)
-    await wizardNext(page);
-
-    // Step 4 — Plugins
+    // Step 3 — Options: no request override, one plugin
     await addPluginWithJson(
       page,
       routePluginName,
@@ -228,7 +229,7 @@ test('can create upstream -> service -> route', async ({ page }) => {
     );
     await wizardNext(page);
 
-    // Step 5 — Preview: submit and capture the created id
+    // Step 4 — Preview: submit and capture the created id
     const postReq = page.waitForResponse(
       (r) => r.url().includes(API_ROUTES) && r.request().method() === 'POST'
     );

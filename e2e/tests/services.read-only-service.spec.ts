@@ -105,8 +105,7 @@ test('a route edited on its service page keeps that service', async ({ page }) =
   await uiRouteWizardNext(page);
   await expectServiceFrozen(page);
 
-  // Walk to Preview (Request Override -> Plugins -> Preview) and save.
-  await uiRouteWizardNext(page);
+  // Walk to Preview (Options -> Preview) and save.
   await uiRouteWizardNext(page);
   await uiRouteWizardNext(page);
   await uiRouteWizardSubmit(page);

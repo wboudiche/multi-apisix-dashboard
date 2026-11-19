@@ -154,8 +154,7 @@ test.describe('Route Add - UX Improvements', () => {
 
     await clickNext(page); // step 1 -> 2 (Upstream)
     await addUpstreamNode(page); // custom upstream needs a node to pass validation
-    await clickNext(page); // step 2 -> 3 (Request Override)
-    await clickNext(page); // step 3 -> 4 (Plugins)
+    await clickNext(page); // step 2 -> 3 (Options: request override + plugins)
 
     // Open plugin drawer
     await page.getByRole('button', { name: 'Select Plugins' }).click();
@@ -168,13 +167,13 @@ test.describe('Route Add - UX Improvements', () => {
     await page.locator('button[data-block="true"]').click();
     await page.waitForTimeout(2000);
 
-    // Check that the stepper's Plugins step shows a badge count "1"
+    // Check that the stepper's Options step (the third) shows a badge count "1"
     const stepperText = await page.evaluate(() => {
       const steps = document.querySelectorAll('.mantine-Stepper-step');
-      return steps[3]?.textContent || '';
+      return steps[2]?.textContent || '';
     });
     expect(stepperText).toContain('1');
-    expect(stepperText).toContain('Plugins');
+    expect(stepperText).toContain('Options');
 
     await page.screenshot({ path: '/tmp/ux-plugin-badge.png' });
   });
@@ -208,12 +207,11 @@ test.describe('Route Add - UX Improvements', () => {
     await clearMethods(page); // drop the GET/POST/PUT/DELETE defaults
     await selectMethods(page, ['GET']);
 
-    // Navigate through all steps to Preview (step 5)
+    // Navigate through all steps to Preview (step 4)
     await clickNext(page); // step 1 -> 2
     await addUpstreamNode(page); // custom upstream needs a node to pass validation
-    await clickNext(page); // step 2 -> 3 (Request Override)
-    await clickNext(page); // step 3 -> 4 (Plugins)
-    await clickNext(page); // step 4 -> 5 (Preview)
+    await clickNext(page); // step 2 -> 3 (Options)
+    await clickNext(page); // step 3 -> 4 (Preview)
     await page.waitForTimeout(1000);
 
     // Should show structured content from RoutePreviewSummary (section headings are

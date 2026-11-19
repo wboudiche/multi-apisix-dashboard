@@ -34,7 +34,8 @@ const fx = () => getFixtures();
 const onInstance = () => ({ 'X-Instance-ID': fx().localInstanceId });
 
 /**
- * Opens the plugins step of a route's detail form, in edit mode.
+ * Opens the Options step (request override, then plugins) of a route's
+ * detail form, in edit mode.
  *
  * Order matters: the wizard only lets a step be clicked freely while the form
  * is read-only. Once editing, jumping forward re-validates every step in
@@ -47,7 +48,7 @@ const openPluginsStep = async (page: Page) => {
     ROUTE_ID,
     { timeout: 15000 }
   );
-  await page.getByRole('button', { name: 'Plugins Config' }).click();
+  await page.getByRole('button', { name: 'Options' }).click();
   await page.getByRole('button', { name: 'Edit' }).click();
 };
 
@@ -189,7 +190,8 @@ test('a developer saving a route is not told they may not', async ({ browser }) 
       { timeout: 15000 }
     );
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
-    for (let step = 0; step < 3; step++) {
+    // To Options, the third step of four: two Nexts.
+    for (let step = 0; step < 2; step++) {
       await page.getByRole('button', { name: 'Next' }).click();
     }
     await expect(page.getByRole('textbox', { name: 'Plugin Config ID' })).toBeVisible({

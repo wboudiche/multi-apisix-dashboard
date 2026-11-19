@@ -45,8 +45,8 @@ const route: APISIXType['Route'] = {
   plugins: {
     'limit-count': { count: 2, time_window: 60, rejected_code: 503 },
     'key-auth': {},
-    // The Request Override step rebuilds this one from its own fields, which
-    // is where a priority set here used to be dropped.
+    // The Request Override section rebuilds this one from its own fields,
+    // which is where a priority set here used to be dropped.
     'proxy-rewrite': { host: 'first.example.com' },
   },
   upstream: { type: 'roundrobin', nodes: [{ host: '127.0.0.1', port: 80, weight: 1 }] },
@@ -60,9 +60,9 @@ test.afterEach(async () => {
   await e2eReq.delete(`${API_ROUTES}/${ROUTE_ID}`);
 });
 
-// The route wizard's Plugins step is the 4th of five, so three Next clicks from
-// step 1 - the same walk routes.multiple-plugins.spec.ts makes.
-const STEPS_TO_PLUGINS = 3;
+// The route wizard's plugins are on the Options step, the 3rd of four, so two
+// Next clicks from step 1 - the same walk routes.multiple-plugins.spec.ts makes.
+const STEPS_TO_PLUGINS = 2;
 
 const openPluginsStep = async (page: Page) => {
   await page.goto(DETAIL_URL);
@@ -205,7 +205,7 @@ test('is not offered where it would mean nothing', async ({ page }) => {
   await expect(page.getByTestId('plugin-priority-input')).toBeHidden();
 });
 
-test('keeps a priority the Request Override step does not know about', async ({ page }) => {
+test('keeps a priority the Request Override section does not know about', async ({ page }) => {
   await openPluginsStep(page);
 
   await page
@@ -218,14 +218,19 @@ test('keeps a priority the Request Override step does not know about', async ({ 
     'priority 4242, set here'
   );
 
-  // Back a step, and change the one thing that step is for. It rebuilds the
-  // plugin's config from its own fields, and everything else on it - the
-  // priority included - has to survive that.
-  await page.getByRole('button', { name: 'Back' }).click();
+  // Change the one thing the Request Override section, above the plugins on
+  // the same step, is for. It rebuilds the plugin's config from its own
+  // fields, and everything else on it - the priority included - has to
+  // survive that.
   await expect(page.getByRole('group', { name: 'Request Override' })).toBeVisible();
   await page.getByPlaceholder('new-host.example.com').fill('second.example.com');
+  await expect(page.getByTestId('plugin-priority-proxy-rewrite')).toHaveText(
+    'priority 4242, set here'
+  );
 
+  // And across leaving the step and coming back to it.
   await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Back' }).click();
   await expect(page.getByTestId('plugin-priority-proxy-rewrite')).toHaveText(
     'priority 4242, set here'
   );

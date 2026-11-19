@@ -21,8 +21,10 @@ import { test } from '@e2e/utils/test';
 import { uiCell, uiFillMonacoEditor, uiGetMonacoEditor, uiHasToastMsg } from '@e2e/utils/ui';
 import {
   ROUTE_STEP_API_INFO,
+  ROUTE_STEP_OPTIONS,
   uiAddRouteNode,
   uiGotoRouteStep,
+  uiOpenAdvancedMatching,
   uiRouteWizardNext,
   uiRouteWizardSubmit,
 } from '@e2e/utils/ui/routes';
@@ -77,6 +79,9 @@ test('should CRUD route with all fields', async ({ page }) => {
     // Fill in Host field.
     await page.getByLabel('Host', { exact: true }).first().fill('example.com');
 
+    // Remote Address, Priority and Vars are behind "Advanced matching".
+    await uiOpenAdvancedMatching(page);
+
     // Fill in Remote Address field.
     await page
       .getByLabel('Remote Address', { exact: true })
@@ -105,11 +110,7 @@ test('should CRUD route with all fields', async ({ page }) => {
     await uiRouteWizardNext(page);
   });
 
-  await test.step('3: request override', async () => {
-    await uiRouteWizardNext(page);
-  });
-
-  await test.step('4: plugins', async () => {
+  await test.step('3: options (request override + plugins)', async () => {
     const selectPluginsBtn = page.getByRole('button', {
       name: 'Select Plugins',
     });
@@ -246,8 +247,8 @@ test('should CRUD route with all fields', async ({ page }) => {
     await expect(varsSection.getByText('arg_name').first()).toBeVisible();
     await expect(varsSection.getByText('json')).toBeVisible();
 
-    // Verify Plugins on the Plugins step.
-    await uiGotoRouteStep(page, 'Plugins Config');
+    // Verify Plugins on the Options step.
+    await uiGotoRouteStep(page, ROUTE_STEP_OPTIONS);
     await expect(page.getByText('basic-auth')).toBeHidden();
     await expect(page.getByText('real-ip')).toBeVisible();
   });
@@ -271,14 +272,14 @@ test('should CRUD route with all fields', async ({ page }) => {
       .getByLabel('Host', { exact: true })
       .first()
       .fill('updated-example.com');
+    // The advanced section is open by itself: priority and vars are set.
+    await uiOpenAdvancedMatching(page);
     await page.getByLabel('Priority', { exact: true }).first().fill('200');
 
     const varsEditor = await uiGetMonacoEditor(page, varsSection);
     await uiFillMonacoEditor(page, varsEditor, updatedVars);
 
-    // Walk to Preview (Upstream, Request Override, Plugins, Preview)
-    // and submit.
-    await uiRouteWizardNext(page);
+    // Walk to Preview (Upstream, Options, Preview) and submit.
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);

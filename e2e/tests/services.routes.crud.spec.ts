@@ -104,8 +104,7 @@ test('should CRUD route under service with required fields', async ({
       serviceName
     );
 
-    // Walk to Preview (Request Override -> Plugins -> Preview) and submit.
-    await uiRouteWizardNext(page);
+    // Walk to Preview (Options -> Preview) and submit.
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
     await uiRouteWizardSubmit(page);
@@ -157,9 +156,7 @@ test('should CRUD route under service with required fields', async ({
       .fill('Updated description for testing');
     await page.getByLabel('URI', { exact: true }).fill(`${routeUri}-updated`);
 
-    // Walk to Preview (Upstream, Request Override, Plugins, Preview)
-    // and submit.
-    await uiRouteWizardNext(page);
+    // Walk to Preview (Upstream, Options, Preview) and submit.
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
     await uiRouteWizardNext(page);
