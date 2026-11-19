@@ -53,7 +53,9 @@ import { ConnectionTest } from '@/components/form-slice/FormPartUpstream/TestCon
 import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import type { APISIXType } from '@/types/schema/apisix';
 import { errorText } from '@/utils/error-text';
+import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
 import { proxyFailureText } from '@/utils/team-refusal';
 import IconWarning from '~icons/material-symbols/warning-outline';
@@ -63,15 +65,6 @@ const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 type DestinationKind = QuickDestination['kind'];
 
-// The rest of a route, for what only the destination decides.
-const EMPTY_ANSWERS: QuickRoute = {
-  path: '/',
-  methods: [],
-  host: '',
-  name: '',
-  status: 1,
-  destination: { kind: 'url', url: '' },
-};
 
 type Props = {
   opened: boolean;
@@ -125,26 +118,29 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
   // What the connection test dials: the node an address makes, or the nodes
   // of the upstream picked. Nothing until there is one to dial.
   const testTarget = useMemo(() => {
-    if (kind === 'url') {
-      if (destinationUrlError(url)) return null;
-      const upstream = quickRouteToForm({ ...EMPTY_ANSWERS, destination: { kind, url } }).upstream;
-      return upstream ? { nodes: parseToNodes(upstream.nodes), scheme: upstream.scheme } : null;
-    }
-    if (kind === 'upstream' && upstreamId) {
-      const picked = upstreams?.list.find((u) => u.value.id === upstreamId)?.value;
-      return picked ? { nodes: parseToNodes(picked.nodes), scheme: picked.scheme } : null;
-    }
-    return null;
+    const target = (() => {
+      if (kind === 'url') {
+        const built = destinationUrlError(url) ? null : upstreamFromServer(url.trim());
+        return built && {
+          nodes: parseToNodes(built.upstream.nodes as APISIXType['UpstreamNodeListOrObj']),
+          scheme: built.upstream.scheme as string,
+        };
+      }
+      if (kind === 'upstream' && upstreamId) {
+        const picked = upstreams?.list.find((u) => u.value.id === upstreamId)?.value;
+        return picked && { nodes: parseToNodes(picked.nodes), scheme: picked.scheme };
+      }
+      return null;
+    })();
+    // No node to dial - an upstream found through service discovery, or
+    // APISIX's empty {} - offers no test rather than one that never enables.
+    return target && target.nodes.length > 0 ? target : null;
   }, [kind, url, upstreamId, upstreams]);
 
   const connectionTest = testTarget && (
     // Keyed by what it dials: an answer about the last address is not one
     // about this one.
-    <ConnectionTest
-      key={JSON.stringify(testTarget)}
-      nodes={testTarget.nodes as Record<string, unknown>[]}
-      scheme={testTarget.scheme}
-    />
+    <ConnectionTest key={JSON.stringify(testTarget)} nodes={testTarget.nodes} scheme={testTarget.scheme} />
   );
 
   const errors = quickRouteErrors(answers);
@@ -309,7 +305,6 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
               error={shown(errors.destination)}
             />
           )}
-          {kind === 'url' && connectionTest}
           {kind === 'upstream' && (
             <Select
               aria-label={t('form.quickRoute.destUpstream')}
@@ -323,7 +318,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated }: Props) => 
               error={shown(errors.destination)}
             />
           )}
-          {kind === 'upstream' && connectionTest}
+          {connectionTest}
           {kind === 'service' && (
             <Select
               aria-label={t('form.quickRoute.destService')}

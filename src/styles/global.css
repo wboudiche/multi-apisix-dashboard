@@ -159,7 +159,7 @@ button[type="submit"] {
   font-weight: 600 !important;
   font-family: 'DM Sans', sans-serif !important;
   letter-spacing: 0.02em;
-  padding: 8px 16px;
+  padding: 0 16px;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
@@ -167,11 +167,12 @@ button[type="submit"] {
   overflow: hidden;
 }
 
-/* A compact button is as tall as Mantine draws it, 22 to 30px: 8px above and
-   below left a compact-sm label 10px for a 15px line, and cut its top off. */
-.mantine-Button-root[data-size^="compact"]:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"]) {
-  padding-top: 0;
-  padding-bottom: 0;
+/* A Mantine button is as tall as its size draws it, so it takes no padding
+   above or below: 8px of each left a 26px compact-sm button 10px for a 15px
+   label, and a 30px xs one 14px, and cut the tops off. A submit button that
+   is not Mantine's has no height of its own and keeps them. */
+button[type="submit"]:not(.mantine-Button-root) {
+  padding: 8px 16px;
 }
 
 .mantine-Button-root:not(.mantine-PasswordInput-visibilityToggle):not([aria-label*="toggle"]):not([class*="ActionIcon"])::before,

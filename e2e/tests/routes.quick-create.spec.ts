@@ -161,17 +161,19 @@ test('hands what was typed over to the wizard', async ({ page }) => {
 
 test('tests the address the way the upstream form does', async ({ page }) => {
   const dialog = await openDialog(page);
+  // Its own answers, not the dialog's other alerts (a duplicate, a refusal).
+  const test = dialog.getByRole('region', { name: 'Test Connection' });
 
   // No address, nothing to test.
-  await expect(dialog.getByRole('button', { name: 'Test Connection' })).toHaveCount(0);
+  await expect(test).toHaveCount(0);
 
   // An internal address is not dialed (#304), and says so rather than failing.
   await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
-  await dialog.getByRole('button', { name: 'Test Connection' }).click();
-  await expect(dialog.getByRole('alert')).toContainText('127.0.0.1:1980');
-  await expect(dialog.getByRole('alert')).toContainText('Not tested');
+  await test.getByRole('button', { name: 'Test Connection' }).click();
+  await expect(test.getByRole('alert')).toContainText('127.0.0.1:1980');
+  await expect(test.getByRole('alert')).toContainText('Not tested');
 
   // Another address is another question: the last answer goes.
   await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1981');
-  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await expect(test.getByRole('alert')).toHaveCount(0);
 });

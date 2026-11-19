@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 import { Alert, Button, Group, Loader, Stack, Text } from '@mantine/core';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { SKIP_INTERCEPTOR_HEADER, TEST_UPSTREAM_MAX_NODES } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
+import type { APISIXType } from '@/types/schema/apisix';
 import { describeError, probeLimitKey } from '@/utils/api-error';
 import { useNamePrefix } from '@/utils/useNamePrefix';
 import IconCheck from '~icons/material-symbols/check-circle-outline';
@@ -49,9 +50,20 @@ type TestResponse = {
 };
 
 type ConnectionTestProps = {
-  /** The nodes to dial, in the form's shape: a host and, maybe, a port. */
-  nodes: Record<string, unknown>[] | undefined;
+  /** The nodes to dial, in the list shape: a host and, maybe, a port. */
+  nodes: APISIXType['UpstreamNodes'] | undefined;
   scheme: string | undefined;
+};
+
+/**
+ * The port a node given none is dialed on: its scheme's own, for the schemes
+ * that have one. A stream upstream's node (tcp, tls, udp) has none to guess,
+ * and dialing it on 80 would test something else entirely.
+ */
+const defaultPort = (scheme: string | undefined) => {
+  if (scheme === 'https' || scheme === 'grpcs') return 443;
+  if (!scheme || scheme === 'http' || scheme === 'grpc') return 80;
+  return undefined;
 };
 
 /**
@@ -66,11 +78,25 @@ export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
   const [error, setError] = useState<string | null>(null);
   const canTest = usePermission().canWriteResource('upstreams');
 
-  const hasNodes = nodes && Array.isArray(nodes) && nodes.length > 0 &&
-    nodes.some((n: Record<string, unknown>) => n?.host);
+  // What can be dialed: a node with a host, and a port of its own or its
+  // scheme's.
+  const testNodes = (Array.isArray(nodes) ? nodes : [])
+    .filter((n) => n?.host)
+    .map((n) => ({ host: n.host, port: Number(n.port) || defaultPort(scheme) }))
+    .filter((n): n is { host: string; port: number } => n.port !== undefined);
+  const hasNodes = testNodes.length > 0;
+
+  // A test still running when this goes - its nodes changed, the dialog
+  // closed - stops rather than spending the dashboard's outbound budget (#310)
+  // on an answer nobody will see.
+  const inFlight = useRef<AbortController | null>(null);
+  useEffect(() => () => inFlight.current?.abort(), []);
 
   const handleTest = async () => {
     if (!hasNodes) return;
+    inFlight.current?.abort();
+    const controller = new AbortController();
+    inFlight.current = controller;
     setLoading(true);
     setResults(null);
     setError(null);
@@ -79,19 +105,13 @@ export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
     // answered are still shown, beside the error.
     const tested: NodeResult[] = [];
     try {
-      const testNodes = (nodes ?? [])
-        .filter((n: Record<string, unknown>) => n?.host)
-        .map((n: Record<string, unknown>) => ({
-          host: n.host,
-          port: Number(n.port) || (scheme === 'https' || scheme === 'grpcs' ? 443 : 80),
-        }));
-
       for (let i = 0; i < testNodes.length; i += TEST_UPSTREAM_MAX_NODES) {
         const res = await req.post<TestResponse>('/test-upstream', {
           nodes: testNodes.slice(i, i + TEST_UPSTREAM_MAX_NODES),
           scheme: scheme || 'http',
         }, {
           baseURL: '/api/v1',
+          signal: controller.signal,
           // This button says a 429 itself, in the operator's language; without
           // this the interceptor also toasts the backend's English (#331).
           headers: { [SKIP_INTERCEPTOR_HEADER]: ['429'] },
@@ -99,6 +119,7 @@ export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
         tested.push(...res.data.results);
       }
     } catch (err: unknown) {
+      if (controller.signal.aborted) return;
       // The backend's own reason (a 403, a 413), not axios's "Request failed
       // with status code N".
       const limited = probeLimitKey(err);
@@ -109,8 +130,10 @@ export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
           : describeError(err, t('form.upstreams.testConnection.failure'))
       );
     } finally {
-      setResults(tested.length > 0 ? tested : null);
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setResults(tested.length > 0 ? tested : null);
+        setLoading(false);
+      }
     }
   };
 
@@ -152,7 +175,8 @@ export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
   if (!canTest) return null;
 
   return (
-    <Stack gap="xs" mt="xs">
+    // Named, so what it answers can be told from the other alerts around it.
+    <Stack gap="xs" mt="xs" role="region" aria-label={t('form.upstreams.testConnection.title')}>
       <Group>
         <Button
           variant="light"
