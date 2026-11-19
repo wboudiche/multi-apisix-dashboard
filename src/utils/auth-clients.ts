@@ -70,4 +70,15 @@ export const credentialConfig = (
 
 /** The credential's id: the plugin, and a suffix that keeps it unique. */
 export const credentialId = (plugin: AuthClientPlugin): string =>
-  `${plugin}-${generateSecret(3)}`;
+  `${plugin}-${generateSecret(6)}`;
+
+/** A value as one single-quoted shell word, whatever it holds. */
+export const shellQuote = (value: string): string =>
+  `'${value.replace(/'/g, '\'\\\'\'')}'`;
+
+/**
+ * The header a key-auth configuration names, when it is one a header can be:
+ * anything else is not shown to be pasted, and the plugin's default is.
+ */
+export const usableHeader = (header: unknown): string =>
+  typeof header === 'string' && /^[A-Za-z0-9-]+$/.test(header) ? header : 'apikey';

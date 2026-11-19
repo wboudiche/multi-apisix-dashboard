@@ -447,10 +447,10 @@
       "moreOptions": "More options",
       "clients": {
         "title": "Who can call it",
-        "descKey": "Clients holding a key. Each sends its key with every request.",
-        "descBasic": "Clients holding a username and a password, sent as HTTP Basic authentication.",
+        "descKey": "Clients holding a key: each sends its key with every request. Only the clients you can see are listed.",
+        "descBasic": "Clients holding a username and a password, sent as HTTP Basic authentication. Only the clients you can see are listed.",
         "loadFailed": "The clients of this gateway could not be read.",
-        "none": "Nobody can call it yet: no client holds a credential for this plugin. Create one below.",
+        "none": "None of the clients you can see holds a credential for this plugin yet. Create one below.",
         "createdKey": "Client {{name}} created. Copy its key now: it is not shown again here.",
         "createdPassword": "Client {{name}} created. Copy its password now: it is not shown again here.",
         "tryIt": "Once saved, a request gets through like this:",
@@ -465,7 +465,8 @@
         "regenerate": "Generate another",
         "createFailed": "The client could not be created.",
         "createdAtOnce": "The client is created on this gateway at once, whether or not you save this form.",
-        "create": "Create client"
+        "create": "Create client",
+        "nameHeldElsewhere": "This name is already taken on this gateway, by a client you cannot see. Choose another."
       }
     },
     "protos": {

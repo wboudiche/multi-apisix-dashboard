@@ -420,10 +420,10 @@
       "moreOptions": "Diğer seçenekler",
       "clients": {
         "title": "Kimler çağırabilir",
-        "descKey": "Anahtarı olan istemciler. Her biri anahtarını her istekte gönderir.",
-        "descBasic": "Kullanıcı adı ve parolası olan istemciler; HTTP Basic kimlik doğrulamasıyla gönderilir.",
+        "descKey": "Anahtarı olan istemciler: her biri anahtarını her istekte gönderir. Yalnızca görebildiğiniz istemciler listelenir.",
+        "descBasic": "Kullanıcı adı ve parolası olan istemciler; HTTP Basic kimlik doğrulamasıyla gönderilir. Yalnızca görebildiğiniz istemciler listelenir.",
         "loadFailed": "Bu ağ geçidinin istemcileri okunamadı.",
-        "none": "Henüz kimse çağıramaz: hiçbir istemcinin bu eklenti için kimlik bilgisi yok. Aşağıdan bir tane oluşturun.",
+        "none": "Görebildiğiniz istemcilerin hiçbirinin henüz bu eklenti için kimlik bilgisi yok. Aşağıdan bir tane oluşturun.",
         "createdKey": "{{name}} istemcisi oluşturuldu. Anahtarını şimdi kopyalayın: burada bir daha gösterilmeyecek.",
         "createdPassword": "{{name}} istemcisi oluşturuldu. Parolasını şimdi kopyalayın: burada bir daha gösterilmeyecek.",
         "tryIt": "Kaydedildikten sonra bir istek şu şekilde geçer:",
@@ -438,7 +438,8 @@
         "regenerate": "Yenisini üret",
         "createFailed": "İstemci oluşturulamadı.",
         "createdAtOnce": "İstemci, bu formu kaydetseniz de kaydetmeseniz de bu ağ geçidinde hemen oluşturulur.",
-        "create": "İstemci oluştur"
+        "create": "İstemci oluştur",
+        "nameHeldElsewhere": "Bu ad bu ağ geçidinde, göremediğiniz bir istemci tarafından zaten kullanılıyor. Başka bir ad seçin."
       }
     },
     "protos": {

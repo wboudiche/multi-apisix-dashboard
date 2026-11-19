@@ -413,7 +413,11 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
               }
             />
             {showClients && isAuthClientPlugin(name) && (
-              <AuthClientsSection plugin={name} config={formValue} />
+              <AuthClientsSection
+                plugin={name}
+                config={formValue}
+                readOnly={mode === 'view'}
+              />
             )}
           </ScrollArea.Autosize>
           {mode !== 'view' && (

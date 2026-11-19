@@ -44,6 +44,7 @@ test.afterAll(async () => {
 
 test('an auth plugin lists who can call it and makes a client with a key', async ({ page }) => {
   const name = `${PREFIX}-${nanoid()}`;
+  try {
 
   await page.goto('plugin_configs/add');
   await page.getByRole('button', { name: 'Select Plugins' }).click();
@@ -86,5 +87,7 @@ test('an auth plugin lists who can call it and makes a client with a key', async
     await expect(clients.getByRole('button', { name: 'Create client' })).toBeDisabled();
   });
 
-  await removeClient(name);
+  } finally {
+    await removeClient(name);
+  }
 });

@@ -22,6 +22,8 @@ import {
   generateSecret,
   holdsCredential,
   isAuthClientPlugin,
+  shellQuote,
+  usableHeader,
 } from './auth-clients';
 
 describe('auth clients', () => {
@@ -57,6 +59,17 @@ describe('auth clients', () => {
   });
 
   it('names a credential after its plugin, in what APISIX accepts as an id', () => {
-    expect(credentialId('key-auth')).toMatch(/^key-auth-[0-9a-f]{6}$/);
+    expect(credentialId('key-auth')).toMatch(/^key-auth-[0-9a-f]{12}$/);
+  });
+
+  it('quotes a value as one shell word, a quote in it included', () => {
+    expect(shellQuote('apikey: abc')).toBe("'apikey: abc'");
+    expect(shellQuote("x'; rm -rf ~; '")).toBe("'x'\\''; rm -rf ~; '\\'''");
+  });
+
+  it('shows only a header a header can be', () => {
+    expect(usableHeader('X-Api-Key')).toBe('X-Api-Key');
+    expect(usableHeader("x'; rm -rf ~")).toBe('apikey');
+    expect(usableHeader(undefined)).toBe('apikey');
   });
 });

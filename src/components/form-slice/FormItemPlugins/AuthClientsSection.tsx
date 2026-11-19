@@ -32,17 +32,19 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { putConsumerReq } from '@/apis/consumers';
 import { getCredentialListReq, putCredentialReq } from '@/apis/credentials';
-import { API_CONSUMERS } from '@/config/constant';
+import { API_CONSUMERS, SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { queryClient } from '@/config/global';
-import { req } from '@/config/req';
+import { CREATE_ONLY, req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { listTeamIdAtom } from '@/stores/team';
 import type { APISIXType } from '@/types/schema/apisix';
 import {
   type AuthClientPlugin,
@@ -51,6 +53,8 @@ import {
   credentialId,
   generateSecret,
   holdsCredential,
+  shellQuote,
+  usableHeader,
 } from '@/utils/auth-clients';
 import IconAdd from '~icons/material-symbols/add';
 import IconCheck from '~icons/material-symbols/check';
@@ -118,11 +122,13 @@ const Usage = ({
   config: Record<string, unknown>;
   created: Created;
 }) => {
-  const header = typeof config.header === 'string' && config.header ? config.header : 'apikey';
-  const line =
+  // Quoted for the shell it is pasted into: the header is whatever the
+  // plugin's form holds, and a quote in it would end the argument early.
+  const credential =
     plugin === 'key-auth'
-      ? `curl -H '${header}: ${created.secret}' http://<gateway>/<path>`
-      : `curl -u '${created.name}:${created.secret}' http://<gateway>/<path>`;
+      ? `-H ${shellQuote(`${usableHeader(config.header)}: ${created.secret}`)}`
+      : `-u ${shellQuote(`${created.name}:${created.secret}`)}`;
+  const line = `curl ${credential} http://<gateway>/<path>`;
   return (
     <Group gap={4} wrap="nowrap" align="flex-start">
       <Code block style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
@@ -137,21 +143,33 @@ export type AuthClientsSectionProps = {
   plugin: AuthClientPlugin;
   /** The plugin's configuration as edited, for the header a key goes in. */
   config: Record<string, unknown>;
+  /** The plugin is only being looked at: its clients are listed, none made. */
+  readOnly?: boolean;
 };
+
+/** The name is a consumer already, one this account cannot see. */
+class NameHeldElsewhere extends Error {}
 
 /**
  * Who can get through the plugin, and a way to let one more in, in the
  * plugin's own form: the consumers holding a credential of it, and a new one
  * made from a name with its secret generated.
  */
-export const AuthClientsSection = ({ plugin, config }: AuthClientsSectionProps) => {
+export const AuthClientsSection = ({
+  plugin,
+  config,
+  readOnly,
+}: AuthClientsSectionProps) => {
   const { t } = useTranslation();
   const instanceId = useAtomValue(currentInstanceIdAtom);
+  // The proxy narrows the consumers to the team picked, so the list is that
+  // team's, and keyed by it like every list a team can own.
+  const teamId = useAtomValue(listTeamIdAtom);
   const { canCreate, canWriteResource } = usePermission();
-  const mayCreate = canCreate && canWriteResource('consumers');
+  const mayCreate = !readOnly && canCreate && canWriteResource('consumers');
 
   const clients = useQuery({
-    queryKey: ['auth-clients', instanceId, plugin],
+    queryKey: ['auth-clients', instanceId, teamId, plugin],
     queryFn: () => fetchClients(plugin),
   });
 
@@ -170,26 +188,55 @@ export const AuthClientsSection = ({ plugin, config }: AuthClientsSectionProps) 
 
   const create = useMutation({
     mutationFn: async () => {
-      // A consumer that exists already keeps what it has: a PUT of the
-      // consumer would replace its plugins, so only the credential is added.
+      // A consumer that exists keeps what it has: a plain PUT would replace
+      // its plugins. One this account sees gets the credential alone; any
+      // other is written create-only, so a name already taken - by another
+      // team's consumer, which the list does not show - is refused rather
+      // than overwritten.
+      let madeConsumer = false;
       if (!clients.data?.all.includes(name)) {
-        await putConsumerReq(req, { username: name } as APISIXType['ConsumerPut']);
+        try {
+          await putConsumerReq(
+            req,
+            { username: name } as APISIXType['ConsumerPut'],
+            { headers: { ...CREATE_ONLY.headers, [SKIP_INTERCEPTOR_HEADER]: ['409'] } }
+          );
+          madeConsumer = true;
+        } catch (e) {
+          if (isAxiosError(e) && e.response?.status === 409) throw new NameHeldElsewhere();
+          throw e;
+        }
       }
-      await putCredentialReq(req, {
-        username: name,
-        id: credentialId(plugin),
-        plugins: { [plugin]: credentialConfig(plugin, name, secret) },
-      } as APISIXType['CredentialPut'] & { username: string });
+      try {
+        await putCredentialReq(
+          req,
+          {
+            username: name,
+            id: credentialId(plugin),
+            plugins: { [plugin]: credentialConfig(plugin, name, secret) },
+          } as APISIXType['CredentialPut'] & { username: string },
+          CREATE_ONLY
+        );
+      } catch (e) {
+        // Not left behind empty: a consumer with no credential lets nobody
+        // in, and would only be in the way of the next try.
+        if (madeConsumer) {
+          await req.delete(`${API_CONSUMERS}/${name}`).catch(() => undefined);
+        }
+        throw e;
+      }
     },
     onSuccess: () => {
       setCreated({ name, secret });
       setFormOpened(false);
       setName('');
       setSecret(generateSecret());
-      void queryClient.invalidateQueries({ queryKey: ['auth-clients', instanceId] });
       void queryClient.invalidateQueries({
         predicate: (q) => q.queryKey[0] === 'consumers',
       });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['auth-clients', instanceId] });
     },
   });
 
@@ -297,7 +344,9 @@ export const AuthClientsSection = ({ plugin, config }: AuthClientsSectionProps) 
             />
             {create.isError && (
               <Alert color="red" variant="light">
-                {t('form.plugins.clients.createFailed')}
+                {create.error instanceof NameHeldElsewhere
+                  ? t('form.plugins.clients.nameHeldElsewhere')
+                  : t('form.plugins.clients.createFailed')}
               </Alert>
             )}
             <Text size="xs" c="dimmed">
@@ -310,7 +359,9 @@ export const AuthClientsSection = ({ plugin, config }: AuthClientsSectionProps) 
               <Button
                 onClick={() => create.mutate()}
                 loading={create.isPending}
-                disabled={!name || !!nameError || !secret}
+                // Only against a list that was read: without it, whether the
+                // name is a consumer already is not known.
+                disabled={!clients.isSuccess || !name || !!nameError || !secret}
               >
                 {t('form.plugins.clients.create')}
               </Button>

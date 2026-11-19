@@ -362,7 +362,20 @@ const SchemaField = ({
 export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
   const { schema, value: externalValue, onChange, disabled, primaryKeys } = props;
   const { t } = useTranslation();
-  const [moreOpened, setMoreOpened] = useState(false);
+  // Open from the start when a folded field holds something of its own - a
+  // setting someone made, such as an anonymous_consumer letting callers in
+  // without a key, is not one to hide - but not for a value the schema would
+  // have put there anyway.
+  const [moreOpened, setMoreOpened] = useState(() =>
+    Object.entries(externalValue).some(
+      ([k, v]) =>
+        !!primaryKeys &&
+        !primaryKeys.includes(k) &&
+        k !== '_meta' &&
+        v !== undefined &&
+        JSON.stringify(v) !== JSON.stringify(schema.properties?.[k]?.default)
+    )
+  );
   const [localValue, setLocalValue] = useState<Record<string, unknown>>(externalValue);
 
   // Follow the value handed in whenever it changes, while rendering rather

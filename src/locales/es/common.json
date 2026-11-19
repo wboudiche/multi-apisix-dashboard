@@ -422,10 +422,10 @@
       "moreOptions": "Más opciones",
       "clients": {
         "title": "Quién puede llamarla",
-        "descKey": "Clientes con una clave. Cada uno envía su clave en cada petición.",
-        "descBasic": "Clientes con un usuario y una contraseña, enviados como autenticación HTTP Basic.",
+        "descKey": "Clientes con una clave: cada uno envía su clave en cada petición. Solo se listan los clientes que puede ver.",
+        "descBasic": "Clientes con un usuario y una contraseña, enviados como autenticación HTTP Basic. Solo se listan los clientes que puede ver.",
         "loadFailed": "No se pudieron leer los clientes de este gateway.",
-        "none": "Nadie puede llamarla todavía: ningún cliente tiene credenciales para este plugin. Cree uno abajo.",
+        "none": "Ninguno de los clientes que puede ver tiene aún credenciales para este plugin. Cree uno abajo.",
         "createdKey": "Cliente {{name}} creado. Copie su clave ahora: no se volverá a mostrar aquí.",
         "createdPassword": "Cliente {{name}} creado. Copie su contraseña ahora: no se volverá a mostrar aquí.",
         "tryIt": "Una vez guardado, una petición pasa así:",
@@ -440,7 +440,8 @@
         "regenerate": "Generar otra",
         "createFailed": "No se pudo crear el cliente.",
         "createdAtOnce": "El cliente se crea en este gateway de inmediato, guarde o no este formulario.",
-        "create": "Crear cliente"
+        "create": "Crear cliente",
+        "nameHeldElsewhere": "Este nombre ya está en uso en este gateway, por un cliente que no puede ver. Elija otro."
       }
     },
     "protos": {

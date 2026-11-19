@@ -420,10 +420,10 @@
       "moreOptions": "Weitere Optionen",
       "clients": {
         "title": "Wer darf aufrufen",
-        "descKey": "Clients mit einem Schlüssel. Jeder sendet seinen Schlüssel mit jeder Anfrage.",
-        "descBasic": "Clients mit Benutzername und Passwort, gesendet als HTTP-Basic-Authentifizierung.",
+        "descKey": "Clients mit einem Schlüssel: Jeder sendet seinen Schlüssel mit jeder Anfrage. Nur die für Sie sichtbaren Clients werden angezeigt.",
+        "descBasic": "Clients mit Benutzername und Passwort, gesendet als HTTP-Basic-Authentifizierung. Nur die für Sie sichtbaren Clients werden angezeigt.",
         "loadFailed": "Die Clients dieses Gateways konnten nicht gelesen werden.",
-        "none": "Noch kann niemand aufrufen: kein Client hat Zugangsdaten für dieses Plugin. Legen Sie unten einen an.",
+        "none": "Noch hat keiner der für Sie sichtbaren Clients Zugangsdaten für dieses Plugin. Legen Sie unten einen an.",
         "createdKey": "Client {{name}} angelegt. Kopieren Sie den Schlüssel jetzt: Er wird hier nicht erneut angezeigt.",
         "createdPassword": "Client {{name}} angelegt. Kopieren Sie das Passwort jetzt: Es wird hier nicht erneut angezeigt.",
         "tryIt": "Nach dem Speichern kommt eine Anfrage so durch:",
@@ -438,7 +438,8 @@
         "regenerate": "Neu erzeugen",
         "createFailed": "Der Client konnte nicht angelegt werden.",
         "createdAtOnce": "Der Client wird sofort auf diesem Gateway angelegt, auch wenn Sie dieses Formular nicht speichern.",
-        "create": "Client anlegen"
+        "create": "Client anlegen",
+        "nameHeldElsewhere": "Dieser Name ist auf diesem Gateway bereits vergeben, von einem Client, den Sie nicht sehen. Wählen Sie einen anderen."
       }
     },
     "protos": {
