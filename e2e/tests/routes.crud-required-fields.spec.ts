@@ -30,7 +30,10 @@ import { expect } from '@playwright/test';
 
 
 const routeName = randomId('test-route');
-const routeUri = '/test-route';
+// A path of its own: on a path another run holds - this spec in another
+// worker, or the other route CRUD spec - submit stops on the duplicate
+// confirmation, and the route is never created.
+const routeUri = `/${routeName}`;
 
 test.beforeAll(async () => {
 });
