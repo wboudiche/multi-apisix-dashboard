@@ -28,7 +28,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import IconAdd from '~icons/material-symbols/add';
@@ -410,18 +410,25 @@ export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
   // state updater: React runs updaters while rendering this form, and a
   // parent's setState from there is an update to another component during
   // render, which React warns about and may run twice.
+  // Two changes in one event must build on each other, not both on the last
+  // render's value: the latest is kept here, and caught up after each render.
+  const latest = useRef(localValue);
+  useEffect(() => {
+    latest.current = localValue;
+  }, [localValue]);
   const handleFieldChange = useCallback(
     (fieldName: string, fieldValue: unknown) => {
-      const next = { ...localValue };
+      const next = { ...latest.current };
       if (fieldValue === undefined || fieldValue === '' || fieldValue === null) {
         delete next[fieldName];
       } else {
         next[fieldName] = fieldValue;
       }
+      latest.current = next;
       setLocalValue(next);
       onChange(next);
     },
-    [localValue, onChange]
+    [onChange]
   );
 
   const properties = schema.properties || {};
