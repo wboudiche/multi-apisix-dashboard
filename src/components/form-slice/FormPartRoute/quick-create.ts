@@ -16,6 +16,7 @@
  */
 import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
 import type { APISIXType } from '@/types/schema/apisix';
+import { type Restriction, RESTRICTION_PLUGIN, writeRestriction } from '@/utils/auth-clients';
 import { upstreamFromServer } from '@/utils/openapi-import';
 
 import { RoutePostSchema, type RoutePostType } from './schema';
@@ -29,6 +30,24 @@ export type QuickDestination =
   /** A copy's destination left as the original's (the duplicate dialog). */
   | { kind: 'same' };
 
+/**
+ * The authentication the dialog offers: a key for an application, a username
+ * and a password for a person or an internal tool. The others take settings
+ * of their own, and are added in the advanced form.
+ */
+export const QUICK_AUTH_PLUGINS = ['key-auth', 'basic-auth'] as const;
+export type QuickAuthPlugin = (typeof QUICK_AUTH_PLUGINS)[number];
+
+/**
+ * Who may call the route: anyone, or the clients of one authentication. Its
+ * settings are its defaults, or the ones the route's service gives it: the
+ * route's own replaces the service's, so a header the service named would be
+ * lost to an empty one.
+ */
+export type QuickAccess =
+  | { plugin: null }
+  | { plugin: QuickAuthPlugin; restriction: Restriction; config?: Record<string, unknown> };
+
 /** The dialog's answers: what a route needs, and nothing it can do without. */
 export type QuickRoute = {
   path: string;
@@ -37,6 +56,25 @@ export type QuickRoute = {
   name: string;
   status: 0 | 1;
   destination: QuickDestination;
+  /** None: anyone, as a route is without an authentication plugin. */
+  access?: QuickAccess;
+};
+
+/**
+ * The plugins an access comes to: the authentication with its defaults, and
+ * the consumer-restriction when only the clients picked may call - the same
+ * two the advanced form writes from the same choice.
+ */
+export const accessPlugins = (
+  access: QuickAccess | undefined
+): Record<string, Record<string, unknown>> => {
+  if (!access?.plugin) return {};
+  const { plugin, restriction, config } = access;
+  const allowList = restriction.mode === 'only' ? writeRestriction(undefined, restriction.names) : null;
+  return {
+    [plugin]: { ...config },
+    ...(allowList && { [RESTRICTION_PLUGIN]: allowList }),
+  };
 };
 
 /** The timeouts the wizard starts a new upstream with. */
@@ -106,7 +144,7 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     name: q.name.trim() || proposeRouteName(q.methods, q.path),
     uri: q.path.trim(),
     status: q.status,
-    plugins: {},
+    plugins: accessPlugins(q.access),
     ...(q.methods.length > 0 && { methods: q.methods as RoutePostType['methods'] }),
     ...(host && { host }),
   };
@@ -124,7 +162,9 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     ...form,
     upstream_id: UPSTREAM_CUSTOM,
     upstream: built.upstream as RoutePostType['upstream'],
-    ...(built.basePath && { plugins: { 'proxy-rewrite': basePathRewrite(built.basePath) } }),
+    ...(built.basePath && {
+      plugins: { ...form.plugins, 'proxy-rewrite': basePathRewrite(built.basePath) },
+    }),
   };
 };
 
@@ -182,11 +222,19 @@ export const quickRouteToDraft = (q: QuickRoute): RoutePostType => {
   return draft;
 };
 
-/** What the dialog says is wrong, as keys under form.validation, by field. */
+/**
+ * What the dialog says is wrong, by field: keys under form.validation, but
+ * for `access`, which the clients section shows in its own words.
+ */
 export type QuickRouteErrors = {
   path?: string;
   name?: string;
   destination?: string;
+  /**
+   * Only the clients picked, and none picked: a route nobody may call. The
+   * clients section says so under its own field.
+   */
+  access?: string;
   /** What the wizard's schema refuses that no field of the dialog shows. */
   other?: string[];
 };
@@ -226,6 +274,11 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   if (d.kind === 'url') errors.destination = destinationUrlError(d.url);
   else if (d.kind === 'upstream' && !d.upstreamId) errors.destination = DESTINATION_MISSING.upstream;
   else if (d.kind === 'service' && !d.serviceId) errors.destination = DESTINATION_MISSING.service;
+
+  const a = q.access;
+  if (a?.plugin && a.restriction.mode === 'only' && a.restriction.names.length === 0) {
+    errors.access = 'form.plugins.clients.accessEmpty';
+  }
   return errors;
 };
 

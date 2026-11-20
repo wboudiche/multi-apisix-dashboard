@@ -1041,7 +1041,13 @@
       "hostsHint": "Kopyalanan: {{hosts}}. Buraya yazılan bir host bunların yerini alır.",
       "urisHint": "Kopyalanan: {{uris}}. Buraya yazılan bir yol bunların yerini alır.",
       "rewriteKept": "“{{name}}” her isteğin yolunu yeniden yazar ({{rewrite}}). Kopya bu yeniden yazmayı korur: yeni hedefe uyduğunu kontrol edin.",
-      "nameCopyHint": "Orijinalin adından önerilir."
+      "nameCopyHint": "Orijinalin adından önerilir.",
+      "access": "Erişim",
+      "accessAnyone": "Herkes",
+      "accessKey": "Anahtarı olan istemciler",
+      "accessBasic": "Kullanıcı adı ve parola",
+      "accessHint": "Diğer kimlik doğrulamaları - JWT, HMAC, OpenID Connect - gelişmiş formdadır.",
+      "accessBasicHint": "Parola her istekle gönderilir: bu rotayı yalnızca HTTPS üzerinden çağırın."
     }
   },
   "globalRules": {

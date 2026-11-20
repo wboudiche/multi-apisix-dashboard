@@ -17,10 +17,11 @@
 import { routesPom } from '@e2e/pom/routes';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq, listEvery } from '@e2e/utils/req';
+import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { API_ROUTES, API_UPSTREAMS } from '@/config/constant';
+import { API_CONSUMERS, API_ROUTES, API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 /**
@@ -179,4 +180,70 @@ test('tests the address the way the upstream form does', async ({ page }) => {
   // Another address is another question: the last answer goes.
   await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1981');
   await expect(test.getByRole('alert')).toHaveCount(0);
+});
+
+test('lets only the clients picked call a route made in the dialog', async ({ page }) => {
+  const path = `${prefix}/keyed`;
+  const id = randomId('c');
+  const allowed = `e2e-quick-a-${id}`;
+  const other = `e2e-quick-b-${id}`;
+  for (const username of [allowed, other]) {
+    await e2eReq.put(API_CONSUMERS, {
+      username,
+      plugins: { 'key-auth': { key: `${username}-key` } },
+    });
+  }
+  try {
+    const dialog = await openDialog(page);
+    await dialog.getByRole('textbox', { name: 'Path' }).fill(path);
+    await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+
+    await test.step('anyone, until said otherwise', async () => {
+      await expect(dialog.getByRole('radio', { name: 'Anyone' })).toBeChecked();
+      await expect(dialog.getByTestId('auth-clients')).toBeHidden();
+    });
+
+    await test.step('a password is said to need HTTPS', async () => {
+      await dialog.locator('label').filter({ hasText: /^Username and password$/ }).click();
+      await expect(dialog.getByText('The password travels with every request', { exact: false })).toBeVisible();
+    });
+
+    const clients = dialog.getByTestId('auth-clients');
+
+    await test.step('a key, narrowed to the clients picked, waits for one', async () => {
+      await dialog.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
+      await clients.getByRole('radio', { name: 'Only the clients picked' }).check();
+      await expect(clients.getByText('Pick at least one client.')).toBeVisible();
+      await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+      await expect(dialog).toBeVisible();
+      expect((await routesUnder()).filter((r) => r.uri === path)).toEqual([]);
+    });
+
+    await test.step('created with the key and the allow-list', async () => {
+      await clients.getByRole('textbox', { name: 'Clients allowed' }).fill(`a-${id}`);
+      await page.getByRole('option', { name: allowed }).click();
+      await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+      await expect(dialog).toBeHidden();
+
+      const [route] = (await routesUnder()).filter((r) => r.uri === path);
+      expect(route.plugins).toEqual({
+        'key-auth': expect.any(Object),
+        'consumer-restriction': expect.objectContaining({ whitelist: [allowed] }),
+      });
+    });
+
+    await test.step('the gateway lets the client picked through, and no other', async () => {
+      const call = (key?: string) =>
+        fetch(`${stack.gateway}${path}`, { headers: key ? { apikey: key } : {} }).then((r) => r.status);
+      // The gateway reads the route from etcd a moment after it is written.
+      await expect.poll(() => call(), { timeout: 15000 }).toBe(401);
+      expect(await call(`${other}-key`)).toBe(403);
+      // Past both checks: what answers now is the backend, or its absence.
+      expect([401, 403]).not.toContain(await call(`${allowed}-key`));
+    });
+  } finally {
+    for (const username of [allowed, other]) {
+      await e2eReq.delete(`${API_CONSUMERS}/${username}`).catch(() => null);
+    }
+  }
 });

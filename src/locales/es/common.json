@@ -1043,7 +1043,13 @@
       "hostsHint": "Copiados: {{hosts}}. Un host escrito aquí los reemplaza.",
       "urisHint": "Copiadas: {{uris}}. Una ruta escrita aquí las reemplaza.",
       "rewriteKept": "«{{name}}» reescribe la ruta de cada petición ({{rewrite}}). La copia conserva esa reescritura: compruebe que encaja con el nuevo destino.",
-      "nameCopyHint": "Propuesto a partir del nombre del original."
+      "nameCopyHint": "Propuesto a partir del nombre del original.",
+      "access": "Acceso",
+      "accessAnyone": "Cualquiera",
+      "accessKey": "Clientes con una clave",
+      "accessBasic": "Usuario y contraseña",
+      "accessHint": "Otras autenticaciones - JWT, HMAC, OpenID Connect - están en el formulario avanzado.",
+      "accessBasicHint": "La contraseña viaja con cada solicitud: llame a esta ruta solo por HTTPS."
     }
   },
   "globalRules": {

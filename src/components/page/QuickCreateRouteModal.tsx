@@ -16,6 +16,7 @@
  */
 import {
   Alert,
+  Box,
   Button,
   Chip,
   Group,
@@ -36,10 +37,14 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { postRouteReq } from '@/apis/routes';
+import { AuthClientsSection } from '@/components/form-slice/FormItemPlugins/AuthClientsSection';
+import { getPluginCategory } from '@/components/form-slice/FormItemPlugins/pluginMetadata';
 import { duplicateRouteBody, duplicateRouteErrors, keptPathRewrite, quickRouteFromRoute } from '@/components/form-slice/FormPartRoute/duplicate-route';
 import {
   destinationUrlError,
   proposeRouteName,
+  type QuickAccess,
+  type QuickAuthPlugin,
   type QuickDestination,
   type QuickRoute,
   quickRouteErrors,
@@ -56,6 +61,7 @@ import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
+import type { Restriction } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
 import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
@@ -67,6 +73,16 @@ import IconWarning from '~icons/material-symbols/warning-outline';
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 type DestinationKind = QuickDestination['kind'];
+
+type AccessChoice = 'anyone' | QuickAuthPlugin;
+
+/** A new authentication plugin's settings: its defaults, none of its own. */
+const NO_SETTINGS: Record<string, unknown> = {};
+const ANY_CLIENT: Record<QuickAuthPlugin, Restriction> = {
+  'key-auth': { mode: 'any' },
+  'basic-auth': { mode: 'any' },
+};
+const NO_STORED_NAMES: string[] = [];
 
 type Props = {
   opened: boolean;
@@ -110,6 +126,14 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
   // Null until typed in: until then the field shows the name it proposes. A
   // copy has its name from the start.
   const [typedName, setTypedName] = useState<string | null>(initial?.name ?? null);
+  // Anyone, as a route is with no authentication plugin. The clients picked
+  // go with the authentication: switching it starts over from every client.
+  const [accessChoice, setAccessChoice] = useState<AccessChoice>('anyone');
+  // Each authentication keeps its own clients picked, and its section stays
+  // mounted once shown: a client just made there keeps its secret on screen
+  // when the choice is changed and changed back.
+  const [restrictions, setRestrictions] = useState<Record<QuickAuthPlugin, Restriction>>(ANY_CLIENT);
+  const [shownSections, setShownSections] = useState<QuickAuthPlugin[]>([]);
   const [showErrors, setShowErrors] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -129,8 +153,34 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     return { kind, url };
   }, [kind, url, upstreamId, serviceId]);
 
-  const answers: QuickRoute = { path, methods, host, name, status: 1, destination };
   const duplicating = source !== undefined;
+  // A copy keeps the original's plugins, its authentication among them.
+  // A service's own plugins: an authentication it sets is kept as it set it,
+  // and any other it asks for is one more a client must pass.
+  const servicePlugins = useMemo(
+    () =>
+      (kind === 'service' && services?.list.find((s) => s.value.id === serviceId)?.value.plugins) ||
+      NO_SETTINGS,
+    [kind, services, serviceId]
+  );
+  const serviceConfig = (plugin: QuickAuthPlugin) => {
+    const config = servicePlugins[plugin];
+    return config && typeof config === 'object' ? (config as Record<string, unknown>) : NO_SETTINGS;
+  };
+  const otherAuthPlugins = (plugin: QuickAuthPlugin) =>
+    Object.keys(servicePlugins).filter(
+      (n) => n !== plugin && getPluginCategory(n) === 'authentication'
+    );
+  const access: QuickAccess | undefined = duplicating
+    ? undefined
+    : accessChoice === 'anyone'
+      ? { plugin: null }
+      : {
+          plugin: accessChoice,
+          restriction: restrictions[accessChoice],
+          config: serviceConfig(accessChoice),
+        };
+  const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access };
 
   // What the connection test dials: the node an address makes, or the nodes
   // of the upstream picked. Nothing until there is one to dial.
@@ -191,6 +241,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     setServiceId(null);
     setHost(initial?.host ?? '');
     setTypedName(initial?.name ?? null);
+    setAccessChoice('anyone');
+    setRestrictions(ANY_CLIENT);
+    setShownSections([]);
     setShowErrors(false);
     setSubmitError(null);
   };
@@ -244,6 +297,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     typedName === null &&
     !upstreamId &&
     !serviceId &&
+    accessChoice === 'anyone' &&
     // As a set: a method unticked and ticked again is no edit.
     [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
@@ -410,6 +464,44 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
             error={shown(errors.name)}
           />
         </SimpleGrid>
+
+        {!duplicating && (
+          <Stack gap={6}>
+            {/* Not "Who can call it": the clients section below is titled so. */}
+            <Text size="sm" fw={500}>{t('form.quickRoute.access')}</Text>
+            <SegmentedControl
+              value={accessChoice}
+              onChange={(v) => {
+                const choice = v as AccessChoice;
+                setAccessChoice(choice);
+                if (choice !== 'anyone' && !shownSections.includes(choice)) {
+                  setShownSections([...shownSections, choice]);
+                }
+              }}
+              data={[
+                { value: 'anyone', label: t('form.quickRoute.accessAnyone') },
+                { value: 'key-auth', label: t('form.quickRoute.accessKey') },
+                { value: 'basic-auth', label: t('form.quickRoute.accessBasic') },
+              ]}
+            />
+            <Text size="xs" c="dimmed">{t('form.quickRoute.accessHint')}</Text>
+            {accessChoice === 'basic-auth' && (
+              <Text size="xs" c="orange">{t('form.quickRoute.accessBasicHint')}</Text>
+            )}
+            {shownSections.map((plugin) => (
+              <Box key={plugin} display={plugin === accessChoice ? undefined : 'none'}>
+                <AuthClientsSection
+                  plugin={plugin}
+                  config={serviceConfig(plugin)}
+                  access={restrictions[plugin]}
+                  onAccessChange={(next) => setRestrictions((r) => ({ ...r, [plugin]: next }))}
+                  storedNames={NO_STORED_NAMES}
+                  otherPlugins={otherAuthPlugins(plugin)}
+                />
+              </Box>
+            ))}
+          </Stack>
+        )}
 
         {duplicates.length > 0 && (
           // Why each is one, as the wizard says it: a route on this path and a
