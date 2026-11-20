@@ -42,7 +42,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getRouteListQueryOptions, useRouteList } from '@/apis/hooks';
 import { teamsQueryOptions } from '@/apis/queries';
-import { RouteAnchor } from '@/components/Btn';
+import { RouteAnchor, RouteLink } from '@/components/Btn';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
@@ -87,6 +87,7 @@ import IconPlayArrow from '~icons/material-symbols/play-arrow';
 import IconPublish from '~icons/material-symbols/publish';
 import IconRefresh from '~icons/material-symbols/refresh';
 import IconSettings from '~icons/material-symbols/settings-outline';
+import IconTune from '~icons/material-symbols/tune';
 import IconUpload from '~icons/material-symbols/upload';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -861,15 +862,30 @@ function RouteComponent() {
       <Paper p="md" radius="sm" shadow="sm" w="100%" style={{ borderTop: '2px solid #F8423F' }}>
         <Group justify="flex-end" mb="md" align="center">
           <Group gap="sm">
-            {/* A path and a destination on one screen; the wizard is one
-                click away inside it, starting from what was typed. */}
+            {/* Two ways to make a route, both in sight: a path and a
+                destination on one screen, or the full form for everything
+                else. The quick one hands over to the full form too, with
+                what was typed. */}
             {canCreate && (
               <Button
                 size="sm"
                 leftSection={<IconPlus width="18" height="18" />}
                 onClick={() => setQuickCreateOpen(true)}
               >
-                {t('form.btn.create')}
+                {t('routes.list.quickRoute')}
+              </Button>
+            )}
+            {canCreate && (
+              // A link, not a button that navigates: it can be opened in a
+              // tab of its own, and says where it goes.
+              <Button
+                component={RouteLink}
+                to="/routes/add"
+                variant="default"
+                size="sm"
+                leftSection={<IconTune width="16" height="16" />}
+              >
+                {t('routes.list.advancedRoute')}
               </Button>
             )}
             {canCreate && (

@@ -105,6 +105,7 @@ test('a viewer is offered no write control while their role is loading', async (
     await resolved;
     await expect(headerRole(page, 'viewer')).toBeVisible({ timeout: 30000 });
     await expect(routesPom.getAddRouteBtn(page)).toHaveCount(0);
+    await expect(routesPom.getAdvancedRouteLink(page)).toHaveCount(0);
   } finally {
     release();
     await context.close();

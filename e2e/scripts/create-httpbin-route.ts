@@ -59,9 +59,9 @@ async function main() {
 
   await page.getByRole('link', { name: 'Routes', exact: true }).click();
   await page.waitForTimeout(2000);
-  await page.getByRole('button', { name: 'Create' }).click();
-  // Create opens the quick-create dialog; the full form is behind it.
-  await page.getByRole('dialog', { name: 'New route' }).getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('button', { name: 'Quick route' }).click();
+  // Quick route opens the quick-create dialog; the advanced form is behind it.
+  await page.getByRole('dialog', { name: 'New route' }).getByRole('button', { name: 'Continue in the advanced form' }).click();
   await page.waitForTimeout(3000);
   console.log('On Add Route page');
 

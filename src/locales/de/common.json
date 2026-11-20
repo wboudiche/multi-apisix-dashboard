@@ -234,7 +234,6 @@
       "add": "Hinzufügen",
       "cancel": "Abbrechen",
       "configure": "Konfigurieren",
-      "create": "Erstellen",
       "delete": "Löschen",
       "edit": "Bearbeiten",
       "save": "Speichern",
@@ -1029,11 +1028,11 @@
       "hostHint": "Optional: nur Anfragen für diesen Hostnamen.",
       "name": "Name",
       "nameHint": "Aus dem Pfad vorgeschlagen, bis Sie ihn ändern.",
-      "moreOptions": "Weitere Optionen",
+      "moreOptions": "Im erweiterten Formular fortfahren",
       "create": "Erstellen",
       "createOffline": "Offline erstellen",
       "replaceDraftTitle": "Entwurf ersetzen?",
-      "replaceDraftBody": "Das vollständige Formular enthält eine früher begonnene Route. Wenn Sie es mit diesen Angaben öffnen, wird dieser Entwurf ersetzt.",
+      "replaceDraftBody": "Das erweiterte Formular enthält eine früher begonnene Route. Wenn Sie es mit diesen Angaben öffnen, wird dieser Entwurf ersetzt.",
       "replaceDraftConfirm": "Ersetzen",
       "duplicateTitle": "„{{name}}“ duplizieren",
       "duplicateIntro": "Alles aus „{{name}}“ wird kopiert - Plugins, Vars, Priorität, Labels. Nur was Sie hier ändern, ist anders.",
@@ -1153,7 +1152,9 @@
       "columnsNameAlwaysShown": "Immer sichtbar, damit jede Zeile erkennbar bleibt",
       "emptyOwnershipHint": "Routen, die einem anderen Team gehören oder noch keinem Team zugewiesen sind, werden hier nicht angezeigt. Falls Sie eine Route erwartet haben, bitten Sie Ihren Administrator, sie Ihrem Team zuzuweisen.",
       "headerTeam": "Team",
-      "refresh": "Aktualisieren"
+      "refresh": "Aktualisieren",
+      "quickRoute": "Schnelle Route",
+      "advancedRoute": "Erweiterte Route"
     },
     "createFailed": "Route konnte nicht erstellt werden",
     "updateFailed": "Route konnte nicht aktualisiert werden"
