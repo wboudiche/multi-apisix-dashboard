@@ -47,6 +47,22 @@ const openDialog = async (page: Page) => {
   return dialog;
 };
 
+/**
+ * The answers of `n` calls the gateway counted, sent one after the other. A
+ * 404 is a gateway worker that has not read the route yet: no call to count,
+ * so it is sent again. Fewer than `n` if the route never shows up.
+ */
+const countedCalls = async (url: string, n: number): Promise<number[]> => {
+  const counted: number[] = [];
+  const deadline = Date.now() + 15000;
+  while (counted.length < n && Date.now() < deadline) {
+    const status = await fetch(url).then((r) => r.status);
+    if (status !== 404) counted.push(status);
+    else await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return counted;
+};
+
 test.beforeAll(async () => {
   await e2eReq.put(`${API_UPSTREAMS}/${upstreamId}`, {
     name: upstreamId,
@@ -283,10 +299,9 @@ test('limits the calls to a route made in the dialog', async ({ page }) => {
   });
 
   await test.step('the gateway turns the third call of the minute away', async () => {
-    const call = () => fetch(`${stack.gateway}${path}`).then((r) => r.status);
-    // Not counted until the gateway has read the route: a 404 is no call.
-    await expect.poll(call, { timeout: 15000 }).not.toBe(404);
-    await call();
-    expect(await call()).toBe(429);
+    const counted = await countedCalls(`${stack.gateway}${path}`, 3);
+    expect(counted).toHaveLength(3);
+    expect(counted.slice(0, 2)).not.toContain(429);
+    expect(counted[2]).toBe(429);
   });
 });

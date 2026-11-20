@@ -344,6 +344,15 @@ describe('a quick route\'s limit on calls', () => {
     expect(form.plugins?.['key-auth']).toEqual({});
   });
 
+  it('counts each client when the service asks who calls, though the route does not', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      rateLimit: { count: 5, per: 'minute', byClient: true },
+    });
+    expect(form.plugins?.['limit-count']).toMatchObject({ key: 'consumer_name' });
+  });
+
   it('turns each period into its seconds', () => {
     const windowOf = (per: 'hour' | 'day') =>
       quickRouteToForm({ ...base, rateLimit: { count: 1, per } }).plugins?.['limit-count']?.time_window;

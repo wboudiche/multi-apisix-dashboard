@@ -66,8 +66,12 @@ export type QuickRoute = {
 export const RATE_WINDOWS = { second: 1, minute: 60, hour: 3600, day: 86400 } as const;
 export type RateWindow = keyof typeof RATE_WINDOWS;
 
-/** At most `count` calls each `per`, counted for each caller. */
-export type QuickRateLimit = { count: number; per: RateWindow };
+/**
+ * At most `count` calls each `per`, counted for each caller: each client when
+ * `byClient` - a service that asks who calls makes the route know its clients
+ * too - or when the route itself asks; each IP address otherwise.
+ */
+export type QuickRateLimit = { count: number; per: RateWindow; byClient?: boolean };
 
 /**
  * The limit-count a limit comes to. Counted for each client when the route
@@ -178,7 +182,7 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     status: q.status,
     plugins: {
       ...accessPlugins(q.access),
-      ...rateLimitPlugins(q.rateLimit, !!q.access?.plugin),
+      ...rateLimitPlugins(q.rateLimit, !!q.rateLimit?.byClient || !!q.access?.plugin),
     },
     ...(q.methods.length > 0 && { methods: q.methods as RoutePostType['methods'] }),
     ...(host && { host }),
