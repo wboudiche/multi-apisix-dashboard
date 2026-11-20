@@ -275,6 +275,15 @@ describe('who may call a quick route', () => {
     expect(Object.keys(form.plugins ?? {}).sort()).toEqual(['key-auth', 'proxy-rewrite']);
   });
 
+  it('keeps the settings a service gives the authentication, rather than emptying them', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      access: { plugin: 'key-auth', restriction: { mode: 'any' }, config: { header: 'X-Key' } },
+    });
+    expect(form.plugins).toEqual({ 'key-auth': { header: 'X-Key' } });
+  });
+
   it('hands the authentication to the advanced form', () => {
     const draft = quickRouteToDraft({
       ...base,

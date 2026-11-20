@@ -38,10 +38,15 @@ export type QuickDestination =
 export const QUICK_AUTH_PLUGINS = ['key-auth', 'basic-auth'] as const;
 export type QuickAuthPlugin = (typeof QUICK_AUTH_PLUGINS)[number];
 
-/** Who may call the route: anyone, or the clients of one authentication. */
+/**
+ * Who may call the route: anyone, or the clients of one authentication. Its
+ * settings are its defaults, or the ones the route's service gives it: the
+ * route's own replaces the service's, so a header the service named would be
+ * lost to an empty one.
+ */
 export type QuickAccess =
   | { plugin: null }
-  | { plugin: QuickAuthPlugin; restriction: Restriction };
+  | { plugin: QuickAuthPlugin; restriction: Restriction; config?: Record<string, unknown> };
 
 /** The dialog's answers: what a route needs, and nothing it can do without. */
 export type QuickRoute = {
@@ -64,10 +69,10 @@ export const accessPlugins = (
   access: QuickAccess | undefined
 ): Record<string, Record<string, unknown>> => {
   if (!access?.plugin) return {};
-  const { plugin, restriction } = access;
+  const { plugin, restriction, config } = access;
   const allowList = restriction.mode === 'only' ? writeRestriction(undefined, restriction.names) : null;
   return {
-    [plugin]: {},
+    [plugin]: { ...config },
     ...(allowList && { [RESTRICTION_PLUGIN]: allowList }),
   };
 };
@@ -217,7 +222,10 @@ export const quickRouteToDraft = (q: QuickRoute): RoutePostType => {
   return draft;
 };
 
-/** What the dialog says is wrong, as keys under form.validation, by field. */
+/**
+ * What the dialog says is wrong, by field: keys under form.validation, but
+ * for `access`, which the clients section shows in its own words.
+ */
 export type QuickRouteErrors = {
   path?: string;
   name?: string;

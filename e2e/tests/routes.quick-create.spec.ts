@@ -17,6 +17,7 @@
 import { routesPom } from '@e2e/pom/routes';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq, listEvery } from '@e2e/utils/req';
+import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
@@ -229,6 +230,16 @@ test('lets only the clients picked call a route made in the dialog', async ({ pa
         'key-auth': expect.any(Object),
         'consumer-restriction': expect.objectContaining({ whitelist: [allowed] }),
       });
+    });
+
+    await test.step('the gateway lets the client picked through, and no other', async () => {
+      const call = (key?: string) =>
+        fetch(`${stack.gateway}${path}`, { headers: key ? { apikey: key } : {} }).then((r) => r.status);
+      // The gateway reads the route from etcd a moment after it is written.
+      await expect.poll(() => call(), { timeout: 15000 }).toBe(401);
+      expect(await call(`${other}-key`)).toBe(403);
+      // Past both checks: what answers now is the backend, or its absence.
+      expect([401, 403]).not.toContain(await call(`${allowed}-key`));
     });
   } finally {
     for (const username of [allowed, other]) {
