@@ -23,7 +23,10 @@ import { customAlphabet } from 'nanoid';
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
-const PREFIX = 'e2e-oidc';
+// One per worker: the tests of this file run in several, and each worker's
+// afterAll removes what carries the prefix, which would take another
+// worker's clients from under a test still running.
+const PREFIX = `e2e-oidc-${nanoid(4)}`;
 // Answered by the test itself: the suite does not reach the internet.
 const DISCOVERY = 'https://idp.e2e.test/.well-known/openid-configuration';
 
