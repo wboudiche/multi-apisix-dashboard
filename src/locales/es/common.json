@@ -54,7 +54,11 @@
     "openNavigation": "Abrir navegación",
     "closeNavigation": "Cerrar navegación",
     "collapseNavigation": "Contraer navegación",
-    "expandNavigation": "Expandir navegación"
+    "expandNavigation": "Expandir navegación",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "themeSystem": "Sistema"
   },
   "instanceGuard": {
     "noInstances": {

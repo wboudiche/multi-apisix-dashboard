@@ -16,7 +16,8 @@
  */
 import '@ant-design/v5-patch-for-react-19';
 
-import { ConfigProvider } from 'antd';
+import { useComputedColorScheme } from '@mantine/core';
+import { ConfigProvider, theme as antdTheme } from 'antd';
 import enUS from 'antd/locale/en_US';
 import type { PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,8 @@ import { useTranslation } from 'react-i18next';
 export const AntdConfigProvider = (props: PropsWithChildren) => {
   const { children } = props;
   const { t } = useTranslation();
+  // The tables follow the scheme Mantine resolved, the system's included.
+  const dark = useComputedColorScheme('light') === 'dark';
 
   return (
     <ConfigProvider
@@ -31,8 +34,11 @@ export const AntdConfigProvider = (props: PropsWithChildren) => {
       locale={enUS}
       renderEmpty={() => <div>{t('noData')}</div>}
       theme={{
+        algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           borderRadiusSM: 2,
+          // On the cards of the dark scheme (global.css), not antd's black.
+          ...(dark && { colorBgContainer: '#252830', colorBgElevated: '#2C3039' }),
         },
         components: {
           // The resource tables, a step up from antd's 14px with Mantine's

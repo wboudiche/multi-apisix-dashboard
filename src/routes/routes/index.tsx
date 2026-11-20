@@ -357,7 +357,7 @@ export const RouteList = (props: RouteListProps) => {
   return (
     <Paper className="Card-root" p={0}>
       {someSelected && (
-        <Group justify="space-between" px="lg" py="xs" style={{ background: 'var(--mantine-color-blue-0, #e7f5ff)', borderBottom: '1px solid #eee' }}>
+        <Group justify="space-between" px="lg" py="xs" style={{ background: 'var(--mantine-color-blue-light)', borderBottom: '1px solid var(--border-light)' }}>
           <Text size="sm" fw={500}>{t('form.json.selectedCount', { count: selectedIds.length })}</Text>
           <Group gap="xs">
             <BatchDeleteBtn
@@ -394,7 +394,7 @@ export const RouteList = (props: RouteListProps) => {
             {isVisible('host') && <Table.Th>{t('routes.list.headerHost')}</Table.Th>}
             {isVisible('path') && <Table.Th>{t('routes.list.headerPath')}</Table.Th>}
             {isVisible('upstream') && (
-              <Table.Th style={{ background: 'var(--mantine-color-blue-0)' }}>
+              <Table.Th style={{ background: 'var(--mantine-color-blue-light)' }}>
                 {t('routes.list.columnUpstream')}
               </Table.Th>
             )}
@@ -495,7 +495,7 @@ export const RouteList = (props: RouteListProps) => {
                 </Table.Td>
               )}
               {isVisible('upstream') && (
-                <Table.Td style={{ background: 'var(--mantine-color-blue-0)' }}>
+                <Table.Td style={{ background: 'var(--mantine-color-blue-light)' }}>
                   {(() => {
                     // What the proxy resolved for this row: the upstream it
                     // reaches, as a string whatever JSON type the id was
@@ -847,7 +847,7 @@ function RouteComponent() {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
 
   return (
-    <Box className="animate-fade-in-up" bg="#f0f2f5" style={{ minHeight: '100vh', width: '100%' }}>
+    <Box className="animate-fade-in-up" bg="var(--bg-primary)" style={{ minHeight: '100vh', width: '100%' }}>
       <PageHeader title={t('sources.routes')} />
 
       <RoutesFilterBar
@@ -859,7 +859,7 @@ function RouteComponent() {
         upstreamOptions={upstreamOptions}
       />
 
-      <Paper p="md" radius="sm" shadow="sm" w="100%" style={{ borderTop: '2px solid #F8423F' }}>
+      <Paper p="md" radius="sm" shadow="sm" w="100%" style={{ borderTop: '2px solid var(--brand)' }}>
         <Group justify="flex-end" mb="md" align="center">
           <Group gap="sm">
             {/* Two ways to make a route, both in sight: a path and a
