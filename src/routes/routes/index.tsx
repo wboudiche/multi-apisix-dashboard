@@ -734,7 +734,7 @@ export const RouteList = (props: RouteListProps) => {
       </Table>
       </Table.ScrollContainer>
 
-      <Group justify="flex-end" p="md" style={{ borderTop: '1px solid #eee' }}>
+      <Group justify="flex-end" p="md" style={{ borderTop: '1px solid var(--border-light)' }}>
         <Pagination
           getControlProps={paginationControlProps}
           total={Math.ceil((data?.total || 0) / (params.page_size || 10))}

@@ -244,7 +244,7 @@ export const RoutesFilterBar: FC<RoutesFilterBarProps> = ({
   );
 
   return (
-    <Paper p="md" mb="md" radius="sm" shadow="sm" w="100%" style={{ border: '1px solid #eee' }}>
+    <Paper p="md" mb="md" radius="sm" shadow="sm" w="100%" style={{ border: '1px solid var(--border-light)' }}>
       <Stack gap="md">
         {!expanded ? (
           <Group justify="space-between" align="center">

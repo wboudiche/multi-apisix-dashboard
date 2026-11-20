@@ -862,6 +862,8 @@ select:focus,
 [data-mantine-color-scheme="dark"] {
   --bg-primary: #0F1113;
   --bg-secondary: #1A1D21;
+  /* These two are antd's colorBgContainer and colorBgElevated too, in
+     src/config/antdConfigProvider.tsx: change them together. */
   --bg-card: #252830;
   --bg-elevated: #2C3039;
   --text-inverse: #0F1113;

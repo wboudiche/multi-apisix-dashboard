@@ -39,11 +39,6 @@ const pickTheme = async (page: Page, name: 'Light' | 'Dark' | 'System') => {
   await page.getByRole('menuitem', { name, exact: true }).click();
 };
 
-test.afterEach(async ({ page }) => {
-  // The worker's other tests start from the system's scheme again.
-  await page.evaluate(() => localStorage.removeItem('mantine-color-scheme-value'));
-});
-
 test('follows the operating system until told otherwise', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await routesPom.toIndex(page);
@@ -72,11 +67,22 @@ test('keeps the scheme picked, the tables with it, across a reload', async ({ pa
     await expect.poll(() => lightness(page, '.ant-table')).toBeLessThan(80);
   });
 
-  await test.step('still dark after a reload, from the first paint', async () => {
+  await test.step('dark from the first paint, before the app has run', async () => {
+    // Every script file refused: what sets the scheme now is the one written
+    // into index.html, or nothing - and Mantine, which would set it too once
+    // mounted, never runs.
+    await page.route('**/*', (route) =>
+      route.request().resourceType() === 'script' ? route.abort() : route.continue()
+    );
     await page.reload();
-    // Before the app has run: the script in index.html set it.
     expect(await scheme(page)).toBe('dark');
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+  });
+
+  await test.step('still dark after a reload, the tables with it', async () => {
+    await page.reload();
     await upstreamsPom.isIndexPage(page);
+    await expect.poll(() => scheme(page)).toBe('dark');
     await expect.poll(() => lightness(page, '.ant-table')).toBeLessThan(80);
   });
 

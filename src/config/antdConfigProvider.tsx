@@ -26,7 +26,10 @@ export const AntdConfigProvider = (props: PropsWithChildren) => {
   const { children } = props;
   const { t } = useTranslation();
   // The tables follow the scheme Mantine resolved, the system's included.
-  const dark = useComputedColorScheme('light') === 'dark';
+  // Read during the first render, not in an effect: under System on a dark
+  // system, the effect's answer came a frame late and every table flashed
+  // light before it.
+  const dark = useComputedColorScheme('light', { getInitialValueInEffect: false }) === 'dark';
 
   return (
     <ConfigProvider
@@ -37,7 +40,8 @@ export const AntdConfigProvider = (props: PropsWithChildren) => {
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           borderRadiusSM: 2,
-          // On the cards of the dark scheme (global.css), not antd's black.
+          // On the cards of the dark scheme, not antd's black: --bg-card and
+          // --bg-elevated of global.css's dark block, which change with these.
           ...(dark && { colorBgContainer: '#252830', colorBgElevated: '#2C3039' }),
         },
         components: {
