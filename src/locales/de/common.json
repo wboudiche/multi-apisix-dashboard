@@ -1028,7 +1028,7 @@
       "hostHint": "Optional: nur Anfragen für diesen Hostnamen.",
       "name": "Name",
       "nameHint": "Aus dem Pfad vorgeschlagen, bis Sie ihn ändern.",
-      "moreOptions": "Im erweiterten Formular fortfahren",
+      "continueAdvanced": "Im erweiterten Formular fortfahren",
       "create": "Erstellen",
       "createOffline": "Offline erstellen",
       "replaceDraftTitle": "Entwurf ersetzen?",

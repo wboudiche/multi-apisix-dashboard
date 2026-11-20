@@ -1028,7 +1028,7 @@
       "hostHint": "İsteğe bağlı: yalnızca bu ana makine adına gelen istekler.",
       "name": "Ad",
       "nameHint": "Siz değiştirene kadar yoldan önerilir.",
-      "moreOptions": "Gelişmiş formda devam et",
+      "continueAdvanced": "Gelişmiş formda devam et",
       "create": "Oluştur",
       "createOffline": "Çevrimdışı oluştur",
       "replaceDraftTitle": "Taslağınız değiştirilsin mi?",

@@ -16,6 +16,10 @@ working route from a path and a destination. The wizard stays, unchanged,
 for everything else, and the dialog hands over to it without losing what
 was typed.
 
+> Since #439 the list names both ways in: **Quick route** opens this dialog
+> and **Advanced route** links straight to the wizard. The dialog's
+> **More options…** is labelled **Continue in the advanced form**.
+
 Non-goals: changing the wizard (part 2 of the proposal), duplicating a
 route onto another upstream (part 3), templates.
 

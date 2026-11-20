@@ -461,14 +461,14 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
             <span />
           ) : (
             // A button: as grey text it read as a note rather than the way
-            // on to the full form.
+            // on to the advanced form.
             <Button
               variant="default"
               leftSection={<IconTune width="16" height="16" />}
               onClick={openWizard}
               disabled={submitting}
             >
-              {t('form.quickRoute.moreOptions')}
+              {t('form.quickRoute.continueAdvanced')}
             </Button>
           )}
           <Group gap="sm">

@@ -1022,7 +1022,7 @@
       "hostHint": "可选：仅匹配此主机名的请求。",
       "name": "名称",
       "nameHint": "在您修改之前，根据路径自动建议。",
-      "moreOptions": "在高级表单中继续",
+      "continueAdvanced": "在高级表单中继续",
       "create": "创建",
       "createOffline": "创建为未发布",
       "replaceDraftTitle": "替换您的草稿？",
@@ -1147,8 +1147,8 @@
       "emptyOwnershipHint": "属于其他团队、或尚未分配给任何团队的路由不会显示在这里。如果你期望看到某条路由，请让管理员把它分配给你的团队。",
       "headerTeam": "团队",
       "refresh": "刷新",
-      "quickRoute": "快速创建路由",
-      "advancedRoute": "高级创建路由"
+      "quickRoute": "快速路由",
+      "advancedRoute": "高级路由"
     },
     "createFailed": "创建路由失败",
     "updateFailed": "更新路由失败"

@@ -863,9 +863,9 @@ function RouteComponent() {
         <Group justify="flex-end" mb="md" align="center">
           <Group gap="sm">
             {/* Two ways to make a route, both in sight: a path and a
-                destination on one screen, or the full form for everything
-                else. The quick one hands over to the full form too, with
-                what was typed. */}
+                destination on one screen, or the advanced form for
+                everything else. The quick one hands over to the advanced
+                form too, with what was typed. */}
             {canCreate && (
               <Button
                 size="sm"
@@ -877,7 +877,8 @@ function RouteComponent() {
             )}
             {canCreate && (
               // A link, not a button that navigates: it can be opened in a
-              // tab of its own, and says where it goes.
+              // tab of its own, and says where it goes. RouteLinkBtn renders
+              // a <button> with no href, so it cannot be either.
               <Button
                 component={RouteLink}
                 to="/routes/add"

@@ -24,9 +24,10 @@ import { API_ROUTES, API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 /**
- * Create on the routes list opens a dialog that makes a route from a path and
- * a destination, posted as the wizard would post it, and hands over to the
- * wizard - answers and all - for anything more.
+ * Quick route on the routes list opens a dialog that makes a route from a
+ * path and a destination, posted as the wizard would post it, and hands over
+ * to the wizard - "Continue in the advanced form" - answers and all, for
+ * anything more.
  */
 
 const prefix = `/e2e-quick-${randomId('r')}`;
