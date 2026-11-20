@@ -46,11 +46,23 @@ func TestTokensIssuedInTheSameSecondDiffer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.AccessToken == second.AccessToken {
-		t.Error("two access tokens issued for the same user are the same token")
-	}
-	if first.RefreshToken == second.RefreshToken {
-		t.Error("two refresh tokens issued for the same user are the same token")
+	// By their identifiers, not only by their text: the two calls may fall
+	// in two seconds, and then the timestamps alone would tell them apart.
+	for _, pair := range [][2]string{
+		{first.AccessToken, second.AccessToken},
+		{first.RefreshToken, second.RefreshToken},
+	} {
+		a, err := s.ValidateToken(pair[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := s.ValidateToken(pair[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if a.ID == "" || a.ID == b.ID {
+			t.Errorf("two %s tokens share the identifier %q", a.TokenType, a.ID)
+		}
 	}
 }
 
