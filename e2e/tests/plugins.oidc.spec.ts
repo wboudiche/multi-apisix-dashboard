@@ -100,6 +100,14 @@ test('openid-connect asks how callers sign in, and tests the provider', async ({
 });
 
 test('openid-connect with a login page is saved with a session secret', async ({ page }) => {
+  // A field's change reached the drawer from inside the form's state
+  // updater, an update to another component while rendering it.
+  const renderUpdates: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error' && m.text().includes('Cannot update a component')) {
+      renderUpdates.push(m.text());
+    }
+  });
   const name = `${PREFIX}-${nanoid()}`;
   const drawer = await openOidc(page, name);
   // A paste brings a space with it; the gateway would fetch it as it is.
@@ -121,4 +129,5 @@ test('openid-connect with a login page is saved with a session secret', async ({
   expect(saved?.discovery).toBe(DISCOVERY);
   expect(saved?.redirect_uri).toBe('https://gw.e2e.test/app/callback');
   expect((saved?.session as { secret?: string } | undefined)?.secret).toBeTruthy();
+  expect(renderUpdates).toEqual([]);
 });

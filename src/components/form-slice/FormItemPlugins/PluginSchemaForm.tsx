@@ -406,20 +406,22 @@ export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
     setLocalValue(externalValue);
   }
 
+  // The parent hears of the change here, in the event, and not from inside a
+  // state updater: React runs updaters while rendering this form, and a
+  // parent's setState from there is an update to another component during
+  // render, which React warns about and may run twice.
   const handleFieldChange = useCallback(
     (fieldName: string, fieldValue: unknown) => {
-      setLocalValue((prev) => {
-        const next = { ...prev };
-        if (fieldValue === undefined || fieldValue === '' || fieldValue === null) {
-          delete next[fieldName];
-        } else {
-          next[fieldName] = fieldValue;
-        }
-        onChange(next);
-        return next;
-      });
+      const next = { ...localValue };
+      if (fieldValue === undefined || fieldValue === '' || fieldValue === null) {
+        delete next[fieldName];
+      } else {
+        next[fieldName] = fieldValue;
+      }
+      setLocalValue(next);
+      onChange(next);
     },
-    [onChange]
+    [localValue, onChange]
   );
 
   const properties = schema.properties || {};
