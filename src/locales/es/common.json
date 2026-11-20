@@ -474,7 +474,8 @@
         "clearPicked": "Quitar todos los clientes elegidos",
         "showAll": "Mostrar todos ({{total}})",
         "showFewer": "Mostrar menos",
-        "pickMore": "{{total}} clientes: se muestran los {{shown}} primeros; escriba parte de un nombre para encontrar los demás."
+        "pickMore": "{{total}} clientes: se muestran los {{shown}} primeros; escriba parte de un nombre para encontrar los demás.",
+        "reading": "Leyendo los clientes…"
       },
       "oidc": {
         "test": "Probar la dirección",

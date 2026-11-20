@@ -472,7 +472,8 @@
         "clearPicked": "Seçilen tüm istemcileri kaldır",
         "showAll": "Tümünü göster ({{total}})",
         "showFewer": "Daha az göster",
-        "pickMore": "{{total}} istemci: ilk {{shown}} tanesi listelenir; diğerlerini bulmak için bir adın bir kısmını yazın."
+        "pickMore": "{{total}} istemci: ilk {{shown}} tanesi listelenir; diğerlerini bulmak için bir adın bir kısmını yazın.",
+        "reading": "İstemciler okunuyor…"
       },
       "oidc": {
         "test": "Adresi test et",

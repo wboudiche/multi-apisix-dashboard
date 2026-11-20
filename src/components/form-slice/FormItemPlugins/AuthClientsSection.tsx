@@ -248,7 +248,7 @@ const Usage = ({
  */
 const ClientPicker = ({
   clients,
-  names,
+  names: stored,
   readOnly,
   onChange,
 }: {
@@ -258,6 +258,8 @@ const ClientPicker = ({
   onChange: (names: string[]) => void;
 }) => {
   const { t } = useTranslation();
+  // A list written by hand may name a client twice: it is one client.
+  const names = [...new Set(stored)];
   // An admin of the instance sees every client, as a super admin does: for
   // them a name nobody holds is gone, not out of sight.
   const { isAdmin } = usePermission();
@@ -298,18 +300,25 @@ const ClientPicker = ({
         data={options}
         value={names}
         onChange={onChange}
-        // Over the field and never turned below it, where it would lie over
-        // the drawer's Add: open, it lets several clients be picked in a row.
-        comboboxProps={{ position: 'top', middlewares: { flip: false, shift: true } }}
-        // Past what is drawn, said for as long as the list is cut.
+        // Over the field, away from the drawer's Add below it, so that it can
+        // stay open while several clients are picked in a row; below only
+        // when there is no room above.
+        comboboxProps={{ position: 'top' }}
+        // Past what is drawn, said for as long as the list is cut: the names
+        // picked are not in it.
         description={
-          options.length > OPTIONS_SHOWN
-            ? t('form.plugins.clients.pickMore', { total: options.length, shown: OPTIONS_SHOWN })
+          options.length - names.length > OPTIONS_SHOWN
+            ? t('form.plugins.clients.pickMore', {
+                total: options.length - names.length,
+                shown: OPTIONS_SHOWN,
+              })
             : undefined
         }
         searchable
         hidePickedOptions
-        nothingFoundMessage={t('form.plugins.clients.noMatch')}
+        nothingFoundMessage={
+          clients ? t('form.plugins.clients.noMatch') : t('form.plugins.clients.reading')
+        }
         // Hundreds of options are drawn as hundreds of elements: the first
         // ones are shown, and typing narrows down to the rest.
         limit={OPTIONS_SHOWN}

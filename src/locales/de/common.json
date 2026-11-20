@@ -472,7 +472,8 @@
         "clearPicked": "Alle ausgewählten Clients entfernen",
         "showAll": "Alle anzeigen ({{total}})",
         "showFewer": "Weniger anzeigen",
-        "pickMore": "{{total}} Clients: Die ersten {{shown}} werden aufgeführt, geben Sie einen Teil eines Namens ein, um die anderen zu finden."
+        "pickMore": "{{total}} Clients: Die ersten {{shown}} werden aufgeführt, geben Sie einen Teil eines Namens ein, um die anderen zu finden.",
+        "reading": "Clients werden gelesen…"
       },
       "oidc": {
         "test": "Adresse testen",

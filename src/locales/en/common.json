@@ -499,7 +499,8 @@
         "clearPicked": "Remove every client picked",
         "showAll": "Show all ({{total}})",
         "showFewer": "Show fewer",
-        "pickMore": "{{total}} clients: the first {{shown}} are listed, type part of a name to find the others."
+        "pickMore": "{{total}} clients: the first {{shown}} are listed, type part of a name to find the others.",
+        "reading": "Reading the clients…"
       },
       "oidc": {
         "test": "Test the address",
