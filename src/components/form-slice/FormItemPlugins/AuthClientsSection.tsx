@@ -42,7 +42,7 @@ import { useTranslation } from 'react-i18next';
 import { putConsumerReq } from '@/apis/consumers';
 import { getCredentialListReq, putCredentialReq } from '@/apis/credentials';
 import { API_CONSUMERS, SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
-import { queryClient } from '@/config/global';
+import { AUTH_CLIENTS_QUERY, AUTH_CLIENTS_STALE_MS, queryClient } from '@/config/global';
 import { CREATE_ONLY, req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
@@ -409,8 +409,11 @@ export const AuthClientsSection = ({
   const mayCreate = !readOnly && canCreate && canWriteResource('consumers');
 
   const clients = useQuery({
-    queryKey: ['auth-clients', instanceId, teamId, plugin],
+    queryKey: [AUTH_CLIENTS_QUERY, instanceId, teamId, plugin],
     queryFn: () => fetchClients(plugin),
+    // One request per consumer: not sent again each time a form opens. Every
+    // write that succeeds marks it stale (src/config/global.ts).
+    staleTime: AUTH_CLIENTS_STALE_MS,
   });
 
   const [formOpened, setFormOpened] = useState(false);
@@ -494,7 +497,7 @@ export const AuthClientsSection = ({
       });
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['auth-clients', instanceId] });
+      void queryClient.invalidateQueries({ queryKey: [AUTH_CLIENTS_QUERY, instanceId] });
     },
   });
 

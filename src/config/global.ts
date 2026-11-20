@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient } from '@tanstack/react-query';
 import { createRouter } from '@tanstack/react-router';
 
 import { routeTree } from '@/routeTree.gen';
@@ -25,4 +25,21 @@ export const router = createRouter({ routeTree, basepath: BASE_PATH });
 
 export type Router = typeof router;
 
-export const queryClient = new QueryClient({});
+/**
+ * Who holds a credential of each auth plugin, as the plugin forms list it.
+ * Read with one request per consumer, it is kept rather than read again each
+ * time a form opens, and marked stale after every write that succeeds - a
+ * consumer or a credential made, changed or removed anywhere in the app.
+ */
+export const AUTH_CLIENTS_QUERY = 'auth-clients';
+export const AUTH_CLIENTS_STALE_MS = 5 * 60 * 1000;
+
+export const queryClient: QueryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    // Not awaited: an open form reads its clients again, and the write that
+    // made it so is not to wait for that.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [AUTH_CLIENTS_QUERY] });
+    },
+  }),
+});
