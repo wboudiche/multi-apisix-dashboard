@@ -37,8 +37,11 @@ const upstreamName = randomId('test-upstream');
 const serviceName = randomId('test-service');
 const routeNameForUpstreamId = randomId('test-route-upstream-id');
 const routeNameForServiceId = randomId('test-route-service-id');
-const routeUri1 = '/test-route-upstream-id';
-const routeUri2 = '/test-route-service-id';
+// A path of its own: on a path another run holds - this spec in another
+// worker, or one left behind by a run that failed - submit stops on the
+// duplicate confirmation, and the route is never created.
+const routeUri1 = `/${routeNameForUpstreamId}`;
+const routeUri2 = `/${routeNameForServiceId}`;
 
 const upstreamNodes: APISIXType['UpstreamNode'][] = [
   { host: 'test.com', port: 80, weight: 100 },

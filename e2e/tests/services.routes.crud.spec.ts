@@ -39,8 +39,8 @@ test.describe.configure({ mode: 'serial' });
 const serviceName = randomId('test-service');
 const routeName = randomId('test-route');
 // A path of its own: on a path another run holds - this spec in another
-// worker, or the other route CRUD spec - submit stops on the duplicate
-// confirmation, and the route is never created.
+// worker, another route CRUD spec, or one left behind by a run that failed -
+// submit stops on the duplicate confirmation, and the route is never created.
 const routeUri = `/${routeName}`;
 
 let testServiceId: string;
