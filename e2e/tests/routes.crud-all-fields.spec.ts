@@ -32,7 +32,10 @@ import { expect } from '@playwright/test';
 
 
 const routeNameWithAllFields = randomId('test-route-full');
-const routeUri = '/test-route-all-fields';
+// A path of its own: on a path another run holds - this spec in another
+// worker, or one left behind by a run that failed - submit stops on the
+// duplicate confirmation, and the route is never created.
+const routeUri = `/${routeNameWithAllFields}`;
 const description = 'This is a test description for the route with all fields';
 // Define vars values for testing
 const initialVars = '[["arg_name", "==", "json"], ["arg_age", ">", 18]]';

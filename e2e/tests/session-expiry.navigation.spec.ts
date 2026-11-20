@@ -42,21 +42,25 @@ test('renews a lapsed token on navigation instead of signing out', async ({
     timeout: 30000,
   });
 
-  const before = await page.evaluate(() =>
-    localStorage.getItem('auth:access_token')
-  );
   await expireTheAccessToken(page);
 
   // The tab has been idle and the operator clicks through to another page.
   await page.getByRole('link', { name: 'Upstreams', exact: true }).click();
 
-  await expect(page).toHaveURL(/\/ui\/upstreams/, { timeout: 30000 });
+  // The session really was renewed rather than merely tolerated: the expiry
+  // set in the past is in the future again. Waited for: the router puts the
+  // new address in the bar before the renewal it awaits has even been sent,
+  // so the address alone proves nothing yet. And not the token itself - one
+  // issued in the same second as the login is the same token, byte for byte,
+  // since it carries nothing but the user and the second it was issued in.
+  await expect
+    .poll(
+      async () => Number(await page.evaluate(() => localStorage.getItem('auth:token_expiry'))),
+      { timeout: 30000 }
+    )
+    .toBeGreaterThan(Date.now());
+  await expect(page).toHaveURL(/\/ui\/upstreams/);
   expect(new URL(page.url()).pathname).not.toBe('/ui/login');
-
-  // And the session really was renewed rather than merely tolerated.
-  expect(
-    await page.evaluate(() => localStorage.getItem('auth:access_token'))
-  ).not.toBe(before);
 });
 
 test('still signs out when the refresh token is refused', async ({ page }) => {
@@ -104,8 +108,14 @@ test('does not sign out when the refresh merely could not be reached', async ({
 
   // The positive claim, not merely the absence of a redirect: `not.toBe(
   // '/ui/login')` would also hold if the guard swallowed the navigation and
-  // left us on /ui/routes, so a refresh that hung forever would pass.
-  await expect(page).toHaveURL(/\/ui\/upstreams/, { timeout: 30000 });
+  // left us on /ui/routes, so a refresh that hung forever would pass. The
+  // page itself, not only its address: the router puts the address in the
+  // bar before the renewal it awaits, so a sign-out after it would still
+  // have shown /ui/upstreams for a moment.
+  await expect(page.getByRole('heading', { name: 'Upstreams', exact: true })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page).toHaveURL(/\/ui\/upstreams/);
   expect(
     await page.evaluate(() => localStorage.getItem('auth:refresh_token'))
   ).not.toBeNull();
