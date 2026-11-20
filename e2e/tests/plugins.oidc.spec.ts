@@ -23,7 +23,10 @@ import { customAlphabet } from 'nanoid';
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
-const PREFIX = 'e2e-oidc';
+// One per worker: the tests of this file run in several, and each worker's
+// afterAll removes what carries the prefix, which would take another
+// worker's clients from under a test still running.
+const PREFIX = `e2e-oidc-${nanoid(4)}`;
 // Answered by the test itself: the suite does not reach the internet.
 const DISCOVERY = 'https://idp.e2e.test/.well-known/openid-configuration';
 
@@ -100,6 +103,14 @@ test('openid-connect asks how callers sign in, and tests the provider', async ({
 });
 
 test('openid-connect with a login page is saved with a session secret', async ({ page }) => {
+  // A field's change reached the drawer from inside the form's state
+  // updater, an update to another component while rendering it.
+  const renderUpdates: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error' && m.text().includes('Cannot update a component')) {
+      renderUpdates.push(m.text());
+    }
+  });
   const name = `${PREFIX}-${nanoid()}`;
   const drawer = await openOidc(page, name);
   // A paste brings a space with it; the gateway would fetch it as it is.
@@ -121,4 +132,5 @@ test('openid-connect with a login page is saved with a session secret', async ({
   expect(saved?.discovery).toBe(DISCOVERY);
   expect(saved?.redirect_uri).toBe('https://gw.e2e.test/app/callback');
   expect((saved?.session as { secret?: string } | undefined)?.secret).toBeTruthy();
+  expect(renderUpdates).toEqual([]);
 });

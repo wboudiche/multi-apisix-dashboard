@@ -23,7 +23,10 @@ import { customAlphabet } from 'nanoid';
 import { API_CONSUMERS, API_CREDENTIALS, API_PLUGIN_CONFIGS } from '@/config/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
-const PREFIX = 'e2e-authclient';
+// One per worker: the tests of this file run in several, and each worker's
+// afterAll removes what carries the prefix, which would take another
+// worker's clients from under a test still running.
+const PREFIX = `e2e-authclient-${nanoid(4)}`;
 
 type Credentials = { list: { value: { id: string; plugins: Record<string, Record<string, string>> } }[] };
 
