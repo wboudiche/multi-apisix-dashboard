@@ -285,7 +285,7 @@ export const FormSectionConnection = ({ simplified }: { simplified?: boolean }) 
         style={{
           borderRadius: 'var(--mantine-radius-md)',
           border: '1px dashed var(--mantine-color-blue-4)',
-          background: advancedOpened ? 'var(--mantine-color-blue-0)' : 'transparent',
+          background: advancedOpened ? 'var(--mantine-color-blue-light)' : 'transparent',
           transition: 'all 0.15s ease',
           width: '100%',
         }}

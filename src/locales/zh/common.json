@@ -54,7 +54,11 @@
     "openNavigation": "打开导航",
     "closeNavigation": "关闭导航",
     "collapseNavigation": "收起导航",
-    "expandNavigation": "展开导航"
+    "expandNavigation": "展开导航",
+    "theme": "主题",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "themeSystem": "跟随系统"
   },
   "instanceGuard": {
     "noInstances": {
