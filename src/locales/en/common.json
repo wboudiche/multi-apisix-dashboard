@@ -498,7 +498,8 @@
         "noMatch": "No client by that name",
         "clearPicked": "Remove every client picked",
         "showAll": "Show all ({{total}})",
-        "showFewer": "Show fewer"
+        "showFewer": "Show fewer",
+        "pickMore": "{{total}} clients: the first {{shown}} are listed, type part of a name to find the others."
       },
       "oidc": {
         "test": "Test the address",

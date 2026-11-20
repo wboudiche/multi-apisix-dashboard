@@ -471,7 +471,8 @@
         "noMatch": "Bu adda istemci yok",
         "clearPicked": "Seçilen tüm istemcileri kaldır",
         "showAll": "Tümünü göster ({{total}})",
-        "showFewer": "Daha az göster"
+        "showFewer": "Daha az göster",
+        "pickMore": "{{total}} istemci: ilk {{shown}} tanesi listelenir; diğerlerini bulmak için bir adın bir kısmını yazın."
       },
       "oidc": {
         "test": "Adresi test et",

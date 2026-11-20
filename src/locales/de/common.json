@@ -471,7 +471,8 @@
         "noMatch": "Kein Client mit diesem Namen",
         "clearPicked": "Alle ausgewählten Clients entfernen",
         "showAll": "Alle anzeigen ({{total}})",
-        "showFewer": "Weniger anzeigen"
+        "showFewer": "Weniger anzeigen",
+        "pickMore": "{{total}} Clients: Die ersten {{shown}} werden aufgeführt, geben Sie einen Teil eines Namens ein, um die anderen zu finden."
       },
       "oidc": {
         "test": "Adresse testen",

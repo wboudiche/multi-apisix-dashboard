@@ -471,7 +471,8 @@
         "noMatch": "没有该名称的客户端",
         "clearPicked": "移除所有已选客户端",
         "showAll": "全部显示（{{total}}）",
-        "showFewer": "收起"
+        "showFewer": "收起",
+        "pickMore": "共 {{total}} 个客户端：仅列出前 {{shown}} 个，输入名称的一部分以查找其他客户端。"
       },
       "oidc": {
         "test": "测试地址",

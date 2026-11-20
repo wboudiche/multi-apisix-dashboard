@@ -17,8 +17,9 @@
 
 /**
  * `Promise.all(items.map(fn))`, with no more than `limit` calls of `fn` under
- * way at once. The results keep the order of the items; the first failure
- * rejects the whole, as Promise.all does, and no new call starts after it.
+ * way at once. The results keep the order of the items. The first failure
+ * rejects the whole and no new call starts after it; the calls already under
+ * way are not cancelled, they finish and their results are dropped.
  */
 export const mapLimit = async <T, R>(
   items: readonly T[],

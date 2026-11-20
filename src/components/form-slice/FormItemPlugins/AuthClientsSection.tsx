@@ -82,6 +82,8 @@ type Clients = {
 // a few at a time, so that a gateway with hundreds of them does not get them
 // all at once each time the form is opened.
 const CREDENTIAL_READS_AT_ONCE = 8;
+/** Options drawn at once in the picker; typing reaches the rest. */
+const OPTIONS_SHOWN = 50;
 /** Holders shown by name before the rest are folded away. */
 const HOLDERS_SHOWN = 10;
 
@@ -91,15 +93,15 @@ const fetchClients = async (plugin: AuthClientPlugin): Promise<Clients> => {
     .get<unknown, APISIXType['RespConsumerList']>(API_CONSUMERS)
     .then((v) => v.data.list.map((item) => item.value));
   const holders = await mapLimit(consumers, CREDENTIAL_READS_AT_ONCE, async (consumer) => {
-      if (holdsCredential(plugin, consumer, [])) return consumer.username;
-      const creds = await getCredentialListReq(req, { username: consumer.username });
-      return holdsCredential(
-        plugin,
-        consumer,
-        creds.list.map((item) => item.value)
-      )
-        ? consumer.username
-        : undefined;
+    if (holdsCredential(plugin, consumer, [])) return consumer.username;
+    const creds = await getCredentialListReq(req, { username: consumer.username });
+    return holdsCredential(
+      plugin,
+      consumer,
+      creds.list.map((item) => item.value)
+    )
+      ? consumer.username
+      : undefined;
   });
   return {
     holders: holders.filter((n): n is string => !!n).sort(),
@@ -259,10 +261,6 @@ const ClientPicker = ({
   // An admin of the instance sees every client, as a super admin does: for
   // them a name nobody holds is gone, not out of sight.
   const { isAdmin } = usePermission();
-  // Closed once a name is picked: left open, the list lies over the drawer's
-  // Add, and a click meant for it picks another client. A click or a letter
-  // in the field opens it again.
-  const [opened, setOpened] = useState(false);
   const holders = clients?.holders ?? [];
   const options = [...new Set([...holders, ...names])].sort();
   // Why a name is on the list and cannot get through this plugin: it holds
@@ -281,9 +279,14 @@ const ClientPicker = ({
   });
   if (options.length === 0 && clients) {
     return (
-      <Alert color="yellow" variant="light">
-        {t('form.plugins.clients.none')}
-      </Alert>
+      <Stack gap="xs">
+        <Alert color="yellow" variant="light">
+          {t('form.plugins.clients.none')}
+        </Alert>
+        <Text size="sm" c="red">
+          {t('form.plugins.clients.accessEmpty')}
+        </Text>
+      </Stack>
     );
   }
   return (
@@ -294,19 +297,22 @@ const ClientPicker = ({
         placeholder={names.length ? undefined : t('form.plugins.clients.pickPlaceholder')}
         data={options}
         value={names}
-        onChange={(next) => {
-          if (next.length > names.length) setOpened(false);
-          onChange(next);
-        }}
-        dropdownOpened={opened}
-        onDropdownOpen={() => setOpened(true)}
-        onDropdownClose={() => setOpened(false)}
+        onChange={onChange}
+        // Over the field and never turned below it, where it would lie over
+        // the drawer's Add: open, it lets several clients be picked in a row.
+        comboboxProps={{ position: 'top', middlewares: { flip: false, shift: true } }}
+        // Past what is drawn, said for as long as the list is cut.
+        description={
+          options.length > OPTIONS_SHOWN
+            ? t('form.plugins.clients.pickMore', { total: options.length, shown: OPTIONS_SHOWN })
+            : undefined
+        }
         searchable
         hidePickedOptions
         nothingFoundMessage={t('form.plugins.clients.noMatch')}
         // Hundreds of options are drawn as hundreds of elements: the first
         // ones are shown, and typing narrows down to the rest.
-        limit={50}
+        limit={OPTIONS_SHOWN}
         maxDropdownHeight={240}
         clearable
         clearButtonProps={{
@@ -359,10 +365,10 @@ export type AuthClientsSectionProps = {
   config: Record<string, unknown>;
   /** The plugin is only being looked at: its clients are listed, none made. */
   readOnly?: boolean;
-  /** Who the route lets through: every client, or the ones ticked. */
+  /** Who the route lets through: every client, or the ones picked. */
   access: Restriction;
   onAccessChange: (next: Restriction) => void;
-  /** The names the route held, ticked again when "only" is picked back. */
+  /** The names the route held, picked again when "only" is picked back. */
   storedNames: string[];
   /** The route's other authentication plugins, which a client must pass too. */
   otherPlugins: string[];
@@ -550,7 +556,7 @@ export const AuthClientsSection = ({
         {access.mode === 'only' && (
           <ClientPicker
             // While the clients are read, or when they could not be, the
-            // names already on the list are still shown, and can be ticked.
+            // names already on the list are still shown, and can be picked.
             clients={clients.data}
             names={access.names}
             readOnly={readOnly}
