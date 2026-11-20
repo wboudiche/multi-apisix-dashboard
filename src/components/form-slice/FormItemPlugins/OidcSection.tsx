@@ -14,14 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Alert, Button, Code, Paper, Radio, Stack, Text, Title } from '@mantine/core';
+import { Alert, Button, Code, Paper, Radio, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import {
   checkDiscovery,
   type DiscoveryCheck,
+  isAbsoluteHttpUrl,
   oidcMode,
+  redirectUriProblem,
   withOidcMode,
 } from '@/utils/oidc';
 
@@ -29,6 +31,11 @@ import {
 class Unreachable extends Error {}
 /** It was fetched, and is not an OpenID configuration. */
 class NotDiscovery extends Error {}
+/**
+ * Not an http or https address: fetched as it is, it would be read against
+ * this page's own server, and the provider blamed for its answer.
+ */
+class NotAbsolute extends Error {}
 
 const fetchDiscovery = async (url: string): Promise<unknown> => {
   let res: Response;
@@ -69,6 +76,7 @@ export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) =>
   // it lacks depends on the mode, which may be changed after the test.
   const test = useMutation({
     mutationFn: async (url: string) => {
+      if (!isAbsoluteHttpUrl(url)) throw new NotAbsolute();
       const doc = await fetchDiscovery(url);
       if (!checkDiscovery(doc, config)) throw new NotDiscovery();
       return doc;
@@ -94,9 +102,11 @@ export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) =>
         </Button>
         {test.variables === discovery && test.isError && (
           <Alert color="red" variant="light">
-            {test.error instanceof NotDiscovery
-              ? t('form.plugins.oidc.notDiscovery')
-              : t('form.plugins.oidc.unreachable')}
+            {test.error instanceof NotAbsolute
+              ? t('form.plugins.oidc.notAbsolute')
+              : test.error instanceof NotDiscovery
+                ? t('form.plugins.oidc.notDiscovery')
+                : t('form.plugins.oidc.unreachable')}
           </Alert>
         )}
         {result && (
@@ -110,6 +120,9 @@ export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) =>
               )}
               {result.problems.includes('noToken') && (
                 <Text size="sm">{t('form.plugins.oidc.noToken')}</Text>
+              )}
+              {result.problems.includes('noKeys') && (
+                <Text size="sm">{t('form.plugins.oidc.noKeys')}</Text>
               )}
               {result.problems.includes('noVerification') && (
                 <Text size="sm">{t('form.plugins.oidc.noVerification')}</Text>
@@ -139,13 +152,29 @@ export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) =>
           </Stack>
         </Radio.Group>
         {mode === 'login' ? (
-          <Text size="xs" c="dimmed">
-            {t('form.plugins.oidc.callback')}{' '}
-            <Code>{typeof config.redirect_uri === 'string' && config.redirect_uri
-              ? config.redirect_uri
-              // eslint-disable-next-line i18next/no-literal-string -- the path the gateway appends
-              : '<route>/.apisix/redirect'}</Code>
-          </Text>
+          <TextInput
+            // eslint-disable-next-line i18next/no-literal-string -- the setting's own name
+            label="redirect_uri"
+            description={t('form.plugins.oidc.redirectHelp')}
+            // eslint-disable-next-line i18next/no-literal-string -- an example address
+            placeholder="https://gateway.example.com/app/callback"
+            value={typeof config.redirect_uri === 'string' ? config.redirect_uri : ''}
+            disabled={readOnly}
+            onChange={(e) => {
+              const next = { ...config };
+              const value = e.currentTarget.value;
+              if (value) next.redirect_uri = value;
+              else delete next.redirect_uri;
+              onChange(next);
+            }}
+            error={
+              redirectUriProblem(config) === 'missing'
+                ? t('form.plugins.oidc.redirectMissing')
+                : redirectUriProblem(config) === 'notAbsolute'
+                  ? t('form.plugins.oidc.redirectNotAbsolute')
+                  : undefined
+            }
+          />
         ) : (
           <Text size="xs" c="dimmed">
             {t('form.plugins.oidc.tokenHow')}{' '}

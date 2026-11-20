@@ -47,7 +47,7 @@ import {
   sameRestriction,
   writeRestriction,
 } from '@/utils/auth-clients';
-import { OIDC_PLUGIN, OIDC_PRIMARY_FIELDS, withSessionSecret } from '@/utils/oidc';
+import { finishOidc, OIDC_PLUGIN, OIDC_PRIMARY_FIELDS } from '@/utils/oidc';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { withPriority } from '@/utils/plugin-priority';
 import IconChevronRight from '~icons/material-symbols/chevron-right';
@@ -391,7 +391,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
   // which the gateway refuses to set up without a secret.
   const oidcShown = !!showClients && name === OIDC_PLUGIN;
   const finish = useCallback(
-    (c: Record<string, unknown>) => (oidcShown ? withSessionSecret(c) : c),
+    (c: Record<string, unknown>) => (oidcShown ? finishOidc(c) : c),
     [oidcShown]
   );
 
@@ -507,10 +507,18 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
                     ? OIDC_PRIMARY_FIELDS
                     : undefined
               }
-              // bearer_only is the section's question; the session holds the
-              // secret it generates, no reason to unfold the rest.
-              hiddenKeys={oidcShown ? ['bearer_only'] : undefined}
-              quietKeys={oidcShown ? ['session'] : undefined}
+              // bearer_only is the section's question, redirect_uri its
+              // field. A session holding only the secret generated for it
+              // is no reason to unfold the rest; one with settings of its own is.
+              hiddenKeys={oidcShown ? ['bearer_only', 'redirect_uri'] : undefined}
+              quietKeys={
+                oidcShown &&
+                formValue.session &&
+                typeof formValue.session === 'object' &&
+                Object.keys(formValue.session).every((k) => k === 'secret')
+                  ? ['session']
+                  : undefined
+              }
               afterPrimary={
                 oidcShown ? (
                   <OidcSection

@@ -102,7 +102,14 @@ test('openid-connect asks how callers sign in, and tests the provider', async ({
 test('openid-connect with a login page is saved with a session secret', async ({ page }) => {
   const name = `${PREFIX}-${nanoid()}`;
   const drawer = await openOidc(page, name);
-  await drawer.getByRole('textbox', { name: '* discovery' }).fill(DISCOVERY);
+  // A paste brings a space with it; the gateway would fetch it as it is.
+  await drawer.getByRole('textbox', { name: '* discovery' }).fill(`${DISCOVERY} `);
+  const section = drawer.getByTestId('oidc-section');
+  const redirect = section.getByRole('textbox', { name: 'redirect_uri' });
+  await expect(section.getByText(/Without it, the gateway sends people back/)).toBeVisible();
+  await redirect.fill('/callback');
+  await expect(section.getByText(/A full address, starting with https:\/\//)).toBeVisible();
+  await redirect.fill('https://gw.e2e.test/app/callback');
   await drawer.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(drawer).toBeHidden();
   // The gateway refuses a login without one: the save getting through is
@@ -111,5 +118,7 @@ test('openid-connect with a login page is saved with a session secret', async ({
   await expect(page).toHaveURL(/plugin_configs\/detail\//);
   const saved = await savedPlugin(name);
   expect(saved?.bearer_only).toBeUndefined();
+  expect(saved?.discovery).toBe(DISCOVERY);
+  expect(saved?.redirect_uri).toBe('https://gw.e2e.test/app/callback');
   expect((saved?.session as { secret?: string } | undefined)?.secret).toBeTruthy();
 });

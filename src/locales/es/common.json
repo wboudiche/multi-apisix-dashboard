@@ -482,8 +482,12 @@
         "loginHelp": "Personas en un navegador: la pasarela las envía al proveedor para iniciar sesión y luego las mantiene conectadas con una cookie.",
         "token": "Token ya proporcionado",
         "tokenHelp": "Aplicaciones que ya tienen un token del proveedor: lo envían con cada petición y la pasarela lo comprueba.",
-        "callback": "Registre esta dirección como callback en el proveedor:",
-        "tokenHow": "Cada petición lo lleva como"
+        "tokenHow": "Cada petición lo lleva como",
+        "notAbsolute": "No es una dirección completa: empieza por https:// (o http://).",
+        "noKeys": "No publica claves (jwks_uri) para comprobar los tokens que firma.",
+        "redirectHelp": "Adonde el proveedor devuelve a las personas tras iniciar sesión: una dirección completa en una ruta que esta ruta cubre. Registre la misma en el proveedor.",
+        "redirectMissing": "Sin ella, la pasarela devuelve a las personas a la dirección de cada página seguida de /.apisix/redirect, que cambia de una página a otra: la mayoría de los proveedores lo rechazan.",
+        "redirectNotAbsolute": "El proveedor necesita una dirección completa, que empiece por https://."
       }
     },
     "protos": {

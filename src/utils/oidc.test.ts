@@ -16,7 +16,14 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { checkDiscovery, oidcMode, withOidcMode, withSessionSecret } from './oidc';
+import {
+  checkDiscovery,
+  finishOidc,
+  isAbsoluteHttpUrl,
+  oidcMode,
+  redirectUriProblem,
+  withOidcMode,
+} from './oidc';
 
 const doc = {
   issuer: 'https://idp.example',
@@ -24,6 +31,8 @@ const doc = {
   token_endpoint: 'https://idp.example/token',
   jwks_uri: 'https://idp.example/jwks',
 };
+const noKeys = { ...doc, jwks_uri: undefined };
+const introspecting = { ...noKeys, introspection_endpoint: 'https://idp.example/i' };
 
 describe('openid-connect', () => {
   it('reads and writes the mode as bearer_only', () => {
@@ -33,30 +42,63 @@ describe('openid-connect', () => {
     expect(withOidcMode({ a: 1, bearer_only: true }, 'login')).toEqual({ a: 1 });
   });
 
-  it('gives a login a session secret, and keeps one already set', () => {
-    const made = withSessionSecret({ session: { cookie: { lifetime: 60 } } });
+  it('gives a login a session secret, and keeps one long enough', () => {
+    const made = finishOidc({ session: { cookie: { lifetime: 60 } } });
     expect(made.session).toMatchObject({ cookie: { lifetime: 60 } });
     expect((made.session as { secret: string }).secret).toMatch(/^[0-9a-f]{32}$/);
 
-    const kept = { session: { secret: 'mine' } };
-    expect(withSessionSecret(kept)).toBe(kept);
+    const kept = { session: { secret: 'a-secret-of-16-chars' } };
+    expect(finishOidc(kept)).toBe(kept);
+    // The gateway refuses one under 16 characters.
+    const short = finishOidc({ session: { secret: 'short' } });
+    expect((short.session as { secret: string }).secret).toMatch(/^[0-9a-f]{32}$/);
     // A token handed in opens no session.
-    expect(withSessionSecret({ bearer_only: true })).toEqual({ bearer_only: true });
+    expect(finishOidc({ bearer_only: true })).toEqual({ bearer_only: true });
+  });
+
+  it('saves the discovery address without the spaces a paste brings', () => {
+    expect(finishOidc({ bearer_only: true, discovery: ' https://idp/x \n' })).toEqual({
+      bearer_only: true,
+      discovery: 'https://idp/x',
+    });
+  });
+
+  it('tells a full address from a path', () => {
+    expect(isAbsoluteHttpUrl('https://idp.example/x')).toBe(true);
+    expect(isAbsoluteHttpUrl('idp.example/x')).toBe(false);
+    expect(isAbsoluteHttpUrl('/callback')).toBe(false);
+    expect(isAbsoluteHttpUrl('ftp://idp.example')).toBe(false);
+  });
+
+  it('asks a login for a full redirect address', () => {
+    expect(redirectUriProblem({})).toBe('missing');
+    expect(redirectUriProblem({ redirect_uri: '/callback' })).toBe('notAbsolute');
+    expect(redirectUriProblem({ redirect_uri: 'https://gw.example/app/cb' })).toBeUndefined();
   });
 
   it('says what a login needs that the provider does not offer', () => {
     expect(checkDiscovery(doc, {})).toEqual({ issuer: 'https://idp.example', problems: [] });
-    expect(checkDiscovery({ issuer: 'x' }, {})?.problems).toEqual(['noAuthorization', 'noToken']);
+    expect(checkDiscovery({ issuer: 'x' }, {})?.problems).toEqual([
+      'noAuthorization',
+      'noToken',
+      'noKeys',
+    ]);
+    // The ID token is checked with the route's own key instead.
+    expect(checkDiscovery(noKeys, { public_key: 'PEM' })?.problems).toEqual([]);
   });
 
-  it('asks how a token handed in is checked', () => {
+  it('checks a token handed in the one way the gateway will', () => {
     const token = { bearer_only: true };
+    // Introspection, when nothing else is set.
     expect(checkDiscovery(doc, token)?.problems).toEqual(['noVerification']);
+    expect(checkDiscovery(introspecting, token)?.problems).toEqual([]);
+    // use_jwks: the provider's keys, and introspection is never asked.
     expect(checkDiscovery(doc, { ...token, use_jwks: true })?.problems).toEqual([]);
-    expect(
-      checkDiscovery({ ...doc, introspection_endpoint: 'https://idp.example/i' }, token)?.problems
-    ).toEqual([]);
-    expect(checkDiscovery(doc, { ...token, public_key: 'PEM' })?.problems).toEqual([]);
+    expect(checkDiscovery(introspecting, { ...token, use_jwks: true })?.problems).toEqual([
+      'noKeys',
+    ]);
+    // The route's own key: nothing asked of the provider.
+    expect(checkDiscovery(noKeys, { ...token, public_key: 'PEM' })?.problems).toEqual([]);
   });
 
   it('refuses what is not an OpenID configuration', () => {

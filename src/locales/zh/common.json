@@ -480,8 +480,12 @@
         "loginHelp": "浏览器中的用户：网关将他们转到提供方登录，然后用 Cookie 保持登录状态。",
         "token": "已持有令牌",
         "tokenHelp": "已持有提供方令牌的应用：它们随每个请求发送令牌，由网关校验。",
-        "callback": "请在提供方处将此地址注册为回调地址：",
-        "tokenHow": "每个请求以如下方式携带："
+        "tokenHow": "每个请求以如下方式携带：",
+        "notAbsolute": "这不是完整地址：应以 https://（或 http://）开头。",
+        "noKeys": "它未发布用于校验其所签令牌的密钥（jwks_uri）。",
+        "redirectHelp": "用户登录后提供方将其送回的地址：此路由所匹配路径上的完整地址。请在提供方处注册相同的地址。",
+        "redirectMissing": "若不设置，网关会把用户送回每个页面自身地址加 /.apisix/redirect，该地址随页面变化：大多数提供方会拒绝。",
+        "redirectNotAbsolute": "提供方需要以 https:// 开头的完整地址。"
       }
     },
     "protos": {

@@ -507,8 +507,12 @@
         "loginHelp": "People in a browser: the gateway sends them to the provider to sign in, then keeps them signed in with a cookie.",
         "token": "Token already provided",
         "tokenHelp": "Applications that already hold a token from the provider: they send it with each request, and the gateway checks it.",
-        "callback": "Register this address as the callback with the provider:",
-        "tokenHow": "Each request carries it as"
+        "tokenHow": "Each request carries it as",
+        "notAbsolute": "This is not a full address: it starts with https:// (or http://).",
+        "noKeys": "It publishes no keys (jwks_uri) to check the tokens it signs.",
+        "redirectHelp": "Where the provider sends people back after they sign in: a full address on a path this route matches. Register the same one with the provider.",
+        "redirectMissing": "Without it, the gateway sends people back to each page's own address followed by /.apisix/redirect, which changes from page to page: most providers refuse that.",
+        "redirectNotAbsolute": "A full address, starting with https://, is what the provider needs."
       }
     },
     "protos": {
