@@ -82,6 +82,13 @@ type AccessChoice = 'anyone' | QuickAuthPlugin;
 
 /** A new authentication plugin's settings: its defaults, none of its own. */
 const NO_SETTINGS: Record<string, unknown> = {};
+/** A consumer-restriction in force: none, or one not switched off. */
+const activeRestriction = (config: unknown): unknown => {
+  if (!config || typeof config !== 'object') return undefined;
+  const meta = (config as { _meta?: { disable?: unknown } })._meta;
+  return meta && typeof meta === 'object' && meta.disable === true ? undefined : config;
+};
+
 const ANY_CLIENT: Record<QuickAuthPlugin, Restriction> = {
   'key-auth': { mode: 'any' },
   'basic-auth': { mode: 'any' },
@@ -180,14 +187,18 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     Object.keys(servicePlugins).filter(
       (n) => n !== plugin && getPluginCategory(n) === 'authentication'
     );
-  // The service's consumer-restriction: who it lets through is where the
-  // choice of clients starts, each time another service is picked.
-  const inheritedRestriction = servicePlugins[RESTRICTION_PLUGIN];
+  // The service's consumer-restriction, when it holds one in force: who it
+  // lets through is where the choice of clients starts. One switched off
+  // restricts nobody, and is none to start from.
+  const inheritedRestriction = activeRestriction(servicePlugins[RESTRICTION_PLUGIN]);
   const inherited = inheritedRestriction === undefined ? undefined : readRestriction(inheritedRestriction);
-  const restrictionSource = JSON.stringify(inheritedRestriction ?? null);
-  const [seededFrom, setSeededFrom] = useState(restrictionSource);
-  if (seededFrom !== restrictionSource) {
-    setSeededFrom(restrictionSource);
+  // Seeded once a service is picked and read, and again only when another
+  // is: not when the destination is switched away and back, nor while the
+  // services are being read, which would throw away the clients picked.
+  const serviceRead = kind === 'service' && !!serviceId && !!services;
+  const [seededFor, setSeededFor] = useState<string | null>(null);
+  if (serviceRead && seededFor !== serviceId) {
+    setSeededFor(serviceId);
     const start = inherited ?? { mode: 'any' as const };
     setRestrictions({ 'key-auth': start, 'basic-auth': start });
   }
@@ -292,6 +303,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     setTypedName(initial?.name ?? null);
     setAccessChoice('anyone');
     setRestrictions(ANY_CLIENT);
+    setSeededFor(null);
     setShownSections([]);
     setLimitOn(false);
     setLimitCount(100);

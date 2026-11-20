@@ -342,6 +342,10 @@ test('starts from the clients a route\'s service lets through, and can open it t
 
     await test.step('every client, and the service\'s list no longer holds on this route', async () => {
       await clients.getByRole('radio', { name: 'Every client holding a credential' }).check();
+      // A look at another destination and back keeps the choice made.
+      await dialog.locator('label').filter({ hasText: /^Address$/ }).click();
+      await dialog.locator('label').filter({ hasText: /^Service$/ }).click();
+      await expect(clients.getByRole('radio', { name: 'Every client holding a credential' })).toBeChecked();
       await dialog.getByRole('button', { name: 'Create', exact: true }).click();
       await expect(dialog).toBeHidden();
 

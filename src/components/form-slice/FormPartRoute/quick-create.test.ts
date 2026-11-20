@@ -334,10 +334,31 @@ describe('a quick route on a service that restricts its clients', () => {
     });
   });
 
-  it('keeps what else the service gave the plugin beside the clients picked', () => {
+  it('keeps how the service answers a client turned away, beside the clients picked', () => {
     expect(onService({ mode: 'only', names: ['ops'] })?.['consumer-restriction']).toEqual({
       whitelist: ['ops'],
       rejected_code: 401,
+    });
+  });
+
+  it('takes nothing from the service\'s that could open the clients picked to others', () => {
+    const plugins = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      access: {
+        plugin: 'key-auth',
+        restriction: { mode: 'only', names: ['ops'] },
+        inheritedRestriction: {
+          whitelist: ['billing'],
+          blacklist: ['x'],
+          rejected_msg: 'no',
+          _meta: { disable: true, filter: [['arg_a', '==', '1']], priority: 2401 },
+        },
+      },
+    }).plugins;
+    expect(plugins?.['consumer-restriction']).toEqual({
+      whitelist: ['ops'],
+      rejected_msg: 'no',
     });
   });
 
