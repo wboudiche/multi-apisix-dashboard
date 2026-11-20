@@ -54,10 +54,15 @@ const SESSION_SECRET_MIN = 16;
  * it; one already long enough is kept, or every session would end.
  */
 export const finishOidc = (config: Record<string, unknown>): Record<string, unknown> => {
-  const next =
-    typeof config.discovery === 'string' && config.discovery !== config.discovery.trim()
-      ? { ...config, discovery: config.discovery.trim() }
-      : config;
+  let next = config;
+  // Addresses as typed, without what a paste brings: the gateway fetches the
+  // one and hands the other to the provider exactly as they are.
+  for (const key of ['discovery', 'redirect_uri']) {
+    const value = next[key];
+    if (typeof value !== 'string' || value === value.trim()) continue;
+    next = { ...next, [key]: value.trim() };
+    if (!value.trim()) delete next[key];
+  }
   if (oidcMode(next) === 'token') return next;
   const session =
     next.session && typeof next.session === 'object'

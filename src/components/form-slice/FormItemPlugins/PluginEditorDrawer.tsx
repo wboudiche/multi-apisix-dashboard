@@ -47,7 +47,7 @@ import {
   sameRestriction,
   writeRestriction,
 } from '@/utils/auth-clients';
-import { finishOidc, OIDC_PLUGIN, OIDC_PRIMARY_FIELDS } from '@/utils/oidc';
+import { finishOidc, OIDC_PLUGIN, OIDC_PRIMARY_FIELDS, oidcMode } from '@/utils/oidc';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { withPriority } from '@/utils/plugin-priority';
 import IconChevronRight from '~icons/material-symbols/chevron-right';
@@ -510,7 +510,15 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
               // bearer_only is the section's question, redirect_uri its
               // field. A session holding only the secret generated for it
               // is no reason to unfold the rest; one with settings of its own is.
-              hiddenKeys={oidcShown ? ['bearer_only', 'redirect_uri'] : undefined}
+              hiddenKeys={
+                oidcShown
+                  ? // redirect_uri is the section's field for a login; for a
+                    // token, one left from before stays in More options.
+                    oidcMode(formValue) === 'login'
+                    ? ['bearer_only', 'redirect_uri']
+                    : ['bearer_only']
+                  : undefined
+              }
               quietKeys={
                 oidcShown &&
                 formValue.session &&

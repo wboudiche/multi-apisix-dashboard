@@ -56,11 +56,16 @@ describe('openid-connect', () => {
     expect(finishOidc({ bearer_only: true })).toEqual({ bearer_only: true });
   });
 
-  it('saves the discovery address without the spaces a paste brings', () => {
-    expect(finishOidc({ bearer_only: true, discovery: ' https://idp/x \n' })).toEqual({
-      bearer_only: true,
-      discovery: 'https://idp/x',
-    });
+  it('saves the addresses without the spaces a paste brings', () => {
+    expect(
+      finishOidc({
+        bearer_only: true,
+        discovery: ' https://idp/x \n',
+        redirect_uri: 'https://gw/cb ',
+      })
+    ).toEqual({ bearer_only: true, discovery: 'https://idp/x', redirect_uri: 'https://gw/cb' });
+    // Nothing but spaces is no address at all.
+    expect(finishOidc({ bearer_only: true, redirect_uri: '   ' })).toEqual({ bearer_only: true });
   });
 
   it('tells a full address from a path', () => {

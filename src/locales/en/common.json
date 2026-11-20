@@ -508,11 +508,11 @@
         "token": "Token already provided",
         "tokenHelp": "Applications that already hold a token from the provider: they send it with each request, and the gateway checks it.",
         "tokenHow": "Each request carries it as",
-        "notAbsolute": "This is not a full address: it starts with https:// (or http://).",
+        "notAbsolute": "This is not a full address: a full one starts with https:// (or http://).",
         "noKeys": "It publishes no keys (jwks_uri) to check the tokens it signs.",
         "redirectHelp": "Where the provider sends people back after they sign in: a full address on a path this route matches. Register the same one with the provider.",
         "redirectMissing": "Without it, the gateway sends people back to each page's own address followed by /.apisix/redirect, which changes from page to page: most providers refuse that.",
-        "redirectNotAbsolute": "A full address, starting with https://, is what the provider needs."
+        "redirectNotAbsolute": "The provider needs a full address here, starting with https:// (or http://), not a path alone."
       }
     },
     "protos": {

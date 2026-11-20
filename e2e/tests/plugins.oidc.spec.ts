@@ -108,7 +108,7 @@ test('openid-connect with a login page is saved with a session secret', async ({
   const redirect = section.getByRole('textbox', { name: 'redirect_uri' });
   await expect(section.getByText(/Without it, the gateway sends people back/)).toBeVisible();
   await redirect.fill('/callback');
-  await expect(section.getByText(/A full address, starting with https:\/\//)).toBeVisible();
+  await expect(section.getByText(/The provider needs a full address here/)).toBeVisible();
   await redirect.fill('https://gw.e2e.test/app/callback');
   await drawer.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(drawer).toBeHidden();

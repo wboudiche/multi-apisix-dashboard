@@ -71,6 +71,7 @@ export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) =>
   const { t } = useTranslation();
   const mode = oidcMode(config);
   const discovery = typeof config.discovery === 'string' ? config.discovery.trim() : '';
+  const redirectProblem = redirectUriProblem(config);
 
   // The document is kept, and checked against the form as it stands: what
   // it lacks depends on the mode, which may be changed after the test.
@@ -152,29 +153,34 @@ export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) =>
           </Stack>
         </Radio.Group>
         {mode === 'login' ? (
-          <TextInput
-            // eslint-disable-next-line i18next/no-literal-string -- the setting's own name
-            label="redirect_uri"
-            description={t('form.plugins.oidc.redirectHelp')}
-            // eslint-disable-next-line i18next/no-literal-string -- an example address
-            placeholder="https://gateway.example.com/app/callback"
-            value={typeof config.redirect_uri === 'string' ? config.redirect_uri : ''}
-            disabled={readOnly}
-            onChange={(e) => {
-              const next = { ...config };
-              const value = e.currentTarget.value;
-              if (value) next.redirect_uri = value;
-              else delete next.redirect_uri;
-              onChange(next);
-            }}
-            error={
-              redirectUriProblem(config) === 'missing'
-                ? t('form.plugins.oidc.redirectMissing')
-                : redirectUriProblem(config) === 'notAbsolute'
-                  ? t('form.plugins.oidc.redirectNotAbsolute')
-                  : undefined
-            }
-          />
+          <>
+            <TextInput
+              // eslint-disable-next-line i18next/no-literal-string -- the setting's own name
+              label="redirect_uri"
+              description={t('form.plugins.oidc.redirectHelp')}
+              // eslint-disable-next-line i18next/no-literal-string -- an example address
+              placeholder="https://gateway.example.com/app/callback"
+              value={typeof config.redirect_uri === 'string' ? config.redirect_uri : ''}
+              disabled={readOnly}
+              onChange={(e) => {
+                const next = { ...config };
+                const value = e.currentTarget.value;
+                if (value) next.redirect_uri = value;
+                else delete next.redirect_uri;
+                onChange(next);
+              }}
+            />
+            {/* A warning, not a refusal: the gateway takes either, and a
+                provider that accepts any callback works without one. Not
+                for someone only looking, who cannot change it. */}
+            {!readOnly && redirectProblem && (
+              <Text size="xs" c="yellow.9">
+                {redirectProblem === 'missing'
+                  ? t('form.plugins.oidc.redirectMissing')
+                  : t('form.plugins.oidc.redirectNotAbsolute')}
+              </Text>
+            )}
+          </>
         ) : (
           <Text size="xs" c="dimmed">
             {t('form.plugins.oidc.tokenHow')}{' '}

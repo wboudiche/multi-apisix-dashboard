@@ -481,11 +481,11 @@
         "token": "Token bereits vorhanden",
         "tokenHelp": "Anwendungen, die bereits ein Token des Anbieters besitzen: Sie senden es mit jeder Anfrage, und das Gateway prüft es.",
         "tokenHow": "Jede Anfrage trägt es als",
-        "notAbsolute": "Dies ist keine vollständige Adresse: Sie beginnt mit https:// (oder http://).",
+        "notAbsolute": "Dies ist keine vollständige Adresse: Eine vollständige beginnt mit https:// (oder http://).",
         "noKeys": "Er veröffentlicht keine Schlüssel (jwks_uri), um die von ihm signierten Tokens zu prüfen.",
         "redirectHelp": "Wohin der Anbieter die Personen nach der Anmeldung zurückschickt: eine vollständige Adresse auf einem Pfad, den diese Route abdeckt. Registrieren Sie dieselbe beim Anbieter.",
         "redirectMissing": "Ohne sie schickt das Gateway die Personen an die Adresse der jeweiligen Seite mit angehängtem /.apisix/redirect zurück, die sich von Seite zu Seite ändert: Die meisten Anbieter lehnen das ab.",
-        "redirectNotAbsolute": "Der Anbieter braucht eine vollständige Adresse, die mit https:// beginnt."
+        "redirectNotAbsolute": "Der Anbieter braucht hier eine vollständige Adresse, die mit https:// (oder http://) beginnt, nicht nur einen Pfad."
       }
     },
     "protos": {

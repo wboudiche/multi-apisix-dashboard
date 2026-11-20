@@ -481,11 +481,11 @@
         "token": "Token zaten sağlanmış",
         "tokenHelp": "Sağlayıcıdan zaten bir token'ı olan uygulamalar: onu her istekle gönderirler ve ağ geçidi denetler.",
         "tokenHow": "Her istek onu şöyle taşır:",
-        "notAbsolute": "Bu tam bir adres değil: https:// (veya http://) ile başlar.",
+        "notAbsolute": "Bu tam bir adres değil: tam bir adres https:// (veya http://) ile başlar.",
         "noKeys": "İmzaladığı tokenları denetlemek için anahtar (jwks_uri) yayımlamıyor.",
         "redirectHelp": "Sağlayıcının, oturum açtıktan sonra kişileri geri gönderdiği yer: bu rotanın kapsadığı bir yolda tam bir adres. Aynısını sağlayıcıya kaydedin.",
         "redirectMissing": "Bu olmadan ağ geçidi kişileri her sayfanın kendi adresine /.apisix/redirect ekleyerek geri gönderir; bu sayfadan sayfaya değişir ve çoğu sağlayıcı bunu reddeder.",
-        "redirectNotAbsolute": "Sağlayıcının ihtiyacı, https:// ile başlayan tam bir adrestir."
+        "redirectNotAbsolute": "Sağlayıcının burada yalnızca bir yol değil, https:// (veya http://) ile başlayan tam bir adrese ihtiyacı var."
       }
     },
     "protos": {
