@@ -47,12 +47,14 @@ import {
   sameRestriction,
   writeRestriction,
 } from '@/utils/auth-clients';
+import { OIDC_PLUGIN, OIDC_PRIMARY_FIELDS, withSessionSecret } from '@/utils/oidc';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { withPriority } from '@/utils/plugin-priority';
 import IconChevronRight from '~icons/material-symbols/chevron-right';
 import IconExpandMore from '~icons/material-symbols/expand-more';
 
 import { AuthClientsSection } from './AuthClientsSection';
+import { OidcSection } from './OidcSection';
 import type { PluginCardListProps } from './PluginCardList';
 import {
   CATEGORY_COLORS,
@@ -385,15 +387,23 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     [editedConfig, editorMode, methods]
   );
 
+  // openid-connect on a route: a login keeps people signed in with a cookie,
+  // which the gateway refuses to set up without a secret.
+  const oidcShown = !!showClients && name === OIDC_PLUGIN;
+  const finish = useCallback(
+    (c: Record<string, unknown>) => (oidcShown ? withSessionSecret(c) : c),
+    [oidcShown]
+  );
+
   const handleSave = useCallback(() => {
     if (editorMode === 'form') {
-      onSave({ name, config: formValue, ...restrictionToSave() });
+      onSave({ name, config: finish(formValue), ...restrictionToSave() });
     } else {
       const configStr = methods.getValues('config');
-      onSave({ name, config: JSON.parse(configStr), ...restrictionToSave() });
+      onSave({ name, config: finish(JSON.parse(configStr)), ...restrictionToSave() });
     }
     handleClose();
-  }, [editorMode, formValue, methods, name, onSave, handleClose, restrictionToSave]);
+  }, [editorMode, formValue, methods, name, onSave, handleClose, restrictionToSave, finish]);
 
   const category = name ? getPluginCategory(name) : 'other';
   const categoryColor = CATEGORY_COLORS[category];
@@ -493,7 +503,22 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
               primaryKeys={
                 clientsShown && isAuthClientPlugin(name)
                   ? AUTH_PRIMARY_FIELDS[name]
-                  : undefined
+                  : oidcShown
+                    ? OIDC_PRIMARY_FIELDS
+                    : undefined
+              }
+              // bearer_only is the section's question; the session holds the
+              // secret it generates, no reason to unfold the rest.
+              hiddenKeys={oidcShown ? ['bearer_only'] : undefined}
+              quietKeys={oidcShown ? ['session'] : undefined}
+              afterPrimary={
+                oidcShown ? (
+                  <OidcSection
+                    config={formValue}
+                    onChange={setFormValue}
+                    readOnly={mode === 'view'}
+                  />
+                ) : undefined
               }
             />
             {clientsShown && (
@@ -557,7 +582,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
               size="md"
               disabled={accessIncomplete}
               onClick={methods.handleSubmit(({ config: configStr }) => {
-                onSave({ name, config: JSON.parse(configStr), ...restrictionToSave() });
+                onSave({ name, config: finish(JSON.parse(configStr)), ...restrictionToSave() });
                 handleClose();
               })}
             >

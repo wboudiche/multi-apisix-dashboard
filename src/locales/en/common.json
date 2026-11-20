@@ -493,6 +493,22 @@
         "identifierHmac": "Its keyId, named in each signature:",
         "jwtSignFailed": "No token could be signed here to try it with.",
         "jwtClaimChanged": "The claim was changed since: create another client to get a token that carries it."
+      },
+      "oidc": {
+        "test": "Test the address",
+        "unreachable": "The address could not be read from this browser: it may be wrong, or the provider may not let a browser read it. The gateway reads it itself, on the first request.",
+        "notDiscovery": "The address answered, but not with an OpenID configuration. It usually ends in /.well-known/openid-configuration.",
+        "found": "Provider found: {{issuer}}",
+        "noAuthorization": "It offers no login page (authorization_endpoint).",
+        "noToken": "It offers no token endpoint (token_endpoint).",
+        "noVerification": "It offers no way to check a token (introspection_endpoint). Turn on use_jwks under More options to check its signature with the provider's keys instead.",
+        "modeTitle": "How do callers sign in?",
+        "login": "Login page",
+        "loginHelp": "People in a browser: the gateway sends them to the provider to sign in, then keeps them signed in with a cookie.",
+        "token": "Token already provided",
+        "tokenHelp": "Applications that already hold a token from the provider: they send it with each request, and the gateway checks it.",
+        "callback": "Register this address as the callback with the provider:",
+        "tokenHow": "Each request carries it as"
       }
     },
     "protos": {

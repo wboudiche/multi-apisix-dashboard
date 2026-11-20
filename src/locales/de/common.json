@@ -466,6 +466,22 @@
         "identifierHmac": "Seine keyId, in jeder Signatur genannt:",
         "jwtSignFailed": "Hier konnte kein Token zum Ausprobieren signiert werden.",
         "jwtClaimChanged": "Der Claim wurde inzwischen geändert: Erstellen Sie einen weiteren Client, um ein Token mit ihm zu erhalten."
+      },
+      "oidc": {
+        "test": "Adresse testen",
+        "unreachable": "Die Adresse konnte von diesem Browser nicht gelesen werden: Sie ist möglicherweise falsch, oder der Anbieter lässt sie nicht von einem Browser lesen. Das Gateway liest sie selbst, bei der ersten Anfrage.",
+        "notDiscovery": "Die Adresse hat geantwortet, aber nicht mit einer OpenID-Konfiguration. Sie endet meist auf /.well-known/openid-configuration.",
+        "found": "Anbieter gefunden: {{issuer}}",
+        "noAuthorization": "Er bietet keine Anmeldeseite (authorization_endpoint).",
+        "noToken": "Er bietet keinen Token-Endpunkt (token_endpoint).",
+        "noVerification": "Er bietet keine Möglichkeit, ein Token zu prüfen (introspection_endpoint). Aktivieren Sie use_jwks unter Weitere Optionen, um stattdessen seine Signatur mit den Schlüsseln des Anbieters zu prüfen.",
+        "modeTitle": "Wie melden sich die Aufrufer an?",
+        "login": "Anmeldeseite",
+        "loginHelp": "Personen im Browser: Das Gateway schickt sie zur Anmeldung zum Anbieter und hält sie dann mit einem Cookie angemeldet.",
+        "token": "Token bereits vorhanden",
+        "tokenHelp": "Anwendungen, die bereits ein Token des Anbieters besitzen: Sie senden es mit jeder Anfrage, und das Gateway prüft es.",
+        "callback": "Registrieren Sie diese Adresse beim Anbieter als Callback:",
+        "tokenHow": "Jede Anfrage trägt es als"
       }
     },
     "protos": {

@@ -101,8 +101,6 @@ export const PLUGIN_TEMPLATES: PluginTemplate[] = [
       client_id: 'your-client-id',
       client_secret: 'your-client-secret',
       discovery: 'https://your-provider/.well-known/openid-configuration',
-      scope: 'openid profile',
-      redirect_uri: '/callback',
     },
   },
   {

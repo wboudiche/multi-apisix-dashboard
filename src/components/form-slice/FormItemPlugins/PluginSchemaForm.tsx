@@ -28,7 +28,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import IconAdd from '~icons/material-symbols/add';
@@ -64,6 +64,15 @@ type PluginSchemaFormProps = {
    * view. Absent, every field shows, as before.
    */
   primaryKeys?: string[];
+  /** Fields another control of the form sets in their place: not shown. */
+  hiddenKeys?: string[];
+  /**
+   * Fields the form fills in itself, such as a generated secret: a value in
+   * one is no reason to open More options.
+   */
+  quietKeys?: string[];
+  /** Shown after the primary fields, before More options. */
+  afterPrimary?: ReactNode;
 };
 
 const FieldLabel = ({ name, required, description }: { name: string; required?: boolean; description?: string }) => (
@@ -360,7 +369,16 @@ const SchemaField = ({
 };
 
 export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
-  const { schema, value: externalValue, onChange, disabled, primaryKeys } = props;
+  const {
+    schema,
+    value: externalValue,
+    onChange,
+    disabled,
+    primaryKeys,
+    hiddenKeys = [],
+    quietKeys = [],
+    afterPrimary,
+  } = props;
   const { t } = useTranslation();
   // Open from the start when a folded field holds something of its own - a
   // setting someone made, such as an anonymous_consumer letting callers in
@@ -372,6 +390,8 @@ export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
         !!primaryKeys &&
         !primaryKeys.includes(k) &&
         k !== '_meta' &&
+        !hiddenKeys.includes(k) &&
+        !quietKeys.includes(k) &&
         v !== undefined &&
         JSON.stringify(v) !== JSON.stringify(schema.properties?.[k]?.default)
     )
@@ -406,7 +426,7 @@ export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
   const requiredSet = new Set(schema.required || []);
 
   // Sort: required fields first, then alphabetical
-  const sortedKeys = Object.keys(properties).sort((a, b) => {
+  const sortedKeys = Object.keys(properties).filter((k) => !hiddenKeys.includes(k)).sort((a, b) => {
     const aReq = requiredSet.has(a) ? 0 : 1;
     const bReq = requiredSet.has(b) ? 0 : 1;
     if (aReq !== bReq) return aReq - bReq;
@@ -438,6 +458,7 @@ export const PluginSchemaForm = (props: PluginSchemaFormProps) => {
   return (
     <Stack gap="sm">
       {primary.map(renderField)}
+      {afterPrimary}
       {rest.length > 0 && (
         <>
           <Button

@@ -466,6 +466,22 @@
         "identifierHmac": "Her imzada adı geçen keyId'si:",
         "jwtSignFailed": "Burada denemek için hiçbir token imzalanamadı.",
         "jwtClaimChanged": "Claim o zamandan beri değişti: onu taşıyan bir token almak için başka bir istemci oluşturun."
+      },
+      "oidc": {
+        "test": "Adresi test et",
+        "unreachable": "Adres bu tarayıcıdan okunamadı: yanlış olabilir ya da sağlayıcı bir tarayıcının okumasına izin vermiyor olabilir. Ağ geçidi onu ilk istekte kendisi okur.",
+        "notDiscovery": "Adres yanıt verdi, ancak bir OpenID yapılandırmasıyla değil. Genellikle /.well-known/openid-configuration ile biter.",
+        "found": "Sağlayıcı bulundu: {{issuer}}",
+        "noAuthorization": "Giriş sayfası sunmuyor (authorization_endpoint).",
+        "noToken": "Token uç noktası sunmuyor (token_endpoint).",
+        "noVerification": "Bir token'ı denetlemenin yolunu sunmuyor (introspection_endpoint). Bunun yerine imzasını sağlayıcının anahtarlarıyla denetlemek için Diğer seçenekler altında use_jwks'i açın.",
+        "modeTitle": "Çağıranlar nasıl oturum açıyor?",
+        "login": "Giriş sayfası",
+        "loginHelp": "Tarayıcıdaki kişiler: ağ geçidi onları oturum açmaları için sağlayıcıya gönderir, sonra bir çerezle oturumlarını açık tutar.",
+        "token": "Token zaten sağlanmış",
+        "tokenHelp": "Sağlayıcıdan zaten bir token'ı olan uygulamalar: onu her istekle gönderirler ve ağ geçidi denetler.",
+        "callback": "Bu adresi sağlayıcıda geri çağırma adresi olarak kaydedin:",
+        "tokenHow": "Her istek onu şöyle taşır:"
       }
     },
     "protos": {

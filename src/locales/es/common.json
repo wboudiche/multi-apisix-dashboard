@@ -468,6 +468,22 @@
         "identifierHmac": "Su keyId, nombrado en cada firma:",
         "jwtSignFailed": "Aquí no se pudo firmar ningún token para probarlo.",
         "jwtClaimChanged": "El claim ha cambiado desde entonces: cree otro cliente para obtener un token que lo lleve."
+      },
+      "oidc": {
+        "test": "Probar la dirección",
+        "unreachable": "No se pudo leer la dirección desde este navegador: puede ser incorrecta, o el proveedor no deja que un navegador la lea. La pasarela la lee ella misma, en la primera petición.",
+        "notDiscovery": "La dirección respondió, pero no con una configuración OpenID. Suele terminar en /.well-known/openid-configuration.",
+        "found": "Proveedor encontrado: {{issuer}}",
+        "noAuthorization": "No ofrece página de inicio de sesión (authorization_endpoint).",
+        "noToken": "No ofrece endpoint de tokens (token_endpoint).",
+        "noVerification": "No ofrece forma de comprobar un token (introspection_endpoint). Active use_jwks en Más opciones para comprobar en su lugar su firma con las claves del proveedor.",
+        "modeTitle": "¿Cómo se identifican quienes llaman?",
+        "login": "Página de inicio de sesión",
+        "loginHelp": "Personas en un navegador: la pasarela las envía al proveedor para iniciar sesión y luego las mantiene conectadas con una cookie.",
+        "token": "Token ya proporcionado",
+        "tokenHelp": "Aplicaciones que ya tienen un token del proveedor: lo envían con cada petición y la pasarela lo comprueba.",
+        "callback": "Registre esta dirección como callback en el proveedor:",
+        "tokenHow": "Cada petición lo lleva como"
       }
     },
     "protos": {
