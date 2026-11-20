@@ -1051,6 +1051,8 @@
       "accessBasic": "Usuario y contraseña",
       "accessHint": "Otras autenticaciones - JWT, HMAC, OpenID Connect - están en el formulario avanzado.",
       "accessBasicHint": "La contraseña viaja con cada solicitud: llame a esta ruta solo por HTTPS.",
+      "accessService": "El servicio ya limita quién puede llamar: la elección de abajo parte de ello y lo reemplaza para esta ruta.",
+      "accessServiceCustom": "El servicio limita quién puede llamar de una forma que esta lista no puede mostrar. Se mantiene para esta ruta: cámbielo en el servicio.",
       "rateLimit": "Limitar el número de llamadas",
       "rateLimitCount": "Solicitudes",
       "rateLimitPer": "Por",

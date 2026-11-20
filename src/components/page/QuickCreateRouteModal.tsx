@@ -65,7 +65,7 @@ import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
-import type { Restriction } from '@/utils/auth-clients';
+import { readRestriction, type Restriction, RESTRICTION_PLUGIN } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
 import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
@@ -180,6 +180,18 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     Object.keys(servicePlugins).filter(
       (n) => n !== plugin && getPluginCategory(n) === 'authentication'
     );
+  // The service's consumer-restriction: who it lets through is where the
+  // choice of clients starts, each time another service is picked.
+  const inheritedRestriction = servicePlugins[RESTRICTION_PLUGIN];
+  const inherited = inheritedRestriction === undefined ? undefined : readRestriction(inheritedRestriction);
+  const restrictionSource = JSON.stringify(inheritedRestriction ?? null);
+  const [seededFrom, setSeededFrom] = useState(restrictionSource);
+  if (seededFrom !== restrictionSource) {
+    setSeededFrom(restrictionSource);
+    const start = inherited ?? { mode: 'any' as const };
+    setRestrictions({ 'key-auth': start, 'basic-auth': start });
+  }
+  const inheritedNames = inherited?.mode === 'only' ? inherited.names : NO_STORED_NAMES;
   const access: QuickAccess | undefined = duplicating
     ? undefined
     : accessChoice === 'anyone'
@@ -188,6 +200,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           plugin: accessChoice,
           restriction: restrictions[accessChoice],
           config: serviceConfig(accessChoice),
+          inheritedRestriction,
         };
   // The service's own limit, which a route's replaces rather than adds to.
   const serviceLimit = servicePlugins['limit-count'] as
@@ -528,6 +541,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
             {accessChoice === 'basic-auth' && (
               <Text size="xs" c="orange">{t('form.quickRoute.accessBasicHint')}</Text>
             )}
+            {inherited && inherited.mode !== 'custom' && accessChoice !== 'anyone' && (
+              <Text size="xs" c="orange">{t('form.quickRoute.accessService')}</Text>
+            )}
             {shownSections.map((plugin) => (
               <Box key={plugin} display={plugin === accessChoice ? undefined : 'none'}>
                 <AuthClientsSection
@@ -535,8 +551,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
                   config={serviceConfig(plugin)}
                   access={restrictions[plugin]}
                   onAccessChange={(next) => setRestrictions((r) => ({ ...r, [plugin]: next }))}
-                  storedNames={NO_STORED_NAMES}
+                  storedNames={inheritedNames}
                   otherPlugins={otherAuthPlugins(plugin)}
+                  customNote={t('form.quickRoute.accessServiceCustom')}
                 />
               </Box>
             ))}

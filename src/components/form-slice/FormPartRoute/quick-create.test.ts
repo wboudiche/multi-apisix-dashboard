@@ -16,6 +16,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import type { Restriction as QuickRestriction } from '@/utils/auth-clients';
+
 import {
   destinationUrlError,
   proposeRouteName,
@@ -312,6 +314,41 @@ describe('who may call a quick route', () => {
       access: { plugin: 'basic-auth', restriction: { mode: 'only', names: ['ops'] } },
     });
     expect(RoutePostSchema.safeParse(form).success).toBe(true);
+  });
+});
+
+describe('a quick route on a service that restricts its clients', () => {
+  const service = { whitelist: ['billing'], rejected_code: 401 };
+  const onService = (restriction: QuickRestriction) =>
+    quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      access: { plugin: 'key-auth', restriction, inheritedRestriction: service },
+    }).plugins;
+
+  it('switches the service\'s off for this route when every client may call', () => {
+    expect(onService({ mode: 'any' })?.['consumer-restriction']).toEqual({
+      whitelist: ['billing'],
+      rejected_code: 401,
+      _meta: { disable: true },
+    });
+  });
+
+  it('keeps what else the service gave the plugin beside the clients picked', () => {
+    expect(onService({ mode: 'only', names: ['ops'] })?.['consumer-restriction']).toEqual({
+      whitelist: ['ops'],
+      rejected_code: 401,
+    });
+  });
+
+  it('leaves a restriction it cannot show to the service', () => {
+    expect(onService({ mode: 'custom' })).toEqual({ 'key-auth': {} });
+  });
+
+  it('writes nothing for every client when the service restricts nobody', () => {
+    expect(
+      quickRouteToForm({ ...base, access: { plugin: 'key-auth', restriction: { mode: 'any' } } }).plugins
+    ).toEqual({ 'key-auth': {} });
   });
 });
 
