@@ -156,7 +156,8 @@ export const basePathRewrite = (basePath: string) => ({
 });
 
 /**
- * The dialog's answers as a draft for the add page, for "More options".
+ * The dialog's answers as a draft for the add page, for "Continue in the
+ * advanced form".
  *
  * On top of the page's own defaults, since a draft stands in for them: what
  * is not answered yet - no path, no usable address, nothing picked - stays

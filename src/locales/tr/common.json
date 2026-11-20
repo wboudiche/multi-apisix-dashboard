@@ -234,7 +234,6 @@
       "add": "Ekle",
       "cancel": "İptal",
       "configure": "Yapılandır",
-      "create": "Oluştur",
       "delete": "Sil",
       "edit": "Düzenle",
       "save": "Kaydet",
@@ -1029,11 +1028,11 @@
       "hostHint": "İsteğe bağlı: yalnızca bu ana makine adına gelen istekler.",
       "name": "Ad",
       "nameHint": "Siz değiştirene kadar yoldan önerilir.",
-      "moreOptions": "Diğer seçenekler",
+      "continueAdvanced": "Gelişmiş formda devam et",
       "create": "Oluştur",
       "createOffline": "Çevrimdışı oluştur",
       "replaceDraftTitle": "Taslağınız değiştirilsin mi?",
-      "replaceDraftBody": "Tam form daha önce başladığınız bir rotayı içeriyor. Bu yanıtlarla açmak o taslağın yerini alır.",
+      "replaceDraftBody": "Gelişmiş form daha önce başladığınız bir rotayı içeriyor. Bu yanıtlarla açmak o taslağın yerini alır.",
       "replaceDraftConfirm": "Değiştir",
       "duplicateTitle": "“{{name}}” çoğalt",
       "duplicateIntro": "“{{name}}” içindeki her şey kopyalanır: eklentiler, vars, öncelik, etiketler. Yalnızca burada değiştirdikleriniz farklı olur.",
@@ -1153,7 +1152,9 @@
       "columnsNameAlwaysShown": "Her satır tanınabilsin diye her zaman gösterilir",
       "emptyOwnershipHint": "Başka bir ekibe ait olan ya da henüz hiçbir ekibe atanmamış rotalar burada gösterilmez. Bir rotayı görmeyi bekliyorduysanız, bir yöneticiden onu ekibinize atamasını isteyin.",
       "headerTeam": "Ekip",
-      "refresh": "Yenile"
+      "refresh": "Yenile",
+      "quickRoute": "Hızlı rota",
+      "advancedRoute": "Gelişmiş rota"
     },
     "createFailed": "Rota oluşturulamadı",
     "updateFailed": "Rota güncellenemedi"

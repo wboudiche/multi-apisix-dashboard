@@ -35,6 +35,8 @@ test('should navigate to routes page', async ({ page }) => {
 
   await test.step('verify routes page components', async () => {
     await expect(routesPom.getAddRouteBtn(page)).toBeVisible();
+    // The full form has a way in of its own, not only through the dialog.
+    await expect(routesPom.getAdvancedRouteLink(page)).toHaveAttribute('href', /\/routes\/add$/);
 
     // list table exists (redesigned columns: Name / Path / Status / Operation)
     const table = page.getByRole('table');

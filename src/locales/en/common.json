@@ -158,7 +158,6 @@
       "backToList": "Back to List",
       "cancel": "Cancel",
       "configure": "Configure",
-      "create": "Create",
       "delete": "Delete",
       "edit": "Edit",
       "next": "Next",
@@ -949,11 +948,11 @@
       "hostHint": "Optional: only requests for this host name.",
       "name": "Name",
       "nameHint": "Proposed from the path until you change it.",
-      "moreOptions": "More options",
+      "continueAdvanced": "Continue in the advanced form",
       "create": "Create",
       "createOffline": "Create offline",
       "replaceDraftTitle": "Replace your draft?",
-      "replaceDraftBody": "The full form holds a route you started earlier. Opening it with these answers replaces that draft.",
+      "replaceDraftBody": "The advanced form holds a route you started earlier. Opening it with these answers replaces that draft.",
       "replaceDraftConfirm": "Replace",
       "duplicateTitle": "Duplicate “{{name}}”",
       "duplicateIntro": "Everything in “{{name}}” is copied - plugins, vars, priority, labels. Only what you change here is different.",
@@ -1073,7 +1072,9 @@
       "headerId": "ID",
       "updateFailed": "Failed to update",
       "headerTeam": "Team",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "quickRoute": "Quick route",
+      "advancedRoute": "Advanced route"
     },
     "createFailed": "Failed to create route",
     "updateFailed": "Failed to update route"

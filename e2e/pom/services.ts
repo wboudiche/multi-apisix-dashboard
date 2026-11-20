@@ -32,9 +32,6 @@ const locator = {
   // Service routes locators
   getServiceRoutesTab: (page: Page) =>
     page.getByRole('tab', { name: 'Routes', exact: true }),
-  // The nested routes list reuses the shared RouteList toolbar ("Create")
-  getAddRouteBtn: (page: Page) =>
-    page.getByRole('button', { name: 'Create', exact: true }),
   // Service stream routes locators
   getServiceStreamRoutesTab: (page: Page) =>
     page.getByRole('tab', { name: 'Stream Routes', exact: true }),

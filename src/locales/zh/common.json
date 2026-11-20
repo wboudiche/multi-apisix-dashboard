@@ -234,7 +234,6 @@
       "add": "新增",
       "cancel": "取消",
       "configure": "配置",
-      "create": "创建",
       "delete": "删除",
       "edit": "编辑",
       "save": "保存",
@@ -1023,11 +1022,11 @@
       "hostHint": "可选：仅匹配此主机名的请求。",
       "name": "名称",
       "nameHint": "在您修改之前，根据路径自动建议。",
-      "moreOptions": "更多选项",
+      "continueAdvanced": "在高级表单中继续",
       "create": "创建",
       "createOffline": "创建为未发布",
       "replaceDraftTitle": "替换您的草稿？",
-      "replaceDraftBody": "完整表单中有一个您之前开始编辑的路由。用这些内容打开它会替换该草稿。",
+      "replaceDraftBody": "高级表单中有一个您之前开始编辑的路由。用这些内容打开它会替换该草稿。",
       "replaceDraftConfirm": "替换",
       "duplicateTitle": "复制“{{name}}”",
       "duplicateIntro": "“{{name}}”中的所有内容都会被复制：插件、vars、优先级、标签。只有您在这里修改的内容不同。",
@@ -1147,7 +1146,9 @@
       "columnsNameAlwaysShown": "始终显示，以便识别每一行",
       "emptyOwnershipHint": "属于其他团队、或尚未分配给任何团队的路由不会显示在这里。如果你期望看到某条路由，请让管理员把它分配给你的团队。",
       "headerTeam": "团队",
-      "refresh": "刷新"
+      "refresh": "刷新",
+      "quickRoute": "快速路由",
+      "advancedRoute": "高级路由"
     },
     "createFailed": "创建路由失败",
     "updateFailed": "更新路由失败"
