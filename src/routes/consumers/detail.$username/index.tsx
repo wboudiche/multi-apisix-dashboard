@@ -35,6 +35,7 @@ import { FormPartConsumer } from '@/components/form-slice/FormPartConsumer';
 import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { API_CONSUMERS } from '@/config/constant';
+import { CHANGES_CLIENTS } from '@/config/query-client';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
@@ -72,6 +73,8 @@ const ConsumerDetailForm = (props: Props) => {
   }, [consumerData, form, isLoading]);
 
   const putConsumer = useMutation({
+    // Who holds which credential, as the auth plugin forms list it.
+    meta: CHANGES_CLIENTS,
     mutationFn: (d: APISIXType['ConsumerPut']) => putConsumerReq(req, d),
     async onSuccess() {
       notifications.show({

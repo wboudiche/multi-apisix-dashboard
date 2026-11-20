@@ -25,6 +25,7 @@ import { putConsumerReq } from '@/apis/consumers';
 import { FormSubmitBtn } from '@/components/form/Btn';
 import { FormPartConsumer } from '@/components/form-slice/FormPartConsumer';
 import PageHeader from '@/components/page/PageHeader';
+import { CHANGES_CLIENTS } from '@/config/query-client';
 import { CREATE_ONLY, req } from '@/config/req';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { pipeProduce } from '@/utils/producer';
@@ -34,6 +35,8 @@ const ConsumerAddForm = () => {
   const router = useRouter();
 
   const putConsumer = useMutation({
+    // Who holds which credential, as the auth plugin forms list it.
+    meta: CHANGES_CLIENTS,
     mutationFn: (d: APISIXType['ConsumerPut']) => putConsumerReq(req, d, CREATE_ONLY),
     async onSuccess(_, res) {
       notifications.show({

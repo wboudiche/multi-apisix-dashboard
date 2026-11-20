@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { QueryClient } from '@tanstack/react-query';
 import { createRouter } from '@tanstack/react-router';
 
 import { routeTree } from '@/routeTree.gen';
@@ -25,4 +24,4 @@ export const router = createRouter({ routeTree, basepath: BASE_PATH });
 
 export type Router = typeof router;
 
-export const queryClient = new QueryClient({});
+export { queryClient } from './query-client';

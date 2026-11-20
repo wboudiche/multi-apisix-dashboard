@@ -25,6 +25,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { authApi } from '@/apis/auth';
 import { SIGNED_OUT_REASON_KEY } from '@/apis/session';
 import apisixLogo from '@/assets/apisix-logo.svg';
+import { queryClient } from '@/config/query-client';
 import {
   accessTokenAtom,
   currentUserAtom,
@@ -190,6 +191,11 @@ const Login = () => {
       // belong to whoever signed in before. Done at the start of a session
       // like the team picks, since a session can also end by expiry (#181).
       setUserInstances([]);
+      // Nor anything read for that account: a list kept for a minute, or one
+      // shown while it is read again, is not this one's to see. Emptied here,
+      // with no signed-in page on screen to read it again on the spot - at
+      // logout the page still is, and would, without a token.
+      queryClient.clear();
 
       // Get current user
       const user = await authApi.getCurrentUser();
