@@ -42,7 +42,7 @@ import { useTranslation } from 'react-i18next';
 import { putConsumerReq } from '@/apis/consumers';
 import { getCredentialListReq, putCredentialReq } from '@/apis/credentials';
 import { API_CONSUMERS, SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
-import { AUTH_CLIENTS_QUERY, AUTH_CLIENTS_STALE_MS, queryClient } from '@/config/global';
+import { AUTH_CLIENTS_QUERY, AUTH_CLIENTS_STALE_MS, queryClient } from '@/config/query-client';
 import { CREATE_ONLY, req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
@@ -411,8 +411,8 @@ export const AuthClientsSection = ({
   const clients = useQuery({
     queryKey: [AUTH_CLIENTS_QUERY, instanceId, teamId, plugin],
     queryFn: () => fetchClients(plugin),
-    // One request per consumer: not sent again each time a form opens. Every
-    // write that succeeds marks it stale (src/config/global.ts).
+    // One request per consumer: not sent again each time a form opens. A
+    // write that changes the clients marks it stale (src/config/query-client.ts).
     staleTime: AUTH_CLIENTS_STALE_MS,
   });
 
@@ -432,23 +432,32 @@ export const AuthClientsSection = ({
   const create = useMutation({
     mutationFn: async () => {
       // A consumer that exists keeps what it has: a plain PUT would replace
-      // its plugins. One this account sees gets the credential alone; any
-      // other is written create-only, so a name already taken - by another
-      // team's consumer, which the list does not show - is refused rather
-      // than overwritten.
+      // its plugins. The consumer is written create-only, so a name already
+      // taken is refused rather than overwritten; then it is read, as the
+      // list kept by this form may be older than the gateway - made or
+      // removed in another tab, or by someone else. One this account sees
+      // gets the credential alone; another team's is held elsewhere.
       let madeConsumer = false;
-      if (!clients.data?.all.includes(name)) {
-        try {
-          await putConsumerReq(
-            req,
-            { username: name } as APISIXType['ConsumerPut'],
-            { headers: { ...CREATE_ONLY.headers, [SKIP_INTERCEPTOR_HEADER]: ['409'] } }
-          );
-          madeConsumer = true;
-        } catch (e) {
-          if (isAxiosError(e) && e.response?.status === 409) throw new NameHeldElsewhere();
-          throw e;
-        }
+      try {
+        await putConsumerReq(
+          req,
+          { username: name } as APISIXType['ConsumerPut'],
+          { headers: { ...CREATE_ONLY.headers, [SKIP_INTERCEPTOR_HEADER]: ['409'] } }
+        );
+        madeConsumer = true;
+      } catch (e) {
+        if (!isAxiosError(e) || e.response?.status !== 409) throw e;
+        const visible = await req
+          .get(`${API_CONSUMERS}/${name}`, {
+            headers: { [SKIP_INTERCEPTOR_HEADER]: ['403', '404'] },
+          })
+          .then(() => true)
+          .catch((err: unknown) => {
+            const status = isAxiosError(err) ? err.response?.status : undefined;
+            if (status === 403 || status === 404) return false;
+            throw err;
+          });
+        if (!visible) throw new NameHeldElsewhere();
       }
       const identifier = clientIdentifier(name);
       try {

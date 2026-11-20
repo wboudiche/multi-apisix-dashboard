@@ -37,6 +37,7 @@ import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { API_CREDENTIALS } from '@/config/constant';
+import { CHANGES_CLIENTS } from '@/config/query-client';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
@@ -79,6 +80,8 @@ const CredentialDetailForm = (props: CredentialFormProps) => {
   }, [credentialData, form, isLoading]);
 
   const putCredential = useMutation({
+    // Who holds which credential, as the auth plugin forms list it.
+    meta: CHANGES_CLIENTS,
     mutationFn: (d: APISIXType['CredentialPut']) =>
       putCredentialReq(req, pipeProduce()({ ...d, username })),
     async onSuccess() {

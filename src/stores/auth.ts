@@ -19,6 +19,7 @@ import { atom } from 'jotai';
 
 import type { User } from '@/apis/auth';
 import type { UserInstanceRole } from '@/apis/instances';
+import { queryClient } from '@/config/query-client';
 
 // User-Instance assignments
 export const userInstancesAtom = atom<UserInstanceRole[]>([]);
@@ -129,6 +130,9 @@ export const logoutActionAtom = atom(null, (_get, set) => {
   // the next account whatever the last one could do, until the header has
   // fetched its own — the window #181 is about, failing open this time.
   set(userInstancesAtom, []);
+  // What was read for that account goes with it: a list kept for a minute,
+  // or one shown while it is read again, is not the next account's to see.
+  queryClient.clear();
   localStorage.removeItem('auth:access_token');
   localStorage.removeItem('auth:refresh_token');
   localStorage.removeItem('auth:token_expiry');
