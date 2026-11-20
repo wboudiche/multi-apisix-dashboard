@@ -1035,7 +1035,13 @@
       "hostsHint": "已复制：{{hosts}}。在此填写的主机会替换它们。",
       "urisHint": "已复制：{{uris}}。在此填写的路径会替换它们。",
       "rewriteKept": "“{{name}}”会改写每个请求的路径（{{rewrite}}）。副本会保留该改写：请确认它适用于新的目标。",
-      "nameCopyHint": "根据原路由的名称建议。"
+      "nameCopyHint": "根据原路由的名称建议。",
+      "access": "访问权限",
+      "accessAnyone": "任何人",
+      "accessKey": "持有密钥的客户端",
+      "accessBasic": "用户名和密码",
+      "accessHint": "其他认证方式（JWT、HMAC、OpenID Connect）请在高级表单中设置。",
+      "accessBasicHint": "密码会随每个请求发送：请仅通过 HTTPS 调用此路由。"
     }
   },
   "globalRules": {

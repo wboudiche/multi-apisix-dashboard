@@ -961,7 +961,13 @@
       "hostsHint": "Copied: {{hosts}}. A host typed here replaces them.",
       "urisHint": "Copied: {{uris}}. A path typed here replaces them.",
       "rewriteKept": "“{{name}}” rewrites each request's path ({{rewrite}}). The copy keeps that rewrite: check it fits the new destination.",
-      "nameCopyHint": "Proposed from the original's name."
+      "nameCopyHint": "Proposed from the original's name.",
+      "access": "Access",
+      "accessAnyone": "Anyone",
+      "accessKey": "Clients with a key",
+      "accessBasic": "Username and password",
+      "accessHint": "Other authentications - JWT, HMAC, OpenID Connect - are in the advanced form.",
+      "accessBasicHint": "The password travels with every request: call this route over HTTPS only."
     }
   },
   "globalRules": {

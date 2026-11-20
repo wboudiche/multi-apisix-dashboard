@@ -240,3 +240,68 @@ describe('quickRouteErrors', () => {
     expect(errors.other?.length).toBeGreaterThan(0);
   });
 });
+
+describe('who may call a quick route', () => {
+  it('adds no plugin for anyone, as before there was a choice', () => {
+    expect(quickRouteToForm({ ...base, access: { plugin: null } }).plugins).toEqual({});
+    expect(quickRouteToForm(base).plugins).toEqual({});
+  });
+
+  it('asks for the authentication picked, with its own defaults', () => {
+    const form = quickRouteToForm({
+      ...base,
+      access: { plugin: 'key-auth', restriction: { mode: 'any' } },
+    });
+    expect(form.plugins).toEqual({ 'key-auth': {} });
+  });
+
+  it('lets only the clients picked through, as the advanced form writes it', () => {
+    const form = quickRouteToForm({
+      ...base,
+      access: { plugin: 'basic-auth', restriction: { mode: 'only', names: ['billing', 'ops'] } },
+    });
+    expect(form.plugins).toEqual({
+      'basic-auth': {},
+      'consumer-restriction': { whitelist: ['billing', 'ops'] },
+    });
+  });
+
+  it('keeps the authentication beside the rewrite an address with a path makes', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'url', url: 'http://10.0.0.5:8080/v1' },
+      access: { plugin: 'key-auth', restriction: { mode: 'any' } },
+    });
+    expect(Object.keys(form.plugins ?? {}).sort()).toEqual(['key-auth', 'proxy-rewrite']);
+  });
+
+  it('hands the authentication to the advanced form', () => {
+    const draft = quickRouteToDraft({
+      ...base,
+      access: { plugin: 'key-auth', restriction: { mode: 'only', names: ['billing'] } },
+    });
+    expect(draft.plugins).toEqual({
+      'key-auth': {},
+      'consumer-restriction': { whitelist: ['billing'] },
+    });
+  });
+
+  it('refuses a route only the clients picked may call, with none picked', () => {
+    const errors = quickRouteErrors({
+      ...base,
+      access: { plugin: 'key-auth', restriction: { mode: 'only', names: [] } },
+    });
+    expect(errors.access).toBe('form.plugins.clients.accessEmpty');
+    expect(
+      quickRouteErrors({ ...base, access: { plugin: 'key-auth', restriction: { mode: 'any' } } })
+    ).toEqual({});
+  });
+
+  it('passes the wizard\'s own schema with an authentication', () => {
+    const form = quickRouteToForm({
+      ...base,
+      access: { plugin: 'basic-auth', restriction: { mode: 'only', names: ['ops'] } },
+    });
+    expect(RoutePostSchema.safeParse(form).success).toBe(true);
+  });
+});
