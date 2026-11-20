@@ -22,10 +22,12 @@ import {
   Group,
   List,
   Modal,
+  NumberInput,
   SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
   TextInput,
 } from '@mantine/core';
@@ -50,6 +52,8 @@ import {
   quickRouteErrors,
   quickRouteToDraft,
   quickRouteToForm,
+  RATE_WINDOWS,
+  type RateWindow,
   ROUTE_ADD_DEFAULTS,
   ROUTE_DRAFT_KEY,
 } from '@/components/form-slice/FormPartRoute/quick-create';
@@ -134,6 +138,11 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
   // when the choice is changed and changed back.
   const [restrictions, setRestrictions] = useState<Record<QuickAuthPlugin, Restriction>>(ANY_CLIENT);
   const [shownSections, setShownSections] = useState<QuickAuthPlugin[]>([]);
+  // Off until asked for; then a hundred a minute, a limit most APIs can live
+  // with, to be changed rather than worked out.
+  const [limitOn, setLimitOn] = useState(false);
+  const [limitCount, setLimitCount] = useState<number | string>(100);
+  const [limitPer, setLimitPer] = useState<RateWindow>('minute');
   const [showErrors, setShowErrors] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -180,7 +189,34 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           restriction: restrictions[accessChoice],
           config: serviceConfig(accessChoice),
         };
-  const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access };
+  // The service's own limit, which a route's replaces rather than adds to.
+  const serviceLimit = servicePlugins['limit-count'] as
+    | { count?: unknown; time_window?: unknown }
+    | undefined;
+  // A client the service asks for is known on the route too: counted as such.
+  const byClient =
+    !!access?.plugin ||
+    Object.keys(servicePlugins).some((n) => getPluginCategory(n) === 'authentication');
+  // A copy keeps the original's plugins, a limit among them.
+  const rateLimit =
+    !duplicating && limitOn
+      ? { count: Number(limitCount), per: limitPer, byClient }
+      : undefined;
+
+  // Turned on beside a service that limits its calls: from the service's
+  // limit, when it is one the dialog can show, rather than a looser hundred.
+  const turnLimitOn = (on: boolean) => {
+    setLimitOn(on);
+    if (!on || !serviceLimit) return;
+    const per = (Object.keys(RATE_WINDOWS) as RateWindow[]).find(
+      (w) => RATE_WINDOWS[w] === serviceLimit.time_window
+    );
+    if (typeof serviceLimit.count === 'number' && per) {
+      setLimitCount(serviceLimit.count);
+      setLimitPer(per);
+    }
+  };
+  const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access, rateLimit };
 
   // What the connection test dials: the node an address makes, or the nodes
   // of the upstream picked. Nothing until there is one to dial.
@@ -244,6 +280,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     setAccessChoice('anyone');
     setRestrictions(ANY_CLIENT);
     setShownSections([]);
+    setLimitOn(false);
+    setLimitCount(100);
+    setLimitPer('minute');
     setShowErrors(false);
     setSubmitError(null);
   };
@@ -298,6 +337,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     !upstreamId &&
     !serviceId &&
     accessChoice === 'anyone' &&
+    !limitOn &&
     // As a set: a method unticked and ticked again is no edit.
     [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
@@ -500,6 +540,55 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
                 />
               </Box>
             ))}
+          </Stack>
+        )}
+
+        {!duplicating && (
+          <Stack gap={6}>
+            <Switch
+              label={t('form.quickRoute.rateLimit')}
+              checked={limitOn}
+              onChange={(e) => turnLimitOn(e.currentTarget.checked)}
+            />
+            {serviceLimit && (
+              <Text size="xs" c="orange">{t('form.quickRoute.rateLimitService')}</Text>
+            )}
+            {limitOn && (
+              <>
+                <Group gap="sm" align="flex-start">
+                  {/* Two labelled fields rather than a sentence around them:
+                      not every language puts the count before the period. */}
+                  <NumberInput
+                    label={t('form.quickRoute.rateLimitCount')}
+                    min={1}
+                    allowDecimal={false}
+                    allowNegative={false}
+                    w={140}
+                    value={limitCount}
+                    onChange={setLimitCount}
+                    error={shown(errors.rateLimit)}
+                  />
+                  <Select
+                    label={t('form.quickRoute.rateLimitPer')}
+                    w={140}
+                    allowDeselect={false}
+                    value={limitPer}
+                    onChange={(v) => v && setLimitPer(v as RateWindow)}
+                    data={[
+                      { value: 'second', label: t('form.quickRoute.per.second') },
+                      { value: 'minute', label: t('form.quickRoute.per.minute') },
+                      { value: 'hour', label: t('form.quickRoute.per.hour') },
+                      { value: 'day', label: t('form.quickRoute.per.day') },
+                    ] satisfies { value: RateWindow; label: string }[]}
+                  />
+                </Group>
+                <Text size="xs" c="dimmed">
+                  {byClient
+                    ? t('form.quickRoute.rateLimitByClient')
+                    : t('form.quickRoute.rateLimitByIp')}
+                </Text>
+              </>
+            )}
           </Stack>
         )}
 

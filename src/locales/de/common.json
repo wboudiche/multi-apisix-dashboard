@@ -1011,7 +1011,8 @@
       "serviceRequired": "Wählen Sie einen Service",
       "destinationUrlPlain": "Nur Schema, Host, Port und Pfad: keine Zugangsdaten, keine Query, kein Fragment und kein $",
       "pathSlash": "Ein Pfad beginnt mit /",
-      "destinationPathRewritten": "Diese Route schreibt ihren Pfad bereits um: Geben Sie die Adresse ohne Pfad an"
+      "destinationPathRewritten": "Diese Route schreibt ihren Pfad bereits um: Geben Sie die Adresse ohne Pfad an",
+      "rateLimitCount": "Eine ganze Zahl, mindestens 1"
     },
     "quickRoute": {
       "title": "Neue Route",
@@ -1047,7 +1048,19 @@
       "accessKey": "Clients mit Schlüssel",
       "accessBasic": "Benutzername und Passwort",
       "accessHint": "Weitere Authentifizierungen - JWT, HMAC, OpenID Connect - gibt es im erweiterten Formular.",
-      "accessBasicHint": "Das Passwort wird mit jeder Anfrage gesendet: Rufen Sie diese Route nur über HTTPS auf."
+      "accessBasicHint": "Das Passwort wird mit jeder Anfrage gesendet: Rufen Sie diese Route nur über HTTPS auf.",
+      "rateLimit": "Anzahl der Aufrufe begrenzen",
+      "rateLimitCount": "Anfragen",
+      "rateLimitPer": "Pro",
+      "rateLimitByClient": "Für jeden Client gezählt: darüber antwortet das Gateway mit 429. Jeder Gateway-Knoten zählt für sich, zwei Knoten lassen also bis zu doppelt so viele durch.",
+      "rateLimitByIp": "Für jede IP-Adresse gezählt: darüber antwortet das Gateway mit 429. Jeder Gateway-Knoten zählt für sich, zwei Knoten lassen also bis zu doppelt so viele durch.",
+      "rateLimitService": "Der Dienst begrenzt seine Aufrufe bereits: Eine Grenze hier ersetzt die des Dienstes für diese Route.",
+      "per": {
+        "second": "Sekunde",
+        "minute": "Minute",
+        "hour": "Stunde",
+        "day": "Tag"
+      }
     }
   },
   "globalRules": {

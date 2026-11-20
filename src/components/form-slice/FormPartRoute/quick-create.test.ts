@@ -314,3 +314,64 @@ describe('who may call a quick route', () => {
     expect(RoutePostSchema.safeParse(form).success).toBe(true);
   });
 });
+
+describe('a quick route\'s limit on calls', () => {
+  it('adds no limit unless asked for one', () => {
+    expect(quickRouteToForm(base).plugins).toEqual({});
+  });
+
+  it('counts each IP address when anyone may call', () => {
+    const form = quickRouteToForm({ ...base, rateLimit: { count: 100, per: 'minute' } });
+    expect(form.plugins).toEqual({
+      'limit-count': {
+        count: 100,
+        time_window: 60,
+        key_type: 'var',
+        key: 'remote_addr',
+        rejected_code: 429,
+        policy: 'local',
+      },
+    });
+  });
+
+  it('counts each client when the route asks who calls', () => {
+    const form = quickRouteToForm({
+      ...base,
+      access: { plugin: 'key-auth', restriction: { mode: 'any' } },
+      rateLimit: { count: 5, per: 'second' },
+    });
+    expect(form.plugins?.['limit-count']).toMatchObject({ count: 5, time_window: 1, key: 'consumer_name' });
+    expect(form.plugins?.['key-auth']).toEqual({});
+  });
+
+  it('counts each client when the service asks who calls, though the route does not', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      rateLimit: { count: 5, per: 'minute', byClient: true },
+    });
+    expect(form.plugins?.['limit-count']).toMatchObject({ key: 'consumer_name' });
+  });
+
+  it('turns each period into its seconds', () => {
+    const windowOf = (per: 'hour' | 'day') =>
+      quickRouteToForm({ ...base, rateLimit: { count: 1, per } }).plugins?.['limit-count']?.time_window;
+    expect(windowOf('hour')).toBe(3600);
+    expect(windowOf('day')).toBe(86400);
+  });
+
+  it('refuses a count that is not a whole number of 1 or more', () => {
+    for (const count of [0, -1, 1.5, Number.NaN]) {
+      expect(quickRouteErrors({ ...base, rateLimit: { count, per: 'minute' } }).rateLimit).toBe(
+        'form.validation.rateLimitCount'
+      );
+    }
+    expect(quickRouteErrors({ ...base, rateLimit: { count: 1, per: 'minute' } })).toEqual({});
+  });
+
+  it('hands the limit to the advanced form, and passes its schema', () => {
+    const q = { ...base, rateLimit: { count: 10, per: 'hour' as const } };
+    expect(quickRouteToDraft(q).plugins?.['limit-count']).toMatchObject({ count: 10, time_window: 3600 });
+    expect(RoutePostSchema.safeParse(quickRouteToForm(q)).success).toBe(true);
+  });
+});

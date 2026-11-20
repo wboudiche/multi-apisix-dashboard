@@ -1013,7 +1013,8 @@
       "serviceRequired": "Elija un servicio",
       "destinationUrlPlain": "Solo esquema, host, puerto y ruta: sin credenciales, consulta, fragmento ni $",
       "pathSlash": "Una ruta empieza por /",
-      "destinationPathRewritten": "Esta ruta ya reescribe su ruta: indique la dirección sin ruta"
+      "destinationPathRewritten": "Esta ruta ya reescribe su ruta: indique la dirección sin ruta",
+      "rateLimitCount": "Un número entero, 1 o más"
     },
     "quickRoute": {
       "title": "Nueva ruta",
@@ -1049,7 +1050,19 @@
       "accessKey": "Clientes con una clave",
       "accessBasic": "Usuario y contraseña",
       "accessHint": "Otras autenticaciones - JWT, HMAC, OpenID Connect - están en el formulario avanzado.",
-      "accessBasicHint": "La contraseña viaja con cada solicitud: llame a esta ruta solo por HTTPS."
+      "accessBasicHint": "La contraseña viaja con cada solicitud: llame a esta ruta solo por HTTPS.",
+      "rateLimit": "Limitar el número de llamadas",
+      "rateLimitCount": "Solicitudes",
+      "rateLimitPer": "Por",
+      "rateLimitByClient": "Contado por cliente: por encima, el gateway responde 429. Cada nodo del gateway cuenta por su cuenta, así que dos nodos dejan pasar hasta el doble.",
+      "rateLimitByIp": "Contado por dirección IP: por encima, el gateway responde 429. Cada nodo del gateway cuenta por su cuenta, así que dos nodos dejan pasar hasta el doble.",
+      "rateLimitService": "El servicio ya limita sus llamadas: un límite aquí reemplaza el del servicio para esta ruta.",
+      "per": {
+        "second": "segundo",
+        "minute": "minuto",
+        "hour": "hora",
+        "day": "día"
+      }
     }
   },
   "globalRules": {

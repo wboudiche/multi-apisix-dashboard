@@ -47,6 +47,22 @@ const openDialog = async (page: Page) => {
   return dialog;
 };
 
+/**
+ * The answers of `n` calls the gateway counted, sent one after the other. A
+ * 404 is a gateway worker that has not read the route yet: no call to count,
+ * so it is sent again. Fewer than `n` if the route never shows up.
+ */
+const countedCalls = async (url: string, n: number): Promise<number[]> => {
+  const counted: number[] = [];
+  const deadline = Date.now() + 15000;
+  while (counted.length < n && Date.now() < deadline) {
+    const status = await fetch(url).then((r) => r.status);
+    if (status !== 404) counted.push(status);
+    else await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return counted;
+};
+
 test.beforeAll(async () => {
   await e2eReq.put(`${API_UPSTREAMS}/${upstreamId}`, {
     name: upstreamId,
@@ -246,4 +262,46 @@ test('lets only the clients picked call a route made in the dialog', async ({ pa
       await e2eReq.delete(`${API_CONSUMERS}/${username}`).catch(() => null);
     }
   }
+});
+
+test('limits the calls to a route made in the dialog', async ({ page }) => {
+  const path = `${prefix}/limited`;
+  const dialog = await openDialog(page);
+  await dialog.getByRole('textbox', { name: 'Path' }).fill(path);
+  await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+
+  await test.step('no limit until asked for one', async () => {
+    await expect(dialog.getByRole('switch', { name: 'Limit the number of calls' })).not.toBeChecked();
+    await expect(dialog.getByRole('textbox', { name: 'Requests' })).toBeHidden();
+  });
+
+  await test.step('a limit with no count is refused', async () => {
+    await dialog.locator('label').filter({ hasText: /^Limit the number of calls$/ }).click();
+    await expect(dialog.getByText('Counted for each IP address', { exact: false })).toBeVisible();
+    await dialog.getByRole('textbox', { name: 'Requests' }).fill('');
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+    await expect(dialog.getByText('A whole number, 1 or more')).toBeVisible();
+  });
+
+  await test.step('two a minute, written as a limit-count', async () => {
+    await dialog.getByRole('textbox', { name: 'Requests' }).fill('2');
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+    await expect(dialog).toBeHidden();
+    const [route] = (await routesUnder()).filter((r) => r.uri === path);
+    expect(route.plugins?.['limit-count']).toEqual({
+      count: 2,
+      time_window: 60,
+      key_type: 'var',
+      key: 'remote_addr',
+      rejected_code: 429,
+      policy: 'local',
+    });
+  });
+
+  await test.step('the gateway turns the third call of the minute away', async () => {
+    const counted = await countedCalls(`${stack.gateway}${path}`, 3);
+    expect(counted).toHaveLength(3);
+    expect(counted.slice(0, 2)).not.toContain(429);
+    expect(counted[2]).toBe(429);
+  });
 });
