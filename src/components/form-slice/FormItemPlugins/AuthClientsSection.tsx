@@ -385,6 +385,8 @@ export type AuthClientsSectionProps = {
 
 /** The name is a consumer already, one this account cannot see. */
 class NameHeldElsewhere extends Error {}
+/** The consumer already holds a credential of this plugin. */
+class CredentialHeld extends Error {}
 
 /**
  * Who can get through the plugin, and a way to let one more in, in the
@@ -433,10 +435,11 @@ export const AuthClientsSection = ({
     mutationFn: async () => {
       // A consumer that exists keeps what it has: a plain PUT would replace
       // its plugins. The consumer is written create-only, so a name already
-      // taken is refused rather than overwritten; then it is read, as the
-      // list kept by this form may be older than the gateway - made or
-      // removed in another tab, or by someone else. One this account sees
-      // gets the credential alone; another team's is held elsewhere.
+      // taken is refused rather than overwritten; then the consumers of the
+      // team picked are read - not the list this form keeps, which may be
+      // older than the gateway, nor the consumer alone, which an admin or a
+      // member of several teams may read though another team owns it. One
+      // of the team's gets the credential alone; any other is held elsewhere.
       let madeConsumer = false;
       try {
         await putConsumerReq(
@@ -447,17 +450,10 @@ export const AuthClientsSection = ({
         madeConsumer = true;
       } catch (e) {
         if (!isAxiosError(e) || e.response?.status !== 409) throw e;
-        const visible = await req
-          .get(`${API_CONSUMERS}/${name}`, {
-            headers: { [SKIP_INTERCEPTOR_HEADER]: ['403', '404'] },
-          })
-          .then(() => true)
-          .catch((err: unknown) => {
-            const status = isAxiosError(err) ? err.response?.status : undefined;
-            if (status === 403 || status === 404) return false;
-            throw err;
-          });
-        if (!visible) throw new NameHeldElsewhere();
+        const teams = await req
+          .get<unknown, APISIXType['RespConsumerList']>(API_CONSUMERS)
+          .then((v) => v.data.list.map((item) => item.value.username));
+        if (!teams.includes(name)) throw new NameHeldElsewhere();
       }
       const identifier = clientIdentifier(name);
       try {
@@ -468,7 +464,7 @@ export const AuthClientsSection = ({
             id: credentialId(plugin),
             plugins: { [plugin]: credentialConfig(plugin, identifier, secret) },
           } as APISIXType['CredentialPut'] & { username: string },
-          CREATE_ONLY
+          { headers: { ...CREATE_ONLY.headers, [SKIP_INTERCEPTOR_HEADER]: ['409'] } }
         );
       } catch (e) {
         // Not left behind empty: a consumer with no credential lets nobody
@@ -476,6 +472,9 @@ export const AuthClientsSection = ({
         if (madeConsumer) {
           await req.delete(`${API_CONSUMERS}/${name}`).catch(() => undefined);
         }
+        // Given one since the list was read, in another tab or by someone
+        // else: the same answer the field gives for a name it knows holds one.
+        if (isAxiosError(e) && e.response?.status === 409) throw new CredentialHeld();
         throw e;
       }
       // A token to try the route with, signed now, while the secret is at
@@ -681,7 +680,9 @@ export const AuthClientsSection = ({
               <Alert color="red" variant="light">
                 {create.error instanceof NameHeldElsewhere
                   ? t('form.plugins.clients.nameHeldElsewhere')
-                  : t('form.plugins.clients.createFailed')}
+                  : create.error instanceof CredentialHeld
+                    ? t('form.plugins.clients.nameTaken')
+                    : t('form.plugins.clients.createFailed')}
               </Alert>
             )}
             <Text size="xs" c="dimmed">

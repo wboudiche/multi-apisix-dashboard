@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import { AUTH_CLIENTS_QUERY, queryClient } from '@/config/query-client';
 import { parseRecordList } from '@/utils/list-shape';
 
 import { apiClient } from './client';
@@ -59,5 +60,10 @@ export const teamApi = {
   // hides it from every non-admin until an admin assigns it again.
   reassignOwnership: async (resourceType: string, resourceId: string, teamId: string): Promise<void> => {
     await apiClient.put(`/api/v1/apisix/ownership/${resourceType}/${resourceId}`, { team_id: teamId });
+    // A consumer moved to another team leaves one team's clients for the
+    // other's, as the auth plugin forms list them.
+    if (resourceType === 'consumers') {
+      void queryClient.invalidateQueries({ queryKey: [AUTH_CLIENTS_QUERY] });
+    }
   },
 };
