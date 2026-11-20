@@ -1005,7 +1005,8 @@
       "serviceRequired": "请选择一个服务",
       "destinationUrlPlain": "只能包含协议、主机、端口和路径：不能包含凭据、查询参数、片段或 $",
       "pathSlash": "路径必须以 / 开头",
-      "destinationPathRewritten": "此路由已经改写了路径：请填写不带路径的地址"
+      "destinationPathRewritten": "此路由已经改写了路径：请填写不带路径的地址",
+      "rateLimitCount": "大于等于 1 的整数"
     },
     "quickRoute": {
       "title": "新建路由",
@@ -1041,7 +1042,20 @@
       "accessKey": "持有密钥的客户端",
       "accessBasic": "用户名和密码",
       "accessHint": "其他认证方式（JWT、HMAC、OpenID Connect）请在高级表单中设置。",
-      "accessBasicHint": "密码会随每个请求发送：请仅通过 HTTPS 调用此路由。"
+      "accessBasicHint": "密码会随每个请求发送：请仅通过 HTTPS 调用此路由。",
+      "rateLimit": "限制调用次数",
+      "rateLimitCount": "请求数",
+      "rateLimitEach": "次请求 / 每",
+      "rateLimitPer": "时间段",
+      "rateLimitByClient": "按每个客户端计数：超出后网关返回 429。",
+      "rateLimitByIp": "按每个 IP 地址计数：超出后网关返回 429。",
+      "rateLimitNodes": "每个网关节点各自计数，两个节点最多可放行两倍的请求。",
+      "per": {
+        "second": "秒",
+        "minute": "分钟",
+        "hour": "小时",
+        "day": "天"
+      }
     }
   },
   "globalRules": {

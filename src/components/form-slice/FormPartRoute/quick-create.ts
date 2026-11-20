@@ -58,6 +58,38 @@ export type QuickRoute = {
   destination: QuickDestination;
   /** None: anyone, as a route is without an authentication plugin. */
   access?: QuickAccess;
+  /** None: as many calls as come. */
+  rateLimit?: QuickRateLimit;
+};
+
+/** The windows a quick route's calls are counted over, in seconds. */
+export const RATE_WINDOWS = { second: 1, minute: 60, hour: 3600, day: 86400 } as const;
+export type RateWindow = keyof typeof RATE_WINDOWS;
+
+/** At most `count` calls each `per`, counted for each caller. */
+export type QuickRateLimit = { count: number; per: RateWindow };
+
+/**
+ * The limit-count a limit comes to. Counted for each client when the route
+ * asks who calls - the gateway knows the consumer by the time limit-count
+ * runs, below the authentication plugins - and for each IP address when it
+ * does not. Counted on each gateway node, with no Redis to share the count.
+ */
+export const rateLimitPlugins = (
+  limit: QuickRateLimit | undefined,
+  byClient: boolean
+): Record<string, Record<string, unknown>> => {
+  if (!limit) return {};
+  return {
+    'limit-count': {
+      count: limit.count,
+      time_window: RATE_WINDOWS[limit.per],
+      key_type: 'var',
+      key: byClient ? 'consumer_name' : 'remote_addr',
+      rejected_code: 429,
+      policy: 'local',
+    },
+  };
 };
 
 /**
@@ -144,7 +176,10 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     name: q.name.trim() || proposeRouteName(q.methods, q.path),
     uri: q.path.trim(),
     status: q.status,
-    plugins: accessPlugins(q.access),
+    plugins: {
+      ...accessPlugins(q.access),
+      ...rateLimitPlugins(q.rateLimit, !!q.access?.plugin),
+    },
     ...(q.methods.length > 0 && { methods: q.methods as RoutePostType['methods'] }),
     ...(host && { host }),
   };
@@ -235,6 +270,7 @@ export type QuickRouteErrors = {
    * clients section says so under its own field.
    */
   access?: string;
+  rateLimit?: string;
   /** What the wizard's schema refuses that no field of the dialog shows. */
   other?: string[];
 };
@@ -278,6 +314,11 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   const a = q.access;
   if (a?.plugin && a.restriction.mode === 'only' && a.restriction.names.length === 0) {
     errors.access = 'form.plugins.clients.accessEmpty';
+  }
+
+  const limit = q.rateLimit;
+  if (limit && !(Number.isInteger(limit.count) && limit.count >= 1)) {
+    errors.rateLimit = 'form.validation.rateLimitCount';
   }
   return errors;
 };

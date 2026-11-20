@@ -247,3 +247,46 @@ test('lets only the clients picked call a route made in the dialog', async ({ pa
     }
   }
 });
+
+test('limits the calls to a route made in the dialog', async ({ page }) => {
+  const path = `${prefix}/limited`;
+  const dialog = await openDialog(page);
+  await dialog.getByRole('textbox', { name: 'Path' }).fill(path);
+  await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+
+  await test.step('no limit until asked for one', async () => {
+    await expect(dialog.getByRole('switch', { name: 'Limit the number of calls' })).not.toBeChecked();
+    await expect(dialog.getByRole('textbox', { name: 'Requests' })).toBeHidden();
+  });
+
+  await test.step('a limit with no count is refused', async () => {
+    await dialog.locator('label').filter({ hasText: /^Limit the number of calls$/ }).click();
+    await expect(dialog.getByText('Counted for each IP address', { exact: false })).toBeVisible();
+    await dialog.getByRole('textbox', { name: 'Requests' }).fill('');
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+    await expect(dialog.getByText('A whole number, 1 or more')).toBeVisible();
+  });
+
+  await test.step('two a minute, written as a limit-count', async () => {
+    await dialog.getByRole('textbox', { name: 'Requests' }).fill('2');
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+    await expect(dialog).toBeHidden();
+    const [route] = (await routesUnder()).filter((r) => r.uri === path);
+    expect(route.plugins?.['limit-count']).toEqual({
+      count: 2,
+      time_window: 60,
+      key_type: 'var',
+      key: 'remote_addr',
+      rejected_code: 429,
+      policy: 'local',
+    });
+  });
+
+  await test.step('the gateway turns the third call of the minute away', async () => {
+    const call = () => fetch(`${stack.gateway}${path}`).then((r) => r.status);
+    // Not counted until the gateway has read the route: a 404 is no call.
+    await expect.poll(call, { timeout: 15000 }).not.toBe(404);
+    await call();
+    expect(await call()).toBe(429);
+  });
+});

@@ -1011,7 +1011,8 @@
       "serviceRequired": "Bir servis seçin",
       "destinationUrlPlain": "Yalnızca şema, host, port ve yol: kimlik bilgisi, sorgu, parça veya $ olmadan",
       "pathSlash": "Bir yol / ile başlar",
-      "destinationPathRewritten": "Bu rota yolunu zaten yeniden yazıyor: adresi yol olmadan verin"
+      "destinationPathRewritten": "Bu rota yolunu zaten yeniden yazıyor: adresi yol olmadan verin",
+      "rateLimitCount": "1 veya daha büyük bir tam sayı"
     },
     "quickRoute": {
       "title": "Yeni rota",
@@ -1047,7 +1048,20 @@
       "accessKey": "Anahtarı olan istemciler",
       "accessBasic": "Kullanıcı adı ve parola",
       "accessHint": "Diğer kimlik doğrulamaları - JWT, HMAC, OpenID Connect - gelişmiş formdadır.",
-      "accessBasicHint": "Parola her istekle gönderilir: bu rotayı yalnızca HTTPS üzerinden çağırın."
+      "accessBasicHint": "Parola her istekle gönderilir: bu rotayı yalnızca HTTPS üzerinden çağırın.",
+      "rateLimit": "Çağrı sayısını sınırla",
+      "rateLimitCount": "İstek",
+      "rateLimitEach": "istek / her",
+      "rateLimitPer": "Süre",
+      "rateLimitByClient": "Her istemci için sayılır: aşıldığında gateway 429 döner.",
+      "rateLimitByIp": "Her IP adresi için sayılır: aşıldığında gateway 429 döner.",
+      "rateLimitNodes": "Her gateway düğümü kendi başına sayar, bu yüzden iki düğüm iki katına kadar isteği geçirir.",
+      "per": {
+        "second": "saniye",
+        "minute": "dakika",
+        "hour": "saat",
+        "day": "gün"
+      }
     }
   },
   "globalRules": {

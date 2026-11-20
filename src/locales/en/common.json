@@ -931,7 +931,8 @@
       "serviceRequired": "Choose a service",
       "destinationUrlPlain": "Only a scheme, host, port and path: no credentials, query, fragment or $",
       "pathSlash": "A path starts with /",
-      "destinationPathRewritten": "This route already rewrites its path: give the address without a path"
+      "destinationPathRewritten": "This route already rewrites its path: give the address without a path",
+      "rateLimitCount": "A whole number, 1 or more"
     },
     "quickRoute": {
       "title": "New route",
@@ -967,7 +968,20 @@
       "accessKey": "Clients with a key",
       "accessBasic": "Username and password",
       "accessHint": "Other authentications - JWT, HMAC, OpenID Connect - are in the advanced form.",
-      "accessBasicHint": "The password travels with every request: call this route over HTTPS only."
+      "accessBasicHint": "The password travels with every request: call this route over HTTPS only.",
+      "rateLimit": "Limit the number of calls",
+      "rateLimitCount": "Requests",
+      "rateLimitEach": "requests each",
+      "rateLimitPer": "Period",
+      "rateLimitByClient": "Counted for each client: beyond it, the gateway answers 429.",
+      "rateLimitByIp": "Counted for each IP address: beyond it, the gateway answers 429.",
+      "rateLimitNodes": "Each gateway node counts on its own, so two nodes let up to twice as many through.",
+      "per": {
+        "second": "second",
+        "minute": "minute",
+        "hour": "hour",
+        "day": "day"
+      }
     }
   },
   "globalRules": {
