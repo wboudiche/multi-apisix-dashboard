@@ -466,6 +466,26 @@
         "identifierHmac": "Her imzada adı geçen keyId'si:",
         "jwtSignFailed": "Burada denemek için hiçbir token imzalanamadı.",
         "jwtClaimChanged": "Claim o zamandan beri değişti: onu taşıyan bir token almak için başka bir istemci oluşturun."
+      },
+      "oidc": {
+        "test": "Adresi test et",
+        "unreachable": "Adres bu tarayıcıdan okunamadı: yanlış olabilir ya da sağlayıcı bir tarayıcının okumasına izin vermiyor olabilir. Ağ geçidi onu ilk istekte kendisi okur.",
+        "notDiscovery": "Adres yanıt verdi, ancak bir OpenID yapılandırmasıyla değil. Genellikle /.well-known/openid-configuration ile biter.",
+        "found": "Sağlayıcı bulundu: {{issuer}}",
+        "noAuthorization": "Giriş sayfası sunmuyor (authorization_endpoint).",
+        "noToken": "Token uç noktası sunmuyor (token_endpoint).",
+        "noVerification": "Bir token'ı denetlemenin yolunu sunmuyor (introspection_endpoint). Bunun yerine imzasını sağlayıcının anahtarlarıyla denetlemek için Diğer seçenekler altında use_jwks'i açın.",
+        "modeTitle": "Çağıranlar nasıl oturum açıyor?",
+        "login": "Giriş sayfası",
+        "loginHelp": "Tarayıcıdaki kişiler: ağ geçidi onları oturum açmaları için sağlayıcıya gönderir, sonra bir çerezle oturumlarını açık tutar.",
+        "token": "Token zaten sağlanmış",
+        "tokenHelp": "Sağlayıcıdan zaten bir token'ı olan uygulamalar: onu her istekle gönderirler ve ağ geçidi denetler.",
+        "tokenHow": "Her istek onu şöyle taşır:",
+        "notAbsolute": "Bu tam bir adres değil: tam bir adres https:// (veya http://) ile başlar.",
+        "noKeys": "İmzaladığı tokenları denetlemek için anahtar (jwks_uri) yayımlamıyor.",
+        "redirectHelp": "Sağlayıcının, oturum açtıktan sonra kişileri geri gönderdiği yer: bu rotanın kapsadığı bir yolda tam bir adres. Aynısını sağlayıcıya kaydedin.",
+        "redirectMissing": "Bu olmadan ağ geçidi kişileri her sayfanın kendi adresine /.apisix/redirect ekleyerek geri gönderir; bu sayfadan sayfaya değişir ve çoğu sağlayıcı bunu reddeder.",
+        "redirectNotAbsolute": "Sağlayıcının burada yalnızca bir yol değil, https:// (veya http://) ile başlayan tam bir adrese ihtiyacı var."
       }
     },
     "protos": {
