@@ -435,11 +435,12 @@ export const AuthClientsSection = ({
     mutationFn: async () => {
       // A consumer that exists keeps what it has: a plain PUT would replace
       // its plugins. The consumer is written create-only, so a name already
-      // taken is refused rather than overwritten; then the consumers of the
-      // team picked are read - not the list this form keeps, which may be
-      // older than the gateway, nor the consumer alone, which an admin or a
-      // member of several teams may read though another team owns it. One
-      // of the team's gets the credential alone; any other is held elsewhere.
+      // taken is refused rather than overwritten; then the consumers this
+      // account lists are read - as the team picked narrows them, and as the
+      // form's own list holds them, but fresh: that list may be older than
+      // the gateway. One of them gets the credential alone; any other is held
+      // elsewhere. An admin lists every team's, and can give a credential to
+      // any of them, as on the consumer's own page.
       let madeConsumer = false;
       try {
         await putConsumerReq(
@@ -450,10 +451,10 @@ export const AuthClientsSection = ({
         madeConsumer = true;
       } catch (e) {
         if (!isAxiosError(e) || e.response?.status !== 409) throw e;
-        const teams = await req
+        const usernames = await req
           .get<unknown, APISIXType['RespConsumerList']>(API_CONSUMERS)
           .then((v) => v.data.list.map((item) => item.value.username));
-        if (!teams.includes(name)) throw new NameHeldElsewhere();
+        if (!usernames.includes(name)) throw new NameHeldElsewhere();
       }
       const identifier = clientIdentifier(name);
       try {
