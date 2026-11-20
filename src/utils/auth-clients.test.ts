@@ -14,18 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { createHmac } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
 import {
+  clientIdentifier,
   credentialConfig,
   credentialId,
   generateSecret,
+  hmacScript,
   holdsCredential,
   isAuthClientPlugin,
+  jwtKeyClaim,
   readRestriction,
   runsAfterRestriction,
   sameRestriction,
   shellQuote,
+  signJwt,
   usableHeader,
   writeRestriction,
 } from './auth-clients';
@@ -34,6 +40,8 @@ describe('auth clients', () => {
   it('knows the plugins whose callers the gateway holds', () => {
     expect(isAuthClientPlugin('key-auth')).toBe(true);
     expect(isAuthClientPlugin('basic-auth')).toBe(true);
+    expect(isAuthClientPlugin('jwt-auth')).toBe(true);
+    expect(isAuthClientPlugin('hmac-auth')).toBe(true);
     // Its users live in the identity provider, not on the gateway.
     expect(isAuthClientPlugin('openid-connect')).toBe(false);
   });
@@ -56,6 +64,11 @@ describe('auth clients', () => {
 
   it('writes what each plugin expects of a credential', () => {
     expect(credentialConfig('key-auth', 'app', 's3cret')).toEqual({ key: 's3cret' });
+    expect(credentialConfig('jwt-auth', 'app', 's3cret')).toEqual({ key: 'app', secret: 's3cret' });
+    expect(credentialConfig('hmac-auth', 'app', 's3cret')).toEqual({
+      key_id: 'app',
+      secret_key: 's3cret',
+    });
     expect(credentialConfig('basic-auth', 'app', 's3cret')).toEqual({
       username: 'app',
       password: 's3cret',
@@ -124,5 +137,89 @@ describe('auth clients', () => {
     expect(sameRestriction({ mode: 'only', names: ['a'] }, { mode: 'only', names: ['a', 'b'] })).toBe(false);
     expect(sameRestriction({ mode: 'any' }, { mode: 'any' })).toBe(true);
     expect(sameRestriction({ mode: 'any' }, { mode: 'only', names: [] })).toBe(false);
+  });
+
+  it('names a client by its name and a random suffix', () => {
+    const a = clientIdentifier('app');
+    expect(a).toMatch(/^app-[0-9a-f]{6}$/);
+    expect(clientIdentifier('app')).not.toBe(a);
+  });
+
+  it('signs a JWT the way jwt-auth checks it, in the claim the route reads', async () => {
+    const token = await signJwt('sub', 'app-1', 's3cret', 1767225600);
+    const [header, payload, signature] = token.split('.');
+    const decode = (part: string) => JSON.parse(Buffer.from(part, 'base64url').toString());
+    expect(decode(header)).toEqual({ alg: 'HS256', typ: 'JWT' });
+    expect(decode(payload)).toEqual({ sub: 'app-1', exp: 1767225600 });
+    expect(signature).toBe(
+      createHmac('sha256', 's3cret').update(`${header}.${payload}`).digest('base64url')
+    );
+    expect(jwtKeyClaim({})).toBe('key');
+    expect(jwtKeyClaim({ key_claim_name: 'sub' })).toBe('sub');
+  });
+
+  it('writes an HMAC script with its values quoted and its date in English', () => {
+    const script = hmacScript('app', "it's", {});
+    expect(script).toContain("KEY_ID='app'");
+    expect(script).toContain("SECRET='it'\\''s'");
+    // The gateway refuses a day or month name in another language.
+    expect(script).toContain('LC_ALL=C date -u');
+    // On one line: base64 wraps a long signature, and the header breaks.
+    expect(script).toContain('openssl base64 -A');
+    expect(script).not.toMatch(/\| base64\b/);
+    expect(script).toContain('headers=\\"@request-target date\\"');
+    expect(script).toContain('openssl dgst -sha256');
+  });
+
+  it('works out the host, the digest and the length, and sends each header once', () => {
+    const script = hmacScript('app', 's', {
+      signed_headers: ['date', 'host', 'Digest', 'content-length', 'X-App', 'x-app', 'x tenant'],
+    });
+    // Worked out, not left as a value to fill in.
+    expect(script).toContain('H_HOST=${GATEWAY#*://}');
+    expect(script).toContain('H_CONTENT_LENGTH=$(printf');
+    expect(script).not.toContain("H_HOST='value'");
+    expect(script).not.toContain("H_DIGEST='value'");
+    // Signed under the route's spelling, sent once.
+    expect(script).toContain('headers=\\"@request-target date host Digest content-length X-App\\"');
+    expect(script.match(/-H "Digest:/g)).toHaveLength(1);
+    expect(script.match(/-H "X-App:/g)).toHaveLength(1);
+    expect(script).not.toContain('-H "x-app:');
+    // A name a shell line cannot carry is said, not dropped.
+    expect(script).toContain('# Also required, and to be added by hand: "x tenant"');
+  });
+
+  it('gives two headers that would share a variable one each, and skips the target', () => {
+    const script = hmacScript('app', 's', {
+      signed_headers: ['@request-target', 'date', 'X-App', 'X_App', 'content_length', 'host'],
+    });
+    expect(script).not.toContain('# Also required');
+    expect(script).toContain("H_X_APP='value'");
+    expect(script).toContain("H_X_APP_2='value'");
+    expect(script).toContain("H_CONTENT_LENGTH_2='value'");
+    expect(script).toContain('-H "X_App: $H_X_APP_2"');
+    // Sent as signed, not as curl would spell it.
+    expect(script).toContain('-H "Host: $H_HOST"');
+  });
+
+  it('keeps a header name with a line break inside its comment', () => {
+    const script = hmacScript('app', 's', { signed_headers: ['x\ntouch /tmp/pwned'] });
+    const lines = script.split('\n');
+    expect(lines[0]).toBe('# Also required, and to be added by hand: "x?touch /tmp/pwned"');
+    expect(lines.some((l) => l.startsWith('touch'))).toBe(false);
+  });
+
+  it('signs what the route requires: its headers, spelt its way, its algorithm, the body', () => {
+    const script = hmacScript('app', 's', {
+      signed_headers: ['Date', 'X-App'],
+      allowed_algorithms: ['hmac-sha512'],
+      validate_request_body: true,
+    });
+    expect(script).toContain("H_X_APP='value'");
+    expect(script).toContain("'%s\\n%s %s\\nDate: %s\\nX-App: %s\\n'");
+    expect(script).toContain('headers=\\"@request-target Date X-App\\"');
+    expect(script).toContain('algorithm=\\"hmac-sha512\\"');
+    expect(script).toContain('openssl dgst -sha512');
+    expect(script).toContain('-H "Digest: $DIGEST" --data-binary "$BODY"');
   });
 });

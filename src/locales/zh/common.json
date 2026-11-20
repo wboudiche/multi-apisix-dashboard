@@ -452,7 +452,20 @@
         "accessPending": "谁可以调用已在表单标签页中修改，并会随此插件保存。",
         "accessEmptyJson": "谁可以调用：请在表单标签页中至少勾选一个客户端。",
         "notFound": "此网关上没有该客户端",
-        "alsoAsks": "此路由还要求 {{plugins}}：客户端必须持有每一个的凭证才能通过。"
+        "alsoAsks": "此路由还要求 {{plugins}}：客户端必须持有每一个的凭证才能通过。",
+        "descJwt": "持有密钥的客户端：每个客户端用它签发 JSON Web Token，并随每个请求发送。仅列出您可见的客户端。",
+        "descHmac": "持有密钥的客户端：每个客户端用它对每个请求签名（HMAC）。仅列出您可见的客户端。",
+        "secret": "密钥",
+        "createdSecret": "客户端 {{name}} 已创建。请立即复制其密钥：此处不会再次显示。",
+        "jwtHow": "应用使用此密钥以 HS256 签发令牌，携带声明 \"{{claim}}\": \"{{identifier}}\" 和过期时间 \"exp\"。",
+        "jwtTry": "保存后，此令牌在 {{time}} 之前可以通过：",
+        "hmacTry": "保存后，这样签名的请求可以通过（一个 shell 脚本：请先设置网关、方法、路径以及所有仍为 'value' 的值）：",
+        "jwtNoSign": "此页面无法签发用于尝试的令牌：签发需要页面通过 HTTPS 提供。",
+        "identifierBasic": "其用户名：",
+        "identifierJwt": "其 key，即令牌携带的声明：",
+        "identifierHmac": "其 keyId，在每次签名中注明：",
+        "jwtSignFailed": "无法在此签发用于尝试的令牌。",
+        "jwtClaimChanged": "声明已被修改：请再创建一个客户端以获得携带该声明的令牌。"
       }
     },
     "protos": {

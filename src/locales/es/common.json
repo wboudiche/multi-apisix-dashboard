@@ -454,7 +454,20 @@
         "accessPending": "Quién puede llamarla se cambió en la pestaña Formulario y se guarda con este plugin.",
         "accessEmptyJson": "Quién puede llamarla: marque al menos un cliente en la pestaña Formulario.",
         "notFound": "No existe ese cliente en esta pasarela",
-        "alsoAsks": "Esta ruta también pide {{plugins}}: un cliente solo pasa con una credencial de cada uno."
+        "alsoAsks": "Esta ruta también pide {{plugins}}: un cliente solo pasa con una credencial de cada uno.",
+        "descJwt": "Clientes que tienen un secreto: cada uno firma con él un JSON Web Token y lo envía con cada petición. Solo se listan los clientes que puede ver.",
+        "descHmac": "Clientes que tienen una clave secreta: cada uno firma con ella cada petición (HMAC). Solo se listan los clientes que puede ver.",
+        "secret": "Secreto",
+        "createdSecret": "Cliente {{name}} creado. Copie su secreto ahora: no se vuelve a mostrar aquí.",
+        "jwtHow": "La aplicación firma sus tokens con este secreto, HS256, con los claims \"{{claim}}\": \"{{identifier}}\" y \"exp\", el momento en que caduca.",
+        "jwtTry": "Una vez guardado, este token pasa hasta el {{time}}:",
+        "hmacTry": "Una vez guardado, una petición firmada así pasa (un script de shell: defina primero la pasarela, el método, la ruta y todo valor dejado como 'value'):",
+        "jwtNoSign": "Esta página no puede firmar un token para probarlo: firmar requiere que la página se sirva por HTTPS.",
+        "identifierBasic": "Su nombre de usuario:",
+        "identifierJwt": "Su clave, el claim que llevan sus tokens:",
+        "identifierHmac": "Su keyId, nombrado en cada firma:",
+        "jwtSignFailed": "Aquí no se pudo firmar ningún token para probarlo.",
+        "jwtClaimChanged": "El claim ha cambiado desde entonces: cree otro cliente para obtener un token que lo lleve."
       }
     },
     "protos": {

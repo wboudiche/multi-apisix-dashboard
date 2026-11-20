@@ -77,11 +77,11 @@ export const PLUGIN_TEMPLATES: PluginTemplate[] = [
   },
   {
     plugin: 'jwt-auth',
-    config: { header: 'authorization', query: 'jwt', hide_credentials: false },
+    config: { header: 'authorization', query: 'jwt', hide_credentials: true },
   },
   {
     plugin: 'hmac-auth',
-    config: { hide_credentials: false, signed_headers: ['date'] },
+    config: { hide_credentials: true, signed_headers: ['date'] },
   },
   {
     plugin: 'ldap-auth',

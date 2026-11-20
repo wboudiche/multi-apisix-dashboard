@@ -50,13 +50,18 @@ import { listTeamIdAtom } from '@/stores/team';
 import type { APISIXType } from '@/types/schema/apisix';
 import {
   type AuthClientPlugin,
+  canSignJwt,
   CLIENT_NAME_PATTERN,
+  clientIdentifier,
   credentialConfig,
   credentialId,
   generateSecret,
+  hmacScript,
   holdsCredential,
+  jwtKeyClaim,
   type Restriction,
   shellQuote,
+  signJwt,
   usableHeader,
 } from '@/utils/auth-clients';
 import IconAdd from '~icons/material-symbols/add';
@@ -118,7 +123,28 @@ const CopyValue = ({ value }: { value: string }) => {
   );
 };
 
-type Created = { name: string; secret: string };
+type Created = {
+  name: string;
+  /** What the credential finds the client by, beside its secret. */
+  identifier: string;
+  secret: string;
+  /**
+   * For jwt-auth: a token signed with the secret, to try the route with -
+   * the claim it was signed in, kept with it, since the form's may change
+   * after, and when it expires - or why none could be signed.
+   */
+  token?: { value: string; exp: number; claim: string } | 'insecure' | 'failed';
+};
+
+/** A command or script, with a button that copies it. */
+const CopyBlock = ({ value }: { value: string }) => (
+  <Group gap={4} wrap="nowrap" align="flex-start">
+    <Code block style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+      {value}
+    </Code>
+    <CopyValue value={value} />
+  </Group>
+);
 
 /** How a caller presents what it was given, for the plugin's settings. */
 const Usage = ({
@@ -130,20 +156,80 @@ const Usage = ({
   config: Record<string, unknown>;
   created: Created;
 }) => {
+  const { t, i18n } = useTranslation();
+  if (plugin === 'hmac-auth') {
+    return (
+      <>
+        <Text size="xs" c="dimmed">
+          {t('form.plugins.clients.hmacTry')}
+        </Text>
+        <CopyBlock value={hmacScript(created.identifier, created.secret, config)} />
+      </>
+    );
+  }
+  if (plugin === 'jwt-auth') {
+    // The header jwt-auth reads, as the form holds it; the gateway takes the
+    // token with or without the Bearer word.
+    const header = usableHeader(config.header, 'authorization');
+    const { token } = created;
+    const signed = typeof token === 'object' ? token : undefined;
+    return (
+      <>
+        <Text size="xs" c="dimmed">
+          {t('form.plugins.clients.jwtHow', {
+            claim: jwtKeyClaim(config),
+            identifier: created.identifier,
+          })}
+        </Text>
+        {token === 'insecure' && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.jwtNoSign')}
+          </Text>
+        )}
+        {token === 'failed' && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.jwtSignFailed')}
+          </Text>
+        )}
+        {/* Only while the route reads the claim the token carries. */}
+        {signed && signed.claim !== jwtKeyClaim(config) && (
+          <Text size="xs" c="dimmed">
+            {t('form.plugins.clients.jwtClaimChanged')}
+          </Text>
+        )}
+        {signed && signed.claim === jwtKeyClaim(config) && (
+          <>
+            <Text size="xs" c="dimmed">
+              {t('form.plugins.clients.jwtTry', {
+                // In the page's language, with the day: an hour from now
+                // may be tomorrow.
+                time: new Date(signed.exp * 1000).toLocaleString(i18n.language, {
+                  dateStyle: 'short',
+                  timeStyle: 'short',
+                }),
+              })}
+            </Text>
+            <CopyBlock
+              value={`curl -H ${shellQuote(`${header}: Bearer ${signed.value}`)} http://<gateway>/<path>`}
+            />
+          </>
+        )}
+      </>
+    );
+  }
   // Quoted for the shell it is pasted into: the header is whatever the
   // plugin's form holds, and a quote in it would end the argument early.
   const credential =
     plugin === 'key-auth'
       ? `-H ${shellQuote(`${usableHeader(config.header)}: ${created.secret}`)}`
-      : `-u ${shellQuote(`${created.name}:${created.secret}`)}`;
-  const line = `curl ${credential} http://<gateway>/<path>`;
+      : `-u ${shellQuote(`${created.identifier}:${created.secret}`)}`;
   return (
-    <Group gap={4} wrap="nowrap" align="flex-start">
-      <Code block style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-        {line}
-      </Code>
-      <CopyValue value={line} />
-    </Group>
+    <>
+      <Text size="xs" c="dimmed">
+        {t('form.plugins.clients.tryIt')}
+      </Text>
+      <CopyBlock value={`curl ${credential} http://<gateway>/<path>`} />
+    </>
   );
 };
 
@@ -289,13 +375,14 @@ export const AuthClientsSection = ({
           throw e;
         }
       }
+      const identifier = clientIdentifier(name);
       try {
         await putCredentialReq(
           req,
           {
             username: name,
             id: credentialId(plugin),
-            plugins: { [plugin]: credentialConfig(plugin, name, secret) },
+            plugins: { [plugin]: credentialConfig(plugin, identifier, secret) },
           } as APISIXType['CredentialPut'] & { username: string },
           CREATE_ONLY
         );
@@ -307,9 +394,22 @@ export const AuthClientsSection = ({
         }
         throw e;
       }
+      // A token to try the route with, signed now, while the secret is at
+      // hand, and valid an hour from now: the text says until when.
+      let token: Created['token'];
+      if (plugin === 'jwt-auth' && !canSignJwt()) {
+        token = 'insecure';
+      } else if (plugin === 'jwt-auth') {
+        const exp = Math.floor(Date.now() / 1000) + 3600;
+        const claim = jwtKeyClaim(config);
+        token = await signJwt(claim, identifier, secret, exp)
+          .then((value) => ({ value, exp, claim }))
+          .catch(() => 'failed' as const);
+      }
+      return { identifier, token };
     },
-    onSuccess: () => {
-      setCreated({ name, secret });
+    onSuccess: ({ identifier, token }) => {
+      setCreated({ name, identifier, secret, token });
       // Made from this form to call this route: on its list at once.
       if (access.mode === 'only' && !access.names.includes(name)) {
         onAccessChange({ mode: 'only', names: [...access.names, name] });
@@ -329,7 +429,17 @@ export const AuthClientsSection = ({
   const secretLabel =
     plugin === 'key-auth'
       ? t('form.plugins.clients.key')
-      : t('form.plugins.clients.password');
+      : plugin === 'basic-auth'
+        ? t('form.plugins.clients.password')
+        : t('form.plugins.clients.secret');
+  const description =
+    plugin === 'key-auth'
+      ? t('form.plugins.clients.descKey')
+      : plugin === 'basic-auth'
+        ? t('form.plugins.clients.descBasic')
+        : plugin === 'jwt-auth'
+          ? t('form.plugins.clients.descJwt')
+          : t('form.plugins.clients.descHmac');
 
   return (
     <Paper withBorder radius="md" p="md" mt="md" data-testid="auth-clients">
@@ -337,9 +447,7 @@ export const AuthClientsSection = ({
         <div>
           <Title order={5}>{t('form.plugins.clients.title')}</Title>
           <Text size="sm" c="dimmed">
-            {plugin === 'key-auth'
-              ? t('form.plugins.clients.descKey')
-              : t('form.plugins.clients.descBasic')}
+            {description}
           </Text>
         </div>
 
@@ -419,15 +527,29 @@ export const AuthClientsSection = ({
               <Text size="sm" fw={600}>
                 {plugin === 'key-auth'
                   ? t('form.plugins.clients.createdKey', { name: created.name })
-                  : t('form.plugins.clients.createdPassword', { name: created.name })}
+                  : plugin === 'basic-auth'
+                    ? t('form.plugins.clients.createdPassword', { name: created.name })
+                    : t('form.plugins.clients.createdSecret', { name: created.name })}
               </Text>
               <Group gap={4} wrap="nowrap">
                 <Code style={{ flex: 1 }}>{created.secret}</Code>
                 <CopyValue value={created.secret} />
               </Group>
-              <Text size="xs" c="dimmed">
-                {t('form.plugins.clients.tryIt')}
-              </Text>
+              {plugin !== 'key-auth' && (
+                <>
+                  <Text size="xs" c="dimmed">
+                    {plugin === 'basic-auth'
+                      ? t('form.plugins.clients.identifierBasic')
+                      : plugin === 'jwt-auth'
+                        ? t('form.plugins.clients.identifierJwt')
+                        : t('form.plugins.clients.identifierHmac')}
+                  </Text>
+                  <Group gap={4} wrap="nowrap">
+                    <Code style={{ flex: 1 }}>{created.identifier}</Code>
+                    <CopyValue value={created.identifier} />
+                  </Group>
+                </>
+              )}
               <Usage plugin={plugin} config={config} created={created} />
             </Stack>
           </Alert>

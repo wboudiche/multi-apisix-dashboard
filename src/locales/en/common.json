@@ -479,7 +479,20 @@
         "accessPending": "Who can call it was changed in the Form tab, and is saved with this plugin.",
         "accessEmptyJson": "Who can call it: tick at least one client in the Form tab.",
         "notFound": "No such client on this gateway",
-        "alsoAsks": "This route also asks for {{plugins}}: a client gets through only with a credential of each."
+        "alsoAsks": "This route also asks for {{plugins}}: a client gets through only with a credential of each.",
+        "descJwt": "Clients holding a secret: each signs a JSON Web Token with it and sends it with every request. Only the clients you can see are listed.",
+        "descHmac": "Clients holding a secret key: each signs every request with it (HMAC). Only the clients you can see are listed.",
+        "secret": "Secret",
+        "createdSecret": "Client {{name}} created. Copy its secret now: it is not shown again here.",
+        "jwtHow": "The application signs its tokens with this secret, HS256, carrying the claims \"{{claim}}\": \"{{identifier}}\" and \"exp\", the time it expires.",
+        "jwtTry": "Once saved, this token gets through until {{time}}:",
+        "hmacTry": "Once saved, a request signed like this gets through (a shell script: set the gateway, the method, the path and any value left as 'value' first):",
+        "jwtNoSign": "This page cannot sign a token to try it with: signing needs the page served over HTTPS.",
+        "identifierBasic": "Its username:",
+        "identifierJwt": "Its key, the claim its tokens carry:",
+        "identifierHmac": "Its keyId, named in each signature:",
+        "jwtSignFailed": "No token could be signed here to try it with.",
+        "jwtClaimChanged": "The claim was changed since: create another client to get a token that carries it."
       }
     },
     "protos": {
