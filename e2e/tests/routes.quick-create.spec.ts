@@ -21,7 +21,7 @@ import { stack } from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
 
-import { API_CONSUMERS, API_ROUTES, API_UPSTREAMS } from '@/config/constant';
+import { API_CONSUMERS, API_ROUTES, API_SERVICES, API_UPSTREAMS } from '@/config/constant';
 import type { APISIXType } from '@/types/schema/apisix';
 
 /**
@@ -48,15 +48,16 @@ const openDialog = async (page: Page) => {
 };
 
 /**
- * The answers of `n` calls the gateway counted, sent one after the other. A
+ * The answers of `n` calls the gateway counted, sent one after the other,
+ * with a key when one is given. A
  * 404 is a gateway worker that has not read the route yet: no call to count,
  * so it is sent again. Fewer than `n` if the route never shows up.
  */
-const countedCalls = async (url: string, n: number): Promise<number[]> => {
+const countedCalls = async (url: string, n: number, apikey?: string): Promise<number[]> => {
   const counted: number[] = [];
   const deadline = Date.now() + 15000;
   while (counted.length < n && Date.now() < deadline) {
-    const status = await fetch(url).then((r) => r.status);
+    const status = await fetch(url, { headers: apikey ? { apikey } : {} }).then((r) => r.status);
     if (status !== 404) counted.push(status);
     else await new Promise((resolve) => setTimeout(resolve, 200));
   }
@@ -304,4 +305,67 @@ test('limits the calls to a route made in the dialog', async ({ page }) => {
     expect(counted.slice(0, 2)).not.toContain(429);
     expect(counted[2]).toBe(429);
   });
+});
+
+test('starts from the clients a route\'s service lets through, and can open it to all', async ({ page }) => {
+  const path = `${prefix}/on-service`;
+  const id = randomId('s');
+  const serviceId = `e2e-quick-svc-${id}`;
+  const allowed = `e2e-quick-sa-${id}`;
+  const other = `e2e-quick-sb-${id}`;
+  for (const username of [allowed, other]) {
+    await e2eReq.put(API_CONSUMERS, {
+      username,
+      plugins: { 'key-auth': { key: `${username}-key` } },
+    });
+  }
+  await e2eReq.put(`${API_SERVICES}/${serviceId}`, {
+    name: serviceId,
+    upstream: { type: 'roundrobin', nodes: { '127.0.0.1:1980': 1 } },
+    plugins: { 'key-auth': {}, 'consumer-restriction': { whitelist: [allowed] } },
+  });
+  try {
+    const dialog = await openDialog(page);
+    await dialog.getByRole('textbox', { name: 'Path' }).fill(path);
+    await dialog.locator('label').filter({ hasText: /^Service$/ }).click();
+    await dialog.getByRole('textbox', { name: 'Service' }).click();
+    await page.getByRole('option', { name: serviceId }).click();
+    await dialog.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
+
+    const clients = dialog.getByTestId('auth-clients');
+
+    await test.step('the service\'s clients are where the choice starts', async () => {
+      await expect(dialog.getByText('The service already limits who can call', { exact: false })).toBeVisible();
+      await expect(clients.getByRole('radio', { name: 'Only the clients picked' })).toBeChecked();
+      await expect(clients.getByText(allowed, { exact: true })).toBeVisible();
+    });
+
+    await test.step('every client, and the service\'s list no longer holds on this route', async () => {
+      await clients.getByRole('radio', { name: 'Every client holding a credential' }).check();
+      // A look at another destination and back keeps the choice made.
+      await dialog.locator('label').filter({ hasText: /^Address$/ }).click();
+      await dialog.locator('label').filter({ hasText: /^Service$/ }).click();
+      await expect(clients.getByRole('radio', { name: 'Every client holding a credential' })).toBeChecked();
+      await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+      await expect(dialog).toBeHidden();
+
+      const [route] = (await routesUnder()).filter((r) => r.uri === path);
+      expect(route.service_id).toBe(serviceId);
+      expect(route.plugins?.['consumer-restriction']).toEqual({
+        whitelist: [allowed],
+        _meta: { disable: true },
+      });
+      const counted = await countedCalls(`${stack.gateway}${path}`, 1, `${other}-key`);
+      expect(counted).toHaveLength(1);
+      expect([401, 403]).not.toContain(counted[0]);
+    });
+  } finally {
+    for (const route of (await routesUnder()).filter((r) => r.uri === path)) {
+      await e2eReq.delete(`${API_ROUTES}/${route.id}`).catch(() => null);
+    }
+    await e2eReq.delete(`${API_SERVICES}/${serviceId}`).catch(() => null);
+    for (const username of [allowed, other]) {
+      await e2eReq.delete(`${API_CONSUMERS}/${username}`).catch(() => null);
+    }
+  }
 });

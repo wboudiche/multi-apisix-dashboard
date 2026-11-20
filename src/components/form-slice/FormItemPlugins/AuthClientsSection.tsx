@@ -381,6 +381,11 @@ export type AuthClientsSectionProps = {
   storedNames: string[];
   /** The route's other authentication plugins, which a client must pass too. */
   otherPlugins: string[];
+  /**
+   * What to say of a restriction this list cannot show, when it is not the
+   * route's own plugin that holds it - the route's service's, say.
+   */
+  customNote?: string;
 };
 
 /** The name is a consumer already, one this account cannot see. */
@@ -401,6 +406,7 @@ export const AuthClientsSection = ({
   onAccessChange,
   storedNames,
   otherPlugins,
+  customNote,
 }: AuthClientsSectionProps) => {
   const { t } = useTranslation();
   const instanceId = useAtomValue(currentInstanceIdAtom);
@@ -570,7 +576,7 @@ export const AuthClientsSection = ({
         )}
         {access.mode === 'custom' && (
           <Alert color="blue" variant="light">
-            {t('form.plugins.clients.accessCustom')}
+            {customNote ?? t('form.plugins.clients.accessCustom')}
           </Alert>
         )}
 

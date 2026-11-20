@@ -65,7 +65,7 @@ import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
-import type { Restriction } from '@/utils/auth-clients';
+import { readRestriction, type Restriction, RESTRICTION_PLUGIN } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
 import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
@@ -82,6 +82,13 @@ type AccessChoice = 'anyone' | QuickAuthPlugin;
 
 /** A new authentication plugin's settings: its defaults, none of its own. */
 const NO_SETTINGS: Record<string, unknown> = {};
+/** A consumer-restriction in force: none, or one not switched off. */
+const activeRestriction = (config: unknown): unknown => {
+  if (!config || typeof config !== 'object') return undefined;
+  const meta = (config as { _meta?: { disable?: unknown } })._meta;
+  return meta && typeof meta === 'object' && meta.disable === true ? undefined : config;
+};
+
 const ANY_CLIENT: Record<QuickAuthPlugin, Restriction> = {
   'key-auth': { mode: 'any' },
   'basic-auth': { mode: 'any' },
@@ -180,6 +187,22 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     Object.keys(servicePlugins).filter(
       (n) => n !== plugin && getPluginCategory(n) === 'authentication'
     );
+  // The service's consumer-restriction, when it holds one in force: who it
+  // lets through is where the choice of clients starts. One switched off
+  // restricts nobody, and is none to start from.
+  const inheritedRestriction = activeRestriction(servicePlugins[RESTRICTION_PLUGIN]);
+  const inherited = inheritedRestriction === undefined ? undefined : readRestriction(inheritedRestriction);
+  // Seeded once a service is picked and read, and again only when another
+  // is: not when the destination is switched away and back, nor while the
+  // services are being read, which would throw away the clients picked.
+  const serviceRead = kind === 'service' && !!serviceId && !!services;
+  const [seededFor, setSeededFor] = useState<string | null>(null);
+  if (serviceRead && seededFor !== serviceId) {
+    setSeededFor(serviceId);
+    const start = inherited ?? { mode: 'any' as const };
+    setRestrictions({ 'key-auth': start, 'basic-auth': start });
+  }
+  const inheritedNames = inherited?.mode === 'only' ? inherited.names : NO_STORED_NAMES;
   const access: QuickAccess | undefined = duplicating
     ? undefined
     : accessChoice === 'anyone'
@@ -188,6 +211,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           plugin: accessChoice,
           restriction: restrictions[accessChoice],
           config: serviceConfig(accessChoice),
+          inheritedRestriction,
         };
   // The service's own limit, which a route's replaces rather than adds to.
   const serviceLimit = servicePlugins['limit-count'] as
@@ -279,6 +303,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     setTypedName(initial?.name ?? null);
     setAccessChoice('anyone');
     setRestrictions(ANY_CLIENT);
+    setSeededFor(null);
     setShownSections([]);
     setLimitOn(false);
     setLimitCount(100);
@@ -528,6 +553,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
             {accessChoice === 'basic-auth' && (
               <Text size="xs" c="orange">{t('form.quickRoute.accessBasicHint')}</Text>
             )}
+            {inherited && inherited.mode !== 'custom' && accessChoice !== 'anyone' && (
+              <Text size="xs" c="orange">{t('form.quickRoute.accessService')}</Text>
+            )}
             {shownSections.map((plugin) => (
               <Box key={plugin} display={plugin === accessChoice ? undefined : 'none'}>
                 <AuthClientsSection
@@ -535,8 +563,9 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
                   config={serviceConfig(plugin)}
                   access={restrictions[plugin]}
                   onAccessChange={(next) => setRestrictions((r) => ({ ...r, [plugin]: next }))}
-                  storedNames={NO_STORED_NAMES}
+                  storedNames={inheritedNames}
                   otherPlugins={otherAuthPlugins(plugin)}
+                  customNote={t('form.quickRoute.accessServiceCustom')}
                 />
               </Box>
             ))}

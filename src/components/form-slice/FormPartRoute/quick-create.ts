@@ -46,7 +46,17 @@ export type QuickAuthPlugin = (typeof QUICK_AUTH_PLUGINS)[number];
  */
 export type QuickAccess =
   | { plugin: null }
-  | { plugin: QuickAuthPlugin; restriction: Restriction; config?: Record<string, unknown> };
+  | {
+      plugin: QuickAuthPlugin;
+      restriction: Restriction;
+      config?: Record<string, unknown>;
+      /**
+       * The consumer-restriction the route's service holds, which the
+       * route's own replaces: the choice starts from it, and a route that
+       * lets every client through has to say so, or the service's holds.
+       */
+      inheritedRestriction?: unknown;
+    };
 
 /** The dialog's answers: what a route needs, and nothing it can do without. */
 export type QuickRoute = {
@@ -105,12 +115,53 @@ export const accessPlugins = (
   access: QuickAccess | undefined
 ): Record<string, Record<string, unknown>> => {
   if (!access?.plugin) return {};
-  const { plugin, restriction, config } = access;
-  const allowList = restriction.mode === 'only' ? writeRestriction(undefined, restriction.names) : null;
+  const { plugin, restriction, config, inheritedRestriction } = access;
   return {
     [plugin]: { ...config },
-    ...(allowList && { [RESTRICTION_PLUGIN]: allowList }),
+    ...restrictionPlugin(restriction, inheritedRestriction),
   };
+};
+
+/**
+ * The consumer-restriction a choice of clients comes to, on a route whose
+ * service may hold one of its own.
+ *
+ * - Only the clients picked: an allow-list, keeping how the service's
+ *   answers a client turned away - its rejection code and message.
+ * - Every client: nothing, unless the service restricts; then the service's,
+ *   switched off for this route. A route's plugin replaces its service's, and
+ *   the gateway checks a plugin's settings even switched off, so it is the
+ *   service's own that is switched off rather than an empty one.
+ * - A restriction the dialog cannot show - the service's deny-list, by
+ *   method, by group: nothing, so the service's holds as it is.
+ */
+/**
+ * What of the service's restriction an allow-list of the route's keeps: how
+ * it answers a client turned away, and nothing else. Not its _meta - one
+ * switched off or on a filter would open the route, and a priority above the
+ * authentication's would refuse every call - nor a deny-list besides.
+ */
+const answerSettings = (inherited: unknown): Record<string, unknown> => {
+  if (!inherited || typeof inherited !== 'object') return {};
+  const { rejected_code, rejected_msg } = inherited as Record<string, unknown>;
+  return {
+    ...(rejected_code !== undefined && { rejected_code }),
+    ...(rejected_msg !== undefined && { rejected_msg }),
+  };
+};
+
+const restrictionPlugin = (
+  restriction: Restriction,
+  inherited: unknown
+): Record<string, Record<string, unknown>> => {
+  if (restriction.mode === 'only') {
+    const allowList = writeRestriction(answerSettings(inherited), restriction.names);
+    return allowList ? { [RESTRICTION_PLUGIN]: allowList } : {};
+  }
+  if (restriction.mode === 'custom' || !inherited || typeof inherited !== 'object') return {};
+  const service = inherited as Record<string, unknown>;
+  const meta = service._meta && typeof service._meta === 'object' ? service._meta : {};
+  return { [RESTRICTION_PLUGIN]: { ...service, _meta: { ...meta, disable: true } } };
 };
 
 /** The timeouts the wizard starts a new upstream with. */
