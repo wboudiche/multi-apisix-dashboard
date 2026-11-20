@@ -19,12 +19,12 @@ import {
   Alert,
   Badge,
   Button,
-  Checkbox,
   Code,
   CopyButton,
   Divider,
   Group,
   Loader,
+  MultiSelect,
   Paper,
   Radio,
   Stack,
@@ -64,6 +64,7 @@ import {
   signJwt,
   usableHeader,
 } from '@/utils/auth-clients';
+import { mapLimit } from '@/utils/map-limit';
 import IconAdd from '~icons/material-symbols/add';
 import IconCheck from '~icons/material-symbols/check';
 import IconCopy from '~icons/material-symbols/content-copy-outline';
@@ -78,14 +79,18 @@ type Clients = {
 
 // Every consumer of the gateway, with what each holds. APISIX lists a
 // consumer's credentials separately, so this is one request per consumer:
-// fine for the tens a gateway has, and only asked for while the form is open.
+// a few at a time, so that a gateway with hundreds of them does not get them
+// all at once each time the form is opened.
+const CREDENTIAL_READS_AT_ONCE = 8;
+/** Holders shown by name before the rest are folded away. */
+const HOLDERS_SHOWN = 10;
+
 const fetchClients = async (plugin: AuthClientPlugin): Promise<Clients> => {
   const consumers = await req
     // No page asked for: the gateway then answers with every consumer.
     .get<unknown, APISIXType['RespConsumerList']>(API_CONSUMERS)
     .then((v) => v.data.list.map((item) => item.value));
-  const holders = await Promise.all(
-    consumers.map(async (consumer) => {
+  const holders = await mapLimit(consumers, CREDENTIAL_READS_AT_ONCE, async (consumer) => {
       if (holdsCredential(plugin, consumer, [])) return consumer.username;
       const creds = await getCredentialListReq(req, { username: consumer.username });
       return holdsCredential(
@@ -95,8 +100,7 @@ const fetchClients = async (plugin: AuthClientPlugin): Promise<Clients> => {
       )
         ? consumer.username
         : undefined;
-    })
-  );
+  });
   return {
     holders: holders.filter((n): n is string => !!n).sort(),
     all: consumers.map((c) => c.username),
@@ -234,11 +238,13 @@ const Usage = ({
 };
 
 /**
- * The clients the route lets through, ticked: those holding a credential of
- * the plugin, and any name already on the list - another plugin's client, or
- * one this account cannot see - so that saving does not drop it unseen.
+ * The clients the route lets through, picked from a list that can be searched:
+ * those holding a credential of the plugin, and any name already on the list
+ * - another plugin's client, or one this account cannot see - so that saving
+ * does not drop it unseen. A list of checkboxes grew with the gateway, one
+ * line per client; this one stays the height of the names picked.
  */
-const ClientChecklist = ({
+const ClientPicker = ({
   clients,
   names,
   readOnly,
@@ -253,12 +259,15 @@ const ClientChecklist = ({
   // An admin of the instance sees every client, as a super admin does: for
   // them a name nobody holds is gone, not out of sight.
   const { isAdmin } = usePermission();
+  // Closed once a name is picked: left open, the list lies over the drawer's
+  // Add, and a click meant for it picks another client. A click or a letter
+  // in the field opens it again.
+  const [opened, setOpened] = useState(false);
   const holders = clients?.holders ?? [];
   const options = [...new Set([...holders, ...names])].sort();
   // Why a name is on the list and cannot get through this plugin: it holds
   // no credential of it, or it is no client at all. One this account cannot
-  // see may well hold one, and is not to be taken for dead; a super admin
-  // sees every client, so for them a name nobody holds is gone.
+  // see may well hold one, and is not to be taken for dead.
   const hint = (option: string): string | undefined => {
     if (!clients || holders.includes(option)) return undefined;
     if (clients.all.includes(option)) return t('form.plugins.clients.noCredential');
@@ -266,33 +275,81 @@ const ClientChecklist = ({
       ? t('form.plugins.clients.notFound')
       : t('form.plugins.clients.notVisible');
   };
+  const problems = names.flatMap((name) => {
+    const why = hint(name);
+    return why ? [{ name, why }] : [];
+  });
+  if (options.length === 0 && clients) {
+    return (
+      <Alert color="yellow" variant="light">
+        {t('form.plugins.clients.none')}
+      </Alert>
+    );
+  }
   return (
     <Stack gap="xs">
-      {options.length === 0 && !clients ? null : options.length === 0 ? (
-        <Alert color="yellow" variant="light">
-          {t('form.plugins.clients.none')}
-        </Alert>
-      ) : (
-        <Checkbox.Group value={names} onChange={onChange}>
-          <Stack gap={6}>
-            {options.map((option) => (
-              <Checkbox
-                key={option}
-                value={option}
-                disabled={readOnly}
-                label={option}
-                description={hint(option)}
-              />
-            ))}
-          </Stack>
-        </Checkbox.Group>
-      )}
-      {names.length === 0 && (
-        <Text size="sm" c="red">
-          {t('form.plugins.clients.accessEmpty')}
-        </Text>
-      )}
+      <MultiSelect
+        label={t('form.plugins.clients.pick')}
+        // Mantine keeps showing the placeholder beside the names picked.
+        placeholder={names.length ? undefined : t('form.plugins.clients.pickPlaceholder')}
+        data={options}
+        value={names}
+        onChange={(next) => {
+          if (next.length > names.length) setOpened(false);
+          onChange(next);
+        }}
+        dropdownOpened={opened}
+        onDropdownOpen={() => setOpened(true)}
+        onDropdownClose={() => setOpened(false)}
+        searchable
+        hidePickedOptions
+        nothingFoundMessage={t('form.plugins.clients.noMatch')}
+        // Hundreds of options are drawn as hundreds of elements: the first
+        // ones are shown, and typing narrows down to the rest.
+        limit={50}
+        maxDropdownHeight={240}
+        clearable
+        clearButtonProps={{
+          'aria-label': t('form.plugins.clients.clearPicked'),
+          'aria-hidden': false,
+          tabIndex: 0,
+        }}
+        disabled={readOnly}
+        error={names.length === 0 ? t('form.plugins.clients.accessEmpty') : undefined}
+        data-testid="client-picker"
+      />
+      {problems.map(({ name, why }) => (
+        <Group key={name} gap={6} wrap="nowrap" align="baseline">
+          <Code>{name}</Code>
+          <Text size="xs" c="orange.8">
+            {why}
+          </Text>
+        </Group>
+      ))}
     </Stack>
+  );
+};
+
+/** The clients holding a credential: the first few by name, the rest folded. */
+const HolderList = ({ holders }: { holders: string[] }) => {
+  const { t } = useTranslation();
+  const [all, setAll] = useState(false);
+  const shown = all ? holders : holders.slice(0, HOLDERS_SHOWN);
+  return (
+    <Group gap="xs">
+      {shown.map((holder) => (
+        <Badge key={holder} variant="light" color="gray" size="lg" tt="none">
+          {holder}
+        </Badge>
+      ))}
+      {holders.length > HOLDERS_SHOWN && (
+        <Button variant="subtle" size="compact-sm" onClick={() => setAll((a) => !a)}>
+          {all
+            ? t('form.plugins.clients.showFewer')
+            : t('form.plugins.clients.showAll', { total: holders.length })}
+        </Button>
+      )}
+    </Group>
   );
 };
 
@@ -491,7 +548,7 @@ export const AuthClientsSection = ({
         )}
 
         {access.mode === 'only' && (
-          <ClientChecklist
+          <ClientPicker
             // While the clients are read, or when they could not be, the
             // names already on the list are still shown, and can be ticked.
             clients={clients.data}
@@ -512,13 +569,7 @@ export const AuthClientsSection = ({
               {t('form.plugins.clients.none')}
             </Alert>
           ) : (
-            <Group gap="xs">
-              {clients.data.holders.map((holder) => (
-                <Badge key={holder} variant="light" color="gray" size="lg" tt="none">
-                  {holder}
-                </Badge>
-              ))}
-            </Group>
+            <HolderList holders={clients.data.holders} />
           ))}
 
         {created && (

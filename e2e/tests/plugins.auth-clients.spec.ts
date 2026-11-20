@@ -100,7 +100,7 @@ type PluginConfigList = {
   list: { value: { id: string; name?: string; plugins: Record<string, Record<string, unknown>> } }[];
 };
 
-test('an auth plugin narrows who may call to the clients ticked', async ({ page }) => {
+test('an auth plugin narrows who may call to the clients picked', async ({ page }) => {
   const id = nanoid();
   const allowed = `${PREFIX}-a-${id}`;
   const other = `${PREFIX}-b-${id}`;
@@ -128,11 +128,15 @@ test('an auth plugin narrows who may call to the clients ticked', async ({ page 
     });
 
     await test.step('narrowed to one, the plugin waits for a name', async () => {
-      await clients.getByRole('radio', { name: 'Only the clients ticked' }).check();
-      await expect(clients.getByText('Tick at least one client.')).toBeVisible();
+      await clients.getByRole('radio', { name: 'Only the clients picked' }).check();
+      await expect(clients.getByText('Pick at least one client.')).toBeVisible();
       await expect(drawer.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
-      await clients.getByRole('checkbox', { name: allowed }).check();
-      await expect(clients.getByRole('checkbox', { name: other })).not.toBeChecked();
+      // Found by typing part of its name, as among hundreds of clients.
+      const pick = clients.getByRole('textbox', { name: 'Clients allowed' });
+      await pick.fill(`a-${id}`);
+      await expect(page.getByRole('option', { name: other })).toBeHidden();
+      await page.getByRole('option', { name: allowed }).click();
+      await expect(clients.getByText('Pick at least one client.')).toBeHidden();
       await drawer.getByRole('button', { name: 'Add', exact: true }).click();
       await expect(drawer).toBeHidden();
     });

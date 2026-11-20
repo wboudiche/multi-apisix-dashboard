@@ -465,7 +465,13 @@
         "identifierJwt": "Sein Schlüssel, der Claim seiner Tokens:",
         "identifierHmac": "Seine keyId, in jeder Signatur genannt:",
         "jwtSignFailed": "Hier konnte kein Token zum Ausprobieren signiert werden.",
-        "jwtClaimChanged": "Der Claim wurde inzwischen geändert: Erstellen Sie einen weiteren Client, um ein Token mit ihm zu erhalten."
+        "jwtClaimChanged": "Der Claim wurde inzwischen geändert: Erstellen Sie einen weiteren Client, um ein Token mit ihm zu erhalten.",
+        "pick": "Zugelassene Clients",
+        "pickPlaceholder": "Namen eingeben, um zu suchen",
+        "noMatch": "Kein Client mit diesem Namen",
+        "clearPicked": "Alle ausgewählten Clients entfernen",
+        "showAll": "Alle anzeigen ({{total}})",
+        "showFewer": "Weniger anzeigen"
       },
       "oidc": {
         "test": "Adresse testen",

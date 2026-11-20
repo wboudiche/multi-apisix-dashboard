@@ -90,7 +90,7 @@ describe('auth clients', () => {
     expect(usableHeader(undefined)).toBe('apikey');
   });
 
-  it('reads an allow-list of consumer names as the clients ticked', () => {
+  it('reads an allow-list of consumer names as the clients picked', () => {
     expect(readRestriction(undefined)).toEqual({ mode: 'any' });
     expect(readRestriction({ whitelist: ['a', 'b'] })).toEqual({ mode: 'only', names: ['a', 'b'] });
     expect(
