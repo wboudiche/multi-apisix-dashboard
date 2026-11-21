@@ -49,12 +49,14 @@ test('the plugin picker scrolls to its last plugin', async ({ page }) => {
   // scrolling told nobody there was more below.
   await expect(dialog.locator('.mantine-ScrollArea-scrollbar[data-orientation="vertical"]')).toBeVisible();
   // One box scrolls, not the drawer around it as well.
-  expect(
-    await dialog.evaluate((el) => {
-      const content = el.closest('.mantine-Drawer-content') ?? el;
-      return content.scrollHeight - content.clientHeight;
-    })
-  ).toBeLessThanOrEqual(1);
+  await expect
+    .poll(() =>
+      dialog.evaluate((el) => {
+        const content = el.closest('.mantine-Drawer-content') ?? el;
+        return content.scrollHeight - content.clientHeight;
+      })
+    )
+    .toBeLessThanOrEqual(1);
 
   await first.hover();
   await expect(async () => {

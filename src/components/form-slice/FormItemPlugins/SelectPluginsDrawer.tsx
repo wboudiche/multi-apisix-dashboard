@@ -91,7 +91,7 @@ export const SelectPluginsDrawer = (props: SelectPluginsDrawerProps) => {
 
         {/* A scrollbar in sight from the start: shown only while scrolling,
             nothing said there were dozens of plugins below the first screen. */}
-        <ScrollArea flex={1} mih={0} type="auto">
+        <ScrollArea flex={1} mih={0} type="auto" offsetScrollbars="y">
           <Stack gap="md">
             {CATEGORY_ORDER.map((cat: PluginCategory) => {
               const catPlugins = groupedPlugins[cat];

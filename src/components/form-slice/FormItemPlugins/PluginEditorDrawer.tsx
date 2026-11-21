@@ -492,7 +492,10 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
 
       {editorMode === 'form' && canShowForm ? (
         <>
-          <ScrollArea.Autosize mah="65vh" type="scroll">
+          {/* Its scrollbar in sight whenever the fields overflow, as in the
+              picker: shown only while scrolling, nothing said there were
+              more fields below. */}
+          <ScrollArea.Autosize mah="65vh" type="auto" offsetScrollbars="y">
             <PluginSchemaForm
               schema={schemaObj}
               value={formValue}
