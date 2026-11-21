@@ -169,7 +169,8 @@ test('copies the route as it is now, not as a page read it before', async ({ pag
   // Then it changes behind the dashboard's back.
   await putRouteReq(e2eReq, { ...route, host: 'changed.example.com' });
 
-  await routesPom.getRouteNavBtn(page).click();
+  // Back, not the menu: the list as it was, every route on one page.
+  await page.goBack();
   await routesPom.isIndexPage(page);
   await openMoreMenu(page, ROUTE_NAME);
   await page.getByRole('menuitem', { name: 'Duplicate' }).click();

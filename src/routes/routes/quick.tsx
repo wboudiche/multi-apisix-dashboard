@@ -26,6 +26,7 @@ import { getRouteQueryOptions } from '@/apis/hooks';
 import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { QuickRouteForm } from '@/components/page/QuickRouteForm';
+import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { proxyFailureText } from '@/utils/team-refusal';
 
@@ -48,19 +49,19 @@ const NewRoute = (leave: Leave) => {
  * alone. A key of its own: the detail page's cached record may be an older
  * version than the one the list showed, and a copy must start from the
  * route as it is. Dropped once the page is left (gcTime 0), so an answer
- * from a gateway out of reach is not kept for the next copy. Never
- * refetched while the page is open: a refetch that found the route gone, or
- * the gateway out of reach, would swap the form for a message and throw
- * away what was typed in it.
+ * from a gateway out of reach is not kept for the next copy. Switched off
+ * once it has an answer, so nothing refetches it while the page is open -
+ * not a focus, nor an invalidation (the proxy banner's Retry): a refetch that
+ * found the route gone, or the gateway out of reach, would swap the form for
+ * a message and throw away what was typed in it.
  */
 const sourceQuery = (id: string) => {
   const detail = getRouteQueryOptions(id);
   return {
     ...detail,
     queryKey: ['route-copy', ...detail.queryKey.slice(1)] as unknown as typeof detail.queryKey,
-    staleTime: Infinity,
     gcTime: 0,
-    refetchOnWindowFocus: false,
+    enabled: (query: { state: { data: unknown } }) => query.state.data === undefined,
   };
 };
 
@@ -97,6 +98,8 @@ const DuplicateRoute = ({ id, ...leave }: Leave & { id: string }) => {
  * The quick route, on a page of its own: `?from=<id>` duplicates that route.
  */
 function RouteComponent() {
+  const { t } = useTranslation();
+  const { role, canCreate } = usePermission();
   // Read from the address as typed: the router parses an unquoted all-digit
   // id - as APISIX's are - as a number, which rounds one of 17 digits or
   // more to another route's. A link the app makes quotes it.
@@ -133,6 +136,24 @@ function RouteComponent() {
     onCancel: back,
   };
 
+  // The way in from the list is offered only to whoever may create; the
+  // address is open to anyone, and says so rather than taking answers the
+  // proxy would refuse. Nothing until the role is known: an admin is not
+  // told they may not, a moment before they may.
+  if (!role) return null;
+  if (!canCreate) {
+    return (
+      <Stack align="flex-start">
+        <PageHeader title={t('form.quickRoute.title')} />
+        <Alert color="yellow" variant="light" w="100%">
+          {t('error.forbidden')}
+        </Alert>
+        <Button variant="light" onClick={back}>
+          {t('form.btn.backToList')}
+        </Button>
+      </Stack>
+    );
+  }
   if (!from) return <NewRoute {...leave} />;
   return (
     // Keyed by the route: another one to copy is another page.

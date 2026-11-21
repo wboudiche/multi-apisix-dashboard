@@ -179,7 +179,7 @@ describe('quickRouteToDraft', () => {
   });
 });
 
-describe('what the dialog may not post', () => {
+describe('what the quick page may not post', () => {
   it('refuses an address that carries more than where the backend is', () => {
     for (const url of [
       'http://user:pw@backend:8080',
@@ -237,7 +237,7 @@ describe('quickRouteErrors', () => {
 
   it('holds what it posts to the wizard\'s own schema', () => {
     // A methods value the schema refuses stands in for any rule the wizard's
-    // schema has and the dialog's own checks do not.
+    // schema has and the quick page's own checks do not.
     const errors = quickRouteErrors({ ...base, methods: ['BREW'] });
     expect(errors.other?.length).toBeGreaterThan(0);
   });

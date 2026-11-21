@@ -125,6 +125,23 @@ test('is a page of its own, which Cancel leaves for the list', async ({ page }) 
   expect((await routesUnder()).filter((r) => r.uri === path)).toHaveLength(0);
 });
 
+test('asks before a link elsewhere throws away what was typed', async ({ page }) => {
+  const path = `${prefix}/asked`;
+  const form = await openForm(page);
+  await form.getByRole('textbox', { name: 'Path' }).fill(path);
+  const ask = page.getByRole('dialog', { name: 'Unsaved Changes' });
+
+  await page.getByRole('link', { name: 'Upstreams', exact: true }).click();
+  await expect(ask).toBeVisible();
+  await ask.getByRole('button', { name: 'Stay' }).click();
+  await expect(page).toHaveURL((url) => url.pathname.endsWith('/routes/quick'));
+  await expect(form.getByRole('textbox', { name: 'Path' })).toHaveValue(path);
+
+  await page.getByRole('link', { name: 'Upstreams', exact: true }).click();
+  await ask.getByRole('button', { name: 'Leave' }).click();
+  await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
+});
+
 test('opened by its address, lands on the list with the route made', async ({ page }) => {
   const path = `${prefix}/direct`;
   await uiGoto(page, '/routes/quick');

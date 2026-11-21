@@ -260,7 +260,7 @@ describe('a route bound to a service', () => {
 });
 
 describe('what the gateway decides', () => {
-  it('leaves to it a setting of the route the dialog does not touch', () => {
+  it('leaves to it a setting of the route the quick page does not touch', () => {
     const odd = { ...source, plugins: { 'limit-count': 'not an object' } } as unknown as APISIXType['Route'];
     expect(duplicateRouteErrors(odd, quickRouteFromRoute(odd, 'x'))).toEqual({});
   });

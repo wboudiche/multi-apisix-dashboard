@@ -21,6 +21,7 @@ import {
   Chip,
   Group,
   List,
+  Modal,
   NumberInput,
   Paper,
   SegmentedControl,
@@ -33,9 +34,9 @@ import {
 } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { useNavigate } from '@tanstack/react-router';
+import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { postRouteReq } from '@/apis/routes';
@@ -294,10 +295,16 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     );
   }, [existing, name, path, methods]);
 
+  // Set on the way out through one of the form's own buttons, which is
+  // where it means to go.
+  const leavingRef = useRef(false);
+
   // Not while a route is being posted: its answer, success or refusal, has to
   // land on a page that is still there to show it.
   const leave = () => {
-    if (!submitting) onCancel();
+    if (submitting) return;
+    leavingRef.current = true;
+    onCancel();
   };
 
   const create = async (status: 0 | 1) => {
@@ -305,6 +312,9 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     setSubmitError(null);
     if (!valid) return;
     setSubmitting(true);
+    // Free to leave while it is posted: what was typed is on its way, and
+    // its answer is notified wherever the user went.
+    leavingRef.current = true;
     try {
       if (source) {
         // The copy belongs to the original's team, not to whichever the
@@ -322,6 +332,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       });
       onCreated();
     } catch (err) {
+      leavingRef.current = false;
       // Shown here too: `req` already notifies a refusal, which is what
       // tells someone who left the page while it was being posted.
       setSubmitError(proxyFailureText(err) || t('routes.createFailed'));
@@ -345,6 +356,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
   const openWizard = () => {
+    leavingRef.current = true;
     if (untouched) {
       void navigate({ to: '/routes/add' });
       return;
@@ -370,8 +382,23 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       children: <Text size="sm">{t('form.quickRoute.replaceDraftBody')}</Text>,
       labels: { confirm: t('form.quickRoute.replaceDraftConfirm'), cancel: t('form.btn.cancel') },
       onConfirm: go,
+      // Kept on the page: its answers are still to be asked about.
+      onCancel: () => {
+        leavingRef.current = false;
+      },
     });
   };
+
+  // Whatever is typed is asked about before it is thrown away: by a link in
+  // the menu, Back, or closing the tab. Not on the way out through Cancel,
+  // Create or the advanced form, which are the ways out it offers.
+  const [startedAs] = useState(() => JSON.stringify(answers));
+  const touched = duplicating ? JSON.stringify(answers) !== startedAs : !untouched;
+  const blocker = useBlocker({
+    shouldBlockFn: () => touched && !leavingRef.current,
+    enableBeforeUnload: () => touched && !leavingRef.current,
+    withResolver: true,
+  });
 
   return (
     // A region named as the page is: what the form is for, to a screen reader.
@@ -382,6 +409,23 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       radius="md"
       withBorder
     >
+      <Modal
+        opened={blocker.status === 'blocked'}
+        onClose={() => blocker.reset?.()}
+        title={t('form.unsavedChanges.title')}
+        centered
+        size="sm"
+      >
+        <Text size="sm" mb="lg">{t('form.unsavedChanges.message')}</Text>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="outline" color="gray" onClick={() => blocker.reset?.()}>
+            {t('form.unsavedChanges.stay')}
+          </Button>
+          <Button color="red" onClick={() => blocker.proceed?.()}>
+            {t('form.unsavedChanges.leave')}
+          </Button>
+        </Group>
+      </Modal>
       <Stack gap="md">
         {/* A copy says what it carries; a new route's fields say enough. */}
         {duplicating && (
