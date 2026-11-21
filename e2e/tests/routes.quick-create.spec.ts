@@ -374,7 +374,7 @@ test('scrolls to its last field on a short screen', async ({ page }) => {
   // The dialog with a key's clients and a limit is taller than this screen.
   await page.setViewportSize({ width: 1280, height: 700 });
   const dialog = await openDialog(page);
-  await dialog.getByText('Clients with a key', { exact: true }).click();
+  await dialog.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
   await dialog.locator('label').filter({ hasText: /^Limit the number of calls$/ }).click();
 
   // The wheel, not a click: a click scrolls its target into view on its own,
@@ -385,5 +385,5 @@ test('scrolls to its last field on a short screen', async ({ page }) => {
   await expect(async () => {
     await page.mouse.wheel(0, 600);
     await expect(create).toBeInViewport({ timeout: 500 });
-  }).toPass();
+  }).toPass({ timeout: 10000 });
 });
