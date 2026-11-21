@@ -19,6 +19,7 @@ import { upstreamsPom } from '@e2e/pom/upstreams';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
+import { uiGoto } from '@e2e/utils/ui';
 import { expect, type Page } from '@playwright/test';
 
 import { putRouteReq } from '@/apis/routes';
@@ -106,20 +107,25 @@ test('keeps the scheme picked, the tables with it, across a reload', async ({ pa
 
 /**
  * The contrast of a field's text on what is behind it, as it is drawn: its
- * colour faded by its opacity over the first background that is not clear.
+ * colour, with its own alpha and the opacity of it and every ancestor, over
+ * the first background that is not clear - the page's own when none is.
  */
 const fieldContrast = (page: Page, label: string) =>
   page.getByRole('textbox', { name: label, exact: true }).first().evaluate((el) => {
-    const rgb = (c: string) => c.match(/[\d.]+/g)!.map(Number);
-    const style = getComputedStyle(el);
-    let back: HTMLElement | null = el as HTMLElement;
-    let bg = rgb(getComputedStyle(back).backgroundColor);
-    while (back && (bg[3] ?? 1) === 0) {
-      back = back.parentElement;
-      bg = back ? rgb(getComputedStyle(back).backgroundColor) : [255, 255, 255];
+    const rgba = (c: string) => {
+      const [r, g, b, a = 1] = c.match(/[\d.]+/g)!.map(Number);
+      return { rgb: [r, g, b], a };
+    };
+    let alpha = rgba(getComputedStyle(el).color).a;
+    let bg: number[] | undefined;
+    for (let node: Element | null = el; node; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      alpha *= Number(style.opacity);
+      const back = rgba(style.backgroundColor);
+      if (!bg && back.a > 0) bg = back.rgb;
     }
-    const alpha = Number(style.opacity);
-    const fg = rgb(style.color).slice(0, 3).map((c, i) => c * alpha + bg[i] * (1 - alpha));
+    bg ??= rgba(getComputedStyle(document.body).backgroundColor).rgb;
+    const fg = rgba(getComputedStyle(el).color).rgb.map((c, i) => c * alpha + bg![i] * (1 - alpha));
     const lum = ([r, g, b]: number[]) => {
       const ch = (v: number) => {
         const s = v / 255;
@@ -127,7 +133,7 @@ const fieldContrast = (page: Page, label: string) =>
       };
       return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
     };
-    const [hi, lo] = [lum(fg), lum(bg.slice(0, 3))].sort((a, b) => b - a);
+    const [hi, lo] = [lum(fg), lum(bg)].sort((a, b) => b - a);
     return (hi + 0.05) / (lo + 0.05);
   });
 
@@ -143,11 +149,22 @@ test('shows a record\'s fields readable, in either scheme', async ({ page }) => 
     for (const colorScheme of ['dark', 'light'] as const) {
       await test.step(colorScheme, async () => {
         await page.emulateMedia({ colorScheme });
-        await routesPom.toIndex(page);
-        await page.goto(`${page.url().replace(/\/routes.*$/, '')}/routes/detail/${id}`);
+        await uiGoto(page, '/routes/detail/$id', { id });
         await routesPom.isDetailPage(page);
-        await expect(page.getByRole('textbox', { name: 'Name', exact: true }).first()).toHaveValue(`${id}-name`);
-        expect(await fieldContrast(page, 'Name')).toBeGreaterThanOrEqual(4.5);
+        await expect.poll(() => scheme(page)).toBe(colorScheme);
+        const name = page.getByRole('textbox', { name: 'Name', exact: true }).first();
+        await expect(name).toHaveValue(`${id}-name`);
+        await expect(name).toBeDisabled();
+        // Polled: the inputs ease their colours in, and a first frame reads
+        // halfway between the page's defaults and the scheme's.
+        await expect.poll(() => fieldContrast(page, 'Name')).toBeGreaterThanOrEqual(4.5);
+        // Set apart from a field to type in, now that it is not faded: by a
+        // background other than the card's every input has.
+        const [field, card] = await name.evaluate((el) => [
+          getComputedStyle(el).backgroundColor,
+          getComputedStyle(el.closest('.mantine-Paper-root, [class*="Fieldset"]') ?? document.body).backgroundColor,
+        ]);
+        expect(field).not.toBe(card);
       });
     }
   } finally {

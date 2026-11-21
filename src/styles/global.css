@@ -607,13 +607,32 @@ select:focus,
 
 /* A detail page shows its record in disabled fields: their value is there to
    be read, not greyed out of the way. Mantine dims one twice - its dimmed
-   colour, then 0.6 opacity - which left 1.6:1 on the dark surface, and under
-   4.5:1 on the light one too. The field still looks set apart, by its
-   background and its cursor. */
+   colour, then 0.6 opacity - which left 1.8:1 on the dark surface, and under
+   4.5:1 on the light one too. Its value is now read in full, and the field
+   is set apart by a background of its own instead: the input rule above
+   gives every field the card's, disabled or not, so the fade was all that
+   told a locked field from one to type in. The placeholder of an empty one
+   stays faint, so that it does not pass for a value. */
 .mantine-Input-input:disabled,
 .mantine-Input-input[data-disabled] {
+  background: var(--bg-secondary) !important;
   color: var(--text-secondary) !important;
+  /* WebKit colours a disabled field's text by this, over color. */
+  -webkit-text-fill-color: var(--text-secondary) !important;
   opacity: 1 !important;
+}
+
+.mantine-Input-input:disabled::placeholder,
+.mantine-Input-input[data-disabled] ::placeholder,
+.mantine-Input-input[data-disabled]::placeholder {
+  color: var(--text-muted) !important;
+  -webkit-text-fill-color: var(--text-muted) !important;
+}
+
+/* The pills of a field shown, not edited - a route's labels - keep the
+   card's background, or they melt into the field's own. */
+.mantine-Input-input[data-disabled] .mantine-Pill-root {
+  background: var(--bg-card) !important;
 }
 
 /* ===== SegmentedControl ===== */
