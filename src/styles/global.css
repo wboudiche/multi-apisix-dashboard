@@ -466,7 +466,8 @@ select:focus,
   border: none !important;
   border-radius: var(--radius-xl) !important;
   box-shadow: var(--shadow-xl) !important;
-  overflow: hidden;
+  /* No overflow here: Mantine scrolls a dialog taller than the screen inside
+     its content box, and `overflow: hidden` cut that dialog off instead. */
 }
 
 [class*="Modal-header"] {
