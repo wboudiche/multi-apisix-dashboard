@@ -25,6 +25,7 @@ import {
   Modal,
   NumberInput,
   Paper,
+  Radio,
   SegmentedControl,
   Select,
   SimpleGrid,
@@ -67,7 +68,7 @@ import { API_ROUTES } from '@/config/constant';
 import { req } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { currentInstanceIdAtom } from '@/stores/instance';
-import type { APISIXType } from '@/types/schema/apisix';
+import { APISIX, type APISIXType } from '@/types/schema/apisix';
 import { readRestriction, type Restriction, RESTRICTION_PLUGIN } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
 import { upstreamFromServer } from '@/utils/openapi-import';
@@ -160,6 +161,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const [limitPer, setLimitPer] = useState<RateWindow>('minute');
   // Off until asked for: the request goes to the backend as it came.
   const [overrideOn, setOverrideOn] = useState(false);
+  const [overrideScheme, setOverrideScheme] = useState<'keep' | 'http' | 'https'>('keep');
+  const [overrideMethod, setOverrideMethod] = useState<string | null>(null);
   const [overrideHost, setOverrideHost] = useState('');
   const [setHeaders, setSetHeaders] = useState<{ key: string; value: string }[]>([
     { key: '', value: '' },
@@ -268,6 +271,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const override =
     !duplicating && overrideOn
       ? {
+          ...(overrideScheme !== 'keep' && { scheme: overrideScheme }),
+          ...(overrideMethod && { method: overrideMethod }),
           host: overrideHost,
           setHeaders,
           removeHeaders,
@@ -678,6 +683,28 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
             />
             {overrideOn && (
               <Stack gap="sm" pl="lg">
+                {/* The advanced form's own controls, so that the two read alike. */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Radio.Group
+                    label={t('form.requestOverride.scheme')}
+                    value={overrideScheme}
+                    onChange={(v) => setOverrideScheme(v as 'keep' | 'http' | 'https')}
+                  >
+                    <Group mt="xs">
+                      <Radio value="keep" label={t('form.requestOverride.keepOriginal')} />
+                      <Radio value="http" label="HTTP" />
+                      <Radio value="https" label="HTTPS" />
+                    </Group>
+                  </Radio.Group>
+                  <Select
+                    label={t('form.requestOverride.method')}
+                    placeholder={t('form.requestOverride.keepOriginal')}
+                    data={APISIX.HttpMethod.options.map((v) => v.value)}
+                    value={overrideMethod}
+                    onChange={setOverrideMethod}
+                    clearable
+                  />
+                </SimpleGrid>
                 <TextInput
                   label={t('form.requestOverride.host')}
                   description={t('form.quickRoute.overrideHostHint')}
@@ -729,9 +756,11 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                       </ActionIcon>
                     </Group>
                   ))}
+                  {/* Light, as New client is: grey and subtle, it was read as a
+                      note under the fields rather than a way to add one. */}
                   <Button
-                    variant="subtle"
-                    size="compact-sm"
+                    variant="light"
+                    size="xs"
                     w="fit-content"
                     leftSection={<IconAdd width="16" height="16" />}
                     onClick={() => setSetHeaders((rows) => [...rows, { key: '', value: '' }])}

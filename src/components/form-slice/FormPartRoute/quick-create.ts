@@ -75,12 +75,16 @@ export type QuickRoute = {
 };
 
 /**
- * What the request sent to the backend has changed: its Host header, headers
- * set to a value, headers taken off. The path, scheme and method are the
- * advanced form's: the address's own path already rewrites the one, and the
- * others are rarely what exposing an API needs.
+ * What the request sent to the backend has changed: its scheme, its method,
+ * its Host header, headers set to a value, headers taken off. The path is the
+ * advanced form's: the address's own path already rewrites it, and a second
+ * rewrite of it beside that one would clash.
  */
 export type QuickOverride = {
+  /** Empty: as the request came. */
+  scheme?: 'http' | 'https';
+  /** Empty: as the request came. */
+  method?: string;
   host: string;
   setHeaders: { key: string; value: string }[];
   removeHeaders: string[];
@@ -122,6 +126,8 @@ export const requestRewrite = (
   };
   const mine = {
     ...(basePath && basePathRewrite(basePath)),
+    ...(override?.scheme && { scheme: override.scheme }),
+    ...(override?.method && { method: override.method }),
     ...(host && { host }),
   };
   if (Object.keys(mine).length === 0 && Object.keys(headers).length === 0) return undefined;

@@ -466,6 +466,11 @@ describe('the request sent to the backend', () => {
     });
   });
 
+  it('changes the scheme and the method as the advanced form does', () => {
+    const form = quickRouteToForm({ ...base, override: override({ scheme: 'https', method: 'POST' }) });
+    expect(form.plugins).toEqual({ 'proxy-rewrite': { scheme: 'https', method: 'POST' } });
+  });
+
   it('keeps the address\'s base path beside what is changed', () => {
     const form = quickRouteToForm({
       ...base,

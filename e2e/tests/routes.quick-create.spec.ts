@@ -222,8 +222,20 @@ test('changes the request sent to the backend', async ({ page }) => {
     await expect(form.getByRole('textbox', { name: 'Host Override' })).toBeHidden();
   });
 
+  await test.step('a way to add a header, in sight', async () => {
+    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+    await form.getByRole('button', { name: 'Add Header' }).click();
+    await expect(form.getByRole('textbox', { name: 'Header Name' })).toHaveCount(2);
+    // Back to the one row the step below fills.
+    await form.getByRole('button', { name: 'Remove header' }).last().click();
+    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+  });
+
   await test.step('a host, a header set and two taken off', async () => {
     await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+    await form.getByRole('radio', { name: 'HTTPS' }).check();
+    await form.getByRole('textbox', { name: 'Method Override' }).click();
+    await page.getByRole('option', { name: 'POST', exact: true }).click();
     await form.getByRole('textbox', { name: 'Host Override' }).fill('http://api.internal');
     await form.getByRole('textbox', { name: 'Header Name' }).fill('X-Env');
     await form.getByRole('textbox', { name: 'Header Value' }).fill('prod');
@@ -245,6 +257,8 @@ test('changes the request sent to the backend', async ({ page }) => {
     const [route] = (await routesUnder()).filter((r) => r.uri === path);
     expect(route.plugins?.['proxy-rewrite']).toEqual({
       regex_uri: ['^(.*)$', '/v1$1'],
+      scheme: 'https',
+      method: 'POST',
       host: 'api.internal',
       headers: { set: { 'X-Env': 'prod' }, remove: ['Cookie', 'X-Debug'] },
     });
