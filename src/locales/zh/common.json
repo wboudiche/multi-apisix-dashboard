@@ -479,7 +479,10 @@
         "countPicked": "已选 {{picked}} / {{total}}",
         "countHolders": "共 {{total}} 个",
         "listCut": "已列出 {{shown}} / {{total}}：输入名称的一部分以查找其他客户端。",
-        "allFound": "全部 ({{count}})"
+        "allFound": "全部 ({{count}})",
+        "showList": "显示列表",
+        "hideList": "隐藏列表",
+        "holdersSummary": "持有凭证的客户端：{{count}}"
       },
       "oidc": {
         "test": "测试地址",

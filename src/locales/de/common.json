@@ -479,7 +479,10 @@
         "countPicked": "{{picked}} von {{total}} ausgewählt",
         "countHolders": "{{total}} insgesamt",
         "listCut": "{{shown}} von {{total}} aufgeführt: Teil eines Namens eingeben, um die anderen zu finden.",
-        "allFound": "Alle ({{count}})"
+        "allFound": "Alle ({{count}})",
+        "showList": "Liste anzeigen",
+        "hideList": "Liste ausblenden",
+        "holdersSummary": "Clients mit Zugangsdaten: {{count}}"
       },
       "oidc": {
         "test": "Adresse testen",

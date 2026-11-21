@@ -75,8 +75,11 @@ test('an auth plugin lists who can call it and makes a client with a key', async
     await clients.getByRole('button', { name: 'Create client' }).click();
 
     await expect(clients.getByText(`Client ${name} created.`)).toBeVisible();
-    await expect(clients.getByText(name, { exact: true })).toBeVisible();
     await expect(clients.getByText(`curl -H 'apikey: ${key}'`)).toBeVisible();
+    // Among the holders, once the list is asked for.
+    await clients.getByRole('button', { name: 'Show the list' }).click();
+    await clients.getByRole('textbox', { name: 'Search the clients' }).fill(name);
+    await expect(clients.getByRole('listitem').filter({ hasText: name })).toHaveCount(1);
 
     const creds = await e2eReq
       .get<unknown, { data: Credentials }>(API_CREDENTIALS(name))
@@ -124,6 +127,11 @@ test('an auth plugin narrows who may call to the clients picked', async ({ page 
 
     await test.step('every client holding a key, until said otherwise', async () => {
       await expect(clients.getByRole('radio', { name: 'Every client holding a credential' })).toBeChecked();
+      // Counted, and listed once asked for.
+      await expect(clients.getByText(/^Clients holding a credential: \d+$/)).toBeVisible();
+      await expect(clients.getByText(allowed, { exact: true })).toBeHidden();
+      await clients.getByRole('button', { name: 'Show the list' }).click();
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(allowed);
       await expect(clients.getByText(allowed, { exact: true })).toBeVisible();
     });
 

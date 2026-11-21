@@ -383,7 +383,8 @@ test('picks the clients a search shows, all at once', async ({ page }) => {
     await form.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
     const clients = form.getByTestId('auth-clients');
 
-    await test.step('every holder is listed, and counted', async () => {
+    await test.step('every holder is counted, and listed once asked for', async () => {
+      await clients.getByRole('button', { name: 'Show the list' }).click();
       // Found by its name: the list draws the first names only.
       await clients.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
       await expect(clients.getByRole('listitem').filter({ hasText: outsider })).toHaveCount(1);

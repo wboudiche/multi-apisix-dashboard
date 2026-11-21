@@ -443,6 +443,34 @@ const ClientList = ({
   );
 };
 
+/**
+ * Who a credential lets through, when every holder is: a count, and the
+ * list behind a click - there to look at, not to act on, so it does not
+ * take the form's room until asked for.
+ */
+const HolderSummary = ({ clients }: { clients: Clients }) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <Stack gap="xs">
+      <Group gap="xs">
+        <Text size="sm">
+          {t('form.plugins.clients.holdersSummary', { count: clients.holders.length })}
+        </Text>
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
+          {open ? t('form.plugins.clients.hideList') : t('form.plugins.clients.showList')}
+        </Button>
+      </Group>
+      {open && <ClientList clients={clients} />}
+    </Stack>
+  );
+};
+
 export type AuthClientsSectionProps = {
   plugin: AuthClientPlugin;
   /** The plugin's configuration as edited, for the header a key goes in. */
@@ -677,7 +705,7 @@ export const AuthClientsSection = ({
               {t('form.plugins.clients.none')}
             </Alert>
           ) : (
-            <ClientList clients={clients.data} />
+            <HolderSummary clients={clients.data} />
           ))}
 
         {created && (
