@@ -306,8 +306,10 @@ const ClientList = ({
   const matching = needle ? options.filter((o) => o.toLowerCase().includes(needle)) : options;
   const shown = matching.slice(0, ROWS_SHOWN);
   const editable = picking && !readOnly && !!onChange;
-  // "All shown" ticks or unticks what the search shows, and leaves the rest
-  // picked as it was: a search for partner_ then all is every partner.
+  // "All shown" ticks or unticks what the search shows, and Clear unticks
+  // it, both leaving the rest picked as it was: a search for partner_ then
+  // all is every partner, and Clear after it takes back only those - not a
+  // name out of sight, which saving would then drop unseen.
   const shownPicked = shown.filter((o) => names.includes(o)).length;
   const toggleShown = () =>
     onChange?.(
@@ -318,35 +320,48 @@ const ClientList = ({
   const toggle = (option: string) =>
     onChange?.(names.includes(option) ? names.filter((n) => n !== option) : [...names, option]);
 
+  // Pointed out under the list only when its row is not in sight: one in
+  // sight says it beside its box.
+  const unseenProblems = problems.filter(({ name }) => !shown.includes(name));
+
   return (
     <Stack gap="xs">
-      <Group justify="space-between" align="flex-end" wrap="nowrap">
+      <Text size="sm" fw={500}>
+        {picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders')}
+      </Text>
+      <Group justify="space-between" align="center" wrap="nowrap">
         <TextInput
-          label={picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders')}
-          placeholder={t('form.plugins.clients.searchPlaceholder')}
+          // No visible label of its own: the title above is the list's, and
+          // the field is named for what it does.
           aria-label={t('form.plugins.clients.search')}
+          placeholder={t('form.plugins.clients.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
           style={{ flex: 1 }}
         />
-        <Text size="sm" c="dimmed" pb={8} style={{ whiteSpace: 'nowrap' }} data-testid="client-count">
+        <Text size="sm" c="dimmed" style={{ whiteSpace: 'nowrap' }} data-testid="client-count">
           {picking
             ? t('form.plugins.clients.countPicked', { picked: names.length, total: options.length })
             : t('form.plugins.clients.countHolders', { total: options.length })}
         </Text>
       </Group>
       <Paper withBorder radius="sm" p={0}>
+        {/* Both act on the rows in sight: none in sight, nothing to act on. */}
         {editable && shown.length > 0 && (
           <>
-            <Group px="sm" py={6} justify="space-between">
+            <Group px="sm" py={6} justify="space-between" mih={36}>
               <Checkbox
                 label={t('form.plugins.clients.allShown')}
                 checked={shownPicked === shown.length}
                 indeterminate={shownPicked > 0 && shownPicked < shown.length}
                 onChange={toggleShown}
               />
-              {names.length > 0 && (
-                <Button variant="subtle" size="compact-sm" onClick={() => onChange?.([])}>
+              {shownPicked > 0 && (
+                <Button
+                  variant="subtle"
+                  size="compact-sm"
+                  onClick={() => onChange?.(names.filter((n) => !shown.includes(n)))}
+                >
                   {t('form.plugins.clients.clearPicked')}
                 </Button>
               )}
@@ -398,7 +413,7 @@ const ClientList = ({
           {t('form.plugins.clients.accessEmpty')}
         </Text>
       )}
-      {problems.map(({ name, why }) => (
+      {unseenProblems.map(({ name, why }) => (
         <Group key={name} gap={6} wrap="nowrap" align="baseline">
           <Code>{name}</Code>
           <Text size="xs" c="orange.8">
