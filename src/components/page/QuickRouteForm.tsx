@@ -322,6 +322,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       });
       onCreated();
     } catch (err) {
+      // Shown here too: `req` already notifies a refusal, which is what
+      // tells someone who left the page while it was being posted.
       setSubmitError(proxyFailureText(err) || t('routes.createFailed'));
     } finally {
       setSubmitting(false);

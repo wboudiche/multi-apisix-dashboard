@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Alert } from '@mantine/core';
+import { Alert, Button, Stack } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
@@ -42,24 +42,42 @@ const NewRoute = (leave: Leave) => {
   );
 };
 
+/**
+ * The route to copy, read once: a refetch on coming back to the tab - one
+ * that finds the route gone, or the gateway out of reach - would swap the
+ * form for a message and throw away what was typed in it.
+ */
+const sourceQuery = (id: string) => ({
+  ...getRouteQueryOptions(id),
+  staleTime: Infinity,
+  refetchOnWindowFocus: false,
+});
+
 /** A copy of the route `id`, read by the gate on the instance in use. */
 const DuplicateRoute = ({ id, ...leave }: Leave & { id: string }) => {
   const { t } = useTranslation();
-  const { data } = useQuery(getRouteQueryOptions(id));
+  const { data } = useQuery(sourceQuery(id));
   // A gateway that cannot be reached answers an empty record: nothing to
   // copy, and no route to name.
   const route = data?.value?.id ? data.value : undefined;
   if (!route) {
     return (
-      <Alert color="red" variant="light" maw={880}>
-        {t('proxyError.message')}
-      </Alert>
+      <Stack maw={880} align="flex-start">
+        <PageHeader title={t('form.quickRoute.title')} />
+        <Alert color="red" variant="light" w="100%">
+          {t('proxyError.message')}
+        </Alert>
+        <Button variant="light" onClick={leave.onCancel}>
+          {t('form.btn.backToList')}
+        </Button>
+      </Stack>
     );
   }
   return (
     <>
       <PageHeader title={t('form.quickRoute.duplicateTitle', { name: route.name || route.id })} />
-      <QuickRouteForm source={route} {...leave} />
+      {/* Keyed by the route: the form starts from the one it copies. */}
+      <QuickRouteForm key={route.id} source={route} {...leave} />
     </>
   );
 };
@@ -102,7 +120,8 @@ function RouteComponent() {
 
   if (!from) return <NewRoute {...leave} />;
   return (
-    <DetailGate record={() => getRouteQueryOptions(from)} id={from} onBack={() => void navigate({ to: '/routes' })}>
+    // Keyed by the route: another one to copy is another page.
+    <DetailGate key={from} record={() => sourceQuery(from)} id={from} onBack={() => void navigate({ to: '/routes' })}>
       <DuplicateRoute id={from} {...leave} />
     </DetailGate>
   );
@@ -110,5 +129,7 @@ function RouteComponent() {
 
 export const Route = createFileRoute('/routes/quick')({
   component: RouteComponent,
-  validateSearch: z.object({ from: z.string().optional() }),
+  // Coerced: the router parses a value that looks like a number as one, and
+  // an APISIX id often does.
+  validateSearch: z.object({ from: z.coerce.string().optional() }),
 });

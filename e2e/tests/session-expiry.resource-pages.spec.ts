@@ -69,7 +69,7 @@ test('an expired session refreshes and the page loads, rather than reading as em
 
   await page.goto('/ui/routes');
 
-  await expect(page.getByRole('button', { name: 'Quick route' })).toBeVisible({
+  await expect(page.getByRole('link', { name: 'Quick route' })).toBeVisible({
     timeout: 30000,
   });
   await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);
@@ -164,7 +164,7 @@ test('recovers from a real expired token, against the real backend', async ({
   // so the only way the page loads is if the backend marked its rejection and
   // the frontend recognised the mark.
   await page.goto('/ui/routes');
-  await expect(page.getByRole('button', { name: 'Quick route' })).toBeVisible({
+  await expect(page.getByRole('link', { name: 'Quick route' })).toBeVisible({
     timeout: 30000,
   });
 
@@ -174,7 +174,7 @@ test('recovers from a real expired token, against the real backend', async ({
 
   await page.reload();
 
-  await expect(page.getByRole('button', { name: 'Quick route' })).toBeVisible({
+  await expect(page.getByRole('link', { name: 'Quick route' })).toBeVisible({
     timeout: 30000,
   });
   await expect(page.getByText('Failed to load the dashboard')).toHaveCount(0);

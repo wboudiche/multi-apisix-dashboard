@@ -138,7 +138,9 @@ test('opened by its address, lands on the list with the route made', async ({ pa
 });
 
 test('says so when the route to copy is not there', async ({ page }) => {
-  await uiGoto(page, `/routes/quick?from=${randomId('missing')}`);
+  // All digits, as an APISIX id often is: the router reads it as a number.
+  await uiGoto(page, '/routes/quick');
+  await page.goto(`${page.url()}?from=9${Date.now()}`);
   await expect(page.getByTestId('detail-not-found')).toBeVisible();
   await page.getByRole('button', { name: 'Back to list' }).click();
   await routesPom.isIndexPage(page);
@@ -168,6 +170,28 @@ test('keeps whoever left during a create where they went', async ({ page }) => {
   release();
   await posted;
   await expect.poll(async () => (await routesUnder()).some((r) => r.uri === path)).toBe(true);
+  await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
+});
+
+test('tells whoever left during a create that it was refused', async ({ page }) => {
+  const path = `${prefix}/refused-late`;
+  const form = await openForm(page);
+  await form.getByRole('textbox', { name: 'Path' }).fill(path);
+  await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/apisix/admin/routes', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    await held;
+    await route.fulfill({ status: 400, json: { error_msg: 'refused by the e2e gateway' } });
+  });
+  await form.getByRole('button', { name: 'Create offline' }).click();
+  await page.getByRole('link', { name: 'Upstreams', exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
+
+  release();
+  await expect(page.getByRole('alert').filter({ hasText: 'refused by the e2e gateway' }).first()).toBeVisible();
   await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
 });
 

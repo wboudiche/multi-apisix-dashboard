@@ -38,7 +38,7 @@ test('renews a lapsed token on navigation instead of signing out', async ({
   page,
 }) => {
   await page.goto('/ui/routes');
-  await expect(page.getByRole('button', { name: 'Quick route' })).toBeVisible({
+  await expect(page.getByRole('link', { name: 'Quick route' })).toBeVisible({
     timeout: 30000,
   });
 
@@ -65,7 +65,7 @@ test('renews a lapsed token on navigation instead of signing out', async ({
 
 test('still signs out when the refresh token is refused', async ({ page }) => {
   await page.goto('/ui/routes');
-  await expect(page.getByRole('button', { name: 'Quick route' })).toBeVisible({
+  await expect(page.getByRole('link', { name: 'Quick route' })).toBeVisible({
     timeout: 30000,
   });
 
@@ -97,7 +97,7 @@ test('does not sign out when the refresh merely could not be reached', async ({
   // the refresh token ends a session. A dropped connection means try again,
   // and the requests on the page being navigated to will report it themselves.
   await page.goto('/ui/routes');
-  await expect(page.getByRole('button', { name: 'Quick route' })).toBeVisible({
+  await expect(page.getByRole('link', { name: 'Quick route' })).toBeVisible({
     timeout: 30000,
   });
 
@@ -134,7 +134,7 @@ test('renders the app shell after renewing on a page load', async ({ page }) => 
   // session that was just renewed. Before this change that path redirected to
   // the login page, so the staleness was never reachable.
   await page.goto('/ui/routes');
-  await expect(page.getByRole('button', { name: 'Quick route' })).toBeVisible({
+  await expect(page.getByRole('link', { name: 'Quick route' })).toBeVisible({
     timeout: 30000,
   });
 
