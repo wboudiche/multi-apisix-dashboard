@@ -22,16 +22,16 @@ import { upstreamFromServer } from '@/utils/openapi-import';
 import { RoutePostSchema, type RoutePostType } from './schema';
 import { UPSTREAM_CUSTOM } from './util';
 
-/** Where a route made in the quick-create dialog sends its requests. */
+/** Where a route made on the quick route page sends its requests. */
 export type QuickDestination =
   | { kind: 'url'; url: string }
   | { kind: 'upstream'; upstreamId: string }
   | { kind: 'service'; serviceId: string }
-  /** A copy's destination left as the original's (the duplicate dialog). */
+  /** A copy's destination left as the original's (the duplicate page). */
   | { kind: 'same' };
 
 /**
- * The authentication the dialog offers: a key for an application, a username
+ * The authentication the quick page offers: a key for an application, a username
  * and a password for a person or an internal tool. The others take settings
  * of their own, and are added in the advanced form.
  */
@@ -58,7 +58,7 @@ export type QuickAccess =
       inheritedRestriction?: unknown;
     };
 
-/** The dialog's answers: what a route needs, and nothing it can do without. */
+/** The quick page's answers: what a route needs, and nothing it can do without. */
 export type QuickRoute = {
   path: string;
   methods: string[];
@@ -132,7 +132,7 @@ export const accessPlugins = (
  *   switched off for this route. A route's plugin replaces its service's, and
  *   the gateway checks a plugin's settings even switched off, so it is the
  *   service's own that is switched off rather than an empty one.
- * - A restriction the dialog cannot show - the service's deny-list, by
+ * - A restriction the quick page cannot show - the service's deny-list, by
  *   method, by group: nothing, so the service's holds as it is.
  */
 /**
@@ -220,9 +220,9 @@ export const destinationUrlError = (url: string): string | undefined => {
 };
 
 /**
- * The dialog's answers as the wizard's form holds them: what is posted from
- * the dialog, and what the wizard starts from when the dialog hands over to
- * it. One shape for both, so a route made in the dialog is the route the
+ * The quick page's answers as the wizard's form holds them: what is posted from
+ * the quick page, and what the wizard starts from when the quick page hands over to
+ * it. One shape for both, so a route made on the quick page is the route the
  * wizard would have made from the same answers.
  */
 export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
@@ -286,7 +286,7 @@ export const basePathRewrite = (basePath: string) => ({
 });
 
 /**
- * The dialog's answers as a draft for the add page, for "Continue in the
+ * The quick page's answers as a draft for the add page, for "Continue in the
  * advanced form".
  *
  * On top of the page's own defaults, since a draft stands in for them: what
@@ -313,7 +313,7 @@ export const quickRouteToDraft = (q: QuickRoute): RoutePostType => {
 };
 
 /**
- * What the dialog says is wrong, by field: keys under form.validation, but
+ * What the quick page says is wrong, by field: keys under form.validation, but
  * for `access`, which the clients section shows in its own words.
  */
 export type QuickRouteErrors = {
@@ -326,7 +326,7 @@ export type QuickRouteErrors = {
    */
   access?: string;
   rateLimit?: string;
-  /** What the wizard's schema refuses that no field of the dialog shows. */
+  /** What the wizard's schema refuses that no field of the quick page shows. */
   other?: string[];
 };
 
@@ -336,10 +336,10 @@ const DESTINATION_MISSING = {
 } as const;
 
 /**
- * Why the dialog's answers cannot be posted; empty when they can.
+ * Why the quick page's answers cannot be posted; empty when they can.
  *
  * What is posted is held to the wizard's own schema, so a rule the wizard
- * enforces is one the dialog enforces too. On top of it, what the dialog can
+ * enforces is one the quick page enforces too. On top of it, what the quick page can
  * say better about its own fields: a path the gateway would never match, and
  * which destination is missing rather than that one is.
  */
@@ -351,7 +351,7 @@ export const quickRouteErrors = (q: QuickRoute): QuickRouteErrors => {
 };
 
 /**
- * What the dialog can say about its own fields better than a schema: a path
+ * What the quick page can say about its own fields better than a schema: a path
  * the gateway would never match, and which destination is missing rather
  * than that one is.
  */
@@ -378,7 +378,7 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   return errors;
 };
 
-/** A schema's refusals, each by the field of the dialog that shows it. */
+/** A schema's refusals, each by the field of the quick page that shows it. */
 export const addSchemaIssues = (
   errors: QuickRouteErrors,
   issues: { path: (string | number)[]; message: string }[]

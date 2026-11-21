@@ -46,7 +46,7 @@ type Props = PropsWithChildren<{
  * Folded is only the starting state, and only while there is nothing to see
  * in it: the section opens by itself when one of its fields holds a value of
  * its own - a route being edited, a draft restored, an answer handed over by
- * the quick-create dialog - and when one of them is refused, so an error is
+ * the quick route page - and when one of them is refused, so an error is
  * never behind a closed toggle. Read-only, it shows when it has something to
  * show and is left out otherwise.
  */

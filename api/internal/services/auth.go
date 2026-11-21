@@ -28,6 +28,7 @@ import (
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -89,6 +90,10 @@ func (s *AuthService) CheckPassword(password, hash string) bool {
 	return err == nil
 }
 
+// GenerateTokens issues an access and a refresh token for the user. Each
+// carries a jti of its own: without one, two tokens issued for the same user
+// in the same second - a login and the refresh right behind it - were the
+// same token, byte for byte.
 func (s *AuthService) GenerateTokens(user *models.User) (*TokenPair, error) {
 	now := time.Now()
 
@@ -99,6 +104,7 @@ func (s *AuthService) GenerateTokens(user *models.User) (*TokenPair, error) {
 		Role:      user.Role,
 		TokenType: TokenTypeAccess,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.jwtCfg.AccessExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
@@ -117,6 +123,7 @@ func (s *AuthService) GenerateTokens(user *models.User) (*TokenPair, error) {
 		Role:      user.Role,
 		TokenType: TokenTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.jwtCfg.RefreshExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},

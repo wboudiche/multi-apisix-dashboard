@@ -54,7 +54,11 @@
     "openNavigation": "Gezinmeyi aç",
     "closeNavigation": "Gezinmeyi kapat",
     "collapseNavigation": "Gezinmeyi daralt",
-    "expandNavigation": "Gezinmeyi genişlet"
+    "expandNavigation": "Gezinmeyi genişlet",
+    "theme": "Tema",
+    "themeLight": "Açık",
+    "themeDark": "Koyu",
+    "themeSystem": "Sistem"
   },
   "instanceGuard": {
     "noInstances": {

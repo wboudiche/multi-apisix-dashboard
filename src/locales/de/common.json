@@ -54,7 +54,11 @@
     "openNavigation": "Navigation öffnen",
     "closeNavigation": "Navigation schließen",
     "collapseNavigation": "Navigation einklappen",
-    "expandNavigation": "Navigation ausklappen"
+    "expandNavigation": "Navigation ausklappen",
+    "theme": "Design",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "System"
   },
   "instanceGuard": {
     "noInstances": {

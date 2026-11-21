@@ -140,7 +140,7 @@ export const Navbar = ({ collapsed, onCollapseToggle }: { collapsed: boolean; on
         </Stack>
       </Box>
 
-      <Box p="xs" style={{ borderTop: '1px solid #eee' }}>
+      <Box p="xs" style={{ borderTop: '1px solid var(--border-light)' }}>
         <Tooltip label={collapsed ? t('header.expandNavigation') : t('header.collapseNavigation')} position="right">
           <Center
             component="button"

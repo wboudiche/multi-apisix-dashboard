@@ -1291,7 +1291,11 @@
     "openNavigation": "Open navigation",
     "closeNavigation": "Close navigation",
     "collapseNavigation": "Collapse navigation",
-    "expandNavigation": "Expand navigation"
+    "expandNavigation": "Expand navigation",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System"
   },
   "teams": {
     "title": "Teams",

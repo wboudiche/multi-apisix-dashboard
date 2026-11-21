@@ -69,7 +69,7 @@ const defaultPort = (scheme: string | undefined) => {
 /**
  * Has the dashboard dial each node and says how each answered. Given the
  * nodes rather than reading them from a form, so the upstream form and the
- * route quick-create dialog test the same way.
+ * quick route page test the same way.
  */
 export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
   const { t } = useTranslation();
@@ -86,8 +86,8 @@ export const ConnectionTest = ({ nodes, scheme }: ConnectionTestProps) => {
     .filter((n): n is { host: string; port: number } => n.port !== undefined);
   const hasNodes = testNodes.length > 0;
 
-  // A test still running when this goes - its nodes changed, the dialog
-  // closed - stops rather than spending the dashboard's outbound budget (#310)
+  // A test still running when this goes - its nodes changed, the quick page
+  // left - stops rather than spending the dashboard's outbound budget (#310)
   // on an answer nobody will see.
   const inFlight = useRef<AbortController | null>(null);
   useEffect(() => () => inFlight.current?.abort(), []);
