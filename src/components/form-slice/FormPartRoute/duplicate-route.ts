@@ -57,7 +57,7 @@ const ownPathRewrite = (rewrite: Rewrite) =>
   (rewrite?.uri !== undefined || rewrite?.regex_uri !== undefined) && !isBasePathRewrite(rewrite);
 
 /**
- * The duplicate dialog's starting answers: the route's path, methods and
+ * The duplicate page's starting answers: the route's path, methods and
  * host, the name it is given (the caller's, translated), offline, and to the
  * same destination - the copy is the route until told otherwise.
  */
@@ -72,7 +72,7 @@ export const quickRouteFromRoute = (route: APISIXType['Route'], name: string): Q
 
 /**
  * The copy, as it is posted: the route whole - its plugins, vars, priority,
- * labels, hosts - with the answers of the dialog over it, and a new
+ * labels, hosts - with the answers of the quick page over it, and a new
  * destination in place of its own when one is chosen.
  */
 export const duplicateRouteBody = (route: APISIXType['Route'], q: QuickRoute): RouteBody => {
@@ -136,7 +136,7 @@ export const duplicateRouteBody = (route: APISIXType['Route'], q: QuickRoute): R
 
 /**
  * The path rewrite of the route's own a copy sent elsewhere keeps as it is,
- * for the dialog to point out: it was written for the original's backend.
+ * for the quick page to point out: it was written for the original's backend.
  * Undefined when there is none, or the destination is kept.
  */
 export const keptPathRewrite = (route: APISIXType['Route'], q: QuickRoute): string | undefined => {
@@ -146,16 +146,16 @@ export const keptPathRewrite = (route: APISIXType['Route'], q: QuickRoute): stri
   return rewrite?.uri !== undefined ? String(rewrite.uri) : JSON.stringify(rewrite?.regex_uri);
 };
 
-// The fields the dialog answers for: what the schema refuses elsewhere in
+// The fields the quick page answers for: what the schema refuses elsewhere in
 // the route is the route as the gateway already holds it, and left to it.
-const DIALOG_FIELDS = new Set(['name', 'uri', 'uris', 'methods', 'host', 'hosts', 'status', 'upstream', 'upstream_id', 'service_id']);
+const QUICK_FIELDS = new Set(['name', 'uri', 'uris', 'methods', 'host', 'hosts', 'status', 'upstream', 'upstream_id', 'service_id']);
 
 // What the gateway may hold beside a copy's own id and times: the route's
 // schema, held to what is posted.
 const RouteBodySchema = APISIX.Route.omit({ id: true, create_time: true, update_time: true });
 
 /**
- * Why the copy cannot be posted; empty when it can. The dialog's own checks,
+ * Why the copy cannot be posted; empty when it can. The quick page's own checks,
  * the route's schema on the body itself, and the one clash a copy can bring:
  * an address with a path, for a route that already rewrites its path - the
  * two rewrites cannot both hold.
@@ -177,7 +177,7 @@ export const duplicateRouteErrors = (route: APISIXType['Route'], q: QuickRoute):
   if (!parsed.success) {
     addSchemaIssues(
       errors,
-      parsed.error.issues.filter((issue) => DIALOG_FIELDS.has(String(issue.path[0])))
+      parsed.error.issues.filter((issue) => QUICK_FIELDS.has(String(issue.path[0])))
     );
   }
   return withoutEmpty(errors);

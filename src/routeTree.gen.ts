@@ -27,6 +27,7 @@ import { Route as ProtosIndexRouteImport } from './routes/protos/index'
 import { Route as ProtosAddRouteImport } from './routes/protos/add'
 import { Route as RoutesIndexRouteImport } from './routes/routes/index'
 import { Route as RoutesAddRouteImport } from './routes/routes/add'
+import { Route as RoutesQuickRouteImport } from './routes/routes/quick'
 import { Route as SecretsIndexRouteImport } from './routes/secrets/index'
 import { Route as SecretsAddRouteImport } from './routes/secrets/add'
 import { Route as ServicesIndexRouteImport } from './routes/services/index'
@@ -151,6 +152,11 @@ const RoutesIndexRoute = RoutesIndexRouteImport.update({
 const RoutesAddRoute = RoutesAddRouteImport.update({
   id: '/routes/add',
   path: '/routes/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoutesQuickRoute = RoutesQuickRouteImport.update({
+  id: '/routes/quick',
+  path: '/routes/quick',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SecretsIndexRoute = SecretsIndexRouteImport.update({
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/plugin_configs/add': typeof Plugin_configsAddRoute
   '/protos/add': typeof ProtosAddRoute
   '/routes/add': typeof RoutesAddRoute
+  '/routes/quick': typeof RoutesQuickRoute
   '/secrets/add': typeof SecretsAddRoute
   '/services/add': typeof ServicesAddRoute
   '/ssls/add': typeof SslsAddRoute
@@ -402,6 +409,7 @@ export interface FileRoutesByTo {
   '/plugin_configs/add': typeof Plugin_configsAddRoute
   '/protos/add': typeof ProtosAddRoute
   '/routes/add': typeof RoutesAddRoute
+  '/routes/quick': typeof RoutesQuickRoute
   '/secrets/add': typeof SecretsAddRoute
   '/services/add': typeof ServicesAddRoute
   '/ssls/add': typeof SslsAddRoute
@@ -456,6 +464,7 @@ export interface FileRoutesById {
   '/plugin_configs/add': typeof Plugin_configsAddRoute
   '/protos/add': typeof ProtosAddRoute
   '/routes/add': typeof RoutesAddRoute
+  '/routes/quick': typeof RoutesQuickRoute
   '/secrets/add': typeof SecretsAddRoute
   '/services/add': typeof ServicesAddRoute
   '/ssls/add': typeof SslsAddRoute
@@ -513,6 +522,7 @@ export interface FileRouteTypes {
     | '/plugin_configs/add'
     | '/protos/add'
     | '/routes/add'
+    | '/routes/quick'
     | '/secrets/add'
     | '/services/add'
     | '/ssls/add'
@@ -568,6 +578,7 @@ export interface FileRouteTypes {
     | '/plugin_configs/add'
     | '/protos/add'
     | '/routes/add'
+    | '/routes/quick'
     | '/secrets/add'
     | '/services/add'
     | '/ssls/add'
@@ -621,6 +632,7 @@ export interface FileRouteTypes {
     | '/plugin_configs/add'
     | '/protos/add'
     | '/routes/add'
+    | '/routes/quick'
     | '/secrets/add'
     | '/services/add'
     | '/ssls/add'
@@ -677,6 +689,7 @@ export interface RootRouteChildren {
   Plugin_configsAddRoute: typeof Plugin_configsAddRoute
   ProtosAddRoute: typeof ProtosAddRoute
   RoutesAddRoute: typeof RoutesAddRoute
+  RoutesQuickRoute: typeof RoutesQuickRoute
   SecretsAddRoute: typeof SecretsAddRoute
   ServicesAddRoute: typeof ServicesAddRoute
   SslsAddRoute: typeof SslsAddRoute
@@ -840,6 +853,13 @@ declare module '@tanstack/react-router' {
       path: '/routes/add'
       fullPath: '/routes/add'
       preLoaderRoute: typeof RoutesAddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/routes/quick': {
+      id: '/routes/quick'
+      path: '/routes/quick'
+      fullPath: '/routes/quick'
+      preLoaderRoute: typeof RoutesQuickRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/secrets/': {
@@ -1147,6 +1167,7 @@ const rootRouteChildren: RootRouteChildren = {
   Plugin_configsAddRoute: Plugin_configsAddRoute,
   ProtosAddRoute: ProtosAddRoute,
   RoutesAddRoute: RoutesAddRoute,
+  RoutesQuickRoute: RoutesQuickRoute,
   SecretsAddRoute: SecretsAddRoute,
   ServicesAddRoute: ServicesAddRoute,
   SslsAddRoute: SslsAddRoute,

@@ -35,7 +35,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAtom,useAtomValue } from 'jotai';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +49,6 @@ import { ImportRoutesModal } from '@/components/page/ImportRoutesModal';
 import { ImportWsdlModal } from '@/components/page/ImportWsdlModal';
 import { ListWarningBanner } from '@/components/page/ListWarningBanner';
 import PageHeader from '@/components/page/PageHeader';
-import { QuickCreateRouteModal } from '@/components/page/QuickCreateRouteModal';
 import { RawJsonDrawer } from '@/components/page/RawJsonDrawer';
 import type { RouteFilters } from '@/components/page/RoutesFilterBar';
 import { RoutesFilterBar } from '@/components/page/RoutesFilterBar';
@@ -65,7 +64,6 @@ import { checkboxNames, rowId, rowNameOrId } from '@/hooks/useTableRowSelection'
 import { currentUserAtom } from '@/stores/auth';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import { ownTeamsAtom } from '@/stores/team';
-import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { withoutDashboardFields } from '@/utils/dashboard-fields';
 import { downloadOpenAPI, routesToOpenAPI } from '@/utils/openapi-export';
@@ -297,10 +295,10 @@ export const RouteList = (props: RouteListProps) => {
 
   // Whether the table scrolls: its pinned actions are set off only then.
   const [scrollRef, overflowing] = useOverflowX<HTMLDivElement>();
-  // The route being duplicated: the quick-create dialog, on its settings.
-  // It used to post an identical copy at once, published, answering on the
+  // A duplicate opens the quick route page on the route's settings. It used
+  // to post an identical copy at once, published, answering on the
   // original's path beside it before anyone chose where it should go.
-  const [duplicating, setDuplicating] = useState<APISIXType['Route'] | null>(null);
+  const navigate = useNavigate();
 
   /**
    * Publishes a route, or takes it offline.
@@ -675,7 +673,7 @@ export const RouteList = (props: RouteListProps) => {
                         {canCreate && (
                           <Menu.Item
                             leftSection={<IconCopy width="14" height="14" />}
-                            onClick={() => setDuplicating(record.value)}
+                            onClick={() => void navigate({ to: '/routes/quick', search: { from: record.value.id } })}
                           >
                             {t('form.json.duplicate')}
                           </Menu.Item>
@@ -762,16 +760,6 @@ export const RouteList = (props: RouteListProps) => {
         defaultHost={testDrawerRoute?.host}
         defaultSoapAction={testDrawerRoute?.soapAction}
       />
-      {duplicating && (
-        <QuickCreateRouteModal
-          // Keyed by the route: the dialog starts from the one it copies.
-          key={duplicating.id}
-          opened
-          source={duplicating}
-          onClose={() => setDuplicating(null)}
-          onCreated={refetch}
-        />
-      )}
     </Paper >
   );
 };
@@ -816,7 +804,6 @@ function RouteComponent() {
   );
 
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [wsdlModalOpen, setWsdlModalOpen] = useState(false);
 
 
@@ -862,15 +849,16 @@ function RouteComponent() {
       <Paper p="md" radius="sm" shadow="sm" w="100%" style={{ borderTop: '2px solid var(--brand)' }}>
         <Group justify="flex-end" mb="md" align="center">
           <Group gap="sm">
-            {/* Two ways to make a route, both in sight: a path and a
-                destination on one screen, or the advanced form for
-                everything else. The quick one hands over to the advanced
-                form too, with what was typed. */}
+            {/* Two ways to make a route, both in sight and both links: a
+                path and a destination on one page, or the advanced form
+                for everything else. The quick one hands over to the
+                advanced form too, with what was typed. */}
             {canCreate && (
               <Button
+                component={RouteLink}
+                to="/routes/quick"
                 size="sm"
                 leftSection={<IconPlus width="18" height="18" />}
-                onClick={() => setQuickCreateOpen(true)}
               >
                 {t('routes.list.quickRoute')}
               </Button>
@@ -984,11 +972,6 @@ function RouteComponent() {
         />
       </Paper>
 
-      <QuickCreateRouteModal
-        opened={quickCreateOpen}
-        onClose={() => setQuickCreateOpen(false)}
-        onCreated={() => void refetch()}
-      />
       <ImportRoutesModal
         opened={importModalOpen}
         onClose={() => setImportModalOpen(false)}
