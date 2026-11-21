@@ -526,6 +526,57 @@ describe('the request sent to the backend', () => {
     expect(form.plugins?.['proxy-rewrite']).toEqual({ host: 'svc.internal', uri: '/health' });
   });
 
+  it('reads a service\'s flat headers as headers set, and lays its own over them', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      override: override({ headers: { set: { 'X-Env': 'prod' } } }, { headers: { 'X-Api': 'v2' } }),
+    });
+    expect(form.plugins?.['proxy-rewrite']).toEqual({ headers: { set: { 'X-Api': 'v2', 'X-Env': 'prod' } } });
+  });
+
+  it('does not carry over a service rewrite that is switched off, nor its _meta', () => {
+    const off = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      override: override({ host: 'api.internal' }, { regex_uri: ['^(.*)$', '/v1$1'], _meta: { disable: true } }),
+    });
+    expect(off.plugins?.['proxy-rewrite']).toEqual({ host: 'api.internal' });
+    const on = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      override: override({ host: 'api.internal' }, { regex_uri: ['^(.*)$', '/v1$1'], _meta: { priority: 5 } }),
+    });
+    expect(on.plugins?.['proxy-rewrite']).toEqual({ regex_uri: ['^(.*)$', '/v1$1'], host: 'api.internal' });
+  });
+
+  it('posts the host trimmed', () => {
+    const form = quickRouteToForm({ ...base, override: override({ host: ' api.internal ' }) });
+    expect(form.plugins?.['proxy-rewrite']).toEqual({ host: 'api.internal' });
+  });
+
+  it('refuses a path rewritten to one without a leading slash', () => {
+    expect(quickRouteErrors({ ...base, override: override({ uri: 'health' }) }).overrideUri).toBe(
+      'form.validation.pathSlash'
+    );
+    expect(quickRouteErrors({ ...base, override: override({ uri: '/health' }) }).overrideUri).toBeUndefined();
+  });
+
+  it('refuses a header set here and taken off by the service, or a Host beside the service\'s host', () => {
+    const service = (inherited: Record<string, unknown>, rewrite: Record<string, unknown>) =>
+      quickRouteErrors({
+        ...base,
+        destination: { kind: 'service', serviceId: 's1' },
+        override: override(rewrite, inherited),
+      }).overrideHeaders;
+    expect(service({ headers: { remove: ['Cookie'] } }, { headers: { set: { cookie: 'x' } } })).toBe(
+      'form.validation.headerTwice'
+    );
+    expect(service({ host: 'svc.internal' }, { headers: { set: { Host: 'x' } } })).toBe(
+      'form.validation.headerTwice'
+    );
+  });
+
   it('refuses a host the gateway would refuse, and says so on the host', () => {
     const hostError = (host: string) => quickRouteErrors({ ...base, override: override({ host }) }).overrideHost;
     expect(hostError('http://api.internal')).toBe('form.validation.overrideHost');

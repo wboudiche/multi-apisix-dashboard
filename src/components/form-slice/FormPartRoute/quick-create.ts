@@ -106,6 +106,25 @@ const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const HOST_NAME = /^[0-9a-zA-Z.-]+(:\d{1,5})?$/;
 
 /**
+ * The service's proxy-rewrite, as a route's is laid over it: none when the
+ * service has switched it off - copied, its _meta would switch the route's
+ * off with it - its own _meta left to the service, and its headers in the
+ * add/set/remove shape, APISIX's older flat one read as headers set.
+ */
+const serviceRewrite = (inherited: Record<string, unknown> | undefined): ProxyRewrite => {
+  if (!inherited) return {};
+  const meta = inherited._meta as { disable?: unknown } | undefined;
+  if (meta?.disable === true) return {};
+  const rest = { ...inherited } as ProxyRewrite;
+  delete rest._meta;
+  const headers = rest.headers as Record<string, unknown> | undefined;
+  if (headers && !['add', 'set', 'remove'].some((k) => k in headers)) {
+    rest.headers = { set: headers as Record<string, string> };
+  }
+  return rest;
+};
+
+/**
  * The proxy-rewrite a route needs: the address's base path, put in front of
  * every request, and what the override changes, over the service's own.
  * A path the override rewrites is its own, in place of the base path's and
@@ -115,10 +134,13 @@ export const requestRewrite = (
   override: QuickOverride | undefined,
   basePath?: string
 ): Record<string, unknown> | undefined => {
-  const mine = override?.rewrite ?? {};
-  if (!basePath && Object.keys(mine).length === 0) return undefined;
+  const raw = override?.rewrite ?? {};
+  if (!basePath && Object.keys(raw).length === 0) return undefined;
+  // Trimmed as posted: the gateway's pattern for a host has no room for a
+  // space a paste left behind.
+  const mine: ProxyRewrite = { ...raw, ...(typeof raw.host === 'string' && { host: raw.host.trim() }) };
   const ownPath = mine.uri !== undefined || mine.regex_uri !== undefined;
-  const inherited = { ...(override?.inherited ?? {}) } as ProxyRewrite;
+  const inherited = serviceRewrite(override?.inherited);
   if (ownPath) {
     delete inherited.uri;
     delete inherited.regex_uri;
@@ -401,6 +423,8 @@ export type QuickRouteErrors = {
   rateLimit?: string;
   /** The Host Override field. */
   overrideHost?: string;
+  /** The path the request is rewritten to. */
+  overrideUri?: string;
   /** The headers set or taken off. */
   overrideHeaders?: string;
   /** What the wizard's schema refuses that no field of the quick page shows. */
@@ -457,6 +481,10 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   if (o) {
     const host = o.rewrite.host?.trim();
     if (host && !HOST_NAME.test(host)) errors.overrideHost = 'form.validation.overrideHost';
+    // The gateway's own rule for a path the request is rewritten to.
+    if (typeof o.rewrite.uri === 'string' && !o.rewrite.uri.startsWith('/')) {
+      errors.overrideUri = 'form.validation.pathSlash';
+    }
     errors.overrideHeaders = headersError(o);
   }
   return errors;
@@ -464,16 +492,24 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
 
 /**
  * What is wrong with the headers set: a name HTTP has no word for, a value
- * with a $, which the gateway reads as a variable and sends changed, and a
- * name given twice, case aside - the last one would win - or a Host header
- * beside the Host Override.
+ * with a $, which the gateway reads as a variable and sends changed, a name
+ * set twice, case aside - the last one would win - or set and taken off, by
+ * the service or here, and a Host header beside a Host Override.
  */
 const headersError = (o: QuickOverride): string | undefined => {
   const set = Object.entries(o.rewrite.headers?.set ?? {});
   if (set.some(([name]) => !HEADER_NAME.test(name))) return 'form.validation.headerName';
   if (set.some(([, value]) => value.includes('$'))) return 'form.validation.headerValueDollar';
+  // On the rewrite as posted, the service's laid under: a header it takes
+  // off undoes one set here - the gateway removes after it sets.
+  const merged = (requestRewrite(o) ?? {}) as ProxyRewrite;
   const lower = set.map(([name]) => name.toLowerCase());
-  const twice = new Set(lower).size < lower.length || (!!o.rewrite.host && lower.includes('host'));
+  const removed = (merged.headers?.remove ?? []).map((n) => n.toLowerCase());
+  const mergedSet = Object.keys(merged.headers?.set ?? {}).map((n) => n.toLowerCase());
+  const twice =
+    new Set(lower).size < lower.length ||
+    lower.some((n) => removed.includes(n)) ||
+    (!!merged.host && mergedSet.includes('host'));
   return twice ? 'form.validation.headerTwice' : undefined;
 };
 

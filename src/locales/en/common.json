@@ -939,10 +939,10 @@
       "pathSlash": "A path starts with /",
       "destinationPathRewritten": "This route already rewrites its path: give the address without a path",
       "rateLimitCount": "A whole number, 1 or more",
-      "headerName": "A header name has no space, colon or other separator, and a value needs a name.",
+      "headerName": "A header name has no space, colon or other separator.",
       "overrideHost": "A host name or address, with a port if needed: no scheme, no path.",
       "headerValueDollar": "No $ in a header value: the gateway reads it as one of its variables and sends the value changed.",
-      "headerTwice": "Each header once: not set twice (case aside), not both set and removed, and no Host header beside the Host Override."
+      "headerTwice": "Each header once: not set twice in different case, not both set and removed (here or by the service), and no Host header beside a Host Override."
     },
     "quickRoute": {
       "title": "New route",

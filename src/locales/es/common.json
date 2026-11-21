@@ -1025,10 +1025,10 @@
       "pathSlash": "Una ruta empieza por /",
       "destinationPathRewritten": "Esta ruta ya reescribe su ruta: indique la dirección sin ruta",
       "rateLimitCount": "Un número entero, 1 o más",
-      "headerName": "Un nombre de encabezado no lleva espacios, dos puntos ni otros separadores, y un valor necesita un nombre.",
+      "headerName": "Un nombre de encabezado no lleva espacios, dos puntos ni otros separadores.",
       "overrideHost": "Un nombre de host o una dirección, con puerto si hace falta: sin esquema ni ruta.",
       "headerValueDollar": "Sin $ en el valor de un encabezado: la pasarela lo lee como una de sus variables y envía el valor cambiado.",
-      "headerTwice": "Cada encabezado una vez: no definido dos veces (sin importar mayúsculas), no definido y quitado a la vez, y sin encabezado Host junto al Host Override."
+      "headerTwice": "Cada encabezado una vez: no definido dos veces con distinta capitalización, no definido y quitado (aquí o por el servicio), y sin encabezado Host junto a un Host Override."
     },
     "quickRoute": {
       "title": "Nueva ruta",

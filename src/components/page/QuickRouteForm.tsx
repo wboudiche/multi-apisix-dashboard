@@ -665,9 +665,9 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
         {!duplicating && (
           <FormProvider {...rewriteForm}>
             <FormSectionRequestOverride />
-            {showErrors && (errors.overrideHost || errors.overrideHeaders) && (
+            {showErrors && (errors.overrideHost || errors.overrideUri || errors.overrideHeaders) && (
               <Stack gap={2}>
-                {[errors.overrideHost, errors.overrideHeaders].filter(Boolean).map((key) => (
+                {[errors.overrideUri, errors.overrideHost, errors.overrideHeaders].filter(Boolean).map((key) => (
                   <Text key={key} size="sm" c="red">{errorText(key)}</Text>
                 ))}
               </Stack>
