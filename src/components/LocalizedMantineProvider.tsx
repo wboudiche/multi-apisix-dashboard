@@ -42,5 +42,10 @@ export const LocalizedMantineProvider = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [theme, t, i18n.language]
   );
-  return <MantineProvider theme={localized}>{children}</MantineProvider>;
+  // As the operating system says until the user picks light or dark.
+  return (
+    <MantineProvider theme={localized} defaultColorScheme="auto">
+      {children}
+    </MantineProvider>
+  );
 };

@@ -74,7 +74,7 @@ const ModeCard = ({
       style={{
         borderColor: active ? 'var(--mantine-color-blue-6)' : undefined,
         borderWidth: active ? 2 : 1,
-        background: active ? 'var(--mantine-color-blue-0)' : undefined,
+        background: active ? 'var(--mantine-color-blue-light)' : undefined,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : undefined,
         transition: 'all 150ms ease',
@@ -113,7 +113,7 @@ const ServiceSummary = ({ serviceId }: { serviceId: string }) => {
   const nodeHosts = [...new Set(nodeHostsFrom(val.upstream?.nodes))];
 
   return (
-    <Card padding="sm" radius="md" withBorder bg="var(--mantine-color-blue-0)">
+    <Card padding="sm" radius="md" withBorder bg="var(--mantine-color-blue-light)">
       <Stack gap={6}>
         <Group gap="xs">
           <Text size="sm" fw={600}>{val.name || val.id}</Text>
@@ -161,7 +161,7 @@ const UpstreamSummary = ({ upstreamId }: { upstreamId: string }) => {
   const nodeHosts = [...new Set(nodeHostsFrom(val.nodes))];
 
   return (
-    <Card padding="sm" radius="md" withBorder bg="var(--mantine-color-teal-0)">
+    <Card padding="sm" radius="md" withBorder bg="var(--mantine-color-teal-light)">
       <Stack gap={6}>
         <Text size="sm" fw={600}>{val.name || val.id}</Text>
         <Group gap="xs">

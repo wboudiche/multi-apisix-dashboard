@@ -57,6 +57,7 @@ import IconMenu from '~icons/material-symbols/menu';
 import IconMenuOpen from '~icons/material-symbols/menu-open';
 
 import { LanguageMenu } from './LanguageMenu';
+import { ThemeMenu } from './ThemeMenu';
 
 /** How often the header re-probes every gateway it is allowed to see. */
 const HEALTH_POLL_INTERVAL_MS = 30_000;
@@ -424,6 +425,7 @@ export const Header: FC<HeaderProps> = (props) => {
             <TeamSwitcher teams={switcherTeams} isAdmin={isAdmin} />
           )}
 
+          <ThemeMenu />
           <LanguageMenu />
 
           {/* User Menu */}

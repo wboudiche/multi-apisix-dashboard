@@ -62,7 +62,7 @@ export const LanguageMenu = () => {
               disabled: true,
               style: {
                 backgroundColor:
-                  'var(--menu-item-hover, var(--mantine-color-gray-1))',
+                  'var(--menu-item-hover, var(--mantine-color-default-hover))',
               },
             })}
             onClick={async () => {

@@ -372,7 +372,7 @@ export const RouteTestDrawer = ({
           <Text fw={600} size="sm">{t('form.routeTest.response')}</Text>
 
           {error && (
-            <Paper p="sm" withBorder bg="var(--mantine-color-red-0)">
+            <Paper p="sm" withBorder bg="var(--mantine-color-red-light)">
               <Text size="sm" c="red">{error}</Text>
             </Paper>
           )}
