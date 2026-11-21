@@ -241,18 +241,18 @@ const Usage = ({
 };
 
 /**
- * The clients of the plugin, in one list that can be searched: picked from,
- * when the route lets only some through, and only read, when it lets every
- * holder through - so that who can call it is seen either way, however many
- * there are.
+ * The clients of the plugin, in a field that says how many and opens on
+ * a list that can be searched - as an upstream is picked: ticked, when the
+ * route lets only some through, and only read, when it lets every holder
+ * through.
  *
  * Picking lists those holding a credential of the plugin, and any name
  * already on the route's list - another plugin's client, or one this
  * account cannot see - so that saving does not drop it unseen.
  *
- * A box of fixed height that scrolls, rather than a line per client or a
- * pill per name picked: either grew with the gateway until the form was
- * the list.
+ * Behind a click, in a box of fixed height that scrolls, rather than a line
+ * per client or a pill per name picked: either grew with the gateway until
+ * the form was the list.
  */
 const ClientList = ({
   clients,
@@ -345,7 +345,12 @@ const ClientList = ({
           picker does - rather than a list taking the form's room for good. */}
       <Popover
         opened={opened}
-        onChange={setOpened}
+        // Closed, it forgets its search: opened again, it shows every client,
+        // and All and Clear act on all of them, not on a filter out of sight.
+        onChange={(open) => {
+          setOpened(open);
+          if (!open) setSearch('');
+        }}
         width="target"
         position="bottom-start"
         shadow="md"
@@ -363,15 +368,20 @@ const ClientList = ({
             type="button"
             pointer
             label={title}
-            rightSection={<Combobox.Chevron />}
+            rightSection={clients ? <Combobox.Chevron /> : <Loader size="xs" />}
             rightSectionPointerEvents="none"
-            onClick={() => setOpened((o) => !o)}
-            aria-expanded={opened}
-            aria-haspopup="dialog"
+            onClick={() => {
+              if (opened) setSearch('');
+              setOpened(!opened);
+            }}
             error={empty ? t('form.plugins.clients.accessEmpty') : undefined}
           >
             <span data-testid="client-count">
-              {picking
+              {/* No total until the clients are read: a count of the names
+                  picked alone would pass for one. */}
+              {!clients
+                ? t('form.plugins.clients.reading')
+                : picking
                 ? t('form.plugins.clients.countPicked', { picked: names.length, total: options.length })
                 : t('form.plugins.clients.countHolders', { total: options.length })}
             </span>
@@ -449,7 +459,8 @@ const ClientList = ({
           </Stack>
         </Popover.Dropdown>
       </Popover>
-      {problems.map(({ name, why }) => (
+      {/* Under the field while it is closed: open, each says it by its box. */}
+      {!opened && problems.map(({ name, why }) => (
         <Group key={name} gap={6} wrap="nowrap" align="baseline">
           <Code>{name}</Code>
           <Text size="xs" c="orange.8">
