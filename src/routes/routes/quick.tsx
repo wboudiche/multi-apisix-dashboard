@@ -17,7 +17,6 @@
 import { Alert, Button, Stack } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useCanGoBack, useLocation, useNavigate, useRouter } from '@tanstack/react-router';
-import { useAtomValue } from 'jotai';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -27,19 +26,17 @@ import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
 import { QuickRouteForm } from '@/components/page/QuickRouteForm';
 import { usePermission } from '@/hooks/usePermission';
-import { currentInstanceIdAtom } from '@/stores/instance';
 import { proxyFailureText } from '@/utils/team-refusal';
 
 type Leave = { onCreated: () => void; onCancel: () => void };
 
-/** A new route. Keyed on the instance: one picked from another is gone. */
+/** A new route. The form keeps its answers across an instance switch. */
 const NewRoute = (leave: Leave) => {
   const { t } = useTranslation();
-  const instanceId = useAtomValue(currentInstanceIdAtom);
   return (
     <>
       <PageHeader title={t('form.quickRoute.title')} />
-      <QuickRouteForm key={instanceId} {...leave} />
+      <QuickRouteForm {...leave} />
     </>
   );
 };
@@ -61,7 +58,10 @@ const sourceQuery = (id: string) => {
     ...detail,
     queryKey: ['route-copy', ...detail.queryKey.slice(1)] as unknown as typeof detail.queryKey,
     gcTime: 0,
-    enabled: (query: { state: { data: unknown } }) => query.state.data === undefined,
+    // On until a route is read: an empty record, from a gateway out of
+    // reach, is read again by a Retry once it is back.
+    enabled: (query: { state: { data: unknown } }) =>
+      !(query.state.data as { value?: { id?: string } } | undefined)?.value?.id,
   };
 };
 

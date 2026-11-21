@@ -201,6 +201,15 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   // services are being read, which would throw away the clients picked.
   const serviceRead = kind === 'service' && !!serviceId && !!services;
   const [seededFor, setSeededFor] = useState<string | null>(null);
+  // Another instance picked in the header: what was typed stays, and what
+  // was picked from the last one's lists - an upstream, a service - goes.
+  const [formInstance, setFormInstance] = useState(instanceId);
+  if (formInstance !== instanceId) {
+    setFormInstance(instanceId);
+    setUpstreamId(null);
+    setServiceId(null);
+    setSeededFor(null);
+  }
   if (serviceRead && seededFor !== serviceId) {
     setSeededFor(serviceId);
     const start = inherited ?? { mode: 'any' as const };
@@ -356,8 +365,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
   const openWizard = () => {
-    leavingRef.current = true;
     if (untouched) {
+      leavingRef.current = true;
       void navigate({ to: '/routes/add' });
       return;
     }
@@ -367,6 +376,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       } catch {
         // No storage: the wizard opens with its own defaults.
       }
+      leavingRef.current = true;
       void navigate({ to: '/routes/add' });
     };
     let hasDraft = false;
@@ -382,10 +392,6 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       children: <Text size="sm">{t('form.quickRoute.replaceDraftBody')}</Text>,
       labels: { confirm: t('form.quickRoute.replaceDraftConfirm'), cancel: t('form.btn.cancel') },
       onConfirm: go,
-      // Kept on the page: its answers are still to be asked about.
-      onCancel: () => {
-        leavingRef.current = false;
-      },
     });
   };
 
