@@ -21,8 +21,8 @@ import {
   Chip,
   Group,
   List,
-  Modal,
   NumberInput,
+  Paper,
   SegmentedControl,
   Select,
   SimpleGrid,
@@ -96,12 +96,12 @@ const ANY_CLIENT: Record<QuickAuthPlugin, Restriction> = {
 const NO_STORED_NAMES: string[] = [];
 
 type Props = {
-  opened: boolean;
-  onClose: () => void;
-  /** After a route is created, for the list to read it. */
+  /** After a route is made. */
   onCreated: () => void;
+  /** Left without one. */
+  onCancel: () => void;
   /**
-   * The route to copy: the dialog then duplicates it, with every setting it
+   * The route to copy: the form then duplicates it, with every setting it
    * has and only what is changed here different. Remount it for another
    * route (a key), since it starts from this one.
    */
@@ -109,14 +109,17 @@ type Props = {
 };
 
 /**
- * A route from a path and a destination, on one screen.
+ * A route from a path and a destination, on one page.
  *
  * The common case - expose a path to a backend - took the wizard's five steps
  * and thirty fields, nearly all of them advanced. This asks for what a route
  * cannot do without, posts it the way the wizard does, and hands over to the
  * wizard, answers and all, for anything more.
+ *
+ * A page rather than a dialog: with the clients and the limit it outgrew a
+ * laptop screen, and a click beside a dialog threw away all it held.
  */
-export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Props) => {
+export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const instanceId = useAtomValue(currentInstanceIdAtom);
@@ -154,11 +157,11 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: upstreams } = useAllUpstreams(instanceId, opened && kind === 'upstream');
-  const { data: services } = useAllServices(instanceId, opened && kind === 'service');
+  const { data: upstreams } = useAllUpstreams(instanceId, kind === 'upstream');
+  const { data: services } = useAllServices(instanceId, kind === 'service');
   // Pinned to the instance and keyed by the team, as every whole-instance
   // list is; shared with the label filter's cache.
-  const { data: existing } = useAllRoutes(instanceId, opened);
+  const { data: existing } = useAllRoutes(instanceId, true);
 
   const name = typedName ?? proposeRouteName(methods, path);
 
@@ -228,7 +231,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
       : undefined;
 
   // Turned on beside a service that limits its calls: from the service's
-  // limit, when it is one the dialog can show, rather than a looser hundred.
+  // limit, when it is one the form can show, rather than a looser hundred.
   const turnLimitOn = (on: boolean) => {
     setLimitOn(on);
     if (!on || !serviceLimit) return;
@@ -291,36 +294,10 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
     );
   }, [existing, name, path, methods]);
 
-  // Back to where the dialog started: nothing, or the route it copies.
-  const reset = () => {
-    setPath(initial?.path ?? '');
-    setMethods(initial?.methods ?? ROUTE_ADD_DEFAULTS.methods ?? []);
-    setKind(initial ? 'same' : 'url');
-    setUrl('');
-    setUpstreamId(null);
-    setServiceId(null);
-    setHost(initial?.host ?? '');
-    setTypedName(initial?.name ?? null);
-    setAccessChoice('anyone');
-    setRestrictions(ANY_CLIENT);
-    setSeededFor(null);
-    setShownSections([]);
-    setLimitOn(false);
-    setLimitCount(100);
-    setLimitPer('minute');
-    setShowErrors(false);
-    setSubmitError(null);
-  };
-
-  const close = () => {
-    reset();
-    onClose();
-  };
-
   // Not while a route is being posted: its answer, success or refusal, has to
-  // land in a dialog that is still there to show it.
-  const dismiss = () => {
-    if (!submitting) close();
+  // land on a page that is still there to show it.
+  const leave = () => {
+    if (!submitting) onCancel();
   };
 
   const create = async (status: 0 | 1) => {
@@ -343,9 +320,10 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
         message: t('info.add.success', { name: t('routes.singular') }),
         color: 'green',
       });
-      close();
       onCreated();
     } catch (err) {
+      // Shown here too: `req` already notifies a refusal, which is what
+      // tells someone who left the page while it was being posted.
       setSubmitError(proxyFailureText(err) || t('routes.createFailed'));
     } finally {
       setSubmitting(false);
@@ -368,7 +346,6 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
 
   const openWizard = () => {
     if (untouched) {
-      close();
       void navigate({ to: '/routes/add' });
       return;
     }
@@ -378,7 +355,6 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
       } catch {
         // No storage: the wizard opens with its own defaults.
       }
-      close();
       void navigate({ to: '/routes/add' });
     };
     let hasDraft = false;
@@ -398,14 +374,13 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
   };
 
   return (
-    <Modal
-      opened={opened}
-      onClose={dismiss}
-      closeOnEscape={!submitting}
-      closeOnClickOutside={!submitting}
-      title={duplicating ? t('form.quickRoute.duplicateTitle', { name: sourceName }) : t('form.quickRoute.title')}
-      size="xl"
-      centered
+    // A region named as the page is: what the form is for, to a screen reader.
+    <Paper
+      component="section"
+      aria-label={duplicating ? t('form.quickRoute.duplicateTitle', { name: sourceName }) : t('form.quickRoute.title')}
+      p="xl"
+      radius="md"
+      withBorder
     >
       <Stack gap="md">
         {/* A copy says what it carries; a new route's fields say enough. */}
@@ -427,7 +402,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           // eslint-disable-next-line i18next/no-literal-string -- an example path, not prose
           placeholder="/api/orders/*"
           required
-          data-autofocus
+          autoFocus
           value={path}
           onChange={(e) => setPath(e.currentTarget.value)}
           error={shown(errors.path)}
@@ -502,7 +477,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           )}
         </Stack>
 
-        {/* Side by side: the dialog keeps its buttons on a laptop screen. */}
+        {/* Side by side: two short fields, one row. */}
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <TextInput
             label={t('form.quickRoute.host')}
@@ -682,7 +657,7 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
             </Button>
           )}
           <Group gap="sm">
-            <Button variant="default" onClick={dismiss} disabled={submitting}>
+            <Button variant="default" onClick={leave} disabled={submitting}>
               {t('form.btn.cancel')}
             </Button>
             {/* A copy answers on the route's own path: offline is its first
@@ -696,6 +671,6 @@ export const QuickCreateRouteModal = ({ opened, onClose, onCreated, source }: Pr
           </Group>
         </Group>
       </Stack>
-    </Modal>
+    </Paper>
   );
 };

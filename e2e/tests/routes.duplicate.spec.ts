@@ -75,13 +75,13 @@ test('duplicates a route whole, offline, without leaking dashboard fields', asyn
   await openMoreMenu(page, ROUTE_NAME);
   await page.getByRole('menuitem', { name: 'Duplicate' }).click();
 
-  // The quick-create dialog, on the route it copies.
-  const dialog = page.getByRole('dialog', { name: `Duplicate “${ROUTE_NAME}”` });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue(`${ROUTE_NAME} (copy)`);
-  await expect(dialog.getByRole('textbox', { name: 'Path' })).toHaveValue(route.uri!);
-  await dialog.getByRole('button', { name: 'Create offline' }).click();
-  await expect(dialog).toBeHidden();
+  // The quick-create form, on the route it copies.
+  const form = page.getByRole('region', { name: `Duplicate “${ROUTE_NAME}”` });
+  await expect(form).toBeVisible();
+  await expect(form.getByRole('textbox', { name: 'Name' })).toHaveValue(`${ROUTE_NAME} (copy)`);
+  await expect(form.getByRole('textbox', { name: 'Path' })).toHaveValue(route.uri!);
+  await form.getByRole('button', { name: 'Create offline' }).click();
+  await expect(form).toBeHidden();
   await expect(page.getByText(/additional properties forbidden/)).toHaveCount(0);
 
   const copy = (await listEvery<APISIXType['Route']>(API_ROUTES))
@@ -107,12 +107,12 @@ test('duplicates a route onto another upstream, keeping the rest', async ({ page
     await gotoRoutesList(page);
     await openMoreMenu(page, ROUTE_NAME);
     await page.getByRole('menuitem', { name: 'Duplicate' }).click();
-    const dialog = page.getByRole('dialog', { name: `Duplicate “${ROUTE_NAME}”` });
-    await dialog.locator('label').filter({ hasText: /^Existing upstream$/ }).click();
-    await dialog.getByRole('textbox', { name: 'Existing upstream' }).click();
+    const form = page.getByRole('region', { name: `Duplicate “${ROUTE_NAME}”` });
+    await form.locator('label').filter({ hasText: /^Existing upstream$/ }).click();
+    await form.getByRole('textbox', { name: 'Existing upstream' }).click();
     await page.getByRole('option', { name: upstreamId }).click();
-    await dialog.getByRole('button', { name: 'Create offline' }).click();
-    await expect(dialog).toBeHidden();
+    await form.getByRole('button', { name: 'Create offline' }).click();
+    await expect(form).toBeHidden();
 
     const copy = (await listEvery<APISIXType['Route']>(API_ROUTES))
       .map((item) => item.value)
@@ -157,4 +157,22 @@ test('accepts a write body still carrying the dashboard fields it handed out', a
 
   const res = await e2eReq.put(`${API_ROUTES}/${row!.value.id}`, body);
   expect(res.status).toBe(200);
+});
+
+test('copies the route as it is now, not as a page read it before', async ({ page }) => {
+  // Its detail page reads it, and keeps that record - within the app, which
+  // a page load would clear.
+  await gotoRoutesList(page);
+  await routesPom.rowByName(page, ROUTE_NAME).getByRole('button', { name: 'Configure' }).click();
+  await routesPom.isDetailPage(page);
+  await expect(page.getByRole('textbox', { name: 'Name' }).first()).toHaveValue(ROUTE_NAME);
+  // Then it changes behind the dashboard's back.
+  await putRouteReq(e2eReq, { ...route, host: 'changed.example.com' });
+
+  await routesPom.getRouteNavBtn(page).click();
+  await routesPom.isIndexPage(page);
+  await openMoreMenu(page, ROUTE_NAME);
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+  const form = page.getByRole('region', { name: `Duplicate “${ROUTE_NAME}”` });
+  await expect(form.getByRole('textbox', { name: 'Host' })).toHaveValue('changed.example.com');
 });

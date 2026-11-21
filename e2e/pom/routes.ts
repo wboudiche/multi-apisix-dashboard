@@ -20,10 +20,10 @@ import { expect, type Page } from '@playwright/test';
 const locator = {
   getRouteNavBtn: (page: Page) =>
     page.getByRole('link', { name: 'Routes', exact: true }),
-  // The list's two ways to a new route: the one-screen dialog, and the full
-  // form as a link of its own.
+  // The list's two ways to a new route, each a link: the one-page form,
+  // and the full one.
   getAddRouteBtn: (page: Page) =>
-    page.getByRole('button', { name: 'Quick route', exact: true }),
+    page.getByRole('link', { name: 'Quick route', exact: true }),
   getAdvancedRouteLink: (page: Page) =>
     page.getByRole('link', { name: 'Advanced route', exact: true }),
   getAddBtn: (page: Page) =>
@@ -56,13 +56,13 @@ const goto = {
   toIndex: (page: Page) => uiGoto(page, '/routes'),
   toAdd: (page: Page) => uiGoto(page, '/routes/add'),
   /**
-   * The wizard, by the dialog's way on to it: Quick route opens the
-   * quick-create dialog, and it hands over to the advanced form.
+   * The wizard, by the quick page's way on to it: Quick route opens the
+   * quick page, and it hands over to the advanced form.
    */
   openAddWizard: async (page: Page) => {
-    await page.getByRole('button', { name: 'Quick route', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'New route' });
-    await dialog.getByRole('button', { name: 'Continue in the advanced form' }).click();
+    await page.getByRole('link', { name: 'Quick route', exact: true }).click();
+    const quick = page.getByRole('region', { name: 'New route' });
+    await quick.getByRole('button', { name: 'Continue in the advanced form' }).click();
   },
 };
 
