@@ -20,11 +20,14 @@ import {
   Button,
   Checkbox,
   Code,
+  Combobox,
   CopyButton,
   Divider,
   Group,
+  InputBase,
   Loader,
   Paper,
+  Popover,
   Radio,
   ScrollArea,
   Stack,
@@ -36,7 +39,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useAtomValue } from 'jotai';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { putConsumerReq } from '@/apis/consumers';
@@ -265,7 +268,7 @@ const ClientList = ({
 }) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
-  const errorId = useId();
+  const [opened, setOpened] = useState(false);
   const picking = stored !== undefined;
   // A list written by hand may name a client twice: it is one client.
   const names = [...new Set(stored ?? [])];
@@ -333,105 +336,120 @@ const ClientList = ({
   const toggle = (option: string) =>
     onChange?.(picked.has(option) ? names.filter((n) => n !== option) : [...names, option]);
 
-  // Pointed out under the list only when its row is not in sight: one in
-  // sight says it beside its box.
-  const drawn = new Set(shown);
-  const unseenProblems = problems.filter(({ name }) => !drawn.has(name));
+  const title = picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders');
+  const empty = picking && names.length === 0;
 
   return (
     <Stack gap="xs">
-      <Text size="sm" fw={500}>
-        {picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders')}
-      </Text>
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <TextInput
-          // No visible label of its own: the title above is the list's, and
-          // the field is named for what it does.
-          aria-label={t('form.plugins.clients.search')}
-          placeholder={t('form.plugins.clients.searchPlaceholder')}
-          value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
-          style={{ flex: 1 }}
-        />
-        <Text size="sm" c="dimmed" style={{ whiteSpace: 'nowrap' }} data-testid="client-count">
-          {picking
-            ? t('form.plugins.clients.countPicked', { picked: names.length, total: options.length })
-            : t('form.plugins.clients.countHolders', { total: options.length })}
-        </Text>
-      </Group>
-      <Paper withBorder radius="sm" p={0}>
-        {/* Both act on the rows in sight: none in sight, nothing to act on. */}
-        {editable && shown.length > 0 && (
-          <>
-            <Group px="sm" py={6} justify="space-between" mih={36}>
-              <Checkbox
-                label={t('form.plugins.clients.allFound', { count: matching.length })}
-                checked={foundPicked === matching.length}
-                indeterminate={foundPicked > 0 && foundPicked < matching.length}
-                onChange={toggleFound}
-              />
-              {foundPicked > 0 && (
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  onClick={() => onChange?.(names.filter((n) => !found.has(n)))}
-                >
-                  {t('form.plugins.clients.clearPicked')}
-                </Button>
-              )}
-            </Group>
-            <Divider />
-          </>
-        )}
-        <ScrollArea.Autosize mah={280} type="auto">
-          <Stack
-            gap={0}
-            px="sm"
-            py={6}
-            role={picking ? 'group' : 'list'}
-            aria-label={picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders')}
-            // An empty pick is the list's error, said where a screen reader
-            // looks for it.
-            aria-invalid={picking && names.length === 0 ? true : undefined}
-            aria-describedby={picking && names.length === 0 ? errorId : undefined}
-            data-testid="client-list"
+      {/* A field that says how many, and opens on the list - as the upstream
+          picker does - rather than a list taking the form's room for good. */}
+      <Popover
+        opened={opened}
+        onChange={setOpened}
+        width="target"
+        position="bottom-start"
+        shadow="md"
+        // Kept open while several are ticked: only a click outside, or
+        // Escape, closes it. Focus goes to its search, so that Escape there
+        // closes it and hands focus back to the field.
+        closeOnClickOutside
+        closeOnEscape
+        trapFocus
+        returnFocus
+      >
+        <Popover.Target>
+          <InputBase
+            component="button"
+            type="button"
+            pointer
+            label={title}
+            rightSection={<Combobox.Chevron />}
+            rightSectionPointerEvents="none"
+            onClick={() => setOpened((o) => !o)}
+            aria-expanded={opened}
+            aria-haspopup="dialog"
+            error={empty ? t('form.plugins.clients.accessEmpty') : undefined}
           >
-            {shown.length === 0 && (
-              <Text size="sm" c="dimmed" py={4}>
-                {clients ? t('form.plugins.clients.noMatch') : t('form.plugins.clients.reading')}
+            <span data-testid="client-count">
+              {picking
+                ? t('form.plugins.clients.countPicked', { picked: names.length, total: options.length })
+                : t('form.plugins.clients.countHolders', { total: options.length })}
+            </span>
+          </InputBase>
+        </Popover.Target>
+        <Popover.Dropdown p="xs" data-testid="client-dropdown">
+          <Stack gap="xs">
+            <TextInput
+              aria-label={t('form.plugins.clients.search')}
+              placeholder={t('form.plugins.clients.searchPlaceholder')}
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+              data-autofocus
+            />
+            {/* Both act on the rows in sight: none in sight, nothing to act on. */}
+            {editable && shown.length > 0 && (
+              <>
+                <Group px={4} justify="space-between" mih={32}>
+                  <Checkbox
+                    label={t('form.plugins.clients.allFound', { count: matching.length })}
+                    checked={foundPicked === matching.length}
+                    indeterminate={foundPicked > 0 && foundPicked < matching.length}
+                    onChange={toggleFound}
+                  />
+                  {foundPicked > 0 && (
+                    <Button
+                      variant="subtle"
+                      size="compact-sm"
+                      onClick={() => onChange?.(names.filter((n) => !found.has(n)))}
+                    >
+                      {t('form.plugins.clients.clearPicked')}
+                    </Button>
+                  )}
+                </Group>
+                <Divider />
+              </>
+            )}
+            <ScrollArea.Autosize mah={280} type="auto" offsetScrollbars="y">
+              <Stack
+                gap={0}
+                px={4}
+                role={picking ? 'group' : 'list'}
+                aria-label={title}
+                data-testid="client-list"
+              >
+                {shown.length === 0 && (
+                  <Text size="sm" c="dimmed" py={4}>
+                    {clients ? t('form.plugins.clients.noMatch') : t('form.plugins.clients.reading')}
+                  </Text>
+                )}
+                {shown.map((option) =>
+                  picking ? (
+                    <Checkbox
+                      key={option}
+                      py={5}
+                      label={option}
+                      description={hint(option)}
+                      checked={picked.has(option)}
+                      disabled={!editable}
+                      onChange={() => toggle(option)}
+                    />
+                  ) : (
+                    <Text key={option} size="sm" py={4} role="listitem">
+                      {option}
+                    </Text>
+                  )
+                )}
+              </Stack>
+            </ScrollArea.Autosize>
+            {matching.length > shown.length && (
+              <Text size="xs" c="dimmed">
+                {t('form.plugins.clients.listCut', { shown: shown.length, total: matching.length })}
               </Text>
             )}
-            {shown.map((option) =>
-              picking ? (
-                <Checkbox
-                  key={option}
-                  py={5}
-                  label={option}
-                  description={hint(option)}
-                  checked={picked.has(option)}
-                  disabled={!editable}
-                  onChange={() => toggle(option)}
-                />
-              ) : (
-                <Text key={option} size="sm" py={4} role="listitem">
-                  {option}
-                </Text>
-              )
-            )}
           </Stack>
-        </ScrollArea.Autosize>
-      </Paper>
-      {matching.length > shown.length && (
-        <Text size="xs" c="dimmed">
-          {t('form.plugins.clients.listCut', { shown: shown.length, total: matching.length })}
-        </Text>
-      )}
-      {picking && names.length === 0 && (
-        <Text size="sm" c="red" id={errorId}>
-          {t('form.plugins.clients.accessEmpty')}
-        </Text>
-      )}
-      {unseenProblems.map(({ name, why }) => (
+        </Popover.Dropdown>
+      </Popover>
+      {problems.map(({ name, why }) => (
         <Group key={name} gap={6} wrap="nowrap" align="baseline">
           <Code>{name}</Code>
           <Text size="xs" c="orange.8">
@@ -439,34 +457,6 @@ const ClientList = ({
           </Text>
         </Group>
       ))}
-    </Stack>
-  );
-};
-
-/**
- * Who a credential lets through, when every holder is: a count, and the
- * list behind a click - there to look at, not to act on, so it does not
- * take the form's room until asked for.
- */
-const HolderSummary = ({ clients }: { clients: Clients }) => {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  return (
-    <Stack gap="xs">
-      <Group gap="xs">
-        <Text size="sm">
-          {t('form.plugins.clients.holdersSummary', { count: clients.holders.length })}
-        </Text>
-        <Button
-          variant="subtle"
-          size="compact-sm"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-        >
-          {open ? t('form.plugins.clients.hideList') : t('form.plugins.clients.showList')}
-        </Button>
-      </Group>
-      {open && <ClientList clients={clients} />}
     </Stack>
   );
 };
@@ -705,7 +695,7 @@ export const AuthClientsSection = ({
               {t('form.plugins.clients.none')}
             </Alert>
           ) : (
-            <HolderSummary clients={clients.data} />
+            <ClientList clients={clients.data} />
           ))}
 
         {created && (

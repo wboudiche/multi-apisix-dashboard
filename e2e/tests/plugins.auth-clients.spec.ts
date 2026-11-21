@@ -76,10 +76,12 @@ test('an auth plugin lists who can call it and makes a client with a key', async
 
     await expect(clients.getByText(`Client ${name} created.`)).toBeVisible();
     await expect(clients.getByText(`curl -H 'apikey: ${key}'`)).toBeVisible();
-    // Among the holders, once the list is asked for.
-    await clients.getByRole('button', { name: 'Show the list' }).click();
-    await clients.getByRole('textbox', { name: 'Search the clients' }).fill(name);
-    await expect(clients.getByRole('listitem').filter({ hasText: name })).toHaveCount(1);
+    // Among the holders, in the list the field opens on.
+    await clients.getByRole('button', { name: 'Clients holding a credential' }).click();
+    const holders = page.getByTestId('client-dropdown');
+    await holders.getByRole('textbox', { name: 'Search the clients' }).fill(name);
+    await expect(holders.getByRole('listitem').filter({ hasText: name })).toHaveCount(1);
+    await page.keyboard.press('Escape');
 
     const creds = await e2eReq
       .get<unknown, { data: Credentials }>(API_CREDENTIALS(name))
@@ -127,12 +129,13 @@ test('an auth plugin narrows who may call to the clients picked', async ({ page 
 
     await test.step('every client holding a key, until said otherwise', async () => {
       await expect(clients.getByRole('radio', { name: 'Every client holding a credential' })).toBeChecked();
-      // Counted, and listed once asked for.
-      await expect(clients.getByText(/^Clients holding a credential: \d+$/)).toBeVisible();
-      await expect(clients.getByText(allowed, { exact: true })).toBeHidden();
-      await clients.getByRole('button', { name: 'Show the list' }).click();
-      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(allowed);
-      await expect(clients.getByText(allowed, { exact: true })).toBeVisible();
+      // Counted in a field, and listed in what it opens on.
+      await expect(clients.getByTestId('client-count')).toHaveText(/^\d+ in all$/);
+      await clients.getByRole('button', { name: 'Clients holding a credential' }).click();
+      const holders = page.getByTestId('client-dropdown');
+      await holders.getByRole('textbox', { name: 'Search the clients' }).fill(allowed);
+      await expect(holders.getByText(allowed, { exact: true })).toBeVisible();
+      await page.keyboard.press('Escape');
     });
 
     await test.step('narrowed to one, the plugin waits for a name', async () => {
@@ -140,10 +143,13 @@ test('an auth plugin narrows who may call to the clients picked', async ({ page 
       await expect(clients.getByText('Pick at least one client.')).toBeVisible();
       await expect(drawer.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
       // Found by typing part of its name, as among hundreds of clients.
-      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(`a-${id}`);
-      await expect(clients.getByRole('checkbox', { name: other, exact: true })).toBeHidden();
-      await clients.getByRole('checkbox', { name: allowed, exact: true }).check();
+      await clients.getByRole('button', { name: 'Clients allowed' }).click();
+      const list = page.getByTestId('client-dropdown');
+      await list.getByRole('textbox', { name: 'Search the clients' }).fill(`a-${id}`);
+      await expect(list.getByRole('checkbox', { name: other, exact: true })).toBeHidden();
+      await list.getByRole('checkbox', { name: allowed, exact: true }).check();
       await expect(clients.getByTestId('client-count')).toHaveText(/^1 of \d+ picked$/);
+      await page.keyboard.press('Escape');
       await expect(clients.getByText('Pick at least one client.')).toBeHidden();
       await drawer.getByRole('button', { name: 'Add', exact: true }).click();
       await expect(drawer).toBeHidden();

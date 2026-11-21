@@ -479,10 +479,7 @@
         "countPicked": "{{total}} içinden {{picked}} seçildi",
         "countHolders": "Toplam {{total}}",
         "listCut": "{{total}} içinden {{shown}} listelendi: diğerlerini bulmak için bir adın bir kısmını yazın.",
-        "allFound": "Tümü ({{count}})",
-        "showList": "Listeyi göster",
-        "hideList": "Listeyi gizle",
-        "holdersSummary": "Kimlik bilgisi olan istemciler: {{count}}"
+        "allFound": "Tümü ({{count}})"
       },
       "oidc": {
         "test": "Adresi test et",
