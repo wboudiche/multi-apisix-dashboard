@@ -407,6 +407,15 @@ table tbody tr:last-child td {
   min-height: 40px !important;
 }
 
+/* A field that is a button - one that opens a list, as the clients' does -
+   took Mantine's line height of a whole field on top of the padding above,
+   and sat its text 16px from the top and 4px from the bottom. */
+button[class*="Input-input"] {
+  display: flex !important;
+  align-items: center;
+  line-height: normal !important;
+}
+
 /* Reset internal inputs for complex components (TagsInput, MultiSelect) that cause double borders */
 [class*="PillsInput-field"],
 [class*="TagsInput-inputField"],

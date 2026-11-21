@@ -391,6 +391,15 @@ test('picks the clients a search shows, all at once', async ({ page }) => {
     await test.step('every holder is counted in a field that opens on them', async () => {
       await expect(clients.getByTestId('client-count')).toHaveText(/^\d+ in all$/);
       await expect(dropdown).toBeHidden();
+      // Its text in the middle of the field, as a typed field's is.
+      const [above, below] = await clients
+        .getByRole('button', { name: 'Clients holding a credential' })
+        .evaluate((field) => {
+          const text = field.querySelector('[data-testid="client-count"]')!.getBoundingClientRect();
+          const box = field.getBoundingClientRect();
+          return [text.top - box.top, box.bottom - text.bottom];
+        });
+      expect(Math.abs(above - below)).toBeLessThanOrEqual(2);
       await clients.getByRole('button', { name: 'Clients holding a credential' }).click();
       // Found by its name: the list draws the first names only.
       await dropdown.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
