@@ -267,7 +267,13 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   // A copy keeps the original's plugins, its proxy-rewrite among them.
   const override =
     !duplicating && overrideOn
-      ? { host: overrideHost, setHeaders, removeHeaders }
+      ? {
+          host: overrideHost,
+          setHeaders,
+          removeHeaders,
+          // A service's own rewrite, which the route's would replace whole.
+          inherited: servicePlugins['proxy-rewrite'] as Record<string, unknown> | undefined,
+        }
       : undefined;
   const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access, rateLimit, override };
 
@@ -679,6 +685,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                   placeholder="api.internal"
                   value={overrideHost}
                   onChange={(e) => setOverrideHost(e.currentTarget.value)}
+                  error={shown(errors.overrideHost)}
                 />
                 <Stack gap={4}>
                   <Text size="sm" fw={500}>{t('form.requestOverride.headers')}</Text>
@@ -741,8 +748,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                   value={removeHeaders}
                   onChange={setRemoveHeaders}
                 />
-                {showErrors && errors.override && (
-                  <Text size="sm" c="red">{errorText(errors.override)}</Text>
+                {showErrors && errors.overrideHeaders && (
+                  <Text size="sm" c="red">{errorText(errors.overrideHeaders)}</Text>
                 )}
                 <Text size="xs" c="dimmed">{t('form.quickRoute.overrideAdvanced')}</Text>
               </Stack>

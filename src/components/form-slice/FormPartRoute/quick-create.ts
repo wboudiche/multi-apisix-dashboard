@@ -84,12 +84,22 @@ export type QuickOverride = {
   host: string;
   setHeaders: { key: string; value: string }[];
   removeHeaders: string[];
+  /**
+   * The proxy-rewrite of the service the route goes through, when it has
+   * one: a route's plugin replaces the service's of the same name whole, so
+   * the override is laid over it rather than in its place - or a base path
+   * the service puts in front of every request would be lost.
+   */
+  inherited?: Record<string, unknown>;
 };
 
 /** A header's name, as HTTP spells a token. */
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
-/** A host name or address, with a port or not: no scheme, no path. */
-const HOST_NAME = /^[A-Za-z0-9.-]+(:\d{1,5})?$|^\[[0-9A-Fa-f:.]+\](:\d{1,5})?$/;
+/**
+ * A host name or address, with a port or not: no scheme, no path. APISIX's
+ * own pattern for proxy-rewrite's host, so what passes here passes there.
+ */
+const HOST_NAME = /^[0-9a-zA-Z.-]+(:\d{1,5})?$/;
 
 /**
  * The proxy-rewrite a route needs: the address's base path, put in front of
@@ -110,12 +120,27 @@ export const requestRewrite = (
     ...(Object.keys(set).length > 0 && { set }),
     ...(remove.length > 0 && { remove }),
   };
-  const rewrite = {
+  const mine = {
     ...(basePath && basePathRewrite(basePath)),
     ...(host && { host }),
-    ...(Object.keys(headers).length > 0 && { headers }),
   };
-  return Object.keys(rewrite).length > 0 ? rewrite : undefined;
+  if (Object.keys(mine).length === 0 && Object.keys(headers).length === 0) return undefined;
+  // Over the service's own, its headers merged with these: what the
+  // override does not change goes on as the service had it.
+  const inherited = override?.inherited ?? {};
+  const theirs = (inherited.headers ?? {}) as { set?: Record<string, string>; remove?: string[] };
+  const mergedHeaders = {
+    ...theirs,
+    ...((theirs.set || headers.set) && { set: { ...theirs.set, ...headers.set } }),
+    ...((theirs.remove || headers.remove) && {
+      remove: [...new Set([...(theirs.remove ?? []), ...(headers.remove ?? [])])],
+    }),
+  };
+  return {
+    ...inherited,
+    ...mine,
+    ...(Object.keys(mergedHeaders).length > 0 && { headers: mergedHeaders }),
+  };
 };
 
 /** The windows a quick route's calls are counted over, in seconds. */
@@ -375,7 +400,10 @@ export type QuickRouteErrors = {
    */
   access?: string;
   rateLimit?: string;
-  override?: string;
+  /** The Host Override field. */
+  overrideHost?: string;
+  /** The headers set or taken off. */
+  overrideHeaders?: string;
   /** What the wizard's schema refuses that no field of the quick page shows. */
   other?: string[];
 };
@@ -429,15 +457,31 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   const o = q.override;
   if (o) {
     const host = o.host.trim();
-    // A value with no name is one the rewrite would drop without a word.
-    const names = [
-      ...o.setHeaders.filter((h) => h.key.trim() || h.value.trim()).map((h) => h.key.trim()),
-      ...o.removeHeaders.map((h) => h.trim()),
-    ];
-    if (host && !HOST_NAME.test(host)) errors.override = 'form.validation.overrideHost';
-    else if (names.some((n) => !HEADER_NAME.test(n))) errors.override = 'form.validation.headerName';
+    if (host && !HOST_NAME.test(host)) errors.overrideHost = 'form.validation.overrideHost';
+    errors.overrideHeaders = headersError(o);
   }
   return errors;
+};
+
+/**
+ * What is wrong with the headers set or taken off: a name HTTP has no word
+ * for, a value with no name - the rewrite would drop it without a word - a
+ * value with a $, which the gateway reads as a variable and sends changed,
+ * and a name given twice, case aside: the last one would win, or the one
+ * taken off would undo the one set.
+ */
+const headersError = (o: QuickOverride): string | undefined => {
+  const rows = o.setHeaders.filter((h) => h.key.trim() || h.value.trim());
+  const set = rows.map((h) => h.key.trim());
+  const removed = o.removeHeaders.map((h) => h.trim()).filter(Boolean);
+  if ([...set, ...removed].some((n) => !HEADER_NAME.test(n))) return 'form.validation.headerName';
+  if (rows.some((h) => h.value.includes('$'))) return 'form.validation.headerValueDollar';
+  const lower = set.map((n) => n.toLowerCase());
+  const twice =
+    new Set(lower).size < lower.length ||
+    removed.some((n) => lower.includes(n.toLowerCase())) ||
+    (!!o.host.trim() && lower.includes('host'));
+  return twice ? 'form.validation.headerTwice' : undefined;
 };
 
 /** A schema's refusals, each by the field of the quick page that shows it. */

@@ -1023,8 +1023,10 @@
       "pathSlash": "Ein Pfad beginnt mit /",
       "destinationPathRewritten": "Diese Route schreibt ihren Pfad bereits um: Geben Sie die Adresse ohne Pfad an",
       "rateLimitCount": "Eine ganze Zahl, mindestens 1",
-      "headerName": "Ein Header-Name besteht nur aus Buchstaben, Ziffern und - _ ., ohne Leerzeichen oder Doppelpunkt; ein Wert braucht einen Namen.",
-      "overrideHost": "Ein Hostname oder eine Adresse, bei Bedarf mit Port: ohne Schema, ohne Pfad."
+      "headerName": "Ein Header-Name enthält kein Leerzeichen, keinen Doppelpunkt und kein anderes Trennzeichen, und ein Wert braucht einen Namen.",
+      "overrideHost": "Ein Hostname oder eine Adresse, bei Bedarf mit Port: ohne Schema, ohne Pfad.",
+      "headerValueDollar": "Kein $ in einem Header-Wert: Das Gateway liest es als eine seiner Variablen und sendet den Wert verändert.",
+      "headerTwice": "Jeder Header einmal: nicht zweimal gesetzt (Groß-/Kleinschreibung egal), nicht gesetzt und entfernt, und kein Host-Header neben dem Host Override."
     },
     "quickRoute": {
       "title": "Neue Route",

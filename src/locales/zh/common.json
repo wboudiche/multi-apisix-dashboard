@@ -1017,8 +1017,10 @@
       "pathSlash": "路径必须以 / 开头",
       "destinationPathRewritten": "此路由已经改写了路径：请填写不带路径的地址",
       "rateLimitCount": "大于等于 1 的整数",
-      "headerName": "请求头名称只能包含字母、数字和 - _ .，不能有空格或冒号；有值就必须有名称。",
-      "overrideHost": "主机名或地址，需要时带端口：不带协议，不带路径。"
+      "headerName": "请求头名称不能包含空格、冒号或其他分隔符，且有值就必须有名称。",
+      "overrideHost": "主机名或地址，需要时带端口：不带协议，不带路径。",
+      "headerValueDollar": "请求头的值中不能有 $：网关会把它当作变量读取，并发送修改后的值。",
+      "headerTwice": "每个请求头只出现一次：不能重复设置（不区分大小写），不能既设置又移除，且设置了 Host Override 时不能再设置 Host 请求头。"
     },
     "quickRoute": {
       "title": "新建路由",

@@ -491,20 +491,60 @@ describe('the request sent to the backend', () => {
     expect(draft.plugins?.['proxy-rewrite']).toEqual({ host: 'api.internal' });
   });
 
-  it('refuses a host with a scheme or a path, and a header name HTTP has no word for', () => {
-    expect(quickRouteErrors({ ...base, override: override({ host: 'http://api.internal' }) }).override).toBe(
-      'form.validation.overrideHost'
-    );
-    expect(quickRouteErrors({ ...base, override: override({ host: 'api.internal:8443' }) }).override).toBeUndefined();
-    expect(
-      quickRouteErrors({ ...base, override: override({ setHeaders: [{ key: 'X Env', value: '1' }] }) }).override
-    ).toBe('form.validation.headerName');
+  it('lays the change over the rewrite of the service it goes through, not in its place', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      override: override({
+        host: 'api.internal',
+        setHeaders: [{ key: 'X-Env', value: 'prod' }],
+        inherited: { regex_uri: ['^(.*)$', '/v1$1'], headers: { set: { 'X-From': 'service' }, remove: ['Cookie'] } },
+      }),
+    });
+    expect(form.plugins?.['proxy-rewrite']).toEqual({
+      regex_uri: ['^(.*)$', '/v1$1'],
+      host: 'api.internal',
+      headers: { set: { 'X-From': 'service', 'X-Env': 'prod' }, remove: ['Cookie'] },
+    });
+  });
+
+  it('leaves the service\'s rewrite to the service when nothing is changed', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'service', serviceId: 's1' },
+      override: override({ inherited: { regex_uri: ['^(.*)$', '/v1$1'] } }),
+    });
+    expect(form.plugins).toEqual({});
+  });
+
+  it('refuses a host the gateway would refuse, and says so on the host', () => {
+    const hostError = (host: string) => quickRouteErrors({ ...base, override: override({ host }) }).overrideHost;
+    expect(hostError('http://api.internal')).toBe('form.validation.overrideHost');
+    expect(hostError('[::1]:8080')).toBe('form.validation.overrideHost');
+    expect(hostError('api.internal:8443')).toBeUndefined();
+  });
+
+  it('refuses headers that would not be sent as typed', () => {
+    const headersError = (o: Partial<NonNullable<QuickRoute['override']>>) =>
+      quickRouteErrors({ ...base, override: override(o) }).overrideHeaders;
+    expect(headersError({ setHeaders: [{ key: 'X Env', value: '1' }] })).toBe('form.validation.headerName');
     // A value with no name would be dropped without a word.
-    expect(
-      quickRouteErrors({ ...base, override: override({ setHeaders: [{ key: '', value: '1' }] }) }).override
-    ).toBe('form.validation.headerName');
-    expect(quickRouteErrors({ ...base, override: override({ removeHeaders: ['X:Debug'] }) }).override).toBe(
-      'form.validation.headerName'
+    expect(headersError({ setHeaders: [{ key: '', value: '1' }] })).toBe('form.validation.headerName');
+    expect(headersError({ removeHeaders: ['X:Debug'] })).toBe('form.validation.headerName');
+    // The gateway reads a $ as one of its variables.
+    expect(headersError({ setHeaders: [{ key: 'X-Token', value: 'pa$$' }] })).toBe(
+      'form.validation.headerValueDollar'
     );
+    // Twice, case aside; set and taken off; a Host beside the Host Override.
+    expect(
+      headersError({ setHeaders: [{ key: 'X-Env', value: 'a' }, { key: 'x-env', value: 'b' }] })
+    ).toBe('form.validation.headerTwice');
+    expect(headersError({ setHeaders: [{ key: 'X-Debug', value: '1' }], removeHeaders: ['x-debug'] })).toBe(
+      'form.validation.headerTwice'
+    );
+    expect(headersError({ host: 'api.internal', setHeaders: [{ key: 'Host', value: 'x' }] })).toBe(
+      'form.validation.headerTwice'
+    );
+    expect(headersError({ setHeaders: [{ key: 'X-Env', value: 'prod' }], removeHeaders: ['Cookie'] })).toBeUndefined();
   });
 });

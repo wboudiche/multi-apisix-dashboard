@@ -1023,8 +1023,10 @@
       "pathSlash": "Bir yol / ile başlar",
       "destinationPathRewritten": "Bu rota yolunu zaten yeniden yazıyor: adresi yol olmadan verin",
       "rateLimitCount": "1 veya daha büyük bir tam sayı",
-      "headerName": "Başlık adı yalnızca harf, rakam ve - _ . içerir, boşluk veya iki nokta olmaz; bir değerin adı olmalı.",
-      "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok."
+      "headerName": "Başlık adında boşluk, iki nokta veya başka ayırıcı olmaz ve bir değerin adı olmalı.",
+      "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok.",
+      "headerValueDollar": "Başlık değerinde $ olmaz: ağ geçidi bunu kendi değişkenlerinden biri olarak okur ve değeri değiştirerek gönderir.",
+      "headerTwice": "Her başlık bir kez: iki kez ayarlanmaz (büyük/küçük harf fark etmez), hem ayarlanıp hem kaldırılmaz ve Host Override yanında Host başlığı olmaz."
     },
     "quickRoute": {
       "title": "Yeni rota",
