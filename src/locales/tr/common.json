@@ -466,13 +466,16 @@
         "jwtSignFailed": "Burada denemek için hiçbir token imzalanamadı.",
         "jwtClaimChanged": "Claim o zamandan beri değişti: onu taşıyan bir token almak için başka bir istemci oluşturun.",
         "pick": "İzin verilen istemciler",
-        "pickPlaceholder": "Aramak için bir ad yazın",
         "noMatch": "Bu adda istemci yok",
-        "clearPicked": "Seçilen tüm istemcileri kaldır",
-        "showAll": "Tümünü göster ({{total}})",
-        "showFewer": "Daha az göster",
-        "pickMore": "{{total}} istemci: ilk {{shown}} tanesi listelenir; diğerlerini bulmak için bir adın bir kısmını yazın.",
-        "reading": "İstemciler okunuyor…"
+        "clearPicked": "Temizle",
+        "reading": "İstemciler okunuyor…",
+        "holders": "Kimlik bilgisi olan istemciler",
+        "search": "İstemcilerde ara",
+        "searchPlaceholder": "Bir adın bir kısmını yazın",
+        "countPicked": "{{total}} içinden {{picked}} seçildi",
+        "countHolders": "Toplam {{total}}",
+        "allShown": "Gösterilenlerin tümü",
+        "listCut": "{{total}} içinden {{shown}} listelendi: diğerlerini bulmak için bir adın bir kısmını yazın."
       },
       "oidc": {
         "test": "Adresi test et",

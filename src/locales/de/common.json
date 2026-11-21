@@ -466,13 +466,16 @@
         "jwtSignFailed": "Hier konnte kein Token zum Ausprobieren signiert werden.",
         "jwtClaimChanged": "Der Claim wurde inzwischen geändert: Erstellen Sie einen weiteren Client, um ein Token mit ihm zu erhalten.",
         "pick": "Zugelassene Clients",
-        "pickPlaceholder": "Namen eingeben, um zu suchen",
         "noMatch": "Kein Client mit diesem Namen",
-        "clearPicked": "Alle ausgewählten Clients entfernen",
-        "showAll": "Alle anzeigen ({{total}})",
-        "showFewer": "Weniger anzeigen",
-        "pickMore": "{{total}} Clients: Die ersten {{shown}} werden aufgeführt, geben Sie einen Teil eines Namens ein, um die anderen zu finden.",
-        "reading": "Clients werden gelesen…"
+        "clearPicked": "Leeren",
+        "reading": "Clients werden gelesen…",
+        "holders": "Clients mit Zugangsdaten",
+        "search": "Clients durchsuchen",
+        "searchPlaceholder": "Teil eines Namens eingeben",
+        "countPicked": "{{picked}} von {{total}} ausgewählt",
+        "countHolders": "{{total}} insgesamt",
+        "allShown": "Alle angezeigten",
+        "listCut": "{{shown}} von {{total}} aufgeführt: Teil eines Namens eingeben, um die anderen zu finden."
       },
       "oidc": {
         "test": "Adresse testen",

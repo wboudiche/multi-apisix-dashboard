@@ -237,8 +237,8 @@ test('lets only the clients picked call a route made in the dialog', async ({ pa
     });
 
     await test.step('created with the key and the allow-list', async () => {
-      await clients.getByRole('textbox', { name: 'Clients allowed' }).fill(`a-${id}`);
-      await page.getByRole('option', { name: allowed }).click();
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(`a-${id}`);
+      await clients.getByRole('checkbox', { name: allowed, exact: true }).check();
       await dialog.getByRole('button', { name: 'Create', exact: true }).click();
       await expect(dialog).toBeHidden();
 
@@ -261,6 +261,67 @@ test('lets only the clients picked call a route made in the dialog', async ({ pa
   } finally {
     for (const username of [allowed, other]) {
       await e2eReq.delete(`${API_CONSUMERS}/${username}`).catch(() => null);
+    }
+  }
+});
+
+test('picks the clients a search shows, all at once', async ({ page }) => {
+  const path = `${prefix}/partners`;
+  const id = randomId('p');
+  const partners = [1, 2, 3].map((n) => `e2e-quick-partner-${id}-${n}`);
+  const outsider = `e2e-quick-outsider-${id}`;
+  for (const username of [...partners, outsider]) {
+    await e2eReq.put(API_CONSUMERS, {
+      username,
+      plugins: { 'key-auth': { key: `${username}-key` } },
+    });
+  }
+  try {
+    const dialog = await openDialog(page);
+    await dialog.getByRole('textbox', { name: 'Path' }).fill(path);
+    await dialog.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+    await dialog.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
+    const clients = dialog.getByTestId('auth-clients');
+
+    await test.step('every holder is listed, and counted', async () => {
+      await expect(clients.getByRole('listitem').filter({ hasText: outsider })).toHaveCount(1);
+      await expect(clients.getByTestId('client-count')).toContainText('in all');
+    });
+
+    await test.step('a search, then all it shows', async () => {
+      await clients.getByRole('radio', { name: 'Only the clients picked' }).check();
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
+      await expect(clients.getByRole('checkbox', { name: outsider })).toBeHidden();
+      await clients.getByRole('checkbox', { name: 'All shown' }).check();
+      await expect(clients.getByTestId('client-count')).toContainText('3 of');
+      // What the search hid is left as it was.
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill('');
+      await expect(clients.getByRole('checkbox', { name: outsider, exact: true })).not.toBeChecked();
+    });
+
+    await test.step('created with those three only', async () => {
+      await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+      await expect(dialog).toBeHidden();
+      const [route] = (await routesUnder()).filter((r) => r.uri === path);
+      expect(
+        (route.plugins?.['consumer-restriction'] as { whitelist: string[] }).whitelist.slice().sort()
+      ).toEqual(partners);
+    });
+
+    await test.step('Clear unticks every one', async () => {
+      const again = await openDialog(page);
+      await again.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
+      const list = again.getByTestId('auth-clients');
+      await list.getByRole('radio', { name: 'Only the clients picked' }).check();
+      await list.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
+      await list.getByRole('checkbox', { name: 'All shown' }).check();
+      await list.getByRole('button', { name: 'Clear', exact: true }).click();
+      await expect(list.getByTestId('client-count')).toContainText('0 of');
+      await expect(list.getByText('Pick at least one client.')).toBeVisible();
+    });
+  } finally {
+    for (const username of [...partners, outsider]) {
+      await e2eReq.delete(`${API_CONSUMERS}/${username}`).catch(() => undefined);
     }
   }
 });
