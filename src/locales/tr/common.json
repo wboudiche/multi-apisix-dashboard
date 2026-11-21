@@ -558,7 +558,6 @@
     },
     "requestOverride": {
       "title": "İstek Geçersiz Kılma",
-      "scheme": "Şema",
       "keepOriginal": "Orijinali Koru",
       "uri": "URI Geçersiz Kılma",
       "uriStatic": "Statik",
@@ -1019,7 +1018,11 @@
       "destinationUrlPlain": "Yalnızca şema, host, port ve yol: kimlik bilgisi, sorgu, parça veya $ olmadan",
       "pathSlash": "Bir yol / ile başlar",
       "destinationPathRewritten": "Bu rota yolunu zaten yeniden yazıyor: adresi yol olmadan verin",
-      "rateLimitCount": "1 veya daha büyük bir tam sayı"
+      "rateLimitCount": "1 veya daha büyük bir tam sayı",
+      "headerName": "Başlık adında boşluk, iki nokta veya başka ayırıcı olmaz.",
+      "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok.",
+      "headerValueDollar": "Başlık değerinde $ olmaz: ağ geçidi bunu kendi değişkenlerinden biri olarak okur ve değeri değiştirerek gönderir.",
+      "headerTwice": "Her başlık bir kez: farklı harf büyüklüğüyle iki kez ayarlanmaz, hem ayarlanıp hem kaldırılmaz (burada veya serviste) ve Host Override yanında Host başlığı olmaz."
     },
     "quickRoute": {
       "title": "Yeni rota",
@@ -1069,7 +1072,8 @@
         "minute": "dakika",
         "hour": "saat",
         "day": "gün"
-      }
+      },
+      "override": "Arka uca gönderilen isteği değiştir"
     }
   },
   "globalRules": {

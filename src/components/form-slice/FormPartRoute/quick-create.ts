@@ -70,6 +70,98 @@ export type QuickRoute = {
   access?: QuickAccess;
   /** None: as many calls as come. */
   rateLimit?: QuickRateLimit;
+  /** None: the request goes to the backend as it came. */
+  override?: QuickOverride;
+};
+
+/**
+ * The request sent to the backend, as the advanced form's Request Override
+ * section writes it - the same section, so the two offer the same options.
+ */
+export type QuickOverride = {
+  /** The proxy-rewrite the section holds; empty when nothing is changed. */
+  rewrite: ProxyRewrite;
+  /**
+   * The proxy-rewrite of the service the route goes through, when it has
+   * one: a route's plugin replaces the service's of the same name whole, so
+   * the override is laid over it rather than in its place - or a base path
+   * the service puts in front of every request would be lost.
+   */
+  inherited?: Record<string, unknown>;
+};
+
+type ProxyRewrite = Record<string, unknown> & {
+  host?: string;
+  uri?: string;
+  regex_uri?: string[];
+  headers?: { set?: Record<string, string>; add?: Record<string, string>; remove?: string[] };
+};
+
+/** A header's name, as HTTP spells a token. */
+const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+/**
+ * A host name or address, with a port or not: no scheme, no path. APISIX's
+ * own pattern for proxy-rewrite's host, so what passes here passes there.
+ */
+const HOST_NAME = /^[0-9a-zA-Z.-]+(:\d{1,5})?$/;
+
+/**
+ * The service's proxy-rewrite, as a route's is laid over it: none when the
+ * service has switched it off - copied, its _meta would switch the route's
+ * off with it - its own _meta left to the service, and its headers in the
+ * add/set/remove shape, APISIX's older flat one read as headers set.
+ */
+const serviceRewrite = (inherited: Record<string, unknown> | undefined): ProxyRewrite => {
+  if (!inherited) return {};
+  const meta = inherited._meta as { disable?: unknown } | undefined;
+  if (meta?.disable === true) return {};
+  const rest = { ...inherited } as ProxyRewrite;
+  delete rest._meta;
+  const headers = rest.headers as Record<string, unknown> | undefined;
+  if (headers && !['add', 'set', 'remove'].some((k) => k in headers)) {
+    rest.headers = { set: headers as Record<string, string> };
+  }
+  return rest;
+};
+
+/**
+ * The proxy-rewrite a route needs: the address's base path, put in front of
+ * every request, and what the override changes, over the service's own.
+ * A path the override rewrites is its own, in place of the base path's and
+ * the service's. Undefined for none.
+ */
+export const requestRewrite = (
+  override: QuickOverride | undefined,
+  basePath?: string
+): Record<string, unknown> | undefined => {
+  const raw = override?.rewrite ?? {};
+  if (!basePath && Object.keys(raw).length === 0) return undefined;
+  // Trimmed as posted: the gateway's pattern for a host has no room for a
+  // space a paste left behind.
+  const mine: ProxyRewrite = { ...raw, ...(typeof raw.host === 'string' && { host: raw.host.trim() }) };
+  const ownPath = mine.uri !== undefined || mine.regex_uri !== undefined;
+  const inherited = serviceRewrite(override?.inherited);
+  if (ownPath) {
+    delete inherited.uri;
+    delete inherited.regex_uri;
+  }
+  // The service's headers go on as it had them, under the ones changed here.
+  const theirs = inherited.headers ?? {};
+  const ours = mine.headers ?? {};
+  const headers = {
+    ...theirs,
+    ...ours,
+    ...((theirs.set || ours.set) && { set: { ...theirs.set, ...ours.set } }),
+    ...((theirs.remove || ours.remove) && {
+      remove: [...new Set([...(theirs.remove ?? []), ...(ours.remove ?? [])])],
+    }),
+  };
+  return {
+    ...inherited,
+    ...(basePath && !ownPath && basePathRewrite(basePath)),
+    ...mine,
+    ...(Object.keys(headers).length > 0 && { headers }),
+  };
 };
 
 /** The windows a quick route's calls are counted over, in seconds. */
@@ -234,6 +326,7 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     plugins: {
       ...accessPlugins(q.access),
       ...rateLimitPlugins(q.rateLimit, !!q.rateLimit?.byClient || !!q.access?.plugin),
+      ...withRewrite(requestRewrite(q.override)),
     },
     ...(q.methods.length > 0 && { methods: q.methods as RoutePostType['methods'] }),
     ...(host && { host }),
@@ -252,11 +345,13 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     ...form,
     upstream_id: UPSTREAM_CUSTOM,
     upstream: built.upstream as RoutePostType['upstream'],
-    ...(built.basePath && {
-      plugins: { ...form.plugins, 'proxy-rewrite': basePathRewrite(built.basePath) },
-    }),
+    plugins: { ...form.plugins, ...withRewrite(requestRewrite(q.override, built.basePath)) },
   };
 };
+
+const withRewrite = (
+  rewrite: Record<string, unknown> | undefined
+): Record<string, Record<string, unknown>> => (rewrite ? { 'proxy-rewrite': rewrite } : {});
 
 /**
  * The upstream an address makes - the importer's reading of a server, with
@@ -326,6 +421,12 @@ export type QuickRouteErrors = {
    */
   access?: string;
   rateLimit?: string;
+  /** The Host Override field. */
+  overrideHost?: string;
+  /** The path the request is rewritten to. */
+  overrideUri?: string;
+  /** The headers set or taken off. */
+  overrideHeaders?: string;
   /** What the wizard's schema refuses that no field of the quick page shows. */
   other?: string[];
 };
@@ -375,7 +476,41 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   if (limit && !(Number.isInteger(limit.count) && limit.count >= 1)) {
     errors.rateLimit = 'form.validation.rateLimitCount';
   }
+
+  const o = q.override;
+  if (o) {
+    const host = o.rewrite.host?.trim();
+    if (host && !HOST_NAME.test(host)) errors.overrideHost = 'form.validation.overrideHost';
+    // The gateway's own rule for a path the request is rewritten to.
+    if (typeof o.rewrite.uri === 'string' && !o.rewrite.uri.startsWith('/')) {
+      errors.overrideUri = 'form.validation.pathSlash';
+    }
+    errors.overrideHeaders = headersError(o);
+  }
   return errors;
+};
+
+/**
+ * What is wrong with the headers set: a name HTTP has no word for, a value
+ * with a $, which the gateway reads as a variable and sends changed, a name
+ * set twice, case aside - the last one would win - or set and taken off, by
+ * the service or here, and a Host header beside a Host Override.
+ */
+const headersError = (o: QuickOverride): string | undefined => {
+  const set = Object.entries(o.rewrite.headers?.set ?? {});
+  if (set.some(([name]) => !HEADER_NAME.test(name))) return 'form.validation.headerName';
+  if (set.some(([, value]) => value.includes('$'))) return 'form.validation.headerValueDollar';
+  // On the rewrite as posted, the service's laid under: a header it takes
+  // off undoes one set here - the gateway removes after it sets.
+  const merged = (requestRewrite(o) ?? {}) as ProxyRewrite;
+  const lower = set.map(([name]) => name.toLowerCase());
+  const removed = (merged.headers?.remove ?? []).map((n) => n.toLowerCase());
+  const mergedSet = Object.keys(merged.headers?.set ?? {}).map((n) => n.toLowerCase());
+  const twice =
+    new Set(lower).size < lower.length ||
+    lower.some((n) => removed.includes(n)) ||
+    (!!merged.host && mergedSet.includes('host'));
+  return twice ? 'form.validation.headerTwice' : undefined;
 };
 
 /** A schema's refusals, each by the field of the quick page that shows it. */

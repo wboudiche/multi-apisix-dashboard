@@ -560,7 +560,6 @@
     },
     "requestOverride": {
       "title": "Reescritura de Solicitud",
-      "scheme": "Esquema",
       "keepOriginal": "Mantener Original",
       "uri": "Reescritura de URI",
       "uriStatic": "Estático",
@@ -1021,7 +1020,11 @@
       "destinationUrlPlain": "Solo esquema, host, puerto y ruta: sin credenciales, consulta, fragmento ni $",
       "pathSlash": "Una ruta empieza por /",
       "destinationPathRewritten": "Esta ruta ya reescribe su ruta: indique la dirección sin ruta",
-      "rateLimitCount": "Un número entero, 1 o más"
+      "rateLimitCount": "Un número entero, 1 o más",
+      "headerName": "Un nombre de encabezado no lleva espacios, dos puntos ni otros separadores.",
+      "overrideHost": "Un nombre de host o una dirección, con puerto si hace falta: sin esquema ni ruta.",
+      "headerValueDollar": "Sin $ en el valor de un encabezado: la pasarela lo lee como una de sus variables y envía el valor cambiado.",
+      "headerTwice": "Cada encabezado una vez: no definido dos veces con distinta capitalización, no definido y quitado (aquí o por el servicio), y sin encabezado Host junto a un Host Override."
     },
     "quickRoute": {
       "title": "Nueva ruta",
@@ -1071,7 +1074,8 @@
         "minute": "minuto",
         "hour": "hora",
         "day": "día"
-      }
+      },
+      "override": "Cambiar la solicitud enviada al backend"
     }
   },
   "globalRules": {

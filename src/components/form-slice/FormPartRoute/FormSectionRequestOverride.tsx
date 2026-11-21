@@ -42,10 +42,13 @@ type HeaderRow = { key: string; value: string };
  * rebuilt, because this section rebuilds its own keys from scratch and would
  * otherwise drop the rest without a word (#48).
  */
-const MANAGED_KEYS = ['scheme', 'uri', 'regex_uri', 'host', 'method', 'headers'];
+// No scheme among them: APISIX 3 dropped proxy-rewrite's scheme, so a choice
+// of HTTP or HTTPS was stored and did nothing - the upstream's scheme is what
+// the gateway dials with. One a route already holds is kept, as any key this
+// section does not know.
+const MANAGED_KEYS = ['uri', 'regex_uri', 'host', 'method', 'headers'];
 
 type ProxyRewriteConfig = {
-  scheme?: string;
   uri?: string;
   regex_uri?: string[];
   host?: string;
@@ -62,8 +65,6 @@ type UriMode = 'keep' | 'static' | 'regex';
 const parseConfig = (config: ProxyRewriteConfig | undefined) => {
   if (!config) {
     return {
-      schemeMode: 'keep' as const,
-      scheme: '',
       uriMode: 'keep' as UriMode,
       staticUri: '',
       regexPattern: '',
@@ -93,8 +94,6 @@ const parseConfig = (config: ProxyRewriteConfig | undefined) => {
   }
 
   return {
-    schemeMode: config.scheme ? 'override' : 'keep',
-    scheme: config.scheme || '',
     uriMode,
     staticUri: config.uri || '',
     regexPattern: config.regex_uri?.[0] || '',
@@ -111,10 +110,6 @@ const buildConfig = (state: ReturnType<typeof parseConfig>): ProxyRewriteConfig 
   const config: ProxyRewriteConfig = {};
   let hasAny = false;
 
-  if (state.schemeMode === 'override' && state.scheme) {
-    config.scheme = state.scheme;
-    hasAny = true;
-  }
 
   if (state.uriMode === 'static' && state.staticUri) {
     config.uri = state.staticUri;
@@ -209,7 +204,7 @@ export const FormSectionRequestOverride = () => {
     syncToForm({ ...state, ...patch });
   };
 
-  const hasOverrides = state.schemeMode !== 'keep' || state.uriMode !== 'keep' ||
+  const hasOverrides = state.uriMode !== 'keep' ||
     state.hostMode !== 'keep' || state.method || state.setHeaders.length > 0 || state.removeHeaders.length > 0;
 
   if (isReadOnly && !hasOverrides) return null;
@@ -219,25 +214,6 @@ export const FormSectionRequestOverride = () => {
       <Text size="xs" c="dimmed" mb="sm">
         {t('form.requestOverride.syncNotice')}
       </Text>
-
-      {/* Scheme Override */}
-      <Radio.Group
-        label={t('form.requestOverride.scheme')}
-        value={state.schemeMode === 'keep' ? 'keep' : state.scheme}
-        onChange={(val) => {
-          if (val === 'keep') {
-            update({ schemeMode: 'keep', scheme: '' });
-          } else {
-            update({ schemeMode: 'override', scheme: val });
-          }
-        }}
-      >
-        <Group mt="xs">
-          <Radio value="keep" label={t('form.requestOverride.keepOriginal')} disabled={isReadOnly} />
-          <Radio value="http" label="HTTP" disabled={isReadOnly} />
-          <Radio value="https" label="HTTPS" disabled={isReadOnly} />
-        </Group>
-      </Radio.Group>
 
       {/* URI Override */}
       <Radio.Group

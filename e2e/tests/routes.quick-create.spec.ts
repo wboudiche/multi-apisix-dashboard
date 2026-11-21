@@ -212,6 +212,77 @@ test('tells whoever left during a create that it was refused', async ({ page }) 
   await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
 });
 
+test('changes the request sent to the backend, with the advanced form\'s options', async ({ page }) => {
+  const path = `${prefix}/overridden`;
+  const form = await openForm(page);
+  await form.getByRole('textbox', { name: 'Path' }).fill(path);
+  await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980/v1');
+
+  await test.step('hidden until asked for, as the call limit is', async () => {
+    await expect(form.getByRole('radiogroup', { name: 'Host Override' })).toBeHidden();
+    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+  });
+
+  await test.step('the same options as the advanced form', async () => {
+    for (const group of ['URI Override', 'Host Override']) {
+      await expect(form.getByRole('radiogroup', { name: group })).toBeVisible();
+    }
+    await expect(form.getByRole('radiogroup', { name: 'Scheme' })).toHaveCount(0);
+    await expect(form.getByRole('textbox', { name: 'Method Override' })).toBeVisible();
+    await expect(form.getByRole('button', { name: 'Add Header' })).toBeVisible();
+  });
+
+  await test.step('a method, a host and a header', async () => {
+    await form.getByRole('textbox', { name: 'Method Override' }).click();
+    await page.getByRole('option', { name: 'POST', exact: true }).click();
+    await form.getByRole('radiogroup', { name: 'Host Override' }).getByRole('radio', { name: 'Static' }).check();
+    const host = form.getByRole('textbox', { name: 'new-host.example.com' });
+    await host.fill('http://api.internal');
+    await form.getByRole('button', { name: 'Add Header' }).click();
+    await form.getByRole('textbox', { name: 'Header Name' }).fill('X-Env');
+    await form.getByRole('textbox', { name: 'Header Value' }).fill('prod');
+
+    // A scheme in the host is refused rather than sent as a Host header.
+    await form.getByRole('button', { name: 'Create offline' }).click();
+    await expect(form.getByText('no scheme, no path', { exact: false })).toBeVisible();
+    await host.fill('api.internal');
+  });
+
+  await test.step('written as a proxy-rewrite, beside the address\'s base path', async () => {
+    await form.getByRole('button', { name: 'Create offline' }).click();
+    await expect(form).toBeHidden();
+    const [route] = (await routesUnder()).filter((r) => r.uri === path);
+    expect(route.plugins?.['proxy-rewrite']).toEqual({
+      regex_uri: ['^(.*)$', '/v1$1'],
+      method: 'POST',
+      host: 'api.internal',
+      headers: { set: { 'X-Env': 'prod' } },
+    });
+  });
+});
+
+test('hands the change to the request over to the advanced form', async ({ page }) => {
+  const form = await openForm(page);
+  await form.getByRole('textbox', { name: 'Path' }).fill(`${prefix}/handed-override`);
+  await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+  await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+  await form.getByRole('radiogroup', { name: 'Host Override' }).getByRole('radio', { name: 'Static' }).check();
+  await form.getByRole('textbox', { name: 'new-host.example.com' }).fill('api.internal');
+  await form.getByRole('button', { name: 'Continue in the advanced form' }).click();
+  await routesPom.isAddPage(page);
+  // The plugins the draft holds, as the advanced form reads them.
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const draft = JSON.parse(localStorage.getItem(key) ?? 'null');
+        return draft?.plugins?.['proxy-rewrite'];
+        // ROUTE_DRAFT_KEY, in FormPartRoute/quick-create.ts: that module
+        // pulls the app's locales in, which the test runner cannot load.
+      }, 'apisix-route-draft')
+    )
+    .toEqual({ host: 'api.internal' });
+});
+
 test('points a route at an existing upstream', async ({ page }) => {
   const path = `${prefix}/by-upstream`;
   const form = await openForm(page);

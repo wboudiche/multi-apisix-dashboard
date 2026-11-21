@@ -37,12 +37,14 @@ import { notifications } from '@mantine/notifications';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
 import { useMemo, useRef, useState } from 'react';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { postRouteReq } from '@/apis/routes';
 import { AuthClientsSection } from '@/components/form-slice/FormItemPlugins/AuthClientsSection';
 import { getPluginCategory } from '@/components/form-slice/FormItemPlugins/pluginMetadata';
 import { duplicateRouteBody, duplicateRouteErrors, keptPathRewrite, quickRouteFromRoute } from '@/components/form-slice/FormPartRoute/duplicate-route';
+import { FormSectionRequestOverride } from '@/components/form-slice/FormPartRoute/FormSectionRequestOverride';
 import {
   destinationUrlError,
   proposeRouteName,
@@ -154,6 +156,14 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const [limitOn, setLimitOn] = useState(false);
   const [limitCount, setLimitCount] = useState<number | string>(100);
   const [limitPer, setLimitPer] = useState<RateWindow>('minute');
+  // Off until asked for, as the call limit is: the request goes to the
+  // backend as it came. Switched off again, what was set is kept, not sent.
+  const [overrideOn, setOverrideOn] = useState(false);
+  // The advanced form's Request Override section, on a form of its own: it
+  // reads and writes plugins['proxy-rewrite'], and the route takes that.
+  const rewriteForm = useForm<{ plugins: Record<string, unknown> }>({ defaultValues: { plugins: {} } });
+  const rewrite = (useWatch({ control: rewriteForm.control, name: 'plugins' })?.['proxy-rewrite'] ??
+    NO_SETTINGS) as Record<string, unknown>;
   const [showErrors, setShowErrors] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -253,7 +263,15 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       setLimitPer(per);
     }
   };
-  const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access, rateLimit };
+  // A copy keeps the original's plugins, its proxy-rewrite among them.
+  const override = duplicating || !overrideOn
+    ? undefined
+    : {
+        rewrite,
+        // A service's own rewrite, which the route's would replace whole.
+        inherited: servicePlugins['proxy-rewrite'] as Record<string, unknown> | undefined,
+      };
+  const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access, rateLimit, override };
 
   // What the connection test dials: the node an address makes, or the nodes
   // of the upstream picked. Nothing until there is one to dial.
@@ -361,6 +379,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     !serviceId &&
     accessChoice === 'anyone' &&
     !limitOn &&
+    !overrideOn &&
     // As a set: a method unticked and ticked again is no edit.
     [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
@@ -644,6 +663,26 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
               </>
             )}
           </Stack>
+        )}
+
+        {!duplicating && (
+          <Switch
+            label={t('form.quickRoute.override')}
+            checked={overrideOn}
+            onChange={(e) => setOverrideOn(e.currentTarget.checked)}
+          />
+        )}
+        {!duplicating && overrideOn && (
+          <FormProvider {...rewriteForm}>
+            <FormSectionRequestOverride />
+            {showErrors && (errors.overrideHost || errors.overrideUri || errors.overrideHeaders) && (
+              <Stack gap={2}>
+                {[errors.overrideUri, errors.overrideHost, errors.overrideHeaders].filter(Boolean).map((key) => (
+                  <Text key={key} size="sm" c="red">{errorText(key)}</Text>
+                ))}
+              </Stack>
+            )}
+          </FormProvider>
         )}
 
         {duplicates.length > 0 && (
