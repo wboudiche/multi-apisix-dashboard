@@ -75,24 +75,24 @@ test.describe('Route Add - Request Override on the Options step', () => {
   test('Request Override shows all form fields', async ({ page }) => {
     await navigateToRequestOverrideStep(page);
 
-    await expect(page.getByText('Scheme', { exact: true })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('URI Override', { exact: true })).toBeVisible();
+    await expect(page.getByText('URI Override', { exact: true })).toBeVisible({ timeout: 10000 });
+    // No scheme: APISIX 3 dropped proxy-rewrite's, and one chosen did nothing.
+    await expect(page.getByText('Scheme', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Host Override', { exact: true })).toBeVisible();
     await expect(page.getByText('Method Override', { exact: true })).toBeVisible();
     await expect(page.getByText('Header Override', { exact: true })).toBeVisible();
     await expect(page.getByText('Keep Original').first()).toBeVisible();
   });
 
-  test('Changing scheme to HTTPS adds proxy-rewrite plugin', async ({ page }) => {
+  test('A method override adds the proxy-rewrite plugin', async ({ page }) => {
     await navigateToRequestOverrideStep(page);
 
-    // The plugins are below, on the same step: none until the scheme changes.
+    // The plugins are below, on the same step: none until the method changes.
     const proxyRewrite = page.getByTestId('plugin-proxy-rewrite');
     await expect(proxyRewrite).toBeHidden();
 
-    // Click HTTPS label (Mantine Radio renders as label, not role=radio)
-    await page.locator('label:has-text("HTTPS")').click();
-    await page.waitForTimeout(500);
+    await page.getByRole('textbox', { name: 'Method Override' }).click();
+    await page.getByRole('option', { name: 'POST', exact: true }).click();
 
     await expect(proxyRewrite).toBeVisible({ timeout: 10000 });
   });

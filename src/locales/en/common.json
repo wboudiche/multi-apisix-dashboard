@@ -597,7 +597,6 @@
     },
     "requestOverride": {
       "title": "Request Override",
-      "scheme": "Scheme",
       "keepOriginal": "Keep Original",
       "uri": "URI Override",
       "uriStatic": "Static",

@@ -157,18 +157,19 @@ test('route: a cancelled request override is neither shown nor saved later', asy
       timeout: 15000,
     });
     // To the Options step, the third, where Request Override is, and add a
-    // scheme override.
+    // method override.
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await saveEditTo(page, 2);
-    await page.locator('label:has-text("HTTPS")').click();
+    await page.getByRole('textbox', { name: 'Method Override' }).click();
+    await page.getByRole('option', { name: 'POST', exact: true }).click();
     await cancelEdit(page, true);
 
     // Read-only, the section shows only when there is an override to show.
     await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
-    await expect(page.getByText('Scheme', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Method Override', { exact: true })).toHaveCount(0);
 
     // Edit again, still on Options, change only the URI, and save from the
-    // last step, one on: the scheme stays as stored.
+    // last step, one on: the method stays as stored.
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.locator('label:has-text("Static")').first().click();
     await page.locator('input[placeholder="/new/path"]').fill('/rewritten');
@@ -176,10 +177,10 @@ test('route: a cancelled request override is neither shown nor saved later', asy
     await expect(page.getByText('Edit Route Successfully')).toBeVisible({ timeout: 15000 });
 
     const stored = (await apiFetch(`${PROXY}/routes/${id}`, token, { headers: onLocal() })) as {
-      value: { plugins?: Record<string, { scheme?: string; uri?: string }> };
+      value: { plugins?: Record<string, { method?: string; uri?: string }> };
     };
     expect(stored.value.plugins?.['proxy-rewrite']?.uri).toBe('/rewritten');
-    expect(stored.value.plugins?.['proxy-rewrite']?.scheme).toBeUndefined();
+    expect(stored.value.plugins?.['proxy-rewrite']?.method).toBeUndefined();
   } finally {
     await apiFetch(`${PROXY}/routes/${id}`, token, { method: 'DELETE', headers: onLocal() }).catch(
       () => undefined

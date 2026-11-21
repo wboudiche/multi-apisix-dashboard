@@ -219,20 +219,20 @@ test('changes the request sent to the backend, with the advanced form\'s options
   await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980/v1');
 
   await test.step('hidden until asked for, as the call limit is', async () => {
-    await expect(form.getByRole('radiogroup', { name: 'Scheme' })).toBeHidden();
+    await expect(form.getByRole('radiogroup', { name: 'Host Override' })).toBeHidden();
     await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
   });
 
   await test.step('the same options as the advanced form', async () => {
-    for (const group of ['Scheme', 'URI Override', 'Host Override']) {
+    for (const group of ['URI Override', 'Host Override']) {
       await expect(form.getByRole('radiogroup', { name: group })).toBeVisible();
     }
+    await expect(form.getByRole('radiogroup', { name: 'Scheme' })).toHaveCount(0);
     await expect(form.getByRole('textbox', { name: 'Method Override' })).toBeVisible();
     await expect(form.getByRole('button', { name: 'Add Header' })).toBeVisible();
   });
 
-  await test.step('a scheme, a method, a host and a header', async () => {
-    await form.getByRole('radiogroup', { name: 'Scheme' }).getByRole('radio', { name: 'HTTPS' }).check();
+  await test.step('a method, a host and a header', async () => {
     await form.getByRole('textbox', { name: 'Method Override' }).click();
     await page.getByRole('option', { name: 'POST', exact: true }).click();
     await form.getByRole('radiogroup', { name: 'Host Override' }).getByRole('radio', { name: 'Static' }).check();
@@ -254,7 +254,6 @@ test('changes the request sent to the backend, with the advanced form\'s options
     const [route] = (await routesUnder()).filter((r) => r.uri === path);
     expect(route.plugins?.['proxy-rewrite']).toEqual({
       regex_uri: ['^(.*)$', '/v1$1'],
-      scheme: 'https',
       method: 'POST',
       host: 'api.internal',
       headers: { set: { 'X-Env': 'prod' } },

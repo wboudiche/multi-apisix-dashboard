@@ -447,7 +447,6 @@ describe('the request sent to the backend', () => {
 
   it('writes what the section holds, every option of it', () => {
     const rewrite = {
-      scheme: 'https',
       uri: '/new/path',
       host: 'api.internal',
       method: 'POST',

@@ -561,7 +561,6 @@
     },
     "requestOverride": {
       "title": "İstek Geçersiz Kılma",
-      "scheme": "Şema",
       "keepOriginal": "Orijinali Koru",
       "uri": "URI Geçersiz Kılma",
       "uriStatic": "Statik",

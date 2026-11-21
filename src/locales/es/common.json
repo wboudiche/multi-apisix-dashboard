@@ -563,7 +563,6 @@
     },
     "requestOverride": {
       "title": "Reescritura de Solicitud",
-      "scheme": "Esquema",
       "keepOriginal": "Mantener Original",
       "uri": "Reescritura de URI",
       "uriStatic": "Estático",

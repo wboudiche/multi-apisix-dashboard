@@ -561,7 +561,6 @@
     },
     "requestOverride": {
       "title": "请求覆盖",
-      "scheme": "协议",
       "keepOriginal": "保持不变",
       "uri": "URI 覆盖",
       "uriStatic": "静态",
