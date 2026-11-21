@@ -281,7 +281,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
                   borderBottom: active === index ? '2px solid var(--brand)' : '2px solid transparent',
                   color: active === index ? 'var(--brand)' : 'var(--text-secondary)',
                   transition: 'all 0.15s ease',
-                  background: active === index ? 'var(--mantine-color-red-0, #fff5f5)' : 'transparent',
+                  background: active === index ? 'var(--mantine-color-red-light)' : 'transparent',
                 }}
               >
                 {step.label}
@@ -307,7 +307,7 @@ export const FormWizard = ({ steps, onComplete, loading, onCancel, onBackToList,
               },
               stepIcon: {
                 borderWidth: '2px',
-                backgroundColor: 'white',
+                backgroundColor: 'var(--bg-card)',
                 transition: 'all var(--transition-base)',
               },
               separator: {

@@ -12,6 +12,14 @@
   --brand-active: #D32F2F;
   --brand-subtle: rgba(248, 66, 63, 0.1);
   --table-head-bg: linear-gradient(180deg, #FAFBFC 0%, #F0F2F5 100%);
+  /* A surface a step off the card's: a modal's header and footer. */
+  --surface-muted: #FAFBFC;
+  /* Where the page's background fades to, at its foot. */
+  --bg-fade: #F0F2F5;
+  /* The brand red as text on a brand-tinted fill, at 4.5:1 or more. */
+  --brand-ink: #b32626;
+  --scroll-thumb: linear-gradient(180deg, #BCC1C6 0%, #8B9399 100%);
+  --scroll-thumb-hover: linear-gradient(180deg, #A8AFB5 0%, #7A8389 100%);
 
   /* Premium color palette */
   --bg-primary: #F8F9FA;
@@ -112,7 +120,7 @@ body::before {
 /* ===== App Shell ===== */
 
 [class*="AppShell-main"] {
-  background: linear-gradient(180deg, var(--bg-primary) 0%, #F0F2F5 100%) !important;
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-fade) 100%) !important;
 }
 
 /* ===== Header ===== */
@@ -149,13 +157,13 @@ body::before {
   box-shadow: inset 3px 0 0 var(--brand) !important;
   /* The brand red on its pink was 3.15:1, under the 4.5:1 text needs; the
      darker red reads at about 6:1, the bar beside it keeps the brand's. */
-  color: #b32626 !important;
+  color: var(--brand-ink) !important;
 }
 
 [class*="NavLink-root"][aria-current="page"] [class*="NavLink-label"],
 [class*="NavLink-root"][data-active="true"] [class*="NavLink-label"],
 [class*="NavLink-root"][data-active="true"] [class*="NavLink-section"] {
-  color: #b32626 !important;
+  color: var(--brand-ink) !important;
 }
 
 [class*="NavLink-root"]:hover:not([data-active="true"]):not([aria-current="page"]) {
@@ -466,11 +474,13 @@ select:focus,
   border: none !important;
   border-radius: var(--radius-xl) !important;
   box-shadow: var(--shadow-xl) !important;
-  overflow: hidden;
+  /* Sideways only: Mantine scrolls a dialog taller than the screen inside
+     its content box, and `overflow: hidden` cut that dialog off instead. */
+  overflow-x: hidden;
 }
 
 [class*="Modal-header"] {
-  background: linear-gradient(180deg, #FAFBFC 0%, var(--bg-card) 100%) !important;
+  background: linear-gradient(180deg, var(--surface-muted) 0%, var(--bg-card) 100%) !important;
   border-bottom: 1px solid var(--border-light) !important;
   padding: 24px 28px !important;
 }
@@ -489,7 +499,7 @@ select:focus,
 [class*="Modal-footer"] {
   padding: 20px 28px !important;
   border-top: 1px solid var(--border-light) !important;
-  background: #FAFBFC !important;
+  background: var(--surface-muted) !important;
 }
 
 /* ===== Badge ===== */
@@ -633,13 +643,13 @@ select:focus,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #BCC1C6 0%, #8B9399 100%);
+  background: var(--scroll-thumb);
   border-radius: var(--radius-full);
   border: 2px solid var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #A8AFB5 0%, #7A8389 100%);
+  background: var(--scroll-thumb-hover);
 }
 
 /* ===== Title/Heading ===== */
@@ -739,7 +749,7 @@ select:focus,
 
 /* Active and Completed States */
 .mantine-Stepper-step[data-active="true"] .mantine-Stepper-stepIcon {
-  background: white !important;
+  background: var(--bg-card) !important;
   color: var(--brand) !important;
   border-color: var(--brand) !important;
   box-shadow: 0 0 0 4px var(--brand-glow) !important;
@@ -854,7 +864,20 @@ select:focus,
 [data-mantine-color-scheme="dark"] {
   --bg-primary: #0F1113;
   --bg-secondary: #1A1D21;
+  /* These two are antd's colorBgContainer and colorBgElevated too, in
+     src/config/antdConfigProvider.tsx: change them together. */
   --bg-card: #252830;
+  --bg-elevated: #2C3039;
+  --text-inverse: #0F1113;
+  --table-head-bg: linear-gradient(180deg, #2C3039 0%, #262931 100%);
+  --surface-muted: #2A2D35;
+  --bg-fade: #15171A;
+  --brand-ink: #FF8A87;
+  --scroll-thumb: linear-gradient(180deg, #4A505A 0%, #3A3F48 100%);
+  --scroll-thumb-hover: linear-gradient(180deg, #5A616C 0%, #4A505A 100%);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
   --text-primary: #F0F2F5;
   --text-secondary: #A0A4AB;
   --text-muted: #6C7280;

@@ -469,3 +469,21 @@ test('starts from the clients a route\'s service lets through, and can open it t
     }
   }
 });
+
+test('scrolls to its last field on a short screen', async ({ page }) => {
+  // The dialog with a key's clients and a limit is taller than this screen.
+  await page.setViewportSize({ width: 1280, height: 700 });
+  const dialog = await openDialog(page);
+  await dialog.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
+  await dialog.locator('label').filter({ hasText: /^Limit the number of calls$/ }).click();
+
+  // The wheel, not a click: a click scrolls its target into view on its own,
+  // even in a box whose overflow is hidden.
+  const create = dialog.getByRole('button', { name: 'Create', exact: true });
+  await expect(create).not.toBeInViewport();
+  await dialog.getByRole('textbox', { name: 'Path' }).hover();
+  await expect(async () => {
+    await page.mouse.wheel(0, 600);
+    await expect(create).toBeInViewport({ timeout: 500 });
+  }).toPass({ timeout: 10000 });
+});

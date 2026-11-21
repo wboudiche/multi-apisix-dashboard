@@ -8,6 +8,9 @@
   --login-input-border-hover: oklch(0.78 0.01 262);
   --login-red: oklch(0.55 0.205 27);
   --login-red-deep: oklch(0.47 0.19 27);
+  /* The red of a link or an icon on the page, not of the button's fill. */
+  --login-red-ink: var(--login-red);
+  --login-rule: oklch(0.9 0.005 262);
   --login-focus-ring: oklch(0.55 0.205 27 / 0.14);
   --login-warn: #c77700;
   --login-err-text: oklch(0.5 0.19 27);
@@ -291,7 +294,7 @@
 }
 
 .eye:hover {
-  color: var(--login-red);
+  color: var(--login-red-ink);
   background: oklch(0.55 0.205 27 / 0.08);
 }
 
@@ -328,7 +331,7 @@
   font-family: var(--login-font);
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--login-red);
+  color: var(--login-red-ink);
 }
 
 .forgot:hover {
@@ -424,7 +427,7 @@
 .legal {
   margin: 28px 0 0;
   padding-top: 24px;
-  border-top: 1px solid oklch(0.9 0.005 262);
+  border-top: 1px solid var(--login-rule);
   color: var(--login-placeholder);
   font-size: 12px;
   line-height: 1.55;
@@ -455,4 +458,22 @@
   .submit {
     transition: none;
   }
+}
+
+/* ─── Dark scheme: the form's half goes dark; the brand panel already is ─── */
+:global([data-mantine-color-scheme='dark']) .stage {
+  --login-ink: oklch(0.94 0.005 262);
+  --login-muted: oklch(0.74 0.012 262);
+  --login-placeholder: oklch(0.62 0.012 262);
+  --login-bg: oklch(0.2 0.008 262);
+  --login-input-bg: oklch(0.24 0.008 262);
+  --login-input-border: oklch(0.38 0.01 262);
+  --login-input-border-hover: oklch(0.5 0.012 262);
+  --login-red-ink: oklch(0.72 0.17 27);
+  --login-rule: oklch(0.32 0.008 262);
+  --login-focus-ring: oklch(0.72 0.17 27 / 0.25);
+  --login-warn: #f0a33a;
+  --login-err-text: oklch(0.8 0.12 27);
+  --login-err-bg: oklch(0.3 0.06 27);
+  --login-err-border: oklch(0.48 0.12 27);
 }
