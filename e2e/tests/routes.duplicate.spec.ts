@@ -158,3 +158,21 @@ test('accepts a write body still carrying the dashboard fields it handed out', a
   const res = await e2eReq.put(`${API_ROUTES}/${row!.value.id}`, body);
   expect(res.status).toBe(200);
 });
+
+test('copies the route as it is now, not as a page read it before', async ({ page }) => {
+  // Its detail page reads it, and keeps that record - within the app, which
+  // a page load would clear.
+  await gotoRoutesList(page);
+  await routesPom.rowByName(page, ROUTE_NAME).getByRole('button', { name: 'Configure' }).click();
+  await routesPom.isDetailPage(page);
+  await expect(page.getByRole('textbox', { name: 'Name' }).first()).toHaveValue(ROUTE_NAME);
+  // Then it changes behind the dashboard's back.
+  await putRouteReq(e2eReq, { ...route, host: 'changed.example.com' });
+
+  await routesPom.getRouteNavBtn(page).click();
+  await routesPom.isIndexPage(page);
+  await openMoreMenu(page, ROUTE_NAME);
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+  const form = page.getByRole('region', { name: `Duplicate “${ROUTE_NAME}”` });
+  await expect(form.getByRole('textbox', { name: 'Host' })).toHaveValue('changed.example.com');
+});
