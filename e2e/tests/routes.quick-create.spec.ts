@@ -337,8 +337,8 @@ test('lets only the clients picked call a route made on the quick page', async (
     });
 
     await test.step('created with the key and the allow-list', async () => {
-      await clients.getByRole('textbox', { name: 'Clients allowed' }).fill(`a-${id}`);
-      await page.getByRole('option', { name: allowed }).click();
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(`a-${id}`);
+      await clients.getByRole('checkbox', { name: allowed, exact: true }).check();
       await form.getByRole('button', { name: 'Create', exact: true }).click();
       await expect(form).toBeHidden();
 
@@ -361,6 +361,76 @@ test('lets only the clients picked call a route made on the quick page', async (
   } finally {
     for (const username of [allowed, other]) {
       await e2eReq.delete(`${API_CONSUMERS}/${username}`).catch(() => null);
+    }
+  }
+});
+
+test('picks the clients a search shows, all at once', async ({ page }) => {
+  const path = `${prefix}/partners`;
+  const id = randomId('p');
+  const partners = [1, 2, 3].map((n) => `e2e-quick-partner-${id}-${n}`);
+  const outsider = `e2e-quick-outsider-${id}`;
+  for (const username of [...partners, outsider]) {
+    await e2eReq.put(API_CONSUMERS, {
+      username,
+      plugins: { 'key-auth': { key: `${username}-key` } },
+    });
+  }
+  try {
+    const form = await openForm(page);
+    await form.getByRole('textbox', { name: 'Path' }).fill(path);
+    await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+    await form.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
+    const clients = form.getByTestId('auth-clients');
+
+    await test.step('every holder is counted, and listed once asked for', async () => {
+      await clients.getByRole('button', { name: 'Show the list' }).click();
+      // Found by its name: the list draws the first names only.
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
+      await expect(clients.getByRole('listitem').filter({ hasText: outsider })).toHaveCount(1);
+      await expect(clients.getByTestId('client-count')).toHaveText(/^\d+ in all$/);
+    });
+
+    await test.step('a search, then all it shows', async () => {
+      await clients.getByRole('radio', { name: 'Only the clients picked' }).check();
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
+      await expect(clients.getByRole('checkbox', { name: outsider })).toBeHidden();
+      await clients.getByRole('checkbox', { name: /^All \(/ }).check();
+      await expect(clients.getByTestId('client-count')).toHaveText(/^3 of \d+ picked$/);
+      // What the search hid is left as it was.
+      await clients.getByRole('textbox', { name: 'Search the clients' }).fill('');
+      await expect(clients.getByRole('checkbox', { name: outsider, exact: true })).not.toBeChecked();
+    });
+
+    await test.step('created with those three only', async () => {
+      await form.getByRole('button', { name: 'Create', exact: true }).click();
+      await expect(form).toBeHidden();
+      const [route] = (await routesUnder()).filter((r) => r.uri === path);
+      expect(
+        (route.plugins?.['consumer-restriction'] as { whitelist: string[] }).whitelist.slice().sort()
+      ).toEqual(partners);
+    });
+
+    await test.step('Clear unticks the ones shown, and only those', async () => {
+      const again = await openForm(page);
+      await again.locator('label').filter({ hasText: /^Clients with a key$/ }).click();
+      const list = again.getByTestId('auth-clients');
+      await list.getByRole('radio', { name: 'Only the clients picked' }).check();
+      await list.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
+      await list.getByRole('checkbox', { name: /^All \(/ }).check();
+      await list.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
+      await list.getByRole('checkbox', { name: outsider, exact: true }).check();
+      await expect(list.getByTestId('client-count')).toHaveText(/^4 of \d+ picked$/);
+
+      await list.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
+      await list.getByRole('button', { name: 'Clear', exact: true }).click();
+      await expect(list.getByTestId('client-count')).toHaveText(/^1 of \d+ picked$/);
+      await list.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
+      await expect(list.getByRole('checkbox', { name: outsider, exact: true })).toBeChecked();
+    });
+  } finally {
+    for (const username of [...partners, outsider]) {
+      await e2eReq.delete(`${API_CONSUMERS}/${username}`).catch(() => undefined);
     }
   }
 });
@@ -438,6 +508,8 @@ test('starts from the clients a route\'s service lets through, and can open it t
       await expect(form.getByText('The service already limits who can call', { exact: false })).toBeVisible();
       await expect(clients.getByRole('radio', { name: 'Only the clients picked' })).toBeChecked();
       await expect(clients.getByText(allowed, { exact: true })).toBeVisible();
+      // First in the list, however many clients sort before it.
+      await expect(clients.getByTestId('client-list').getByRole('checkbox').first()).toHaveAccessibleName(allowed);
     });
 
     await test.step('every client, and the service\'s list no longer holds on this route', async () => {

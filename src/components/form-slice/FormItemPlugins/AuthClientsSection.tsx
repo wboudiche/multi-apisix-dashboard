@@ -17,16 +17,16 @@
 import {
   ActionIcon,
   Alert,
-  Badge,
   Button,
+  Checkbox,
   Code,
   CopyButton,
   Divider,
   Group,
   Loader,
-  MultiSelect,
   Paper,
   Radio,
+  ScrollArea,
   Stack,
   Text,
   TextInput,
@@ -36,7 +36,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useAtomValue } from 'jotai';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { putConsumerReq } from '@/apis/consumers';
@@ -82,10 +82,8 @@ type Clients = {
 // a few at a time, so that a gateway with hundreds of them does not get them
 // all at once each time the form is opened.
 const CREDENTIAL_READS_AT_ONCE = 8;
-/** Options drawn at once in the picker; typing reaches the rest. */
-const OPTIONS_SHOWN = 50;
-/** Holders shown by name before the rest are folded away. */
-const HOLDERS_SHOWN = 10;
+/** Rows drawn at once in the list; typing part of a name reaches the rest. */
+const ROWS_SHOWN = 200;
 
 const fetchClients = async (plugin: AuthClientPlugin): Promise<Clients> => {
   const consumers = await req
@@ -240,37 +238,58 @@ const Usage = ({
 };
 
 /**
- * The clients the route lets through, picked from a list that can be searched:
- * those holding a credential of the plugin, and any name already on the list
- * - another plugin's client, or one this account cannot see - so that saving
- * does not drop it unseen. A list of checkboxes grew with the gateway, one
- * line per client; this one stays the height of the names picked.
+ * The clients of the plugin, in one list that can be searched: picked from,
+ * when the route lets only some through, and only read, when it lets every
+ * holder through - so that who can call it is seen either way, however many
+ * there are.
+ *
+ * Picking lists those holding a credential of the plugin, and any name
+ * already on the route's list - another plugin's client, or one this
+ * account cannot see - so that saving does not drop it unseen.
+ *
+ * A box of fixed height that scrolls, rather than a line per client or a
+ * pill per name picked: either grew with the gateway until the form was
+ * the list.
  */
-const ClientPicker = ({
+const ClientList = ({
   clients,
   names: stored,
   readOnly,
   onChange,
 }: {
   clients: Clients | undefined;
-  names: string[];
+  /** The names picked; none given, the list is only read. */
+  names?: string[];
   readOnly?: boolean;
-  onChange: (names: string[]) => void;
+  onChange?: (names: string[]) => void;
 }) => {
   const { t } = useTranslation();
+  const [search, setSearch] = useState('');
+  const errorId = useId();
+  const picking = stored !== undefined;
   // A list written by hand may name a client twice: it is one client.
-  const names = [...new Set(stored)];
+  const names = [...new Set(stored ?? [])];
+  // The clients the route let through when the list was opened come first,
+  // so they are in sight however long the list: by the names it opened
+  // with, not those ticked since, or a row would jump away when ticked.
+  const [pickedFirst] = useState(() => new Set(stored ?? []));
   // An admin of the instance sees every client, as a super admin does: for
   // them a name nobody holds is gone, not out of sight.
   const { isAdmin } = usePermission();
   const holders = clients?.holders ?? [];
-  const options = [...new Set([...holders, ...names])].sort();
+  // Looked up for every row at each keystroke: sets, not lists.
+  const holding = new Set(holders);
+  const known = new Set(clients?.all ?? []);
+  const picked = new Set(names);
+  const options = (picking ? [...new Set([...holders, ...names])] : [...holders]).sort(
+    (a, b) => Number(pickedFirst.has(b)) - Number(pickedFirst.has(a)) || a.localeCompare(b)
+  );
   // Why a name is on the list and cannot get through this plugin: it holds
   // no credential of it, or it is no client at all. One this account cannot
   // see may well hold one, and is not to be taken for dead.
   const hint = (option: string): string | undefined => {
-    if (!clients || holders.includes(option)) return undefined;
-    if (clients.all.includes(option)) return t('form.plugins.clients.noCredential');
+    if (!clients || holding.has(option)) return undefined;
+    if (known.has(option)) return t('form.plugins.clients.noCredential');
     return isAdmin
       ? t('form.plugins.clients.notFound')
       : t('form.plugins.clients.notVisible');
@@ -285,55 +304,134 @@ const ClientPicker = ({
         <Alert color="yellow" variant="light">
           {t('form.plugins.clients.none')}
         </Alert>
-        <Text size="sm" c="red">
-          {t('form.plugins.clients.accessEmpty')}
-        </Text>
+        {picking && (
+          <Text size="sm" c="red">
+            {t('form.plugins.clients.accessEmpty')}
+          </Text>
+        )}
       </Stack>
     );
   }
+
+  const needle = search.trim().toLowerCase();
+  const matching = needle ? options.filter((o) => o.toLowerCase().includes(needle)) : options;
+  const shown = matching.slice(0, ROWS_SHOWN);
+  const editable = picking && !readOnly && !!onChange;
+  // "All" ticks or unticks every client the search finds - drawn or not, so
+  // that ticking it with no search is every client, not the first rows -
+  // and Clear unticks them; both leave the rest picked as it was. A search
+  // for partner_ then All is every partner, and Clear after it takes back
+  // only those, not a name out of sight, which saving would drop unseen.
+  const found = new Set(matching);
+  const foundPicked = matching.filter((o) => picked.has(o)).length;
+  const toggleFound = () =>
+    onChange?.(
+      foundPicked === matching.length
+        ? names.filter((n) => !found.has(n))
+        : [...new Set([...names, ...matching])]
+    );
+  const toggle = (option: string) =>
+    onChange?.(picked.has(option) ? names.filter((n) => n !== option) : [...names, option]);
+
+  // Pointed out under the list only when its row is not in sight: one in
+  // sight says it beside its box.
+  const drawn = new Set(shown);
+  const unseenProblems = problems.filter(({ name }) => !drawn.has(name));
+
   return (
     <Stack gap="xs">
-      <MultiSelect
-        label={t('form.plugins.clients.pick')}
-        // Mantine keeps showing the placeholder beside the names picked.
-        placeholder={names.length ? undefined : t('form.plugins.clients.pickPlaceholder')}
-        data={options}
-        value={names}
-        onChange={onChange}
-        // Over the field, away from the drawer's Add below it, so that it can
-        // stay open while several clients are picked in a row; below only
-        // when there is no room above.
-        comboboxProps={{ position: 'top' }}
-        // Past what is drawn, said for as long as the list is cut: the names
-        // picked are not in it.
-        description={
-          options.length - names.length > OPTIONS_SHOWN
-            ? t('form.plugins.clients.pickMore', {
-                total: options.length - names.length,
-                shown: OPTIONS_SHOWN,
-              })
-            : undefined
-        }
-        searchable
-        hidePickedOptions
-        nothingFoundMessage={
-          clients ? t('form.plugins.clients.noMatch') : t('form.plugins.clients.reading')
-        }
-        // Hundreds of options are drawn as hundreds of elements: the first
-        // ones are shown, and typing narrows down to the rest.
-        limit={OPTIONS_SHOWN}
-        maxDropdownHeight={240}
-        clearable
-        clearButtonProps={{
-          'aria-label': t('form.plugins.clients.clearPicked'),
-          'aria-hidden': false,
-          tabIndex: 0,
-        }}
-        disabled={readOnly}
-        error={names.length === 0 ? t('form.plugins.clients.accessEmpty') : undefined}
-        data-testid="client-picker"
-      />
-      {problems.map(({ name, why }) => (
+      <Text size="sm" fw={500}>
+        {picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders')}
+      </Text>
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <TextInput
+          // No visible label of its own: the title above is the list's, and
+          // the field is named for what it does.
+          aria-label={t('form.plugins.clients.search')}
+          placeholder={t('form.plugins.clients.searchPlaceholder')}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          style={{ flex: 1 }}
+        />
+        <Text size="sm" c="dimmed" style={{ whiteSpace: 'nowrap' }} data-testid="client-count">
+          {picking
+            ? t('form.plugins.clients.countPicked', { picked: names.length, total: options.length })
+            : t('form.plugins.clients.countHolders', { total: options.length })}
+        </Text>
+      </Group>
+      <Paper withBorder radius="sm" p={0}>
+        {/* Both act on the rows in sight: none in sight, nothing to act on. */}
+        {editable && shown.length > 0 && (
+          <>
+            <Group px="sm" py={6} justify="space-between" mih={36}>
+              <Checkbox
+                label={t('form.plugins.clients.allFound', { count: matching.length })}
+                checked={foundPicked === matching.length}
+                indeterminate={foundPicked > 0 && foundPicked < matching.length}
+                onChange={toggleFound}
+              />
+              {foundPicked > 0 && (
+                <Button
+                  variant="subtle"
+                  size="compact-sm"
+                  onClick={() => onChange?.(names.filter((n) => !found.has(n)))}
+                >
+                  {t('form.plugins.clients.clearPicked')}
+                </Button>
+              )}
+            </Group>
+            <Divider />
+          </>
+        )}
+        <ScrollArea.Autosize mah={280} type="auto">
+          <Stack
+            gap={0}
+            px="sm"
+            py={6}
+            role={picking ? 'group' : 'list'}
+            aria-label={picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders')}
+            // An empty pick is the list's error, said where a screen reader
+            // looks for it.
+            aria-invalid={picking && names.length === 0 ? true : undefined}
+            aria-describedby={picking && names.length === 0 ? errorId : undefined}
+            data-testid="client-list"
+          >
+            {shown.length === 0 && (
+              <Text size="sm" c="dimmed" py={4}>
+                {clients ? t('form.plugins.clients.noMatch') : t('form.plugins.clients.reading')}
+              </Text>
+            )}
+            {shown.map((option) =>
+              picking ? (
+                <Checkbox
+                  key={option}
+                  py={5}
+                  label={option}
+                  description={hint(option)}
+                  checked={picked.has(option)}
+                  disabled={!editable}
+                  onChange={() => toggle(option)}
+                />
+              ) : (
+                <Text key={option} size="sm" py={4} role="listitem">
+                  {option}
+                </Text>
+              )
+            )}
+          </Stack>
+        </ScrollArea.Autosize>
+      </Paper>
+      {matching.length > shown.length && (
+        <Text size="xs" c="dimmed">
+          {t('form.plugins.clients.listCut', { shown: shown.length, total: matching.length })}
+        </Text>
+      )}
+      {picking && names.length === 0 && (
+        <Text size="sm" c="red" id={errorId}>
+          {t('form.plugins.clients.accessEmpty')}
+        </Text>
+      )}
+      {unseenProblems.map(({ name, why }) => (
         <Group key={name} gap={6} wrap="nowrap" align="baseline">
           <Code>{name}</Code>
           <Text size="xs" c="orange.8">
@@ -345,26 +443,31 @@ const ClientPicker = ({
   );
 };
 
-/** The clients holding a credential: the first few by name, the rest folded. */
-const HolderList = ({ holders }: { holders: string[] }) => {
+/**
+ * Who a credential lets through, when every holder is: a count, and the
+ * list behind a click - there to look at, not to act on, so it does not
+ * take the form's room until asked for.
+ */
+const HolderSummary = ({ clients }: { clients: Clients }) => {
   const { t } = useTranslation();
-  const [all, setAll] = useState(false);
-  const shown = all ? holders : holders.slice(0, HOLDERS_SHOWN);
+  const [open, setOpen] = useState(false);
   return (
-    <Group gap="xs">
-      {shown.map((holder) => (
-        <Badge key={holder} variant="light" color="gray" size="lg" tt="none">
-          {holder}
-        </Badge>
-      ))}
-      {holders.length > HOLDERS_SHOWN && (
-        <Button variant="subtle" size="compact-sm" onClick={() => setAll((a) => !a)}>
-          {all
-            ? t('form.plugins.clients.showFewer')
-            : t('form.plugins.clients.showAll', { total: holders.length })}
+    <Stack gap="xs">
+      <Group gap="xs">
+        <Text size="sm">
+          {t('form.plugins.clients.holdersSummary', { count: clients.holders.length })}
+        </Text>
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
+          {open ? t('form.plugins.clients.hideList') : t('form.plugins.clients.showList')}
         </Button>
-      )}
-    </Group>
+      </Group>
+      {open && <ClientList clients={clients} />}
+    </Stack>
   );
 };
 
@@ -581,7 +684,7 @@ export const AuthClientsSection = ({
         )}
 
         {access.mode === 'only' && (
-          <ClientPicker
+          <ClientList
             // While the clients are read, or when they could not be, the
             // names already on the list are still shown, and can be picked.
             clients={clients.data}
@@ -602,7 +705,7 @@ export const AuthClientsSection = ({
               {t('form.plugins.clients.none')}
             </Alert>
           ) : (
-            <HolderList holders={clients.data.holders} />
+            <HolderSummary clients={clients.data} />
           ))}
 
         {created && (
