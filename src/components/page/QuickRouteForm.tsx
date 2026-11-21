@@ -96,8 +96,10 @@ const ANY_CLIENT: Record<QuickAuthPlugin, Restriction> = {
 const NO_STORED_NAMES: string[] = [];
 
 type Props = {
-  /** Left without a route, or after one is made: back to where it came from. */
-  onDone: () => void;
+  /** After a route is made. */
+  onCreated: () => void;
+  /** Left without one. */
+  onCancel: () => void;
   /**
    * The route to copy: the form then duplicates it, with every setting it
    * has and only what is changed here different. Remount it for another
@@ -117,7 +119,7 @@ type Props = {
  * A page rather than a dialog: with the clients and the limit it outgrew a
  * laptop screen, and a click beside a dialog threw away all it held.
  */
-export const QuickRouteForm = ({ onDone, source }: Props) => {
+export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const instanceId = useAtomValue(currentInstanceIdAtom);
@@ -295,7 +297,7 @@ export const QuickRouteForm = ({ onDone, source }: Props) => {
   // Not while a route is being posted: its answer, success or refusal, has to
   // land on a page that is still there to show it.
   const leave = () => {
-    if (!submitting) onDone();
+    if (!submitting) onCancel();
   };
 
   const create = async (status: 0 | 1) => {
@@ -318,7 +320,7 @@ export const QuickRouteForm = ({ onDone, source }: Props) => {
         message: t('info.add.success', { name: t('routes.singular') }),
         color: 'green',
       });
-      onDone();
+      onCreated();
     } catch (err) {
       setSubmitError(proxyFailureText(err) || t('routes.createFailed'));
     } finally {

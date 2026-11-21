@@ -137,6 +137,40 @@ test('opened by its address, lands on the list with the route made', async ({ pa
   await expect(routesPom.rowByName(page, path).first()).toBeVisible();
 });
 
+test('says so when the route to copy is not there', async ({ page }) => {
+  await uiGoto(page, `/routes/quick?from=${randomId('missing')}`);
+  await expect(page.getByTestId('detail-not-found')).toBeVisible();
+  await page.getByRole('button', { name: 'Back to list' }).click();
+  await routesPom.isIndexPage(page);
+});
+
+test('keeps whoever left during a create where they went', async ({ page }) => {
+  const path = `${prefix}/left-early`;
+  const form = await openForm(page);
+  await form.getByRole('textbox', { name: 'Path' }).fill(path);
+  await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+
+  // A slow gateway: the create settles after the page is left.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/apisix/admin/routes', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    await held;
+    await route.fallback();
+  });
+  const posted = page.waitForResponse(
+    (r) => r.request().method() === 'POST' && r.url().endsWith('/apisix/admin/routes')
+  );
+  await form.getByRole('button', { name: 'Create offline' }).click();
+  await page.getByRole('link', { name: 'Upstreams', exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
+
+  release();
+  await posted;
+  await expect.poll(async () => (await routesUnder()).some((r) => r.uri === path)).toBe(true);
+  await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
+});
+
 test('points a route at an existing upstream', async ({ page }) => {
   const path = `${prefix}/by-upstream`;
   const form = await openForm(page);
