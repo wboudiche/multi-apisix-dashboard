@@ -36,7 +36,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useAtomValue } from 'jotai';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { putConsumerReq } from '@/apis/consumers';
@@ -265,20 +265,31 @@ const ClientList = ({
 }) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
+  const errorId = useId();
   const picking = stored !== undefined;
   // A list written by hand may name a client twice: it is one client.
   const names = [...new Set(stored ?? [])];
+  // The clients the route let through when the list was opened come first,
+  // so they are in sight however long the list: by the names it opened
+  // with, not those ticked since, or a row would jump away when ticked.
+  const [pickedFirst] = useState(() => new Set(stored ?? []));
   // An admin of the instance sees every client, as a super admin does: for
   // them a name nobody holds is gone, not out of sight.
   const { isAdmin } = usePermission();
   const holders = clients?.holders ?? [];
-  const options = picking ? [...new Set([...holders, ...names])].sort() : holders;
+  // Looked up for every row at each keystroke: sets, not lists.
+  const holding = new Set(holders);
+  const known = new Set(clients?.all ?? []);
+  const picked = new Set(names);
+  const options = (picking ? [...new Set([...holders, ...names])] : [...holders]).sort(
+    (a, b) => Number(pickedFirst.has(b)) - Number(pickedFirst.has(a)) || a.localeCompare(b)
+  );
   // Why a name is on the list and cannot get through this plugin: it holds
   // no credential of it, or it is no client at all. One this account cannot
   // see may well hold one, and is not to be taken for dead.
   const hint = (option: string): string | undefined => {
-    if (!clients || holders.includes(option)) return undefined;
-    if (clients.all.includes(option)) return t('form.plugins.clients.noCredential');
+    if (!clients || holding.has(option)) return undefined;
+    if (known.has(option)) return t('form.plugins.clients.noCredential');
     return isAdmin
       ? t('form.plugins.clients.notFound')
       : t('form.plugins.clients.notVisible');
@@ -306,23 +317,26 @@ const ClientList = ({
   const matching = needle ? options.filter((o) => o.toLowerCase().includes(needle)) : options;
   const shown = matching.slice(0, ROWS_SHOWN);
   const editable = picking && !readOnly && !!onChange;
-  // "All shown" ticks or unticks what the search shows, and Clear unticks
-  // it, both leaving the rest picked as it was: a search for partner_ then
-  // all is every partner, and Clear after it takes back only those - not a
-  // name out of sight, which saving would then drop unseen.
-  const shownPicked = shown.filter((o) => names.includes(o)).length;
-  const toggleShown = () =>
+  // "All" ticks or unticks every client the search finds - drawn or not, so
+  // that ticking it with no search is every client, not the first rows -
+  // and Clear unticks them; both leave the rest picked as it was. A search
+  // for partner_ then All is every partner, and Clear after it takes back
+  // only those, not a name out of sight, which saving would drop unseen.
+  const found = new Set(matching);
+  const foundPicked = matching.filter((o) => picked.has(o)).length;
+  const toggleFound = () =>
     onChange?.(
-      shownPicked === shown.length
-        ? names.filter((n) => !shown.includes(n))
-        : [...new Set([...names, ...shown])]
+      foundPicked === matching.length
+        ? names.filter((n) => !found.has(n))
+        : [...new Set([...names, ...matching])]
     );
   const toggle = (option: string) =>
-    onChange?.(names.includes(option) ? names.filter((n) => n !== option) : [...names, option]);
+    onChange?.(picked.has(option) ? names.filter((n) => n !== option) : [...names, option]);
 
   // Pointed out under the list only when its row is not in sight: one in
   // sight says it beside its box.
-  const unseenProblems = problems.filter(({ name }) => !shown.includes(name));
+  const drawn = new Set(shown);
+  const unseenProblems = problems.filter(({ name }) => !drawn.has(name));
 
   return (
     <Stack gap="xs">
@@ -351,16 +365,16 @@ const ClientList = ({
           <>
             <Group px="sm" py={6} justify="space-between" mih={36}>
               <Checkbox
-                label={t('form.plugins.clients.allShown')}
-                checked={shownPicked === shown.length}
-                indeterminate={shownPicked > 0 && shownPicked < shown.length}
-                onChange={toggleShown}
+                label={t('form.plugins.clients.allFound', { count: matching.length })}
+                checked={foundPicked === matching.length}
+                indeterminate={foundPicked > 0 && foundPicked < matching.length}
+                onChange={toggleFound}
               />
-              {shownPicked > 0 && (
+              {foundPicked > 0 && (
                 <Button
                   variant="subtle"
                   size="compact-sm"
-                  onClick={() => onChange?.(names.filter((n) => !shown.includes(n)))}
+                  onClick={() => onChange?.(names.filter((n) => !found.has(n)))}
                 >
                   {t('form.plugins.clients.clearPicked')}
                 </Button>
@@ -376,6 +390,10 @@ const ClientList = ({
             py={6}
             role={picking ? 'group' : 'list'}
             aria-label={picking ? t('form.plugins.clients.pick') : t('form.plugins.clients.holders')}
+            // An empty pick is the list's error, said where a screen reader
+            // looks for it.
+            aria-invalid={picking && names.length === 0 ? true : undefined}
+            aria-describedby={picking && names.length === 0 ? errorId : undefined}
             data-testid="client-list"
           >
             {shown.length === 0 && (
@@ -390,7 +408,7 @@ const ClientList = ({
                   py={5}
                   label={option}
                   description={hint(option)}
-                  checked={names.includes(option)}
+                  checked={picked.has(option)}
                   disabled={!editable}
                   onChange={() => toggle(option)}
                 />
@@ -409,7 +427,7 @@ const ClientList = ({
         </Text>
       )}
       {picking && names.length === 0 && (
-        <Text size="sm" c="red">
+        <Text size="sm" c="red" id={errorId}>
           {t('form.plugins.clients.accessEmpty')}
         </Text>
       )}

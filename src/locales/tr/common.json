@@ -474,8 +474,8 @@
         "searchPlaceholder": "Bir adın bir kısmını yazın",
         "countPicked": "{{total}} içinden {{picked}} seçildi",
         "countHolders": "Toplam {{total}}",
-        "allShown": "Gösterilenlerin tümü",
-        "listCut": "{{total}} içinden {{shown}} listelendi: diğerlerini bulmak için bir adın bir kısmını yazın."
+        "listCut": "{{total}} içinden {{shown}} listelendi: diğerlerini bulmak için bir adın bir kısmını yazın.",
+        "allFound": "Tümü ({{count}})"
       },
       "oidc": {
         "test": "Adresi test et",

@@ -474,8 +474,8 @@
         "searchPlaceholder": "输入名称的一部分",
         "countPicked": "已选 {{picked}} / {{total}}",
         "countHolders": "共 {{total}} 个",
-        "allShown": "全选所显示的",
-        "listCut": "已列出 {{shown}} / {{total}}：输入名称的一部分以查找其他客户端。"
+        "listCut": "已列出 {{shown}} / {{total}}：输入名称的一部分以查找其他客户端。",
+        "allFound": "全部 ({{count}})"
       },
       "oidc": {
         "test": "测试地址",

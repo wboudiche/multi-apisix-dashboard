@@ -135,7 +135,7 @@ test('an auth plugin narrows who may call to the clients picked', async ({ page 
       await clients.getByRole('textbox', { name: 'Search the clients' }).fill(`a-${id}`);
       await expect(clients.getByRole('checkbox', { name: other, exact: true })).toBeHidden();
       await clients.getByRole('checkbox', { name: allowed, exact: true }).check();
-      await expect(clients.getByTestId('client-count')).toContainText('1 of');
+      await expect(clients.getByTestId('client-count')).toHaveText(/^1 of \d+ picked$/);
       await expect(clients.getByText('Pick at least one client.')).toBeHidden();
       await drawer.getByRole('button', { name: 'Add', exact: true }).click();
       await expect(drawer).toBeHidden();

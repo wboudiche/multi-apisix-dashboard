@@ -474,8 +474,8 @@
         "searchPlaceholder": "Teil eines Namens eingeben",
         "countPicked": "{{picked}} von {{total}} ausgewählt",
         "countHolders": "{{total}} insgesamt",
-        "allShown": "Alle angezeigten",
-        "listCut": "{{shown}} von {{total}} aufgeführt: Teil eines Namens eingeben, um die anderen zu finden."
+        "listCut": "{{shown}} von {{total}} aufgeführt: Teil eines Namens eingeben, um die anderen zu finden.",
+        "allFound": "Alle ({{count}})"
       },
       "oidc": {
         "test": "Adresse testen",

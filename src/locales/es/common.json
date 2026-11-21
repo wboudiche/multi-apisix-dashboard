@@ -476,8 +476,8 @@
         "searchPlaceholder": "Escriba parte de un nombre",
         "countPicked": "{{picked}} de {{total}} elegidos",
         "countHolders": "{{total}} en total",
-        "allShown": "Todos los mostrados",
-        "listCut": "{{shown}} de {{total}} listados: escriba parte de un nombre para encontrar los demás."
+        "listCut": "{{shown}} de {{total}} listados: escriba parte de un nombre para encontrar los demás.",
+        "allFound": "Todos ({{count}})"
       },
       "oidc": {
         "test": "Probar la dirección",

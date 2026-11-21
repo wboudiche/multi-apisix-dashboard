@@ -287,15 +287,15 @@ test('picks the clients a search shows, all at once', async ({ page }) => {
       // Found by its name: the list draws the first names only.
       await clients.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
       await expect(clients.getByRole('listitem').filter({ hasText: outsider })).toHaveCount(1);
-      await expect(clients.getByTestId('client-count')).toContainText('in all');
+      await expect(clients.getByTestId('client-count')).toHaveText(/^\d+ in all$/);
     });
 
     await test.step('a search, then all it shows', async () => {
       await clients.getByRole('radio', { name: 'Only the clients picked' }).check();
       await clients.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
       await expect(clients.getByRole('checkbox', { name: outsider })).toBeHidden();
-      await clients.getByRole('checkbox', { name: 'All shown' }).check();
-      await expect(clients.getByTestId('client-count')).toContainText('3 of');
+      await clients.getByRole('checkbox', { name: /^All \(/ }).check();
+      await expect(clients.getByTestId('client-count')).toHaveText(/^3 of \d+ picked$/);
       // What the search hid is left as it was.
       await clients.getByRole('textbox', { name: 'Search the clients' }).fill('');
       await expect(clients.getByRole('checkbox', { name: outsider, exact: true })).not.toBeChecked();
@@ -316,14 +316,14 @@ test('picks the clients a search shows, all at once', async ({ page }) => {
       const list = again.getByTestId('auth-clients');
       await list.getByRole('radio', { name: 'Only the clients picked' }).check();
       await list.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
-      await list.getByRole('checkbox', { name: 'All shown' }).check();
+      await list.getByRole('checkbox', { name: /^All \(/ }).check();
       await list.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
       await list.getByRole('checkbox', { name: outsider, exact: true }).check();
-      await expect(list.getByTestId('client-count')).toContainText('4 of');
+      await expect(list.getByTestId('client-count')).toHaveText(/^4 of \d+ picked$/);
 
       await list.getByRole('textbox', { name: 'Search the clients' }).fill(`partner-${id}`);
       await list.getByRole('button', { name: 'Clear', exact: true }).click();
-      await expect(list.getByTestId('client-count')).toContainText('1 of');
+      await expect(list.getByTestId('client-count')).toHaveText(/^1 of \d+ picked$/);
       await list.getByRole('textbox', { name: 'Search the clients' }).fill(outsider);
       await expect(list.getByRole('checkbox', { name: outsider, exact: true })).toBeChecked();
     });
@@ -407,6 +407,8 @@ test('starts from the clients a route\'s service lets through, and can open it t
       await expect(dialog.getByText('The service already limits who can call', { exact: false })).toBeVisible();
       await expect(clients.getByRole('radio', { name: 'Only the clients picked' })).toBeChecked();
       await expect(clients.getByText(allowed, { exact: true })).toBeVisible();
+      // First in the list, however many clients sort before it.
+      await expect(clients.getByTestId('client-list').getByRole('checkbox').first()).toHaveAccessibleName(allowed);
     });
 
     await test.step('every client, and the service\'s list no longer holds on this route', async () => {
