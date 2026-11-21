@@ -1022,7 +1022,9 @@
       "destinationUrlPlain": "Yalnızca şema, host, port ve yol: kimlik bilgisi, sorgu, parça veya $ olmadan",
       "pathSlash": "Bir yol / ile başlar",
       "destinationPathRewritten": "Bu rota yolunu zaten yeniden yazıyor: adresi yol olmadan verin",
-      "rateLimitCount": "1 veya daha büyük bir tam sayı"
+      "rateLimitCount": "1 veya daha büyük bir tam sayı",
+      "headerName": "Başlık adı yalnızca harf, rakam ve - _ . içerir, boşluk veya iki nokta olmaz; bir değerin adı olmalı.",
+      "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok."
     },
     "quickRoute": {
       "title": "Yeni rota",
@@ -1072,7 +1074,12 @@
         "minute": "dakika",
         "hour": "saat",
         "day": "gün"
-      }
+      },
+      "override": "Arka uca gönderilen isteği değiştir",
+      "overrideHostHint": "Arka uca, çağıranın Host başlığı yerine gönderilir. Boş: değişmez.",
+      "overrideRemove": "Kaldırılacak başlıklar",
+      "overrideRemoveHint": "İstek arka uca ulaşmadan önce kaldırılır. Bir ad yazın, sonra Enter.",
+      "overrideAdvanced": "Yolu, şemayı veya yöntemi yeniden yazmak gelişmiş formdadır."
     }
   },
   "globalRules": {

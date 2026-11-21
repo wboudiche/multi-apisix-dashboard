@@ -212,6 +212,66 @@ test('tells whoever left during a create that it was refused', async ({ page }) 
   await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
 });
 
+test('changes the request sent to the backend', async ({ page }) => {
+  const path = `${prefix}/overridden`;
+  const form = await openForm(page);
+  await form.getByRole('textbox', { name: 'Path' }).fill(path);
+  await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980/v1');
+
+  await test.step('nothing changed until asked for', async () => {
+    await expect(form.getByRole('textbox', { name: 'Host Override' })).toBeHidden();
+  });
+
+  await test.step('a host, a header set and two taken off', async () => {
+    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+    await form.getByRole('textbox', { name: 'Host Override' }).fill('http://api.internal');
+    await form.getByRole('textbox', { name: 'Header Name' }).fill('X-Env');
+    await form.getByRole('textbox', { name: 'Header Value' }).fill('prod');
+    const remove = form.getByRole('textbox', { name: 'Headers to remove' });
+    await remove.fill('Cookie');
+    await remove.press('Enter');
+    await remove.fill('X-Debug');
+    await remove.press('Enter');
+
+    // A scheme in the host is refused rather than sent as a Host header.
+    await form.getByRole('button', { name: 'Create offline' }).click();
+    await expect(form.getByText('no scheme, no path', { exact: false })).toBeVisible();
+    await form.getByRole('textbox', { name: 'Host Override' }).fill('api.internal');
+  });
+
+  await test.step('written as a proxy-rewrite, beside the address\'s base path', async () => {
+    await form.getByRole('button', { name: 'Create offline' }).click();
+    await expect(form).toBeHidden();
+    const [route] = (await routesUnder()).filter((r) => r.uri === path);
+    expect(route.plugins?.['proxy-rewrite']).toEqual({
+      regex_uri: ['^(.*)$', '/v1$1'],
+      host: 'api.internal',
+      headers: { set: { 'X-Env': 'prod' }, remove: ['Cookie', 'X-Debug'] },
+    });
+  });
+});
+
+test('hands the change to the request over to the advanced form', async ({ page }) => {
+  const form = await openForm(page);
+  await form.getByRole('textbox', { name: 'Path' }).fill(`${prefix}/handed-override`);
+  await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+  await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+  await form.getByRole('textbox', { name: 'Host Override' }).fill('api.internal');
+  await form.getByRole('button', { name: 'Continue in the advanced form' }).click();
+  await routesPom.isAddPage(page);
+  // The plugins the draft holds, as the advanced form reads them.
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const draft = JSON.parse(localStorage.getItem(key) ?? 'null');
+        return draft?.plugins?.['proxy-rewrite'];
+        // ROUTE_DRAFT_KEY, in FormPartRoute/quick-create.ts: that module
+        // pulls the app's locales in, which the test runner cannot load.
+      }, 'apisix-route-draft')
+    )
+    .toEqual({ host: 'api.internal' });
+});
+
 test('points a route at an existing upstream', async ({ page }) => {
   const path = `${prefix}/by-upstream`;
   const form = await openForm(page);

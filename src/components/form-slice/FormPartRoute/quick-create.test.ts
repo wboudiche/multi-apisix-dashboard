@@ -433,3 +433,78 @@ describe('a quick route\'s limit on calls', () => {
     expect(RoutePostSchema.safeParse(quickRouteToForm(q)).success).toBe(true);
   });
 });
+
+describe('the request sent to the backend', () => {
+  const override = (o: Partial<NonNullable<QuickRoute['override']>>) => ({
+    host: '',
+    setHeaders: [],
+    removeHeaders: [],
+    ...o,
+  });
+
+  it('writes no proxy-rewrite when nothing is changed', () => {
+    expect(quickRouteToForm({ ...base, override: override({}) }).plugins).toEqual({});
+  });
+
+  it('sets the Host header and the headers given, and takes off those named', () => {
+    const form = quickRouteToForm({
+      ...base,
+      override: override({
+        host: ' api.internal ',
+        setHeaders: [
+          { key: 'X-Env', value: 'prod' },
+          { key: ' ', value: '' },
+        ],
+        removeHeaders: ['Cookie', 'Cookie', ' X-Debug '],
+      }),
+    });
+    expect(form.plugins).toEqual({
+      'proxy-rewrite': {
+        host: 'api.internal',
+        headers: { set: { 'X-Env': 'prod' }, remove: ['Cookie', 'X-Debug'] },
+      },
+    });
+  });
+
+  it('keeps the address\'s base path beside what is changed', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'url', url: 'http://backend:8080/v1' },
+      override: override({ host: 'api.internal' }),
+    });
+    expect(form.plugins).toEqual({
+      'proxy-rewrite': { regex_uri: ['^(.*)$', '/v1$1'], host: 'api.internal' },
+    });
+  });
+
+  it('changes the request to an upstream or a service picked too', () => {
+    const form = quickRouteToForm({
+      ...base,
+      destination: { kind: 'upstream', upstreamId: 'u1' },
+      override: override({ removeHeaders: ['Cookie'] }),
+    });
+    expect(form.plugins).toEqual({ 'proxy-rewrite': { headers: { remove: ['Cookie'] } } });
+  });
+
+  it('hands the change over to the advanced form', () => {
+    const draft = quickRouteToDraft({ ...base, override: override({ host: 'api.internal' }) });
+    expect(draft.plugins?.['proxy-rewrite']).toEqual({ host: 'api.internal' });
+  });
+
+  it('refuses a host with a scheme or a path, and a header name HTTP has no word for', () => {
+    expect(quickRouteErrors({ ...base, override: override({ host: 'http://api.internal' }) }).override).toBe(
+      'form.validation.overrideHost'
+    );
+    expect(quickRouteErrors({ ...base, override: override({ host: 'api.internal:8443' }) }).override).toBeUndefined();
+    expect(
+      quickRouteErrors({ ...base, override: override({ setHeaders: [{ key: 'X Env', value: '1' }] }) }).override
+    ).toBe('form.validation.headerName');
+    // A value with no name would be dropped without a word.
+    expect(
+      quickRouteErrors({ ...base, override: override({ setHeaders: [{ key: '', value: '1' }] }) }).override
+    ).toBe('form.validation.headerName');
+    expect(quickRouteErrors({ ...base, override: override({ removeHeaders: ['X:Debug'] }) }).override).toBe(
+      'form.validation.headerName'
+    );
+  });
+});

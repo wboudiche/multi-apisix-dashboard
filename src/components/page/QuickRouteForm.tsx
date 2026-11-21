@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 import {
+  ActionIcon,
   Alert,
   Box,
   Button,
@@ -29,6 +30,7 @@ import {
   SimpleGrid,
   Stack,
   Switch,
+  TagsInput,
   Text,
   TextInput,
 } from '@mantine/core';
@@ -71,6 +73,8 @@ import { errorText } from '@/utils/error-text';
 import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
 import { proxyFailureText } from '@/utils/team-refusal';
+import IconAdd from '~icons/material-symbols/add';
+import IconDelete from '~icons/material-symbols/delete-outline';
 import IconTune from '~icons/material-symbols/tune';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
@@ -154,6 +158,13 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const [limitOn, setLimitOn] = useState(false);
   const [limitCount, setLimitCount] = useState<number | string>(100);
   const [limitPer, setLimitPer] = useState<RateWindow>('minute');
+  // Off until asked for: the request goes to the backend as it came.
+  const [overrideOn, setOverrideOn] = useState(false);
+  const [overrideHost, setOverrideHost] = useState('');
+  const [setHeaders, setSetHeaders] = useState<{ key: string; value: string }[]>([
+    { key: '', value: '' },
+  ]);
+  const [removeHeaders, setRemoveHeaders] = useState<string[]>([]);
   const [showErrors, setShowErrors] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -253,7 +264,12 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       setLimitPer(per);
     }
   };
-  const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access, rateLimit };
+  // A copy keeps the original's plugins, its proxy-rewrite among them.
+  const override =
+    !duplicating && overrideOn
+      ? { host: overrideHost, setHeaders, removeHeaders }
+      : undefined;
+  const answers: QuickRoute = { path, methods, host, name, status: 1, destination, access, rateLimit, override };
 
   // What the connection test dials: the node an address makes, or the nodes
   // of the upstream picked. Nothing until there is one to dial.
@@ -361,6 +377,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     !serviceId &&
     accessChoice === 'anyone' &&
     !limitOn &&
+    !overrideOn &&
     // As a set: a method unticked and ticked again is no edit.
     [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
@@ -642,6 +659,93 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                     : t('form.quickRoute.rateLimitByIp')}
                 </Text>
               </>
+            )}
+          </Stack>
+        )}
+
+        {!duplicating && (
+          <Stack gap={6}>
+            <Switch
+              label={t('form.quickRoute.override')}
+              checked={overrideOn}
+              onChange={(e) => setOverrideOn(e.currentTarget.checked)}
+            />
+            {overrideOn && (
+              <Stack gap="sm" pl="lg">
+                <TextInput
+                  label={t('form.requestOverride.host')}
+                  description={t('form.quickRoute.overrideHostHint')}
+                  // eslint-disable-next-line i18next/no-literal-string -- an example host name, not prose
+                  placeholder="api.internal"
+                  value={overrideHost}
+                  onChange={(e) => setOverrideHost(e.currentTarget.value)}
+                />
+                <Stack gap={4}>
+                  <Text size="sm" fw={500}>{t('form.requestOverride.headers')}</Text>
+                  {setHeaders.map((row, i) => (
+                    // By position: a row has no id, and rows only come and go at
+                    // the end or by their own button.
+                    <Group key={i} gap="xs" wrap="nowrap" align="flex-start">
+                      <TextInput
+                        aria-label={t('form.requestOverride.headerKey')}
+                        placeholder={t('form.requestOverride.headerKey')}
+                        value={row.key}
+                        onChange={(e) => {
+                          const key = e.currentTarget.value;
+                          setSetHeaders((rows) => rows.map((r, j) => (j === i ? { ...r, key } : r)));
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      <TextInput
+                        aria-label={t('form.requestOverride.headerValue')}
+                        placeholder={t('form.requestOverride.headerValue')}
+                        value={row.value}
+                        onChange={(e) => {
+                          const value = e.currentTarget.value;
+                          setSetHeaders((rows) => rows.map((r, j) => (j === i ? { ...r, value } : r)));
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      <ActionIcon
+                        variant="subtle"
+                        color="gray"
+                        size="lg"
+                        mt={4}
+                        aria-label={t('form.requestOverride.removeHeader')}
+                        onClick={() =>
+                          setSetHeaders((rows) =>
+                            rows.length > 1 ? rows.filter((_, j) => j !== i) : [{ key: '', value: '' }]
+                          )
+                        }
+                      >
+                        <IconDelete width="18" height="18" />
+                      </ActionIcon>
+                    </Group>
+                  ))}
+                  <Button
+                    variant="subtle"
+                    size="compact-sm"
+                    w="fit-content"
+                    leftSection={<IconAdd width="16" height="16" />}
+                    onClick={() => setSetHeaders((rows) => [...rows, { key: '', value: '' }])}
+                  >
+                    {t('form.requestOverride.addHeader')}
+                  </Button>
+                </Stack>
+                <TagsInput
+                  label={t('form.quickRoute.overrideRemove')}
+                  description={t('form.quickRoute.overrideRemoveHint')}
+                  // An example while there is none: beside a name, it read as a second.
+                  // eslint-disable-next-line i18next/no-literal-string -- a header name, not prose
+                  placeholder={removeHeaders.length ? undefined : 'Cookie'}
+                  value={removeHeaders}
+                  onChange={setRemoveHeaders}
+                />
+                {showErrors && errors.override && (
+                  <Text size="sm" c="red">{errorText(errors.override)}</Text>
+                )}
+                <Text size="xs" c="dimmed">{t('form.quickRoute.overrideAdvanced')}</Text>
+              </Stack>
             )}
           </Stack>
         )}

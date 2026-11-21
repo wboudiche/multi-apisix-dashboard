@@ -1022,7 +1022,9 @@
       "destinationUrlPlain": "Nur Schema, Host, Port und Pfad: keine Zugangsdaten, keine Query, kein Fragment und kein $",
       "pathSlash": "Ein Pfad beginnt mit /",
       "destinationPathRewritten": "Diese Route schreibt ihren Pfad bereits um: Geben Sie die Adresse ohne Pfad an",
-      "rateLimitCount": "Eine ganze Zahl, mindestens 1"
+      "rateLimitCount": "Eine ganze Zahl, mindestens 1",
+      "headerName": "Ein Header-Name besteht nur aus Buchstaben, Ziffern und - _ ., ohne Leerzeichen oder Doppelpunkt; ein Wert braucht einen Namen.",
+      "overrideHost": "Ein Hostname oder eine Adresse, bei Bedarf mit Port: ohne Schema, ohne Pfad."
     },
     "quickRoute": {
       "title": "Neue Route",
@@ -1072,7 +1074,12 @@
         "minute": "Minute",
         "hour": "Stunde",
         "day": "Tag"
-      }
+      },
+      "override": "An das Backend gesendete Anfrage ändern",
+      "overrideHostHint": "Wird dem Backend statt des Host des Aufrufers gesendet. Leer: unverändert.",
+      "overrideRemove": "Zu entfernende Header",
+      "overrideRemoveHint": "Werden aus der Anfrage entfernt, bevor sie das Backend erreicht. Namen eingeben, dann Enter.",
+      "overrideAdvanced": "Pfad, Schema oder Methode umschreiben: im erweiterten Formular."
     }
   },
   "globalRules": {

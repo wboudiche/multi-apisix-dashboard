@@ -938,7 +938,9 @@
       "destinationUrlPlain": "Only a scheme, host, port and path: no credentials, query, fragment or $",
       "pathSlash": "A path starts with /",
       "destinationPathRewritten": "This route already rewrites its path: give the address without a path",
-      "rateLimitCount": "A whole number, 1 or more"
+      "rateLimitCount": "A whole number, 1 or more",
+      "headerName": "A header name is letters, digits and - _ . only, with no space or colon; a value needs a name.",
+      "overrideHost": "A host name or address, with a port if needed: no scheme, no path."
     },
     "quickRoute": {
       "title": "New route",
@@ -988,7 +990,12 @@
         "minute": "minute",
         "hour": "hour",
         "day": "day"
-      }
+      },
+      "override": "Change the request sent to the backend",
+      "overrideHostHint": "Sent to the backend in place of the caller's Host. Empty: unchanged.",
+      "overrideRemove": "Headers to remove",
+      "overrideRemoveHint": "Taken off the request before it reaches the backend. Type a name, then Enter.",
+      "overrideAdvanced": "Rewriting the path, the scheme or the method is in the advanced form."
     }
   },
   "globalRules": {

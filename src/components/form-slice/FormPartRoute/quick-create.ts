@@ -70,6 +70,52 @@ export type QuickRoute = {
   access?: QuickAccess;
   /** None: as many calls as come. */
   rateLimit?: QuickRateLimit;
+  /** None: the request goes to the backend as it came. */
+  override?: QuickOverride;
+};
+
+/**
+ * What the request sent to the backend has changed: its Host header, headers
+ * set to a value, headers taken off. The path, scheme and method are the
+ * advanced form's: the address's own path already rewrites the one, and the
+ * others are rarely what exposing an API needs.
+ */
+export type QuickOverride = {
+  host: string;
+  setHeaders: { key: string; value: string }[];
+  removeHeaders: string[];
+};
+
+/** A header's name, as HTTP spells a token. */
+const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+/** A host name or address, with a port or not: no scheme, no path. */
+const HOST_NAME = /^[A-Za-z0-9.-]+(:\d{1,5})?$|^\[[0-9A-Fa-f:.]+\](:\d{1,5})?$/;
+
+/**
+ * The proxy-rewrite a route needs: the address's base path, put in front of
+ * every request, and what the override changes. Undefined for none.
+ */
+export const requestRewrite = (
+  override: QuickOverride | undefined,
+  basePath?: string
+): Record<string, unknown> | undefined => {
+  const host = override?.host.trim();
+  const set = Object.fromEntries(
+    (override?.setHeaders ?? [])
+      .map(({ key, value }) => [key.trim(), value] as const)
+      .filter(([key]) => key)
+  );
+  const remove = [...new Set((override?.removeHeaders ?? []).map((h) => h.trim()).filter(Boolean))];
+  const headers = {
+    ...(Object.keys(set).length > 0 && { set }),
+    ...(remove.length > 0 && { remove }),
+  };
+  const rewrite = {
+    ...(basePath && basePathRewrite(basePath)),
+    ...(host && { host }),
+    ...(Object.keys(headers).length > 0 && { headers }),
+  };
+  return Object.keys(rewrite).length > 0 ? rewrite : undefined;
 };
 
 /** The windows a quick route's calls are counted over, in seconds. */
@@ -234,6 +280,7 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     plugins: {
       ...accessPlugins(q.access),
       ...rateLimitPlugins(q.rateLimit, !!q.rateLimit?.byClient || !!q.access?.plugin),
+      ...withRewrite(requestRewrite(q.override)),
     },
     ...(q.methods.length > 0 && { methods: q.methods as RoutePostType['methods'] }),
     ...(host && { host }),
@@ -252,11 +299,13 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     ...form,
     upstream_id: UPSTREAM_CUSTOM,
     upstream: built.upstream as RoutePostType['upstream'],
-    ...(built.basePath && {
-      plugins: { ...form.plugins, 'proxy-rewrite': basePathRewrite(built.basePath) },
-    }),
+    plugins: { ...form.plugins, ...withRewrite(requestRewrite(q.override, built.basePath)) },
   };
 };
+
+const withRewrite = (
+  rewrite: Record<string, unknown> | undefined
+): Record<string, Record<string, unknown>> => (rewrite ? { 'proxy-rewrite': rewrite } : {});
 
 /**
  * The upstream an address makes - the importer's reading of a server, with
@@ -326,6 +375,7 @@ export type QuickRouteErrors = {
    */
   access?: string;
   rateLimit?: string;
+  override?: string;
   /** What the wizard's schema refuses that no field of the quick page shows. */
   other?: string[];
 };
@@ -374,6 +424,18 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   const limit = q.rateLimit;
   if (limit && !(Number.isInteger(limit.count) && limit.count >= 1)) {
     errors.rateLimit = 'form.validation.rateLimitCount';
+  }
+
+  const o = q.override;
+  if (o) {
+    const host = o.host.trim();
+    // A value with no name is one the rewrite would drop without a word.
+    const names = [
+      ...o.setHeaders.filter((h) => h.key.trim() || h.value.trim()).map((h) => h.key.trim()),
+      ...o.removeHeaders.map((h) => h.trim()),
+    ];
+    if (host && !HOST_NAME.test(host)) errors.override = 'form.validation.overrideHost';
+    else if (names.some((n) => !HEADER_NAME.test(n))) errors.override = 'form.validation.headerName';
   }
   return errors;
 };
