@@ -1078,12 +1078,7 @@
         "minute": "minuto",
         "hour": "hora",
         "day": "día"
-      },
-      "override": "Cambiar la solicitud enviada al backend",
-      "overrideHostHint": "Se envía al backend en lugar del Host del llamante. Vacío: sin cambios.",
-      "overrideRemove": "Encabezados que quitar",
-      "overrideRemoveHint": "Se quitan de la solicitud antes de llegar al backend. Escriba un nombre y pulse Intro.",
-      "overrideAdvanced": "Reescribir la ruta, el esquema o el método está en el formulario avanzado."
+      }
     }
   },
   "globalRules": {

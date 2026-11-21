@@ -1070,12 +1070,7 @@
         "minute": "分钟",
         "hour": "小时",
         "day": "天"
-      },
-      "override": "修改发送到后端的请求",
-      "overrideHostHint": "代替调用方的 Host 发送到后端。留空：不变。",
-      "overrideRemove": "要移除的请求头",
-      "overrideRemoveHint": "在请求到达后端之前移除。输入名称后按回车。",
-      "overrideAdvanced": "重写路径、协议或方法请使用高级表单。"
+      }
     }
   },
   "globalRules": {

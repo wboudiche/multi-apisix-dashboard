@@ -992,12 +992,7 @@
         "minute": "minute",
         "hour": "hour",
         "day": "day"
-      },
-      "override": "Change the request sent to the backend",
-      "overrideHostHint": "Sent to the backend in place of the caller's Host. Empty: unchanged.",
-      "overrideRemove": "Headers to remove",
-      "overrideRemoveHint": "Taken off the request before it reaches the backend. Type a name, then Enter.",
-      "overrideAdvanced": "Rewriting the path, the scheme or the method is in the advanced form."
+      }
     }
   },
   "globalRules": {

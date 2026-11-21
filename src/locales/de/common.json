@@ -1076,12 +1076,7 @@
         "minute": "Minute",
         "hour": "Stunde",
         "day": "Tag"
-      },
-      "override": "An das Backend gesendete Anfrage ändern",
-      "overrideHostHint": "Wird dem Backend statt des Host des Aufrufers gesendet. Leer: unverändert.",
-      "overrideRemove": "Zu entfernende Header",
-      "overrideRemoveHint": "Werden aus der Anfrage entfernt, bevor sie das Backend erreicht. Namen eingeben, dann Enter.",
-      "overrideAdvanced": "Pfad, Schema oder Methode umschreiben: im erweiterten Formular."
+      }
     }
   },
   "globalRules": {

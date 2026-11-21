@@ -212,43 +212,35 @@ test('tells whoever left during a create that it was refused', async ({ page }) 
   await expect(page).toHaveURL((url) => url.pathname.endsWith('/upstreams'));
 });
 
-test('changes the request sent to the backend', async ({ page }) => {
+test('changes the request sent to the backend, with the advanced form\'s options', async ({ page }) => {
   const path = `${prefix}/overridden`;
   const form = await openForm(page);
   await form.getByRole('textbox', { name: 'Path' }).fill(path);
   await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980/v1');
 
-  await test.step('nothing changed until asked for', async () => {
-    await expect(form.getByRole('textbox', { name: 'Host Override' })).toBeHidden();
+  await test.step('the same options as the advanced form', async () => {
+    for (const group of ['Scheme', 'URI Override', 'Host Override']) {
+      await expect(form.getByRole('radiogroup', { name: group })).toBeVisible();
+    }
+    await expect(form.getByRole('textbox', { name: 'Method Override' })).toBeVisible();
+    await expect(form.getByRole('button', { name: 'Add Header' })).toBeVisible();
   });
 
-  await test.step('a way to add a header, in sight', async () => {
-    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
-    await form.getByRole('button', { name: 'Add Header' }).click();
-    await expect(form.getByRole('textbox', { name: 'Header Name' })).toHaveCount(2);
-    // Back to the one row the step below fills.
-    await form.getByRole('button', { name: 'Remove header' }).last().click();
-    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
-  });
-
-  await test.step('a host, a header set and two taken off', async () => {
-    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
-    await form.getByRole('radio', { name: 'HTTPS' }).check();
+  await test.step('a scheme, a method, a host and a header', async () => {
+    await form.getByRole('radiogroup', { name: 'Scheme' }).getByRole('radio', { name: 'HTTPS' }).check();
     await form.getByRole('textbox', { name: 'Method Override' }).click();
     await page.getByRole('option', { name: 'POST', exact: true }).click();
-    await form.getByRole('textbox', { name: 'Host Override' }).fill('http://api.internal');
+    await form.getByRole('radiogroup', { name: 'Host Override' }).getByRole('radio', { name: 'Static' }).check();
+    const host = form.getByRole('textbox', { name: 'new-host.example.com' });
+    await host.fill('http://api.internal');
+    await form.getByRole('button', { name: 'Add Header' }).click();
     await form.getByRole('textbox', { name: 'Header Name' }).fill('X-Env');
     await form.getByRole('textbox', { name: 'Header Value' }).fill('prod');
-    const remove = form.getByRole('textbox', { name: 'Headers to remove' });
-    await remove.fill('Cookie');
-    await remove.press('Enter');
-    await remove.fill('X-Debug');
-    await remove.press('Enter');
 
     // A scheme in the host is refused rather than sent as a Host header.
     await form.getByRole('button', { name: 'Create offline' }).click();
     await expect(form.getByText('no scheme, no path', { exact: false })).toBeVisible();
-    await form.getByRole('textbox', { name: 'Host Override' }).fill('api.internal');
+    await host.fill('api.internal');
   });
 
   await test.step('written as a proxy-rewrite, beside the address\'s base path', async () => {
@@ -260,7 +252,7 @@ test('changes the request sent to the backend', async ({ page }) => {
       scheme: 'https',
       method: 'POST',
       host: 'api.internal',
-      headers: { set: { 'X-Env': 'prod' }, remove: ['Cookie', 'X-Debug'] },
+      headers: { set: { 'X-Env': 'prod' } },
     });
   });
 });
@@ -269,8 +261,8 @@ test('hands the change to the request over to the advanced form', async ({ page 
   const form = await openForm(page);
   await form.getByRole('textbox', { name: 'Path' }).fill(`${prefix}/handed-override`);
   await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
-  await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
-  await form.getByRole('textbox', { name: 'Host Override' }).fill('api.internal');
+  await form.getByRole('radiogroup', { name: 'Host Override' }).getByRole('radio', { name: 'Static' }).check();
+  await form.getByRole('textbox', { name: 'new-host.example.com' }).fill('api.internal');
   await form.getByRole('button', { name: 'Continue in the advanced form' }).click();
   await routesPom.isAddPage(page);
   // The plugins the draft holds, as the advanced form reads them.

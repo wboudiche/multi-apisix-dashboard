@@ -75,19 +75,12 @@ export type QuickRoute = {
 };
 
 /**
- * What the request sent to the backend has changed: its scheme, its method,
- * its Host header, headers set to a value, headers taken off. The path is the
- * advanced form's: the address's own path already rewrites it, and a second
- * rewrite of it beside that one would clash.
+ * The request sent to the backend, as the advanced form's Request Override
+ * section writes it - the same section, so the two offer the same options.
  */
 export type QuickOverride = {
-  /** Empty: as the request came. */
-  scheme?: 'http' | 'https';
-  /** Empty: as the request came. */
-  method?: string;
-  host: string;
-  setHeaders: { key: string; value: string }[];
-  removeHeaders: string[];
+  /** The proxy-rewrite the section holds; empty when nothing is changed. */
+  rewrite: ProxyRewrite;
   /**
    * The proxy-rewrite of the service the route goes through, when it has
    * one: a route's plugin replaces the service's of the same name whole, so
@@ -95,6 +88,13 @@ export type QuickOverride = {
    * the service puts in front of every request would be lost.
    */
   inherited?: Record<string, unknown>;
+};
+
+type ProxyRewrite = Record<string, unknown> & {
+  host?: string;
+  uri?: string;
+  regex_uri?: string[];
+  headers?: { set?: Record<string, string>; add?: Record<string, string>; remove?: string[] };
 };
 
 /** A header's name, as HTTP spells a token. */
@@ -107,45 +107,38 @@ const HOST_NAME = /^[0-9a-zA-Z.-]+(:\d{1,5})?$/;
 
 /**
  * The proxy-rewrite a route needs: the address's base path, put in front of
- * every request, and what the override changes. Undefined for none.
+ * every request, and what the override changes, over the service's own.
+ * A path the override rewrites is its own, in place of the base path's and
+ * the service's. Undefined for none.
  */
 export const requestRewrite = (
   override: QuickOverride | undefined,
   basePath?: string
 ): Record<string, unknown> | undefined => {
-  const host = override?.host.trim();
-  const set = Object.fromEntries(
-    (override?.setHeaders ?? [])
-      .map(({ key, value }) => [key.trim(), value] as const)
-      .filter(([key]) => key)
-  );
-  const remove = [...new Set((override?.removeHeaders ?? []).map((h) => h.trim()).filter(Boolean))];
+  const mine = override?.rewrite ?? {};
+  if (!basePath && Object.keys(mine).length === 0) return undefined;
+  const ownPath = mine.uri !== undefined || mine.regex_uri !== undefined;
+  const inherited = { ...(override?.inherited ?? {}) } as ProxyRewrite;
+  if (ownPath) {
+    delete inherited.uri;
+    delete inherited.regex_uri;
+  }
+  // The service's headers go on as it had them, under the ones changed here.
+  const theirs = inherited.headers ?? {};
+  const ours = mine.headers ?? {};
   const headers = {
-    ...(Object.keys(set).length > 0 && { set }),
-    ...(remove.length > 0 && { remove }),
-  };
-  const mine = {
-    ...(basePath && basePathRewrite(basePath)),
-    ...(override?.scheme && { scheme: override.scheme }),
-    ...(override?.method && { method: override.method }),
-    ...(host && { host }),
-  };
-  if (Object.keys(mine).length === 0 && Object.keys(headers).length === 0) return undefined;
-  // Over the service's own, its headers merged with these: what the
-  // override does not change goes on as the service had it.
-  const inherited = override?.inherited ?? {};
-  const theirs = (inherited.headers ?? {}) as { set?: Record<string, string>; remove?: string[] };
-  const mergedHeaders = {
     ...theirs,
-    ...((theirs.set || headers.set) && { set: { ...theirs.set, ...headers.set } }),
-    ...((theirs.remove || headers.remove) && {
-      remove: [...new Set([...(theirs.remove ?? []), ...(headers.remove ?? [])])],
+    ...ours,
+    ...((theirs.set || ours.set) && { set: { ...theirs.set, ...ours.set } }),
+    ...((theirs.remove || ours.remove) && {
+      remove: [...new Set([...(theirs.remove ?? []), ...(ours.remove ?? [])])],
     }),
   };
   return {
     ...inherited,
+    ...(basePath && !ownPath && basePathRewrite(basePath)),
     ...mine,
-    ...(Object.keys(mergedHeaders).length > 0 && { headers: mergedHeaders }),
+    ...(Object.keys(headers).length > 0 && { headers }),
   };
 };
 
@@ -462,7 +455,7 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
 
   const o = q.override;
   if (o) {
-    const host = o.host.trim();
+    const host = o.rewrite.host?.trim();
     if (host && !HOST_NAME.test(host)) errors.overrideHost = 'form.validation.overrideHost';
     errors.overrideHeaders = headersError(o);
   }
@@ -470,23 +463,17 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
 };
 
 /**
- * What is wrong with the headers set or taken off: a name HTTP has no word
- * for, a value with no name - the rewrite would drop it without a word - a
- * value with a $, which the gateway reads as a variable and sends changed,
- * and a name given twice, case aside: the last one would win, or the one
- * taken off would undo the one set.
+ * What is wrong with the headers set: a name HTTP has no word for, a value
+ * with a $, which the gateway reads as a variable and sends changed, and a
+ * name given twice, case aside - the last one would win - or a Host header
+ * beside the Host Override.
  */
 const headersError = (o: QuickOverride): string | undefined => {
-  const rows = o.setHeaders.filter((h) => h.key.trim() || h.value.trim());
-  const set = rows.map((h) => h.key.trim());
-  const removed = o.removeHeaders.map((h) => h.trim()).filter(Boolean);
-  if ([...set, ...removed].some((n) => !HEADER_NAME.test(n))) return 'form.validation.headerName';
-  if (rows.some((h) => h.value.includes('$'))) return 'form.validation.headerValueDollar';
-  const lower = set.map((n) => n.toLowerCase());
-  const twice =
-    new Set(lower).size < lower.length ||
-    removed.some((n) => lower.includes(n.toLowerCase())) ||
-    (!!o.host.trim() && lower.includes('host'));
+  const set = Object.entries(o.rewrite.headers?.set ?? {});
+  if (set.some(([name]) => !HEADER_NAME.test(name))) return 'form.validation.headerName';
+  if (set.some(([, value]) => value.includes('$'))) return 'form.validation.headerValueDollar';
+  const lower = set.map(([name]) => name.toLowerCase());
+  const twice = new Set(lower).size < lower.length || (!!o.rewrite.host && lower.includes('host'));
   return twice ? 'form.validation.headerTwice' : undefined;
 };
 
