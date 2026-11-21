@@ -77,12 +77,21 @@ export const SelectPluginsDrawer = (props: SelectPluginsDrawerProps) => {
         opened={opened}
         onClose={() => setOpened(false)}
         title={t('form.plugins.selectPlugins.title')}
+        // The list takes what the title and the search leave of the drawer
+        // and scrolls inside it. At 80vh under the search, it ran past the
+        // bottom of a short window, and the drawer scrolled too.
+        styles={{
+          content: { display: 'flex', flexDirection: 'column' },
+          body: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
+        }}
       >
         <Drawer.Header p={0} mih="60px">
           <PluginCardListSearch search={search} setSearch={setSearch} />
         </Drawer.Header>
 
-        <ScrollArea.Autosize h="80vh" type="scroll">
+        {/* A scrollbar in sight from the start: shown only while scrolling,
+            nothing said there were dozens of plugins below the first screen. */}
+        <ScrollArea flex={1} mih={0} type="auto" offsetScrollbars="y">
           <Stack gap="md">
             {CATEGORY_ORDER.map((cat: PluginCategory) => {
               const catPlugins = groupedPlugins[cat];
@@ -117,7 +126,7 @@ export const SelectPluginsDrawer = (props: SelectPluginsDrawerProps) => {
               </Text>
             )}
           </Stack>
-        </ScrollArea.Autosize>
+        </ScrollArea>
       </Drawer>
       {!disabled && (
         <Button ml={8} onClick={() => setOpened(true)}>

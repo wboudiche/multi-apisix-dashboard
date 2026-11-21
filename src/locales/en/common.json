@@ -502,10 +502,7 @@
         "countPicked": "{{picked}} of {{total}} picked",
         "countHolders": "{{total}} in all",
         "listCut": "{{shown}} of {{total}} listed: type part of a name to find the others.",
-        "allFound": "All ({{count}})",
-        "showList": "Show the list",
-        "hideList": "Hide the list",
-        "holdersSummary": "Clients holding a credential: {{count}}"
+        "allFound": "All ({{count}})"
       },
       "oidc": {
         "test": "Test the address",

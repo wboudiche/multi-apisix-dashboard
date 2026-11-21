@@ -407,6 +407,15 @@ table tbody tr:last-child td {
   min-height: 40px !important;
 }
 
+/* A field that is a button - one that opens a list, as the clients' does -
+   took Mantine's line height of a whole field on top of the padding above,
+   and sat its text 16px from the top and 4px from the bottom. */
+button[class*="Input-input"] {
+  display: flex !important;
+  align-items: center;
+  line-height: normal !important;
+}
+
 /* Reset internal inputs for complex components (TagsInput, MultiSelect) that cause double borders */
 [class*="PillsInput-field"],
 [class*="TagsInput-inputField"],
@@ -601,6 +610,38 @@ select:focus,
    3.3:1 on white, under the 4.5:1 text needs. */
 :root[data-mantine-color-scheme="light"] {
   --mantine-color-dimmed: #5f6670;
+}
+
+/* ===== Fields shown, not edited ===== */
+
+/* A detail page shows its record in disabled fields: their value is there to
+   be read, not greyed out of the way. Mantine dims one twice - its dimmed
+   colour, then 0.6 opacity - which left 1.8:1 on the dark surface, and under
+   4.5:1 on the light one too. Its value is now read in full, and the field
+   is set apart by a background of its own instead: the input rule above
+   gives every field the card's, disabled or not, so the fade was all that
+   told a locked field from one to type in. The placeholder of an empty one
+   stays faint, so that it does not pass for a value. */
+.mantine-Input-input:disabled,
+.mantine-Input-input[data-disabled] {
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  /* WebKit colours a disabled field's text by this, over color. */
+  -webkit-text-fill-color: var(--text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.mantine-Input-input:disabled::placeholder,
+.mantine-Input-input[data-disabled] ::placeholder,
+.mantine-Input-input[data-disabled]::placeholder {
+  color: var(--text-muted) !important;
+  -webkit-text-fill-color: var(--text-muted) !important;
+}
+
+/* The pills of a field shown, not edited - a route's labels - keep the
+   card's background, or they melt into the field's own. */
+.mantine-Input-input[data-disabled] .mantine-Pill-root {
+  background: var(--bg-card) !important;
 }
 
 /* ===== SegmentedControl ===== */

@@ -481,10 +481,7 @@
         "countPicked": "{{picked}} de {{total}} elegidos",
         "countHolders": "{{total}} en total",
         "listCut": "{{shown}} de {{total}} listados: escriba parte de un nombre para encontrar los demás.",
-        "allFound": "Todos ({{count}})",
-        "showList": "Mostrar la lista",
-        "hideList": "Ocultar la lista",
-        "holdersSummary": "Clientes con credencial: {{count}}"
+        "allFound": "Todos ({{count}})"
       },
       "oidc": {
         "test": "Probar la dirección",
