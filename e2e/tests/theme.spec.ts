@@ -16,8 +16,13 @@
  */
 import { routesPom } from '@e2e/pom/routes';
 import { upstreamsPom } from '@e2e/pom/upstreams';
+import { randomId } from '@e2e/utils/common';
+import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
 import { expect, type Page } from '@playwright/test';
+
+import { putRouteReq } from '@/apis/routes';
+import { API_ROUTES } from '@/config/constant';
 
 /**
  * Light, dark, or as the operating system says - the header's theme menu,
@@ -97,4 +102,55 @@ test('keeps the scheme picked, the tables with it, across a reload', async ({ pa
     await pickTheme(page, 'System');
     await expect.poll(() => scheme(page)).toBe('dark');
   });
+});
+
+/**
+ * The contrast of a field's text on what is behind it, as it is drawn: its
+ * colour faded by its opacity over the first background that is not clear.
+ */
+const fieldContrast = (page: Page, label: string) =>
+  page.getByRole('textbox', { name: label, exact: true }).first().evaluate((el) => {
+    const rgb = (c: string) => c.match(/[\d.]+/g)!.map(Number);
+    const style = getComputedStyle(el);
+    let back: HTMLElement | null = el as HTMLElement;
+    let bg = rgb(getComputedStyle(back).backgroundColor);
+    while (back && (bg[3] ?? 1) === 0) {
+      back = back.parentElement;
+      bg = back ? rgb(getComputedStyle(back).backgroundColor) : [255, 255, 255];
+    }
+    const alpha = Number(style.opacity);
+    const fg = rgb(style.color).slice(0, 3).map((c, i) => c * alpha + bg[i] * (1 - alpha));
+    const lum = ([r, g, b]: number[]) => {
+      const ch = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+    };
+    const [hi, lo] = [lum(fg), lum(bg.slice(0, 3))].sort((a, b) => b - a);
+    return (hi + 0.05) / (lo + 0.05);
+  });
+
+test('shows a record\'s fields readable, in either scheme', async ({ page }) => {
+  const id = randomId('theme-route');
+  await putRouteReq(e2eReq, {
+    id,
+    name: `${id}-name`,
+    uri: `/${id}`,
+    upstream: { nodes: [{ host: '127.0.0.1', port: 80, weight: 1 }] },
+  });
+  try {
+    for (const colorScheme of ['dark', 'light'] as const) {
+      await test.step(colorScheme, async () => {
+        await page.emulateMedia({ colorScheme });
+        await routesPom.toIndex(page);
+        await page.goto(`${page.url().replace(/\/routes.*$/, '')}/routes/detail/${id}`);
+        await routesPom.isDetailPage(page);
+        await expect(page.getByRole('textbox', { name: 'Name', exact: true }).first()).toHaveValue(`${id}-name`);
+        expect(await fieldContrast(page, 'Name')).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+  } finally {
+    await e2eReq.delete(`${API_ROUTES}/${id}`).catch(() => undefined);
+  }
 });

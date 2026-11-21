@@ -603,6 +603,19 @@ select:focus,
   --mantine-color-dimmed: #5f6670;
 }
 
+/* ===== Fields shown, not edited ===== */
+
+/* A detail page shows its record in disabled fields: their value is there to
+   be read, not greyed out of the way. Mantine dims one twice - its dimmed
+   colour, then 0.6 opacity - which left 1.6:1 on the dark surface, and under
+   4.5:1 on the light one too. The field still looks set apart, by its
+   background and its cursor. */
+.mantine-Input-input:disabled,
+.mantine-Input-input[data-disabled] {
+  color: var(--text-secondary) !important;
+  opacity: 1 !important;
+}
+
 /* ===== SegmentedControl ===== */
 
 /* The options not chosen: Mantine's grey on the control's own grey was 3.9:1,
