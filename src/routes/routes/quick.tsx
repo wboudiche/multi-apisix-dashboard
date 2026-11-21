@@ -62,7 +62,7 @@ const DuplicateRoute = ({ id, ...leave }: Leave & { id: string }) => {
   const route = data?.value?.id ? data.value : undefined;
   if (!route) {
     return (
-      <Stack maw={880} align="flex-start">
+      <Stack align="flex-start">
         <PageHeader title={t('form.quickRoute.title')} />
         <Alert color="red" variant="light" w="100%">
           {t('proxyError.message')}

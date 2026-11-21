@@ -381,7 +381,6 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       p="xl"
       radius="md"
       withBorder
-      maw={880}
     >
       <Stack gap="md">
         {/* A copy says what it carries; a new route's fields say enough. */}
