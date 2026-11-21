@@ -1076,7 +1076,8 @@
         "minute": "dakika",
         "hour": "saat",
         "day": "gün"
-      }
+      },
+      "override": "Arka uca gönderilen isteği değiştir"
     }
   },
   "globalRules": {

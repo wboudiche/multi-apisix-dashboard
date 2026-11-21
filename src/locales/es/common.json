@@ -1078,7 +1078,8 @@
         "minute": "minuto",
         "hour": "hora",
         "day": "día"
-      }
+      },
+      "override": "Cambiar la solicitud enviada al backend"
     }
   },
   "globalRules": {

@@ -1070,7 +1070,8 @@
         "minute": "分钟",
         "hour": "小时",
         "day": "天"
-      }
+      },
+      "override": "修改发送到后端的请求"
     }
   },
   "globalRules": {

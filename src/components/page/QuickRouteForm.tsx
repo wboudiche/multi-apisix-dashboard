@@ -156,6 +156,9 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const [limitOn, setLimitOn] = useState(false);
   const [limitCount, setLimitCount] = useState<number | string>(100);
   const [limitPer, setLimitPer] = useState<RateWindow>('minute');
+  // Off until asked for, as the call limit is: the request goes to the
+  // backend as it came. Switched off again, what was set is kept, not sent.
+  const [overrideOn, setOverrideOn] = useState(false);
   // The advanced form's Request Override section, on a form of its own: it
   // reads and writes plugins['proxy-rewrite'], and the route takes that.
   const rewriteForm = useForm<{ plugins: Record<string, unknown> }>({ defaultValues: { plugins: {} } });
@@ -261,7 +264,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     }
   };
   // A copy keeps the original's plugins, its proxy-rewrite among them.
-  const override = duplicating
+  const override = duplicating || !overrideOn
     ? undefined
     : {
         rewrite,
@@ -376,7 +379,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     !serviceId &&
     accessChoice === 'anyone' &&
     !limitOn &&
-    Object.keys(rewrite).length === 0 &&
+    !overrideOn &&
     // As a set: a method unticked and ticked again is no edit.
     [...methods].sort().join() === [...(ROUTE_ADD_DEFAULTS.methods ?? [])].sort().join();
 
@@ -663,6 +666,13 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
         )}
 
         {!duplicating && (
+          <Switch
+            label={t('form.quickRoute.override')}
+            checked={overrideOn}
+            onChange={(e) => setOverrideOn(e.currentTarget.checked)}
+          />
+        )}
+        {!duplicating && overrideOn && (
           <FormProvider {...rewriteForm}>
             <FormSectionRequestOverride />
             {showErrors && (errors.overrideHost || errors.overrideUri || errors.overrideHeaders) && (

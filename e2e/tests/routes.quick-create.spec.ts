@@ -218,6 +218,11 @@ test('changes the request sent to the backend, with the advanced form\'s options
   await form.getByRole('textbox', { name: 'Path' }).fill(path);
   await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980/v1');
 
+  await test.step('hidden until asked for, as the call limit is', async () => {
+    await expect(form.getByRole('radiogroup', { name: 'Scheme' })).toBeHidden();
+    await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
+  });
+
   await test.step('the same options as the advanced form', async () => {
     for (const group of ['Scheme', 'URI Override', 'Host Override']) {
       await expect(form.getByRole('radiogroup', { name: group })).toBeVisible();
@@ -261,6 +266,7 @@ test('hands the change to the request over to the advanced form', async ({ page 
   const form = await openForm(page);
   await form.getByRole('textbox', { name: 'Path' }).fill(`${prefix}/handed-override`);
   await form.getByRole('textbox', { name: 'Address' }).fill('http://127.0.0.1:1980');
+  await form.locator('label').filter({ hasText: /^Change the request sent to the backend$/ }).click();
   await form.getByRole('radiogroup', { name: 'Host Override' }).getByRole('radio', { name: 'Static' }).check();
   await form.getByRole('textbox', { name: 'new-host.example.com' }).fill('api.internal');
   await form.getByRole('button', { name: 'Continue in the advanced form' }).click();

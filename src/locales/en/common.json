@@ -992,7 +992,8 @@
         "minute": "minute",
         "hour": "hour",
         "day": "day"
-      }
+      },
+      "override": "Change the request sent to the backend"
     }
   },
   "globalRules": {
