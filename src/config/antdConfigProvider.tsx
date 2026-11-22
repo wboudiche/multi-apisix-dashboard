@@ -16,15 +16,42 @@
  */
 import '@ant-design/v5-patch-for-react-19';
 
+import {
+  deDEIntl,
+  enUSIntl,
+  esESIntl,
+  ProConfigProvider,
+  trTRIntl,
+  zhCNIntl,
+} from '@ant-design/pro-components';
 import { useComputedColorScheme } from '@mantine/core';
 import { ConfigProvider, theme as antdTheme } from 'antd';
+import deDE from 'antd/locale/de_DE';
 import enUS from 'antd/locale/en_US';
+import esES from 'antd/locale/es_ES';
+import trTR from 'antd/locale/tr_TR';
+import zhCN from 'antd/locale/zh_CN';
 import type { PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 
+/**
+ * antd's and the pro table's words - pagination, column settings, empty
+ * states - in the page's language. The pro table has a language of its own,
+ * Chinese unless told: every list's pagination read 第 1-7 条/总共 7 条.
+ */
+const LOCALES = {
+  en: { antd: enUS, pro: enUSIntl },
+  de: { antd: deDE, pro: deDEIntl },
+  es: { antd: esES, pro: esESIntl },
+  tr: { antd: trTR, pro: trTRIntl },
+  zh: { antd: zhCN, pro: zhCNIntl },
+} as const;
+
 export const AntdConfigProvider = (props: PropsWithChildren) => {
   const { children } = props;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = (i18n.resolvedLanguage ?? i18n.language ?? 'en').slice(0, 2);
+  const locale = LOCALES[language as keyof typeof LOCALES] ?? LOCALES.en;
   // The tables follow the scheme Mantine resolved, the system's included.
   // Read during the first render, not in an effect: under System on a dark
   // system, the effect's answer came a frame late and every table flashed
@@ -34,7 +61,7 @@ export const AntdConfigProvider = (props: PropsWithChildren) => {
   return (
     <ConfigProvider
       virtual
-      locale={enUS}
+      locale={locale.antd}
       renderEmpty={() => <div>{t('noData')}</div>}
       theme={{
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
@@ -52,7 +79,7 @@ export const AntdConfigProvider = (props: PropsWithChildren) => {
         },
       }}
     >
-      {children}
+      <ProConfigProvider intl={locale.pro}>{children}</ProConfigProvider>
     </ConfigProvider>
   );
 };
