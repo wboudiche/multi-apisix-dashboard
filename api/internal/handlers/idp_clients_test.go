@@ -210,6 +210,7 @@ type createFixture struct {
 	inst   *models.Instance
 	owners map[string]string
 	hosts  map[string][]string // routes that exist, by id
+	times  map[string]int64    // create_time of each route that exists; 100 unless set
 	role   string
 	ui     *models.UserInstance
 }
@@ -233,6 +234,7 @@ func newCreateFixture(t *testing.T, hosts []string, found bool) *createFixture {
 		inst:   &models.Instance{ID: "i1", IsActive: true},
 		owners: map[string]string{"r1": "t1", "other": "t2"},
 		hosts:  map[string][]string{},
+		times:  map[string]int64{},
 		role:   models.RoleSuperAdmin,
 	}
 	if found {
@@ -243,14 +245,28 @@ func newCreateFixture(t *testing.T, hosts []string, found bool) *createFixture {
 	f.h = &IdPHandler{
 		idps:     idps,
 		keycloak: func(*models.IdentityProvider) services.KeycloakAPI { return f.kc },
-		readRouteHosts: func(_ context.Context, _ *models.Instance, id string) ([]string, bool, error) {
+		readRoute: func(_ context.Context, _ *models.Instance, id string) (routeFacts, error) {
 			h, ok := f.hosts[id]
-			return h, ok, nil
+			return routeFacts{Hosts: h, CreateTime: f.createTime(id), Found: ok}, nil
+		},
+		listRoutes: func(context.Context, *models.Instance) ([]map[string]any, error) {
+			out := []map[string]any{}
+			for id := range f.hosts {
+				out = append(out, map[string]any{"id": id, "create_time": float64(f.createTime(id))})
+			}
+			return out, nil
 		},
 		routeOwner:  func(_ context.Context, _, id string) (string, error) { return f.owners[id], nil },
 		getInstance: func(context.Context, string) (*models.Instance, error) { return f.inst, nil },
 	}
 	return f
+}
+
+func (f *createFixture) createTime(id string) int64 {
+	if v, ok := f.times[id]; ok {
+		return v
+	}
+	return 100
 }
 
 func (f *createFixture) asDeveloper() {
@@ -516,7 +532,7 @@ func (f *createFixture) seedClient(t *testing.T, uuid, route, mode string) {
 	e := &models.IdPClient{
 		IdPID: f.idpID(t), InstanceID: "i1", Realm: "r", Prefix: "mad-",
 		ClientID: "mad-" + uuid, KeycloakUUID: uuid, RouteID: route, Mode: mode,
-		Options: models.IdPClientOptions{Validation: "introspection"},
+		Options: models.IdPClientOptions{Validation: "introspection"}, RouteCreateTime: 100,
 	}
 	if mode == "login" {
 		e.Options = models.IdPClientOptions{PKCE: true}
@@ -831,4 +847,96 @@ func TestCreateClientDeveloperRedirectDomains(t *testing.T) {
 			t.Fatalf("status %d: %s", w.Code, w.Body)
 		}
 	})
+}
+
+func TestCreateClientStoresRouteCreateTime(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.times["r1"] = 4242
+	if w := f.post(t, loginBody); w.Code != http.StatusCreated {
+		t.Fatalf("status %d: %s", w.Code, w.Body)
+	}
+	e, err := f.h.idps.FindClient(context.Background(), "i1", "uuid-1")
+	if err != nil || e.RouteCreateTime != 4242 {
+		t.Fatalf("entry %+v err %v", e, err)
+	}
+}
+
+func TestUseClientRefusesRecreatedRoute(t *testing.T) {
+	cases := []struct {
+		name   string
+		setup  func(f *createFixture)
+		admin  bool
+		status int
+	}{
+		{"re-created route, developer", func(f *createFixture) { f.times["r1"] = 200 }, false, 403},
+		{"re-created route, admin", func(f *createFixture) { f.times["r1"] = 200 }, true, 200},
+		{"route deleted, developer", func(f *createFixture) { delete(f.hosts, "r1") }, false, 403},
+		{"route deleted, admin", func(f *createFixture) { delete(f.hosts, "r1") }, true, 200},
+		{"same route, developer", func(f *createFixture) {}, false, 200},
+		{"entry without a create_time, developer", func(f *createFixture) { f.zeroEntryTime(t) }, false, 403},
+	}
+	var bodies []string
+	for _, tc := range cases {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.seedClient(t, "u1", "r1", "login")
+		if !tc.admin {
+			f.asDeveloper()
+		}
+		tc.setup(f)
+		w := f.do(t, http.MethodPost, "", "u1", f.h.UseClient)
+		if w.Code != tc.status {
+			t.Errorf("%s: status %d: %s", tc.name, w.Code, w.Body)
+		}
+		if tc.status == 403 {
+			if f.kc.calls != 0 {
+				t.Errorf("%s: keycloak got %d calls", tc.name, f.kc.calls)
+			}
+			bodies = append(bodies, w.Body.String())
+		}
+	}
+	for _, b := range bodies {
+		if b != bodies[0] {
+			t.Errorf("403 bodies differ: %q vs %q", b, bodies[0])
+		}
+	}
+}
+
+func (f *createFixture) zeroEntryTime(t *testing.T) {
+	t.Helper()
+	e, err := f.h.idps.FindClient(context.Background(), "i1", "u1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.RouteCreateTime = 0
+	if err := f.h.idps.RecordClient(context.Background(), e); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestListClientsHidesRecreatedRouteFromDeveloper(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.times["r1"] = 200
+	f.asDeveloper()
+	w := f.do(t, http.MethodGet, "", "", f.h.ListClients)
+	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Fatalf("developer: %d %s", w.Code, w.Body)
+	}
+	f.role, f.ui = models.RoleSuperAdmin, nil
+	w = f.do(t, http.MethodGet, "", "", f.h.ListClients)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"uuid":"u1"`) {
+		t.Fatalf("admin: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestListClientsDeveloperGatewayErrorIs502(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.asDeveloper()
+	f.h.listRoutes = func(context.Context, *models.Instance) ([]map[string]any, error) {
+		return nil, errors.New("down")
+	}
+	if w := f.do(t, http.MethodGet, "", "", f.h.ListClients); w.Code != http.StatusBadGateway {
+		t.Fatalf("status %d", w.Code)
+	}
 }

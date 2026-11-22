@@ -67,9 +67,10 @@ func readAdminObject(ctx context.Context, inst *models.Instance, path string, de
 // hostFields are the fields of a route or service that say which hosts it
 // answers to.
 type hostFields struct {
-	Host      string   `json:"host"`
-	Hosts     []string `json:"hosts"`
-	ServiceID any      `json:"service_id"`
+	Host       string   `json:"host"`
+	CreateTime float64  `json:"create_time"`
+	Hosts      []string `json:"hosts"`
+	ServiceID  any      `json:"service_id"`
 }
 
 func (f hostFields) all() []string {
@@ -80,32 +81,53 @@ func (f hostFields) all() []string {
 	return out
 }
 
-// readRouteHosts asks the instance's Admin API for a route and returns the
-// hosts it matches (its "host" and "hosts", else those of its service), and
-// whether it exists.
-func readRouteHosts(ctx context.Context, inst *models.Instance, routeID string) ([]string, bool, error) {
+// routeFacts is what the client provisioning needs of a route: the hosts it
+// matches (its "host" and "hosts", else those of its service), the APISIX
+// create_time (seconds; 0 when the gateway gives none) and whether it exists.
+type routeFacts struct {
+	Hosts      []string
+	CreateTime int64
+	Found      bool
+}
+
+// readRoute asks the instance's Admin API for a route.
+func readRoute(ctx context.Context, inst *models.Instance, routeID string) (routeFacts, error) {
 	var route hostFields
 	found, err := readAdminObject(ctx, inst, "/routes/"+url.PathEscape(routeID), &route)
 	if err != nil || !found {
-		return nil, false, err
+		return routeFacts{}, err
 	}
-	hosts := route.all()
-	if len(hosts) > 0 || route.ServiceID == nil {
-		return hosts, true, nil
+	facts := routeFacts{Hosts: route.all(), CreateTime: int64(route.CreateTime), Found: true}
+	if len(facts.Hosts) > 0 || route.ServiceID == nil {
+		return facts, nil
 	}
 	serviceID := fmt.Sprint(route.ServiceID)
 	if serviceID == "" {
-		return hosts, true, nil
+		return facts, nil
 	}
 	var service hostFields
 	sfound, err := readAdminObject(ctx, inst, "/services/"+url.PathEscape(serviceID), &service)
 	if err != nil {
-		return nil, false, err
+		return routeFacts{}, err
 	}
 	if sfound {
-		hosts = service.all()
+		facts.Hosts = service.all()
 	}
-	return hosts, true, nil
+	return facts, nil
+}
+
+// routeCreateTimes maps the id of each listed route to its create_time.
+func routeCreateTimes(routes []map[string]any) map[string]int64 {
+	out := make(map[string]int64, len(routes))
+	for _, r := range routes {
+		id, ok := r["id"]
+		if !ok || id == nil {
+			continue
+		}
+		ct, _ := r["create_time"].(float64)
+		out[fmt.Sprint(id)] = int64(ct)
+	}
+	return out
 }
 
 // listInstanceRoutes returns the configuration of every route of the instance,
@@ -146,8 +168,8 @@ func listInstanceRoutes(ctx context.Context, inst *models.Instance) ([]map[strin
 
 // NewIdPRouteReaders are the readers main wires into the IdP handler.
 func NewIdPRouteReaders() (
-	func(context.Context, *models.Instance, string) ([]string, bool, error),
+	func(context.Context, *models.Instance, string) (routeFacts, error),
 	func(context.Context, *models.Instance) ([]map[string]any, error),
 ) {
-	return readRouteHosts, listInstanceRoutes
+	return readRoute, listInstanceRoutes
 }

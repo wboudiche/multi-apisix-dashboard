@@ -220,12 +220,13 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found or inactive"})
 		return
 	}
-	hosts, found, err := h.readRouteHosts(ctx, inst, req.RouteID)
+	route, err := h.readRoute(ctx, inst, req.RouteID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "Could not read the route from the gateway"})
 		return
 	}
-	if !found {
+	hosts := route.Hosts
+	if !route.Found {
 		if scope.isAdmin {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
 		} else {
@@ -293,7 +294,7 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 	}
 	entry := &models.IdPClient{
 		IdPID: p.ID, InstanceID: instanceID, Realm: p.Realm, Prefix: p.ClientIDPrefix,
-		ClientID: kcID, KeycloakUUID: uuid, RouteID: req.RouteID, Mode: req.Mode,
+		ClientID: kcID, KeycloakUUID: uuid, RouteID: req.RouteID, RouteCreateTime: route.CreateTime, Mode: req.Mode,
 		Options: opts, RedirectURI: redirect, CreatedBy: middleware.GetUserID(c),
 	}
 	if err := h.idps.RecordClient(ctx, entry); err != nil {
@@ -321,6 +322,14 @@ func mayUseClient(scope teamScope, team string) bool {
 // stored on the entry, and that prefix is not empty.
 func managedEntry(e *models.IdPClient) bool {
 	return e.Prefix != "" && strings.HasPrefix(e.ClientID, e.Prefix)
+}
+
+// sameRoute reports whether the route an entry was made for is still the one
+// at that id: it exists in the listing with the create_time recorded on the
+// entry, which is never 0.
+func sameRoute(created map[string]int64, e *models.IdPClient) bool {
+	t, ok := created[e.RouteID]
+	return ok && e.RouteCreateTime != 0 && t == e.RouteCreateTime
 }
 
 // clientListItem is one registry entry as the list shows it. Status and Routes
@@ -375,6 +384,22 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Clients could not be read"})
 		return
 	}
+	// A developer sees a client only while its route is the one it was made
+	// for: one gateway read of every route, not one per entry.
+	var created map[string]int64
+	if !scope.isAdmin {
+		inst, err := h.getInstance(ctx, instanceID)
+		if err != nil || inst == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "The instance could not be read"})
+			return
+		}
+		routes, err := h.listRoutes(ctx, inst)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Could not read the routes from the gateway"})
+			return
+		}
+		created = routeCreateTimes(routes)
+	}
 	names := map[string]string{}
 	out := []clientListItem{}
 	for _, e := range entries {
@@ -397,6 +422,9 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 		}
 		if name == "" {
 			continue // the connection is gone
+		}
+		if !scope.isAdmin && !sameRoute(created, e) {
+			continue
 		}
 		team, err := h.routeOwner(ctx, instanceID, e.RouteID)
 		if err != nil {
@@ -452,6 +480,24 @@ func (h *IdPHandler) UseClient(c *gin.Context) {
 	if !managedEntry(entry) {
 		notFound("Client not found")
 		return
+	}
+	// A route re-created under the same id is another route: only an admin
+	// may use what was made for the old one.
+	if !scope.isAdmin {
+		inst, err := h.getInstance(ctx, instanceID)
+		if err != nil || inst == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "The instance could not be read"})
+			return
+		}
+		route, err := h.readRoute(ctx, inst, entry.RouteID)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Could not read the route from the gateway"})
+			return
+		}
+		if !route.Found || entry.RouteCreateTime == 0 || route.CreateTime != entry.RouteCreateTime {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+			return
+		}
 	}
 	team, err := h.routeOwner(ctx, instanceID, entry.RouteID)
 	if err != nil {

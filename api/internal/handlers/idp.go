@@ -36,11 +36,11 @@ type IdPHandler struct {
 	// keycloak builds the Keycloak client of a connection: NewKeycloakClient
 	// in main, a fake in tests.
 	keycloak func(*models.IdentityProvider) services.KeycloakAPI
-	// readRouteHosts and listRoutes read routes through an instance's Admin
-	// API; injected so tests need no gateway. readRouteHosts answers the hosts
-	// a route matches and whether the route exists.
-	readRouteHosts func(ctx context.Context, inst *models.Instance, routeID string) (hosts []string, found bool, err error)
-	listRoutes     func(ctx context.Context, inst *models.Instance) ([]map[string]any, error)
+	// readRoute and listRoutes read routes through an instance's Admin API;
+	// injected so tests need no gateway. readRoute answers what a route
+	// matches, when it was created, and whether it exists.
+	readRoute  func(ctx context.Context, inst *models.Instance, routeID string) (routeFacts, error)
+	listRoutes func(ctx context.Context, inst *models.Instance) ([]map[string]any, error)
 	// routeOwner and getInstance wrap the services that take a concrete etcd
 	// client, so tests need none.
 	routeOwner  func(ctx context.Context, instanceID, routeID string) (string, error)
@@ -52,16 +52,16 @@ func NewIdPHandler(
 	ownership *services.OwnershipService,
 	instances *services.InstanceService,
 	keycloak func(*models.IdentityProvider) services.KeycloakAPI,
-	readRouteHosts func(ctx context.Context, inst *models.Instance, routeID string) ([]string, bool, error),
+	readRoute func(ctx context.Context, inst *models.Instance, routeID string) (routeFacts, error),
 	listRoutes func(ctx context.Context, inst *models.Instance) ([]map[string]any, error),
 ) *IdPHandler {
 	return &IdPHandler{
-		idps:           idps,
-		ownership:      ownership,
-		instances:      instances,
-		keycloak:       keycloak,
-		readRouteHosts: readRouteHosts,
-		listRoutes:     listRoutes,
+		idps:       idps,
+		ownership:  ownership,
+		instances:  instances,
+		keycloak:   keycloak,
+		readRoute:  readRoute,
+		listRoutes: listRoutes,
 		routeOwner: func(ctx context.Context, instanceID, routeID string) (string, error) {
 			return ownership.GetOwner(ctx, instanceID, "routes", routeID)
 		},

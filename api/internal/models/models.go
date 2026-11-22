@@ -387,18 +387,22 @@ type IdPClientOptions struct {
 // It records what was provisioned, not the secret: a client's secret is never
 // stored and is read back from Keycloak when needed.
 type IdPClient struct {
-	IdPID        string           `json:"idp_id"`
-	InstanceID   string           `json:"instance_id"`
-	Realm        string           `json:"realm"`
-	Prefix       string           `json:"prefix"`
-	ClientID     string           `json:"client_id"`
-	KeycloakUUID string           `json:"keycloak_uuid"`
-	RouteID      string           `json:"route_id"`
-	Mode         string           `json:"mode"` // "login" | "token"
-	Options      IdPClientOptions `json:"options"`
-	RedirectURI  string           `json:"redirect_uri"`
-	CreatedBy    string           `json:"created_by"`
-	CreatedAt    NullTime         `json:"created_at"`
+	IdPID        string `json:"idp_id"`
+	InstanceID   string `json:"instance_id"`
+	Realm        string `json:"realm"`
+	Prefix       string `json:"prefix"`
+	ClientID     string `json:"client_id"`
+	KeycloakUUID string `json:"keycloak_uuid"`
+	RouteID      string `json:"route_id"`
+	// RouteCreateTime is the APISIX create_time of the route when the client
+	// was made. A route re-created under the same id has another one, so it
+	// does not inherit the client.
+	RouteCreateTime int64            `json:"route_create_time"`
+	Mode            string           `json:"mode"` // "login" | "token"
+	Options         IdPClientOptions `json:"options"`
+	RedirectURI     string           `json:"redirect_uri"`
+	CreatedBy       string           `json:"created_by"`
+	CreatedAt       NullTime         `json:"created_at"`
 }
 
 // IdPClientKey returns the etcd key of a registry entry: one per Keycloak client

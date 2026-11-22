@@ -172,6 +172,7 @@ secrets. No token or secret in logs, including the backend's debug logs.
 | `client_id`, `keycloak_uuid` | |
 | `idp_id`, `instance_id`, `realm`, `prefix` | realm and prefix copied from the connection at creation |
 | `route_id` | the route it was created for |
+| `route_create_time` | the route's APISIX `create_time` when the client was created (security-review call, R9) |
 | `mode`, `options` | login/token, PKCE, validation, client credentials |
 | `redirect_uri` | login mode only |
 | `created_by`, `created_at` | |
@@ -235,6 +236,14 @@ compute statuses.
 needs - `discovery`, `client_id`, `client_secret` read from Keycloak at that
 moment, and `introspection_endpoint` for a token-mode client - under the same
 rule. The secret is read again each time rather than stored.
+
+*Security-review call (R9):* a route deleted and re-created under the same id
+must not inherit the old route's client. For a non-admin, `use` and the list
+require the live route to exist with the same `create_time` as the entry's
+`route_create_time` (an entry without one counts as different); otherwise the
+answer is the same oracle-free 403 and the entry stays admin-only. Admins are
+not subject to it, and a client still follows its route when an admin reassigns
+the route, since the create time does not change.
 
 ### Route form
 
