@@ -9,7 +9,6 @@
       "Bash(docker compose logs *)",
       "Bash(docker compose ps *)",
       "Bash(claude plugin list)",
-      "Bash(gofmt -l *)",
       "mcp__claude-in-chrome__tabs_context_mcp",
       "mcp__claude-in-chrome__find",
       "mcp__plugin_playwright_playwright__browser_network_requests",
