@@ -303,6 +303,29 @@ func invalidProxyPath(path string) bool {
 	return false
 }
 
+// pathOutsideAdminCharset reports whether a segment of a path holds anything
+// beyond what the Admin API keys by: letters, digits, "-", "_" and ".".
+//
+// The checks read the path the router decoded once; the string is forwarded
+// as it is, and the gateway reads it again. Any other character can make the
+// two readings differ. An escape left after decoding is decoded once more, so
+// /routes/%2e%2e%2fprotos%2fp1 - an id under routes, to the checks - was
+// written as /protos/p1 by anyone allowed to write a route. A "?" or "#"
+// ends the path the gateway sees, and the resource it acts on is not the one
+// whose ownership was read. Held to an allowlist rather than refusing those
+// characters one by one: every type, id, username and plugin name fits it.
+//
+// Kept apart from invalidProxyPath, which the route test also runs on gateway
+// paths, where a route's own path may hold any of these.
+func pathOutsideAdminCharset(path string) bool {
+	for _, seg := range strings.Split(strings.Trim(path, "/"), "/") {
+		if seg != "" && !apisixIDChars(seg, true) {
+			return true
+		}
+	}
+	return false
+}
+
 // namesResourceItself reports whether path is <type>/<id>, the only shape in
 // which the id getResourceMetadata reads is the resource's own. A consumer's
 // credential, /consumers/<username>/credentials/<id>, reads as the consumer.
@@ -561,7 +584,8 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// "/routes/../ssls/<id>" — passing the routes permission check while the
 	// request actually lands on the forbidden ssls resource.
 	// An empty segment is refused for the same reason (see invalidProxyPath).
-	if invalidProxyPath(path) || deepWriteRefused(c.Request.Method, path) {
+	// And any character the Admin API does not key by: see pathOutsideAdminCharset.
+	if invalidProxyPath(path) || pathOutsideAdminCharset(path) || deepWriteRefused(c.Request.Method, path) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
 		c.Abort()
 		return
