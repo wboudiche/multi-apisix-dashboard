@@ -97,9 +97,13 @@ func main() {
 	idpService := services.NewIdPService(etcdClient)
 	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService, idpService)
 	readRouteHosts, listRoutes := handlers.NewIdPRouteReaders()
+	// One Keycloak client per connection, so its service-account token is
+	// fetched once per expiry rather than on every request.
+	keycloakClients := services.NewKeycloakClients(func(p *models.IdentityProvider) services.KeycloakAPI {
+		return services.NewKeycloakClient(p, nil)
+	})
 	idpHandler := handlers.NewIdPHandler(idpService, ownershipService, instanceService,
-		func(p *models.IdentityProvider) services.KeycloakAPI { return services.NewKeycloakClient(p, nil) },
-		readRouteHosts, listRoutes)
+		keycloakClients.For, readRouteHosts, listRoutes)
 
 	// Check for default admin creation
 	if etcdClient != nil {

@@ -37,6 +37,10 @@ import (
 // maxKeycloakMessage caps what of a Keycloak error reaches a user.
 const maxKeycloakMessage = 200
 
+// idpStatusTimeout bounds the Keycloak reads of one status list: a row not
+// reached in time reads "unknown" (a var so a test can shorten it).
+var idpStatusTimeout = 30 * time.Second
+
 var clientIDSuffixPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 
 type createClientRequest struct {
@@ -432,6 +436,13 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 		}
 		usedBy = routesUsingClients(routes)
 	}
+	// One deadline for every Keycloak read of the list, well inside the
+	// server's write timeout: a hanging Keycloak costs each row up to a token
+	// fetch and a read, and the rows it leaves read "unknown" instead of the
+	// whole tab failing. A connection found unreachable is not asked again.
+	statusCtx, cancelStatus := context.WithTimeout(ctx, idpStatusTimeout)
+	defer cancelStatus()
+	unreachable := map[string]bool{}
 	names := map[string]string{}
 	provs := map[string]*models.IdentityProvider{}
 	out := []clientListItem{}
@@ -473,9 +484,16 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 			RouteID: e.RouteID, TeamID: team, Mode: e.Mode,
 		}
 		if withStatus {
-			rep, kcErr := h.keycloak(provs[e.IdPID]).GetClient(ctx, e.KeycloakUUID)
 			item.Routes = usedBy[e.ClientID]
-			item.Status = clientStatus(e, rep, kcErr, item.Routes)
+			if unreachable[e.IdPID] || statusCtx.Err() != nil {
+				item.Status = statusUnknown
+			} else {
+				rep, kcErr := h.keycloak(provs[e.IdPID]).GetClient(statusCtx, e.KeycloakUUID)
+				if errors.Is(kcErr, services.ErrKeycloakUnavailable) {
+					unreachable[e.IdPID] = true
+				}
+				item.Status = clientStatus(e, rep, kcErr, item.Routes)
+			}
 		}
 		out = append(out, item)
 	}

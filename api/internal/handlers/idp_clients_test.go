@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -689,7 +690,8 @@ func TestListClients(t *testing.T) {
 	if strings.Contains(w.Body.String(), "cl-secret") || strings.Contains(w.Body.String(), "s3cr3t") {
 		t.Fatal("secret leaked")
 	}
-	// admin, status=1: statuses are covered by TestListClientsWithStatus.
+	// admin, status=1: statuses are covered by TestClientStatus,
+	// TestClientStatusUnknownWhenKeycloakFails and the TestListClientsStatus* tests.
 	if w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients); w.Code != 200 {
 		t.Fatalf("admin status=1: %d", w.Code)
 	}
@@ -1042,7 +1044,8 @@ func TestClientStatusUnknownWhenKeycloakFails(t *testing.T) {
 	}
 	rep := services.BuildClientRepresentation("mad-u2", "token", models.IdPClientOptions{Validation: "introspection"}, "")
 	f.kc.getRep = map[string]*services.ClientRepresentation{"u2": &rep}
-	f.kc.getErr = map[string]error{"u1": services.ErrKeycloakUnavailable}
+	// Not ErrKeycloakUnavailable: that one stops the calls to the connection.
+	f.kc.getErr = map[string]error{"u1": services.ErrKeycloakForbidden}
 	w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients)
 	var items []clientListItem
 	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &items) != nil || len(items) != 2 {
@@ -1126,5 +1129,83 @@ func TestDeleteClientConnectionGone(t *testing.T) {
 	}
 	if len(f.kc.deleted) != 0 {
 		t.Fatal("keycloak was called without a connection")
+	}
+}
+
+// statusItems runs the status list and reads its rows by uuid.
+func statusItems(t *testing.T, f *createFixture) map[string]clientListItem {
+	t.Helper()
+	w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients)
+	var items []clientListItem
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &items) != nil {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+	by := map[string]clientListItem{}
+	for _, it := range items {
+		by[it.UUID] = it
+	}
+	return by
+}
+
+func TestListClientsStatusStopsCallingAnUnreachableKeycloak(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	for _, u := range []string{"u1", "u2", "u3"} {
+		f.seedClient(t, u, "r1", "token")
+	}
+	f.kc.getErr = map[string]error{
+		"u1": services.ErrKeycloakUnavailable, "u2": services.ErrKeycloakUnavailable, "u3": services.ErrKeycloakUnavailable,
+	}
+	by := statusItems(t, f)
+	if len(by) != 3 {
+		t.Fatalf("items %+v", by)
+	}
+	for u, it := range by {
+		if it.Status != statusUnknown {
+			t.Errorf("%s: status %q", u, it.Status)
+		}
+	}
+	if f.kc.calls != 1 {
+		t.Fatalf("an unreachable connection was called %d times", f.kc.calls)
+	}
+}
+
+// slowKC answers every GetClient when its context ends, with that error.
+type slowKC struct {
+	services.KeycloakAPI
+	calls int
+}
+
+func (s *slowKC) GetClient(ctx context.Context, _ string) (*services.ClientRepresentation, error) {
+	s.calls++
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestListClientsStatusIsBoundedByOneDeadline(t *testing.T) {
+	old := idpStatusTimeout
+	idpStatusTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { idpStatusTimeout = old })
+
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	for _, u := range []string{"u1", "u2", "u3"} {
+		f.seedClient(t, u, "r1", "token")
+	}
+	slow := &slowKC{}
+	f.h.keycloak = func(*models.IdentityProvider) services.KeycloakAPI { return slow }
+	start := time.Now()
+	by := statusItems(t, f)
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("took %v", elapsed)
+	}
+	if len(by) != 3 {
+		t.Fatalf("items %+v", by)
+	}
+	for u, it := range by {
+		if it.Status != statusUnknown {
+			t.Errorf("%s: status %q", u, it.Status)
+		}
+	}
+	if slow.calls != 1 {
+		t.Fatalf("Keycloak was called %d times after the deadline", slow.calls)
 	}
 }
