@@ -90,11 +90,24 @@ func validRedirectURI(uri string, routeHosts []string) error {
 		return nil
 	}
 	for _, h := range routeHosts {
-		if strings.EqualFold(h, u.Hostname()) {
+		if routeHostMatches(h, u.Hostname()) {
 			return nil
 		}
 	}
 	return errors.New("redirect_uri host must be one of the route's hosts")
+}
+
+// routeHostMatches reports whether a redirect host is one a route host
+// answers to, ignoring case: the same name, or, for a route host "*.x.y",
+// a name with exactly one more label ("a.x.y", neither "x.y" nor "a.b.x.y").
+func routeHostMatches(routeHost, host string) bool {
+	routeHost, host = strings.ToLower(routeHost), strings.ToLower(host)
+	suffix, wildcard := strings.CutPrefix(routeHost, "*.")
+	if !wildcard {
+		return routeHost == host
+	}
+	label, ok := strings.CutSuffix(host, "."+suffix)
+	return ok && suffix != "" && label != "" && !strings.Contains(label, ".")
 }
 
 func isASCII(s string) bool {

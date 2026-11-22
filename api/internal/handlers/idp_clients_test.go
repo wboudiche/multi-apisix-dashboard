@@ -92,6 +92,17 @@ func TestValidRedirectURI(t *testing.T) {
 		{"/x", nil, false},
 		{"", nil, false},
 		{"https://evil.test/cb", []string{"app.example.com"}, false},
+		// A wildcard route host matches one more label, as APISIX does.
+		{"https://a.example.com/cb", []string{"*.example.com"}, true},
+		{"https://A.Example.COM/cb", []string{"*.EXAMPLE.com"}, true},
+		{"https://a.example.com:8443/cb", []string{"*.example.com"}, true},
+		{"https://example.com/cb", []string{"*.example.com"}, false},
+		{"https://a.b.example.com/cb", []string{"*.example.com"}, false},
+		{"https://aexample.com/cb", []string{"*.example.com"}, false},
+		{"https://a.example.org/cb", []string{"*.example.com"}, false},
+		{"https://.example.com/cb", []string{"*.example.com"}, false},
+		{"https://a.example.com/cb", []string{"*"}, false},
+		{"https://x.app.test/cb", []string{"other.test", "*.app.test"}, true},
 	}
 	for _, tc := range cases {
 		err := validRedirectURI(tc.uri, tc.hosts)
@@ -1208,4 +1219,36 @@ func TestListClientsStatusIsBoundedByOneDeadline(t *testing.T) {
 	if slow.calls != 1 {
 		t.Fatalf("Keycloak was called %d times after the deadline", slow.calls)
 	}
+}
+
+func TestCreateClientOnWildcardRouteHost(t *testing.T) {
+	body := `{"route_id":"r1","client_id":"billing","mode":"login","redirect_uri":"https://x.app.test/cb"}`
+	t.Run("admin", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"*.app.test"}, true)
+		if w := f.post(t, body); w.Code != http.StatusCreated {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+	})
+	t.Run("admin, two labels below the wildcard", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"*.app.test"}, true)
+		w := f.post(t, `{"route_id":"r1","client_id":"billing","mode":"login","redirect_uri":"https://a.x.app.test/cb"}`)
+		if w.Code != http.StatusBadRequest || f.kc.calls != 0 {
+			t.Fatalf("status %d, %d keycloak calls", w.Code, f.kc.calls)
+		}
+	})
+	t.Run("developer inside the domains", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"*.app.test"}, true)
+		f.asDeveloper()
+		if w := f.post(t, body); w.Code != http.StatusCreated {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+	})
+	t.Run("developer outside the domains", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"*.app.test"}, true)
+		f.setDomains(t, []string{"other.test"})
+		f.asDeveloper()
+		if w := f.post(t, body); w.Code != http.StatusForbidden || f.kc.calls != 0 {
+			t.Fatalf("status %d, %d keycloak calls", w.Code, f.kc.calls)
+		}
+	})
 }
