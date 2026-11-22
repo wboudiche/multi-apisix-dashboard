@@ -62,6 +62,14 @@ func main() {
 	instanceService := services.NewInstanceService(etcdClient)
 	teamService := services.NewTeamService(etcdClient)
 	ownershipService := services.NewOwnershipService(etcdClient)
+	// Once per etcd, before anything is served: plugin configs, SSLs and protos
+	// became team-owned in #455, and the records old writes left for them named
+	// a team nobody chose. Not fatal - the next start tries again.
+	if dropped, err := ownershipService.DropRecordsFromBeforeTeamOwnership(context.Background()); err != nil {
+		log.Printf("Could not drop the ownership records written before #455: %v", err)
+	} else if dropped > 0 {
+		log.Printf("Dropped %d ownership record(s) of plugin configs, SSLs or protos written before they were team-owned (#455)", dropped)
+	}
 	labelService := services.NewLabelService(etcdClient)
 	maintenanceService := services.NewMaintenanceService(etcdClient)
 	overviewService := services.NewOverviewService(instanceService, ownershipService)

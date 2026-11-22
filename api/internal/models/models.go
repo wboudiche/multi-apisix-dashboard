@@ -396,6 +396,9 @@ const (
 	ConfigKeyAdminInitialized = "config/admin_initialized"
 	ConfigKeyDefaultPassword  = "config/default_password"
 	ConfigKeyPasswordPolicy   = "config/password_policy"
+	// Set once the ownership records written before #455 for the types it made
+	// team-owned are dropped (OwnershipService.DropRecordsFromBeforeTeamOwnership).
+	ConfigKeyTeamOwnedSince455 = KeyPrefixConfig + "migrations/team_owned_since_455"
 )
 
 // KeyPrefix constants
