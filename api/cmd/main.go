@@ -95,6 +95,11 @@ func main() {
 	wsdlHandler := handlers.NewWsdlHandler()
 	settingsHandler := handlers.NewSettingsHandler(policyService)
 	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceService)
+	idpService := services.NewIdPService(etcdClient)
+	routeExists, listRoutes := handlers.NewIdPRouteReaders()
+	idpHandler := handlers.NewIdPHandler(idpService, ownershipService, instanceService,
+		func(p *models.IdentityProvider) services.KeycloakAPI { return services.NewKeycloakClient(p, nil) },
+		routeExists, listRoutes)
 
 	// Check for default admin creation
 	if etcdClient != nil {
@@ -104,7 +109,7 @@ func main() {
 	}
 
 	// Setup router
-	router := setupRouter(authService, instanceService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, maintenanceHandler, cfg.Server.UIDir)
+	router := setupRouter(authService, instanceService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, maintenanceHandler, idpHandler, cfg.Server.UIDir)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -129,7 +134,7 @@ func main() {
 	}
 }
 
-func setupRouter(authService *services.AuthService, instanceService *services.InstanceService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, maintenanceHandler *handlers.MaintenanceHandler, uiDir string) *gin.Engine {
+func setupRouter(authService *services.AuthService, instanceService *services.InstanceService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, maintenanceHandler *handlers.MaintenanceHandler, idpHandler *handlers.IdPHandler, uiDir string) *gin.Engine {
 	router := gin.Default()
 
 	// CORS
@@ -225,6 +230,9 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			protected.GET("/settings/password-policy", settingsHandler.GetPasswordPolicy)
 
 			// Label taxonomy
+			// Connections linked to an instance: its admins and developers.
+			protected.GET("/instances/:id/idps", rbac, idpHandler.ListLinkedIdPs)
+
 			protected.GET("/labels", labelHandler.ListLabels)
 			protected.POST("/labels", labelHandler.CreateLabel)
 			protected.PUT("/labels/:key", labelHandler.UpdateLabel)
@@ -254,6 +262,14 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 				admin.GET("/instances/:id/dependencies", instanceHandler.GetInstanceDependencies)
 				admin.DELETE("/instances/:id", instanceHandler.DeleteInstance)
 				admin.GET("/instances/:id/test", instanceHandler.TestConnection)
+
+				// Identity provider connections (each handler checks super_admin)
+				admin.GET("/idps", idpHandler.ListIdPs)
+				admin.POST("/idps", idpHandler.CreateIdP)
+				admin.GET("/idps/:id", idpHandler.GetIdP)
+				admin.PUT("/idps/:id", idpHandler.UpdateIdP)
+				admin.DELETE("/idps/:id", idpHandler.DeleteIdP)
+				admin.POST("/idps/:id/test", idpHandler.TestIdP)
 
 				// Team management
 				admin.POST("/teams", teamHandler.CreateTeam)
