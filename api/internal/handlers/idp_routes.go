@@ -29,28 +29,49 @@ import (
 // idpRouteListTimeout bounds the read of every route of an instance.
 const idpRouteListTimeout = 30 * time.Second
 
-// readRouteExists asks the instance's Admin API whether a route exists.
-func readRouteExists(ctx context.Context, inst *models.Instance, routeID string) (bool, error) {
+// readRouteHosts asks the instance's Admin API for a route and returns the
+// hosts it matches (its "host" and "hosts"), and whether it exists.
+func readRouteHosts(ctx context.Context, inst *models.Instance, routeID string) ([]string, bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, routeLookupTimeout)
 	defer cancel()
 
 	req, err := newAdminRequest(ctx, inst, "/routes/"+url.PathEscape(routeID))
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	resp, err := proxyClient.Do(req)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	defer resp.Body.Close()
 
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
-		return false, nil
-	case resp.StatusCode >= 200 && resp.StatusCode < 300:
-		return true, nil
+		return nil, false, nil
+	case resp.StatusCode < 200 || resp.StatusCode >= 300:
+		return nil, false, fmt.Errorf("admin API returned status %d", resp.StatusCode)
 	}
-	return false, fmt.Errorf("admin API returned status %d", resp.StatusCode)
+
+	type hostFields struct {
+		Host  string   `json:"host"`
+		Hosts []string `json:"hosts"`
+	}
+	var body struct {
+		Value *hostFields `json:"value"`
+		hostFields
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil, false, err
+	}
+	f := body.hostFields
+	if body.Value != nil {
+		f = *body.Value
+	}
+	hosts := append([]string{}, f.Hosts...)
+	if f.Host != "" {
+		hosts = append(hosts, f.Host)
+	}
+	return hosts, true, nil
 }
 
 // listInstanceRoutes returns the configuration of every route of the instance,
@@ -91,8 +112,8 @@ func listInstanceRoutes(ctx context.Context, inst *models.Instance) ([]map[strin
 
 // NewIdPRouteReaders are the readers main wires into the IdP handler.
 func NewIdPRouteReaders() (
-	func(context.Context, *models.Instance, string) (bool, error),
+	func(context.Context, *models.Instance, string) ([]string, bool, error),
 	func(context.Context, *models.Instance) ([]map[string]any, error),
 ) {
-	return readRouteExists, listInstanceRoutes
+	return readRouteHosts, listInstanceRoutes
 }

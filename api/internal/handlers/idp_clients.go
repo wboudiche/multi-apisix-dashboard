@@ -1,0 +1,225 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package handlers
+
+import (
+	"errors"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/middleware"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/services"
+)
+
+// maxKeycloakMessage caps what of a Keycloak error reaches a user.
+const maxKeycloakMessage = 200
+
+var clientIDSuffixPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+type createClientRequest struct {
+	RouteID     string                  `json:"route_id"`
+	ClientID    string                  `json:"client_id"` // suffix: the backend adds the prefix
+	Mode        string                  `json:"mode"`
+	RedirectURI string                  `json:"redirect_uri"`
+	Options     models.IdPClientOptions `json:"options"`
+}
+
+// clientCredentials is what create and use answer. The secret is returned
+// here and nowhere else, and is never logged.
+type clientCredentials struct {
+	ClientID              string                  `json:"client_id"`
+	ClientSecret          string                  `json:"client_secret"`
+	Discovery             string                  `json:"discovery"`
+	IntrospectionEndpoint string                  `json:"introspection_endpoint,omitempty"`
+	Mode                  string                  `json:"mode"`
+	Options               models.IdPClientOptions `json:"options"`
+	RedirectURI           string                  `json:"redirect_uri,omitempty"`
+}
+
+// mayCreateClient: an admin always; a developer when the connection allows
+// developers and the route belongs to a team they write to.
+func mayCreateClient(scope teamScope, p *models.IdentityProvider, routeOwner string) bool {
+	if scope.isAdmin {
+		return true
+	}
+	return p.DevelopersCanCreate && scope.mayWrite(routeOwner)
+}
+
+func validClientIDSuffix(s string) bool { return clientIDSuffixPattern.MatchString(s) }
+
+// validRedirectURI refuses a redirect URI Keycloak would honour too widely or
+// that points away from the route: absolute http(s) with a host, no wildcard,
+// fragment or userinfo, and, when the route matches hosts, one of them.
+func validRedirectURI(uri string, routeHosts []string) error {
+	bad := errors.New("redirect_uri must be an absolute http(s) URL without wildcard, fragment or credentials")
+	if strings.Contains(uri, "*") || strings.Contains(uri, "#") {
+		return bad
+	}
+	u, err := url.Parse(uri)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
+		return bad
+	}
+	if len(routeHosts) == 0 {
+		return nil
+	}
+	for _, h := range routeHosts {
+		if strings.EqualFold(h, u.Hostname()) {
+			return nil
+		}
+	}
+	return errors.New("redirect_uri host must be one of the route's hosts")
+}
+
+func validateCreateRequest(r createClientRequest) error {
+	if !validClientIDSuffix(r.ClientID) {
+		return errors.New("client_id must be 1-64 letters, digits, '.', '_' or '-', starting with a letter or digit")
+	}
+	switch r.Mode {
+	case "login":
+		return validRedirectURI(r.RedirectURI, nil)
+	case "token":
+		if v := r.Options.Validation; v != "introspection" && v != "jwks" {
+			return errors.New("validation must be introspection or jwks in token mode")
+		}
+		if r.Options.PKCE {
+			return errors.New("pkce applies to login mode only")
+		}
+		return nil
+	}
+	return errors.New("mode must be login or token")
+}
+
+func capKeycloakMessage(err error) string {
+	m := err.Error()
+	if len(m) > maxKeycloakMessage {
+		m = m[:maxKeycloakMessage]
+	}
+	return m
+}
+
+// CreateClient provisions a Keycloak client for a route and registers it.
+func (h *IdPHandler) CreateClient(c *gin.Context) {
+	// :id is the connection here; the instance is the one the RBAC middleware
+	// checked the caller's role on.
+	instanceID := middleware.GetInstanceID(c)
+	if instanceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Instance-ID is required"})
+		return
+	}
+	ctx := c.Request.Context()
+	p, err := h.idps.Get(ctx, c.Param("id"))
+	if err != nil || !p.LinkedTo(instanceID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Identity provider not found"})
+		return
+	}
+	var req createClientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	if req.RouteID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "route_id is required"})
+		return
+	}
+	if err := validateCreateRequest(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	inst, err := h.getInstance(ctx, instanceID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
+		return
+	}
+	hosts, found, err := h.readRouteHosts(ctx, inst, req.RouteID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Could not read the route from the gateway"})
+		return
+	}
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
+		return
+	}
+	// Before any Keycloak call: the URI against the hosts of the route.
+	if req.Mode == "login" {
+		if err := validRedirectURI(req.RedirectURI, hosts); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	// An owner that cannot be read is no owner: only an admin passes then.
+	owner, err := h.routeOwner(ctx, instanceID, req.RouteID)
+	if err != nil {
+		owner = ""
+	}
+	scope := callerTeamScope(c)
+	if !mayCreateClient(scope, p, owner) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	kcID := p.ClientIDPrefix + req.ClientID
+	redirect := ""
+	if req.Mode == "login" {
+		redirect = req.RedirectURI
+	}
+	kc := h.keycloak(p)
+	uuid, err := kc.CreateClient(ctx, services.BuildClientRepresentation(kcID, req.Mode, req.Options, redirect))
+	if err != nil {
+		keycloakFailure(c, err)
+		return
+	}
+	secret, err := kc.ClientSecret(ctx, uuid)
+	if err != nil {
+		_ = kc.DeleteClient(ctx, uuid)
+		keycloakFailure(c, err)
+		return
+	}
+	entry := &models.IdPClient{
+		IdPID: p.ID, InstanceID: instanceID, Realm: p.Realm, Prefix: p.ClientIDPrefix,
+		ClientID: kcID, KeycloakUUID: uuid, RouteID: req.RouteID, Mode: req.Mode,
+		Options: req.Options, RedirectURI: redirect, CreatedBy: middleware.GetUserID(c),
+	}
+	if err := h.idps.RecordClient(ctx, entry); err != nil {
+		_ = kc.DeleteClient(ctx, uuid)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not register the client; it was removed from Keycloak"})
+		return
+	}
+	out := clientCredentials{
+		ClientID: kcID, ClientSecret: secret, Discovery: services.DiscoveryURL(p),
+		Mode: req.Mode, Options: req.Options, RedirectURI: redirect,
+	}
+	if req.Mode == "token" && req.Options.Validation == "introspection" {
+		out.IntrospectionEndpoint = services.IntrospectionURL(p)
+	}
+	c.JSON(http.StatusCreated, out)
+}
+
+// keycloakFailure maps an error of a Keycloak call to a response.
+func keycloakFailure(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, services.ErrKeycloakClientExists):
+		c.JSON(http.StatusConflict, gin.H{"error": "this client ID already exists in Keycloak, choose another"})
+	case errors.Is(err, services.ErrKeycloakUnavailable), errors.Is(err, services.ErrKeycloakAuth), errors.Is(err, services.ErrKeycloakForbidden):
+		c.JSON(http.StatusBadGateway, gin.H{"error": capKeycloakMessage(err)})
+	default:
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Keycloak request failed"})
+	}
+}

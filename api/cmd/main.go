@@ -96,10 +96,10 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(policyService)
 	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceService)
 	idpService := services.NewIdPService(etcdClient)
-	routeExists, listRoutes := handlers.NewIdPRouteReaders()
+	readRouteHosts, listRoutes := handlers.NewIdPRouteReaders()
 	idpHandler := handlers.NewIdPHandler(idpService, ownershipService, instanceService,
 		func(p *models.IdentityProvider) services.KeycloakAPI { return services.NewKeycloakClient(p, nil) },
-		routeExists, listRoutes)
+		readRouteHosts, listRoutes)
 
 	// Check for default admin creation
 	if etcdClient != nil {
@@ -231,6 +231,7 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 
 			// Connections linked to an instance: its admins and developers.
 			protected.GET("/instances/:id/idps", rbac, idpHandler.ListLinkedIdPs)
+			protected.POST("/idps/:id/clients", rbac, idpHandler.CreateClient)
 
 			// Label taxonomy
 			protected.GET("/labels", labelHandler.ListLabels)
