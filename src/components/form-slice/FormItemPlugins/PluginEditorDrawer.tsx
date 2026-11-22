@@ -299,14 +299,17 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
   // copy of it on each render, and a choice made here is not to be reset by
   // a render that changed nothing.
   const restrictionKey = JSON.stringify(restriction ?? null);
-  const [lastPlugin, setLastPlugin] = useState({ name, config, canShowForm, restrictionKey });
+  const [lastPlugin, setLastPlugin] = useState({ name, config, canShowForm, restrictionKey, noTemplate });
   if (
     lastPlugin.name !== name ||
     lastPlugin.config !== config ||
     lastPlugin.canShowForm !== canShowForm ||
-    lastPlugin.restrictionKey !== restrictionKey
+    lastPlugin.restrictionKey !== restrictionKey ||
+    // Followed as the JSON field's effect follows it: the form and the JSON
+    // start from the same config.
+    lastPlugin.noTemplate !== noTemplate
   ) {
-    setLastPlugin({ name, config, canShowForm, restrictionKey });
+    setLastPlugin({ name, config, canShowForm, restrictionKey, noTemplate });
     setFormValue(getDefaultConfigObj(name, config, noTemplate));
     setEditorMode(canShowForm ? 'form' : 'json');
     setAccess(readRestriction(restriction));

@@ -187,7 +187,12 @@ test('shows a field\'s hint readable on hover, in either scheme', async ({ page 
       await expect
         .poll(() =>
           tip.evaluate((el) => {
-            const [r, g, b] = getComputedStyle(el).color.match(/\d+/g)!.map(Number);
+            // Through a canvas, which gives 0-255 channels whatever form the
+            // browser computes the colour in.
+            const ctx = document.createElement('canvas').getContext('2d')!;
+            ctx.fillStyle = getComputedStyle(el).color;
+            ctx.fillRect(0, 0, 1, 1);
+            const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
             return 0.2126 * r + 0.7152 * g + 0.0722 * b;
           })
         )
