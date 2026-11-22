@@ -46,7 +46,7 @@ PORT=8086 ETCD_ENDPOINTS=http://localhost:2379 ADMIN_PASSWORD=admin ./bin/api
 ### Stack bring-up
 
 ```sh
-docker compose -f e2e/server/docker-compose.yml up -d   # APISIX :9180 + etcd
+docker compose -f e2e/server/docker-compose.yml up -d   # APISIX :9180 + etcd + Keycloak 127.0.0.1:8180
 go build -C api -o ../bin/api ./cmd                     # build backend
 PORT=8086 ETCD_ENDPOINTS=http://localhost:2379 ./bin/api &
 pnpm install --frozen-lockfile && pnpm dev              # frontend :5173
@@ -56,7 +56,7 @@ Open <http://localhost:5173/ui>, log in with `admin / admin`.
 
 The e2e compose publishes its etcd on the host at `:2379` (container `server-etcd-1`), and that is the etcd the locally-run backend uses. The `deploy/` compose is a separate, self-contained stack that consumes the published image; its etcd is not published.
 
-Every port the e2e stack publishes can be moved when the host already uses one — a busy port stops the whole container, so a Prometheus on `:9090` takes the gateway's Admin API down with its Control API (#344): `E2E_GATEWAY_PORT` (9080), `E2E_ADMIN_PORT` (9180), `E2E_CONTROL_PORT` (9090), `E2E_ADMIN2_PORT` (9181), `E2E_ETCD_PORT` (2379), `E2E_KEYCLOAK_PORT` (8180). `deploy/` has `DASHBOARD_PORT`, `GATEWAY_PORT`, `GATEWAY2_PORT`.
+Every port the e2e stack publishes can be moved when the host already uses one — a busy port stops the whole container, so a Prometheus on `:9090` takes the gateway's Admin API down with its Control API (#344): `E2E_GATEWAY_PORT` (9080), `E2E_ADMIN_PORT` (9180), `E2E_CONTROL_PORT` (9090), `E2E_ADMIN2_PORT` (9181), `E2E_ETCD_PORT` (2379), `E2E_KEYCLOAK_PORT` (8180, bound to `127.0.0.1` like the Control API's 9090; `E2E_KEYCLOAK_URL` overrides the address the specs use). `deploy/` has `DASHBOARD_PORT`, `GATEWAY_PORT`, `GATEWAY2_PORT`.
 
 Setting the port is enough: `e2e/utils/stack.ts` builds every address the suite and the seed use from these, and `compose-ports.test.ts` holds the compose defaults to the same numbers. The `E2E_*_URL` variables still override it, for a run whose stack is not on this host. Two things do not follow automatically — the backend's `ETCD_ENDPOINTS`, and anything you put in a `.env`: docker compose reads `.env` from the compose file's own directory (`e2e/server/`), while the suite's dotenv reads the repo root.
 

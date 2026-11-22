@@ -81,6 +81,19 @@ let idp: Idp;
 /** The client ids the tests made, by the route they were made on. */
 const made: Partial<Record<RouteKey, string>> = {};
 
+/**
+ * A client id an earlier test of this serial file made. Asked for by name, so
+ * a test whose predecessor failed says which client it lacks, rather than
+ * looking for a row or an option named "undefined".
+ */
+const madeBy = (key: RouteKey, by: string): string => {
+  const id = made[key];
+  expect(id, `the client id is set by the test "${by}"`).toBeTruthy();
+  return id ?? '';
+};
+const LOGIN_TEST = 'an admin creates a login client from a saved route';
+const TOKEN_TEST = 'an admin creates a token client checked by signature';
+
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
@@ -128,12 +141,12 @@ const openOidcOnRoute = async (page: Page, routeId: string) => {
   }
   await page.getByRole('button', { name: i18n.t('form.plugins.selectPlugins.title') }).click();
   const picker = page.getByRole('dialog', { name: i18n.t('form.plugins.selectPlugins.title') });
-  await picker.getByPlaceholder('Search').fill('openid-connect');
+  await picker.getByPlaceholder(i18n.t('form.search'), { exact: true }).fill('openid-connect');
   await picker
     .getByTestId('plugin-openid-connect')
     .getByRole('button', { name: i18n.t('form.btn.add') })
     .click();
-  const drawer = page.getByRole('dialog', { name: 'Add Plugin' });
+  const drawer = page.getByRole('dialog', { name: i18n.t('form.plugins.addPlugin') });
   const section = drawer.getByTestId('oidc-section');
   return { drawer, section, kc: section.getByTestId('oidc-keycloak-picker') };
 };
@@ -164,7 +177,7 @@ const saveRoute = async (page: Page, drawer: Locator) => {
   });
 };
 
-test('an admin creates a login client from a saved route, and the route is saved with it', async ({
+test(`${LOGIN_TEST}, and the route is saved with it`, async ({
   page,
 }) => {
   const { drawer, section, kc } = await openOidcOnRoute(page, ROUTES.login.id);
@@ -204,7 +217,7 @@ test('an admin creates a login client from a saved route, and the route is saved
   expect(listed?.status).toBe('ok');
 });
 
-test('an admin creates a token client checked by signature', async ({ page }) => {
+test(TOKEN_TEST, async ({ page }) => {
   const { drawer, section, kc } = await openOidcOnRoute(page, ROUTES.token.id);
   await section.getByRole('radio', { name: i18n.t('form.plugins.oidc.token') }).check();
   await kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.create') }).check();
@@ -225,24 +238,26 @@ test('an admin creates a token client checked by signature', async ({ page }) =>
 });
 
 test('the token client is reused on a second route', async ({ page }) => {
+  const token = madeBy('token', TOKEN_TEST);
   const { drawer, section, kc } = await openOidcOnRoute(page, ROUTES.reuse.id);
   await section.getByRole('radio', { name: i18n.t('form.plugins.oidc.token') }).check();
   await kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.reuse') }).check();
   await kc.getByRole('textbox', { name: i18n.t('form.plugins.oidc.kc.pick') }).click();
-  await page.getByRole('option', { name: `${made.token} - ${IDP_NAME}`, exact: true }).click();
+  await page.getByRole('option', { name: `${token} - ${IDP_NAME}`, exact: true }).click();
   await kc.getByRole('button', { name: i18n.t('form.plugins.oidc.kc.useBtn') }).click();
-  await expect(kc.getByText(i18n.t('form.plugins.oidc.kc.filled', { id: made.token }))).toBeVisible();
+  await expect(kc.getByText(i18n.t('form.plugins.oidc.kc.filled', { id: token }))).toBeVisible();
   await saveRoute(page, drawer);
 
   const first = await savedOidc(ROUTES.token.id);
   const second = await savedOidc(ROUTES.reuse.id);
-  expect(second?.client_id).toBe(made.token);
+  expect(second?.client_id).toBe(token);
   expect(second?.client_secret).toBe(first?.client_secret);
   expect(second?.use_jwks).toBe(true);
   expect(second?.bearer_only).toBe(true);
 });
 
 test('an instance admin opens Settings on the OIDC clients alone', async ({ browser }) => {
+  const login = madeBy('login', LOGIN_TEST);
   const token = await loginAdmin();
   const username = `${NAME_PREFIX}-ia`;
   const user = await ensureUser(token, { username, password: PASSWORD });
@@ -260,7 +275,7 @@ test('an instance admin opens Settings on the OIDC clients alone', async ({ brow
     await expect(settingsPom.tab(page, 'settings.oidcClients.title')).toBeVisible();
     await expect(settingsPom.tab(page, 'settings.idp.title')).toHaveCount(0);
     await expect(settingsPom.tab(page, 'settings.passwordPolicy')).toHaveCount(0);
-    const row = settingsPom.rowShowing(page, made.login ?? '');
+    const row = settingsPom.rowShowing(page, login);
     await expect(row).toContainText(i18n.t('settings.oidcClients.status.ok'));
     await expect(row).toContainText(IDP_NAME);
   } finally {
@@ -276,6 +291,9 @@ const asDeveloper = async (page: Page) => {
 test('a developer cannot create a client while the connection does not let them', async ({
   page,
 }) => {
+  // The connection as beforeAll made it: the next test is the one that opens it to developers.
+  expect(idp.developers_can_create, 'the connection is still closed to developers').toBe(false);
+  madeBy('token', TOKEN_TEST); // what makes the reuse option appear for this developer
   await asDeveloper(page);
   const { kc } = await openOidcOnRoute(page, ROUTES.devIn.id);
   // Their team's clients are offered for reuse; creating is not.
@@ -283,8 +301,11 @@ test('a developer cannot create a client while the connection does not let them'
   await expect(kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.create') })).toHaveCount(0);
 });
 
-// The backend's reason, shown as the form's problem.
-const OUTSIDE_DOMAINS = "redirect_uri host must be inside one of the connection's redirect domains";
+// The backend's reason, which the picker shows as it comes: CreateClient in
+// api/internal/handlers/idp_clients.go answers 403 "redirect_uri host must be
+// inside one of the connection's redirect domains". Matched on the part that
+// names the rule, so a rewording of the rest does not break the spec.
+const OUTSIDE_DOMAINS = /the connection's redirect domains/;
 
 test('a developer creates a login client inside the redirect domains, not outside', async ({
   page,
@@ -319,6 +340,8 @@ test('a developer creates a login client inside the redirect domains, not outsid
 });
 
 test('a client no route uses any more reads "No route"', async ({ page }) => {
+  const tokenClient = madeBy('token', TOKEN_TEST);
+  const login = madeBy('login', LOGIN_TEST);
   // The reusing route drops the plugin, then the route it was made for goes.
   const token = await loginAdmin();
   const reuse = (await apiFetch(`${PROXY}/routes/${ROUTES.reuse.id}`, token, {
@@ -337,21 +360,22 @@ test('a client no route uses any more reads "No route"', async ({ page }) => {
   });
 
   await settingsPom.toOidcClients(page);
-  await expect(settingsPom.rowShowing(page, made.token ?? '')).toContainText(
+  await expect(settingsPom.rowShowing(page, tokenClient)).toContainText(
     i18n.t('settings.oidcClients.status.noRoute')
   );
-  await expect(settingsPom.rowShowing(page, made.login ?? '')).toContainText(
+  await expect(settingsPom.rowShowing(page, login)).toContainText(
     i18n.t('settings.oidcClients.status.ok')
   );
 });
 
 test('a client deleted in Keycloak reads "Missing in Keycloak"', async ({ page }) => {
-  const entry = (await listOidcClients(await loginAdmin())).find((c) => c.client_id === made.login);
-  expect(entry).toBeTruthy();
+  const login = madeBy('login', LOGIN_TEST);
+  const entry = (await listOidcClients(await loginAdmin())).find((c) => c.client_id === login);
+  expect(entry, `${login} is in the registry`).toBeTruthy();
   await deleteInKeycloak(entry?.uuid ?? '');
 
   await settingsPom.toOidcClients(page);
-  await expect(settingsPom.rowShowing(page, made.login ?? '')).toContainText(
+  await expect(settingsPom.rowShowing(page, login)).toContainText(
     i18n.t('settings.oidcClients.status.missing')
   );
 });
