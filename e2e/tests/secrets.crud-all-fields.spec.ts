@@ -17,7 +17,7 @@
 import { secretsPom } from '@e2e/pom/secrets';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiCell, uiNewIdField } from '@e2e/utils/ui';
+import { uiCell } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { API_SECRETS } from '@/config/constant';
@@ -47,7 +47,8 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.getAddSecretBtn(page).click();
       await secretsPom.isAddPage(page);
 
-      await (await uiNewIdField(page)).fill(createdSecretId);
+      // A secret's ID is its name, typed.
+      await page.getByRole('textbox', { name: 'Name', exact: true }).fill(createdSecretId);
 
       // Select Manager AWS
       const managerSection = page.getByRole('group', { name: 'Secret Manager' });

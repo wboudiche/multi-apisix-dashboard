@@ -54,17 +54,18 @@ const FormItemID = () => {
  * it by - worth copying into a script or a log search - but not what anyone
  * reads it by, its name. One quiet line, with a way to copy it.
  */
-const IdLine = () => {
+const IdLine = ({ asName }: { asName?: boolean }) => {
   const { control } = useFormContext<APISIXType['Info']>();
   const { t } = useTranslation();
+  const label = asName ? t('form.basic.name') : t('form.info.id');
   const id = (useWatch({ control, name: 'id' }) as string | undefined) ?? '';
   return (
     <Group gap="xs" wrap="nowrap" mb="xs">
       <Text size="xs" c="dimmed" fw={500}>
-        {t('form.info.id')}
+        {label}
       </Text>
       <TextInput
-        aria-label={t('form.info.id')}
+        aria-label={label}
         // Named as the field it stands for, which the pages and specs find
         // it by; not registered, so the form's own value is left alone.
         name="id"
@@ -73,7 +74,7 @@ const IdLine = () => {
         disabled
         variant="unstyled"
         size="xs"
-        className="id-line"
+        className={asName ? 'id-line id-line--name' : 'id-line'}
         style={{ flex: 1 }}
       />
       <CopyButton value={id}>
@@ -114,7 +115,30 @@ const NewID = () => {
   );
 };
 
+/**
+ * The ID of a record that has no name of its own: what it is called, typed
+ * when it is made, and not changed after.
+ */
+const NameID = () => {
+  const { control } = useFormContext<APISIXType['Info']>();
+  const { t } = useTranslation();
+  return (
+    <FormItemTextInput
+      control={control}
+      name="id"
+      label={t('form.basic.name')}
+      description={t('form.info.idAsNameHint')}
+      withAsterisk
+    />
+  );
+};
+
 export type FormSectionGeneralProps = {
+  /**
+   * The record has no name but its ID - a global rule, a secret, a
+   * credential - so the ID is shown and asked for as its name.
+   */
+  idAsName?: boolean;
   /** will be default to `readOnly` */
   showDate?: boolean;
   showID?: boolean;
@@ -122,14 +146,14 @@ export type FormSectionGeneralProps = {
 };
 
 export const FormSectionGeneralContent = (props: FormSectionGeneralProps) => {
-  const { showDate = props.readOnly, showID = true, readOnly = false } = props;
+  const { showDate = props.readOnly, showID = true, readOnly = false, idAsName } = props;
   const { register } = useFormContext<APISIXType['Info']>();
   return (
     <>
       {/* Outside the fieldset: its copy button stays usable read-only. */}
-      {showID && readOnly && <IdLine />}
+      {showID && readOnly && <IdLine asName={idAsName} />}
       <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0 }}>
-        {showID && !readOnly && <NewID />}
+        {showID && !readOnly && (idAsName ? <NameID /> : <NewID />)}
         {/* Field names, which the rule reads as text because they sit in
             JSX: nothing here is shown. */}
         {/* eslint-disable-next-line i18next/no-literal-string */}

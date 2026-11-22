@@ -21,7 +21,6 @@ import {
   createFileRoute,
   useRouter as useReactRouter,
 } from '@tanstack/react-router';
-import { nanoid } from 'nanoid';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -33,6 +32,7 @@ import PageHeader from '@/components/page/PageHeader';
 import { CREATE_ONLY, req } from '@/config/req';
 import type { APISIXType } from '@/types/schema/apisix';
 import { APISIX } from '@/types/schema/apisix';
+import { IdAsName } from '@/types/schema/apisix/common';
 
 const GlobalRuleAddForm = () => {
   const { t } = useTranslation();
@@ -54,12 +54,13 @@ const GlobalRuleAddForm = () => {
   });
 
   const form = useForm({
-    resolver: zodResolver(APISIX.GlobalRulePut),
+    resolver: zodResolver(APISIX.GlobalRulePut.and(IdAsName)),
     shouldUnregister: true,
     shouldFocusError: true,
     defaultValues: {
       plugins: {},
-      id: nanoid(),
+      // Its name, typed: nothing generated to stand for one.
+      id: '',
     },
     mode: 'onChange',
   });
@@ -67,7 +68,7 @@ const GlobalRuleAddForm = () => {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit((d) => putGlobalRule.mutateAsync(d))}>
-        <FormSectionGeneral />
+        <FormSectionGeneral idAsName />
         <FormPartGlobalRules />
         <FormSubmitBtn>{t('form.btn.add')}</FormSubmitBtn>
       </form>

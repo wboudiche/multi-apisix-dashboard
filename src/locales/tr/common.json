@@ -263,7 +263,8 @@
       "create_time": "Oluşturulma",
       "id": "ID",
       "update_time": "Güncellenme",
-      "idAdvanced": "Kimliği kendiniz belirleyin"
+      "idAdvanced": "Kimliği kendiniz belirleyin",
+      "idAsNameHint": "Yalnızca harf, rakam ve - _ . Daha sonra değiştirilemez."
     },
     "json": {
       "parseError": "JSON formatı geçerli değil",
@@ -1024,7 +1025,8 @@
       "headerName": "Başlık adında boşluk, iki nokta veya başka ayırıcı olmaz.",
       "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok.",
       "headerValueDollar": "Başlık değerinde $ olmaz: ağ geçidi bunu kendi değişkenlerinden biri olarak okur ve değeri değiştirerek gönderir.",
-      "headerTwice": "Her başlık bir kez: farklı harf büyüklüğüyle iki kez ayarlanmaz, hem ayarlanıp hem kaldırılmaz (burada veya serviste) ve Host Override yanında Host başlığı olmaz."
+      "headerTwice": "Her başlık bir kez: farklı harf büyüklüğüyle iki kez ayarlanmaz, hem ayarlanıp hem kaldırılmaz (burada veya serviste) ve Host Override yanında Host başlığı olmaz.",
+      "idAsName": "Yalnızca harf, rakam ve - _ ., en fazla 64."
     },
     "quickRoute": {
       "title": "Yeni rota",

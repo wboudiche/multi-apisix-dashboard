@@ -37,7 +37,8 @@ test('should navigate to secrets page', async ({ page }) => {
     // list table exists
     const table = page.getByRole('table');
     await expect(table).toBeVisible();
-    await expect(table.getByText('ID', { exact: true })).toBeVisible();
+    // Its ID, which is its only name, under Name.
+    await expect(table.getByText('Name', { exact: true })).toBeVisible();
     await expect(table.getByText('Secret Manager', { exact: true })).toBeVisible();
     await expect(table.getByText('Actions', { exact: true })).toBeVisible();
   });

@@ -263,7 +263,8 @@
       "create_time": "Erstellt am",
       "id": "ID",
       "update_time": "Geändert am",
-      "idAdvanced": "ID selbst festlegen"
+      "idAdvanced": "ID selbst festlegen",
+      "idAsNameHint": "Nur Buchstaben, Ziffern und - _ . Kann später nicht geändert werden."
     },
     "json": {
       "parseError": "JSON Format ist ungültig",
@@ -1024,7 +1025,8 @@
       "headerName": "Ein Header-Name enthält kein Leerzeichen, keinen Doppelpunkt und kein anderes Trennzeichen.",
       "overrideHost": "Ein Hostname oder eine Adresse, bei Bedarf mit Port: ohne Schema, ohne Pfad.",
       "headerValueDollar": "Kein $ in einem Header-Wert: Das Gateway liest es als eine seiner Variablen und sendet den Wert verändert.",
-      "headerTwice": "Jeder Header einmal: nicht zweimal in anderer Schreibweise gesetzt, nicht gesetzt und entfernt (hier oder durch den Service), und kein Host-Header neben einem Host Override."
+      "headerTwice": "Jeder Header einmal: nicht zweimal in anderer Schreibweise gesetzt, nicht gesetzt und entfernt (hier oder durch den Service), und kein Host-Header neben einem Host Override.",
+      "idAsName": "Nur Buchstaben, Ziffern und - _ ., höchstens 64."
     },
     "quickRoute": {
       "title": "Neue Route",

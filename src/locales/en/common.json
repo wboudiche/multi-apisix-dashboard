@@ -180,7 +180,8 @@
       "create_time": "Created At",
       "id": "ID",
       "update_time": "Updated At",
-      "idAdvanced": "Set the ID yourself"
+      "idAdvanced": "Set the ID yourself",
+      "idAsNameHint": "Letters, digits and - _ . only. It cannot be changed later."
     },
     "json": {
       "parseError": "JSON format is not valid",
@@ -940,7 +941,8 @@
       "headerName": "A header name has no space, colon or other separator.",
       "overrideHost": "A host name or address, with a port if needed: no scheme, no path.",
       "headerValueDollar": "No $ in a header value: the gateway reads it as one of its variables and sends the value changed.",
-      "headerTwice": "Each header once: not set twice in different case, not both set and removed (here or by the service), and no Host header beside a Host Override."
+      "headerTwice": "Each header once: not set twice in different case, not both set and removed (here or by the service), and no Host header beside a Host Override.",
+      "idAsName": "Letters, digits and - _ . only, 64 at most."
     },
     "quickRoute": {
       "title": "New route",

@@ -263,7 +263,8 @@
       "create_time": "创建时间",
       "id": "ID",
       "update_time": "更新时间",
-      "idAdvanced": "自行设置 ID"
+      "idAdvanced": "自行设置 ID",
+      "idAsNameHint": "仅限字母、数字和 - _ .，之后无法更改。"
     },
     "json": {
       "parseError": "JSON格式无效",
@@ -1018,7 +1019,8 @@
       "headerName": "请求头名称不能包含空格、冒号或其他分隔符。",
       "overrideHost": "主机名或地址，需要时带端口：不带协议，不带路径。",
       "headerValueDollar": "请求头的值中不能有 $：网关会把它当作变量读取，并发送修改后的值。",
-      "headerTwice": "每个请求头只出现一次：不能以不同大小写重复设置，不能既设置又移除（此处或服务中），且设置了 Host Override 时不能再设置 Host 请求头。"
+      "headerTwice": "每个请求头只出现一次：不能以不同大小写重复设置，不能既设置又移除（此处或服务中），且设置了 Host Override 时不能再设置 Host 请求头。",
+      "idAsName": "仅限字母、数字和 - _ .，最多 64 个字符。"
     },
     "quickRoute": {
       "title": "新建路由",

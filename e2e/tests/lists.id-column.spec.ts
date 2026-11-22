@@ -26,7 +26,8 @@ import { API_UPSTREAMS } from '@/config/constant';
 /**
  * A record's ID is the key APISIX knows it by, not what anyone reads it by:
  * the lists hide their ID column until the column setting brings it back,
- * and a detail page shows it as one quiet line, to copy.
+ * and a detail page shows it as one quiet line, to copy. A record with no
+ * name but its ID - a global rule - has it asked for, and shown, as its name.
  */
 
 const id = randomId('e2e-idcol');
@@ -72,10 +73,21 @@ test('a detail page shows the ID as a line to copy, not a field', async ({ page,
 });
 
 test('a new record\'s ID is generated, and folded away until asked for', async ({ page }) => {
-  await uiGoto(page, '/global_rules/add');
+  await uiGoto(page, '/plugin_configs/add');
   const field = page.getByRole('textbox', { name: 'ID', exact: true });
   await expect(field).toBeHidden();
   await page.getByRole('button', { name: 'Set the ID yourself' }).click();
   await expect(field).toBeVisible();
   await expect(field).not.toHaveValue('');
+});
+
+test('a global rule, whose ID is its only name, has it asked for as its name', async ({ page }) => {
+  await uiGoto(page, '/global_rules/add');
+  const name = page.getByRole('textbox', { name: 'Name', exact: true });
+  // Asked for, not generated, and not folded.
+  await expect(name).toBeVisible();
+  await expect(name).toHaveValue('');
+  await name.fill('has space');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByText('Letters, digits and - _ . only, 64 at most.')).toBeVisible();
 });

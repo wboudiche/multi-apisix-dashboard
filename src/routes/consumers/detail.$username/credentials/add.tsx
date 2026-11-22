@@ -18,7 +18,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useParams, useRouter } from '@tanstack/react-router';
-import { nanoid } from 'nanoid';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +29,7 @@ import PageHeader from '@/components/page/PageHeader';
 import { CHANGES_CLIENTS } from '@/config/query-client';
 import { CREATE_ONLY, req } from '@/config/req';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { IdAsName } from '@/types/schema/apisix/common';
 import { pipeProduce } from '@/utils/producer';
 
 const CredentialAddForm = () => {
@@ -59,19 +59,20 @@ const CredentialAddForm = () => {
   });
 
   const form = useForm({
-    resolver: zodResolver(APISIX.CredentialPut),
+    resolver: zodResolver(APISIX.CredentialPut.and(IdAsName)),
     shouldUnregister: true,
     shouldFocusError: true,
     mode: 'all',
     defaultValues: {
-      id: nanoid(),
+      // Its name, typed: nothing generated to stand for one.
+      id: '',
     },
   });
 
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit((d) => putCredential.mutateAsync(d))}>
-        <FormSectionGeneral />
+        <FormSectionGeneral idAsName />
         <FormPartCredential />
         <FormSubmitBtn>{t('form.btn.add')}</FormSubmitBtn>
       </form>

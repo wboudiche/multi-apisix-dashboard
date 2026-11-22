@@ -631,6 +631,13 @@ select:focus,
   color: var(--text-secondary) !important;
 }
 
+/* A record whose ID is its name: read as a name, not as a key. */
+.id-line.id-line--name .mantine-Input-input {
+  font-family: inherit !important;
+  font-size: 0.875rem !important;
+  color: var(--text-primary) !important;
+}
+
 /* ===== Fields shown, not edited ===== */
 
 /* A detail page shows its record in disabled fields: their value is there to
