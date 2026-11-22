@@ -110,3 +110,48 @@ func TestInvalidProxyPath(t *testing.T) {
 		})
 	}
 }
+
+// The proxy decodes the path once and checks what it reads; what it forwards
+// is read again by the gateway. Any character beyond what the Admin API keys
+// by can make the two readings differ: an escape left after decoding is
+// decoded once more (%2e%2e%2fprotos%2fp1 is an id under routes to the checks
+// and ../protos/p1 to the gateway), a '?' or '#' cuts the path short there, a
+// '\' may be a separator. So every segment is held to the Admin API's own
+// charset - letters, digits, '-', '_', '.' - rather than some characters
+// being refused.
+func TestPathOutsideAdminCharset(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{"/routes", false},
+		{"/routes/r1", false},
+		{"/routes/", false},
+		{"/", false},
+		{"/consumers/jack/credentials/c1", false},
+		{"/secrets/vault/s-1.a_b", false},
+		{"/schema/plugins/key-auth", false},
+		{"/plugins/list", false},
+		{"/plugin_metadata/http-logger", false},
+		{"/routes/%2e%2e/protos", true},
+		{"/routes/%2E%2E/protos", true},
+		{"/routes/.%2e/protos", true},
+		{"/routes/%2e%2e%2fprotos%2fp1", true},
+		{"/routes/r1%2fx", true},
+		{"/routes/%25", true},
+		{`/routes/..\protos`, true},
+		{"/routes/r1?x=1", true},
+		{"/routes/r1#x", true},
+		{"/routes/r1;x", true},
+		{"/routes/r 1", true},
+		{"/routes/r1\x00", true},
+		{"/routes/ré", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			if got := pathOutsideAdminCharset(tt.path); got != tt.want {
+				t.Errorf("pathOutsideAdminCharset(%q) = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+}
