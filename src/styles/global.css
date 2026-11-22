@@ -612,6 +612,33 @@ select:focus,
   --mantine-color-dimmed: #5f6670;
 }
 
+/* ===== A record's ID ===== */
+
+/* Shown as a line of text, not a field: the input rule above gives every
+   input a border, a background and a height, and an ID read off a detail
+   page needs none of them - nor the background of a disabled one, which a
+   detail page's section is. Disabled, as a record's ID is not to be edited:
+   the copy button beside it is how it is taken whole. */
+.id-line .mantine-Input-input,
+.id-line .mantine-Input-input:disabled,
+.id-line .mantine-Input-input[data-disabled] {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  font-family: var(--mantine-font-family-monospace) !important;
+  font-size: 0.8125rem !important;
+  color: var(--text-secondary) !important;
+}
+
+/* A record whose ID is its name: read as a name, not as a key. */
+.id-line.id-line--name .mantine-Input-input {
+  font-family: inherit !important;
+  font-size: 0.875rem !important;
+  color: var(--text-primary) !important;
+}
+
 /* ===== Fields shown, not edited ===== */
 
 /* A detail page shows its record in disabled fields: their value is there to
@@ -668,7 +695,16 @@ select:focus,
   padding: 8px 14px !important;
   border-radius: var(--radius-md) !important;
   background: linear-gradient(180deg, #2D3136 0%, #1A1D21 100%) !important;
+  /* Light on this dark background whatever the scheme: Mantine's dark
+     scheme draws a light tooltip with black text, and that black stayed on
+     the dark background above - all but unreadable. */
+  color: #F0F2F5 !important;
   box-shadow: var(--shadow-md) !important;
+}
+
+/* On a dark page the tooltip's own dark needs an edge to stand apart. */
+[data-mantine-color-scheme="dark"] [class*="Tooltip-tooltip"] {
+  border: 1px solid var(--border-medium) !important;
 }
 
 /* ===== Scrollbar ===== */

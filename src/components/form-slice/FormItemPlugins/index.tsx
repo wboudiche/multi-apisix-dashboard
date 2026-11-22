@@ -94,9 +94,12 @@ export const FormItemPlugins = <T extends FieldValues>(
       originObj: Record<string, Record<string, unknown>>;
     }) {
       const { names, originObj } = props;
-      this.allPluginNames = context === 'consumer'
-        ? names.filter((n) => getPluginCategory(n) === 'authentication')
-        : names;
+      // What the gateway serves, as it serves it. A consumer takes any plugin
+      // - a quota per client is the usual one - and a credential's list is
+      // already the plugins with a consumer_schema, the ones APISIX takes in
+      // a credential. The dashboard's own category table hid the first and
+      // drifted with each release (#411).
+      this.allPluginNames = names;
       this.pluginSchemaObj = new Map(Object.entries(originObj));
     },
     // In the order the gateway will run them, not the order they were added:
@@ -189,6 +192,9 @@ export const FormItemPlugins = <T extends FieldValues>(
     get curPluginSchema() {
       const d = this.pluginSchemaObj.get(this.curPlugin.name);
       if (!d) return {};
+      // On a consumer the gateway checks an auth plugin against its
+      // consumer_schema: key-auth wants the key there, not a header to read.
+      if (context === 'consumer' && d.consumer_schema) return d.consumer_schema;
       return d[schema as keyof typeof d];
     },
     editorOpened: false,
@@ -273,6 +279,12 @@ export const FormItemPlugins = <T extends FieldValues>(
         <PluginEditorDrawer
           showPriority
           showClients={context !== 'consumer' && schema === 'schema'}
+          // Edited by its consumer_schema on a consumer: not from the
+          // route-side example of its template.
+          noTemplate={
+            context === 'consumer' &&
+            !!pluginsOb.pluginSchemaObj.get(pluginsOb.curPlugin.name)?.consumer_schema
+          }
           restriction={toJS(pluginsOb.__map.get(RESTRICTION_PLUGIN))}
           restrictionDefaultPriority={pluginsOb.priorityDefaults[RESTRICTION_PLUGIN]}
           otherAuthPlugins={pluginsOb.selected.filter(

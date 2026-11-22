@@ -46,7 +46,8 @@ test.describe('CRUD secret with required fields only (Vault)', () => {
       await secretsPom.getAddSecretBtn(page).click();
       await secretsPom.isAddPage(page);
 
-      await page.getByLabel('ID').fill(createdSecretId);
+      // A secret's ID is its name, typed.
+      await page.getByRole('textbox', { name: 'Name', exact: true }).fill(createdSecretId);
 
       // Vault is default
       await page.getByLabel('URI').fill('http://vault.example.com:8200');

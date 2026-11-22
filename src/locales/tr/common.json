@@ -252,7 +252,7 @@
       "close": "Kapat"
     },
     "consumers": {
-      "groupId": "Grup ID",
+      "groupId": "Tüketici grubu",
       "username": "Kullanıcı Adı"
     },
     "disabled": "Pasif, aktif etmek için tıklayın",
@@ -262,7 +262,10 @@
     "info": {
       "create_time": "Oluşturulma",
       "id": "ID",
-      "update_time": "Güncellenme"
+      "update_time": "Güncellenme",
+      "idAdvanced": "Kimliği kendiniz belirleyin",
+      "idAsNameHint": "Yalnızca harf, rakam ve - _ . Daha sonra değiştirilemez.",
+      "copyId": "{{label}} kopyala"
     },
     "json": {
       "parseError": "JSON formatı geçerli değil",
@@ -280,7 +283,7 @@
     },
     "plugins": {
       "addPlugin": "Plugin Ekle",
-      "configId": "Plugin Config ID",
+      "configId": "Eklenti yapılandırması",
       "editPlugin": "Plugin Düzenle",
       "label": "Plugin'ler",
       "orderedByPriority": "Bu ağ geçidinin çalıştırdığı sırayla listelenmiştir.",
@@ -500,7 +503,8 @@
         "redirectHelp": "Sağlayıcının, oturum açtıktan sonra kişileri geri gönderdiği yer: bu rotanın kapsadığı bir yolda tam bir adres. Aynısını sağlayıcıya kaydedin.",
         "redirectMissing": "Bu olmadan ağ geçidi kişileri her sayfanın kendi adresine /.apisix/redirect ekleyerek geri gönderir; bu sayfadan sayfaya değişir ve çoğu sağlayıcı bunu reddeder.",
         "redirectNotAbsolute": "Sağlayıcının burada yalnızca bir yol değil, https:// (veya http://) ile başlayan tam bir adrese ihtiyacı var."
-      }
+      },
+      "configIdTyped": "Plugin Config ID"
     },
     "protos": {
       "content": "İçerik",
@@ -1022,7 +1026,8 @@
       "headerName": "Başlık adında boşluk, iki nokta veya başka ayırıcı olmaz.",
       "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok.",
       "headerValueDollar": "Başlık değerinde $ olmaz: ağ geçidi bunu kendi değişkenlerinden biri olarak okur ve değeri değiştirerek gönderir.",
-      "headerTwice": "Her başlık bir kez: farklı harf büyüklüğüyle iki kez ayarlanmaz, hem ayarlanıp hem kaldırılmaz (burada veya serviste) ve Host Override yanında Host başlığı olmaz."
+      "headerTwice": "Her başlık bir kez: farklı harf büyüklüğüyle iki kez ayarlanmaz, hem ayarlanıp hem kaldırılmaz (burada veya serviste) ve Host Override yanında Host başlığı olmaz.",
+      "idAsName": "Yalnızca harf, rakam ve - _ ., en fazla 64."
     },
     "quickRoute": {
       "title": "Yeni rota",

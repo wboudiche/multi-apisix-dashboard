@@ -17,7 +17,7 @@
 import { consumerGroupsPom } from '@e2e/pom/consumer_groups';
 import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { test } from '@e2e/utils/test';
-import { uiCell, uiFillMonacoEditor, uiGetMonacoEditor, uiHasToastMsg } from '@e2e/utils/ui';
+import { uiCell, uiFillMonacoEditor, uiGetMonacoEditor, uiHasToastMsg, uiNewIdField } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { API_CONSUMER_GROUPS } from '@/config/constant';
@@ -47,7 +47,7 @@ test('should CRUD Consumer Group with all fields', async ({ page }) => {
     await consumerGroupsPom.isAddPage(page);
 
     // Fill in the ID
-    const idField = page.getByRole('textbox', { name: 'ID', exact: true });
+    const idField = await uiNewIdField(page);
     await idField.clear();
     await idField.fill(testId);
 

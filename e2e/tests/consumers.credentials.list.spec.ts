@@ -146,7 +146,7 @@ test('should navigate to consumer credentials page', async ({ page }) => {
     // list table exists
     const table = page.getByRole('table');
     await expect(table).toBeVisible();
-    await expect(table.getByText('ID', { exact: true })).toBeVisible();
+    await expect(table.getByText('Name', { exact: true })).toBeVisible();
     await expect(table.getByText('Actions', { exact: true })).toBeVisible();
   });
 });
@@ -208,7 +208,7 @@ test('should display credentials list under consumer', async ({ page }) => {
   });
 
   await test.step('should have correct table headers', async () => {
-    await expect(page.getByRole('columnheader', { name: 'ID' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Name' })).toBeVisible();
     await expect(
       page.getByRole('columnheader', { name: 'Description' })
     ).toBeVisible();
@@ -242,7 +242,7 @@ test('should be able to navigate to credential detail', async ({ page }) => {
 
   await test.step('verify credential detail page', async () => {
     // Verify we're on the correct credential detail page
-    const idField = page.getByLabel('ID', { exact: true }).first();
+    const idField = page.getByLabel('Name', { exact: true }).first();
     await expect(idField).toHaveValue(credentials[0].id);
 
     // The redesigned credential detail page has no Description field;
@@ -266,9 +266,10 @@ test('should have Add Credential button', async ({ page }) => {
   });
 
   await test.step('verify add page has required fields', async () => {
-    // Verify ID field exists
-    const idField = page.getByLabel('ID', { exact: true }).first();
+    // A credential's ID is its name: asked for, not generated
+    const idField = page.getByRole('textbox', { name: 'Name', exact: true });
     await expect(idField).toBeVisible();
+    await expect(idField).toHaveValue('');
 
     // Verify Description field exists
     const descField = page.getByLabel('Description', { exact: true });

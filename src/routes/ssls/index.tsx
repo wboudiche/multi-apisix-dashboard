@@ -27,6 +27,7 @@ import { getSSLListQueryOptions, useSSLList } from '@/apis/hooks';
 import { getSSLListReq } from '@/apis/ssls';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { NameOrId } from '@/components/page/NameOrId';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
@@ -39,6 +40,7 @@ import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { certExpiry, EXPIRY_WARNING_DAYS } from '@/utils/cert-expiry';
+import { idColumnHidden } from '@/utils/id-column';
 import { isResourceEnabled } from '@/utils/status';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
@@ -108,7 +110,9 @@ function RouteComponent() {
         title: 'SNI',
         key: 'sni',
         valueType: 'text',
-        render: (_, record) => sslSni(record) ?? '-',
+        // With the ID column hidden, a certificate with no SNI - a client
+        // one - says which it is by its ID, quieter, as a nameless row does.
+        render: (_, record) => sslSni(record) ?? <NameOrId value={{ id: record.value.id }} />,
       },
       {
         dataIndex: ['value', 'status'],
@@ -215,7 +219,7 @@ function RouteComponent() {
           {...tableProps}
           loading={isLoading}
           search={false}
-          options={false}
+          {...idColumnHidden}
           pagination={pagination}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{

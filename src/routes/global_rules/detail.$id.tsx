@@ -84,7 +84,7 @@ const GlobalRuleDetailForm = (props: Props) => {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit((d) => putGlobalRule.mutateAsync(d))}>
-        <FormSectionGeneral readOnly />
+        <FormSectionGeneral readOnly idAsName />
         <FormPartGlobalRules />
         {!readOnly && (
           <Group>

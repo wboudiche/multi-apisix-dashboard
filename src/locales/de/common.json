@@ -252,7 +252,7 @@
       "close": "Schließen"
     },
     "consumers": {
-      "groupId": "Gruppen ID",
+      "groupId": "Consumer-Gruppe",
       "username": "Benutzername"
     },
     "disabled": "Deaktiviert, zum Aktivieren Schalter klicken",
@@ -262,7 +262,10 @@
     "info": {
       "create_time": "Erstellt am",
       "id": "ID",
-      "update_time": "Geändert am"
+      "update_time": "Geändert am",
+      "idAdvanced": "ID selbst festlegen",
+      "idAsNameHint": "Nur Buchstaben, Ziffern und - _ . Kann später nicht geändert werden.",
+      "copyId": "{{label}} kopieren"
     },
     "json": {
       "parseError": "JSON Format ist ungültig",
@@ -280,7 +283,7 @@
     },
     "plugins": {
       "addPlugin": "Plugin hinzufügen",
-      "configId": "Plugin-Konfigurations-ID",
+      "configId": "Plugin-Konfiguration",
       "editPlugin": "Plugin bearbeiten",
       "label": "Plugins",
       "orderedByPriority": "In der Reihenfolge aufgeführt, in der dieses Gateway sie ausführt.",
@@ -500,7 +503,8 @@
         "redirectHelp": "Wohin der Anbieter die Personen nach der Anmeldung zurückschickt: eine vollständige Adresse auf einem Pfad, den diese Route abdeckt. Registrieren Sie dieselbe beim Anbieter.",
         "redirectMissing": "Ohne sie schickt das Gateway die Personen an die Adresse der jeweiligen Seite mit angehängtem /.apisix/redirect zurück, die sich von Seite zu Seite ändert: Die meisten Anbieter lehnen das ab.",
         "redirectNotAbsolute": "Der Anbieter braucht hier eine vollständige Adresse, die mit https:// (oder http://) beginnt, nicht nur einen Pfad."
-      }
+      },
+      "configIdTyped": "Plugin-Konfigurations-ID"
     },
     "protos": {
       "content": "Inhalt",
@@ -1022,7 +1026,8 @@
       "headerName": "Ein Header-Name enthält kein Leerzeichen, keinen Doppelpunkt und kein anderes Trennzeichen.",
       "overrideHost": "Ein Hostname oder eine Adresse, bei Bedarf mit Port: ohne Schema, ohne Pfad.",
       "headerValueDollar": "Kein $ in einem Header-Wert: Das Gateway liest es als eine seiner Variablen und sendet den Wert verändert.",
-      "headerTwice": "Jeder Header einmal: nicht zweimal in anderer Schreibweise gesetzt, nicht gesetzt und entfernt (hier oder durch den Service), und kein Host-Header neben einem Host Override."
+      "headerTwice": "Jeder Header einmal: nicht zweimal in anderer Schreibweise gesetzt, nicht gesetzt und entfernt (hier oder durch den Service), und kein Host-Header neben einem Host Override.",
+      "idAsName": "Nur Buchstaben, Ziffern und - _ ., höchstens 64."
     },
     "quickRoute": {
       "title": "Neue Route",

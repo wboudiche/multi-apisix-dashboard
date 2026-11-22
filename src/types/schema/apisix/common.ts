@@ -16,6 +16,8 @@
  */
 import { z } from 'zod';
 
+import { requiredString } from '@/utils/zod';
+
 const Labels = z.record(z.string());
 
 const Expr = z.array(z.unknown());
@@ -41,6 +43,21 @@ const Timestamp = z.object({
 });
 
 const Info = ID.merge(Timestamp);
+
+/**
+ * An ID that is a record's only name - a global rule's, a secret's, a
+ * credential's - as the gateway takes one: given, and of the characters
+ * its id pattern allows. Keys under form.validation.
+ */
+export const IdAsName = z.object({
+  id: requiredString('form.validation.nameRequired')
+    .max(64, 'form.validation.idAsName')
+    .regex(/^[a-zA-Z0-9-_.]+$/, 'form.validation.idAsName')
+    // The pattern lets them through, and in the request's path they are
+    // dot segments the browser resolves away: . names the collection, ..
+    // its parent.
+    .refine((id) => id !== '.' && id !== '..', 'form.validation.idAsName'),
+});
 
 const HttpMethod = z.union([
   z.literal('GET'),

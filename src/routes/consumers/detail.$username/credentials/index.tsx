@@ -53,7 +53,8 @@ function CredentialsList() {
     return [
       {
         dataIndex: ['value', 'id'],
-        title: 'ID',
+        // Its only name: the ID is what it is called.
+        title: t('form.basic.name'),
         key: 'id',
         valueType: 'text',
       },

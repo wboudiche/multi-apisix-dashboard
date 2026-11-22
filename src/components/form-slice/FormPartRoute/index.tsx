@@ -301,7 +301,8 @@ export const FormSectionPlugins = () => {
         <FormItemTextInput
           control={control}
           name="plugin_config_id"
-          label={t('form.plugins.configId')}
+          // Typed, not picked: here it is the ID that is asked for.
+          label={t('form.plugins.configIdTyped')}
         />
       ) : (
         <FormItemSelect

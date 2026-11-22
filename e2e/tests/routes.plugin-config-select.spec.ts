@@ -104,7 +104,7 @@ test.afterEach(async () => {
 test('picks a plugin config by name instead of typing its id', async ({ page }) => {
   await openPluginsStep(page);
 
-  const field = page.getByRole('textbox', { name: 'Plugin Config ID' });
+  const field = page.getByRole('textbox', { name: 'Plugin Config', exact: true });
   await expect(field).toBeVisible({ timeout: 15000 });
   await field.click();
 
@@ -132,7 +132,7 @@ test('falls back to the free-text id when the list cannot be read', async ({ pag
   );
   await openPluginsStep(page);
 
-  const field = page.getByRole('textbox', { name: 'Plugin Config ID' });
+  const field = page.getByRole('textbox', { name: 'Plugin Config ID', exact: true });
   await expect(field).toBeVisible({ timeout: 15000 });
   await field.click();
   await expect(page.getByText('No plugin configs on this gateway yet')).toHaveCount(0);
@@ -150,7 +150,7 @@ test('still lets a developer set the id, without the list they may not read', as
     await signInAsDeveloper(page);
     await openPluginsStep(page);
 
-    const field = page.getByRole('textbox', { name: 'Plugin Config ID' });
+    const field = page.getByRole('textbox', { name: 'Plugin Config ID', exact: true });
     await expect(field).toBeVisible({ timeout: 15000 });
 
     // A searchable Select would also accept typing, so that alone proves
@@ -194,7 +194,7 @@ test('a developer saving a route is not told they may not', async ({ browser }) 
     for (let step = 0; step < 2; step++) {
       await page.getByRole('button', { name: 'Next' }).click();
     }
-    await expect(page.getByRole('textbox', { name: 'Plugin Config ID' })).toBeVisible({
+    await expect(page.getByRole('textbox', { name: 'Plugin Config ID', exact: true })).toBeVisible({
       timeout: 15000,
     });
 

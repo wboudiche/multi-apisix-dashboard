@@ -252,7 +252,7 @@
       "close": "关闭"
     },
     "consumers": {
-      "groupId": "分组 ID",
+      "groupId": "消费者组",
       "username": "用户名"
     },
     "disabled": "已禁用，点击开关启用",
@@ -262,7 +262,10 @@
     "info": {
       "create_time": "创建时间",
       "id": "ID",
-      "update_time": "更新时间"
+      "update_time": "更新时间",
+      "idAdvanced": "自行设置 ID",
+      "idAsNameHint": "仅限字母、数字和 - _ .，之后无法更改。",
+      "copyId": "复制{{label}}"
     },
     "json": {
       "parseError": "JSON格式无效",
@@ -280,7 +283,7 @@
     },
     "plugins": {
       "addPlugin": "添加插件",
-      "configId": "插件配置ID",
+      "configId": "插件配置",
       "editPlugin": "编辑插件",
       "label": "插件",
       "orderedByPriority": "按本网关执行的顺序排列。",
@@ -500,7 +503,8 @@
         "redirectHelp": "用户登录后提供方将其送回的地址：此路由所匹配路径上的完整地址。请在提供方处注册相同的地址。",
         "redirectMissing": "若不设置，网关会把用户送回每个页面自身地址加 /.apisix/redirect，该地址随页面变化：大多数提供方会拒绝。",
         "redirectNotAbsolute": "提供方在此需要以 https://（或 http://）开头的完整地址，而不只是路径。"
-      }
+      },
+      "configIdTyped": "插件配置ID"
     },
     "protos": {
       "content": "内容",
@@ -1016,7 +1020,8 @@
       "headerName": "请求头名称不能包含空格、冒号或其他分隔符。",
       "overrideHost": "主机名或地址，需要时带端口：不带协议，不带路径。",
       "headerValueDollar": "请求头的值中不能有 $：网关会把它当作变量读取，并发送修改后的值。",
-      "headerTwice": "每个请求头只出现一次：不能以不同大小写重复设置，不能既设置又移除（此处或服务中），且设置了 Host Override 时不能再设置 Host 请求头。"
+      "headerTwice": "每个请求头只出现一次：不能以不同大小写重复设置，不能既设置又移除（此处或服务中），且设置了 Host Override 时不能再设置 Host 请求头。",
+      "idAsName": "仅限字母、数字和 - _ .，最多 64 个字符。"
     },
     "quickRoute": {
       "title": "新建路由",

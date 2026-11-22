@@ -171,3 +171,33 @@ test('shows a record\'s fields readable, in either scheme', async ({ page }) => 
     await e2eReq.delete(`${API_ROUTES}/${id}`).catch(() => undefined);
   }
 });
+
+test('shows a field\'s hint readable on hover, in either scheme', async ({ page }) => {
+  for (const colorScheme of ['dark', 'light'] as const) {
+    await test.step(colorScheme, async () => {
+      await page.emulateMedia({ colorScheme });
+      await uiGoto(page, '/routes/add');
+      await expect.poll(() => scheme(page)).toBe(colorScheme);
+      // The (i) beside the Host label.
+      const label = page.getByText('Host', { exact: true }).first();
+      await label.locator('xpath=following-sibling::span[1]').hover();
+      const tip = page.getByRole('tooltip', { name: 'The domain name to match against the Host header' });
+      await expect(tip).toBeVisible();
+      // Its background is a fixed dark gradient: its text has to be light.
+      await expect
+        .poll(() =>
+          tip.evaluate((el) => {
+            // Through a canvas, which gives 0-255 channels whatever form the
+            // browser computes the colour in.
+            const ctx = document.createElement('canvas').getContext('2d')!;
+            ctx.fillStyle = getComputedStyle(el).color;
+            ctx.fillRect(0, 0, 1, 1);
+            const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          })
+        )
+        .toBeGreaterThan(200);
+      await page.mouse.move(0, 0);
+    });
+  }
+});

@@ -33,11 +33,11 @@ test('should CRUD global rule with multiple plugins', async ({ page }) => {
   });
 
   await test.step('add global rule with multiple plugins', async () => {
-    // ID field should be auto-generated
-    const idInput = page.getByLabel('ID');
-    await expect(idInput).toBeVisible();
-    await expect(idInput).not.toHaveValue('');
-    globalRuleId = await idInput.inputValue();
+    // A global rule has no name but its ID: typed, as its name.
+
+    globalRuleId = `e2e-gr-${Date.now()}`;
+
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill(globalRuleId);
 
     // Add first plugin - response-rewrite
     const selectPluginBtn = page.getByRole('button', {

@@ -18,7 +18,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { nanoid } from 'nanoid';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +29,7 @@ import PageHeader from '@/components/page/PageHeader';
 import { queryClient } from '@/config/global';
 import { CREATE_ONLY, req } from '@/config/req';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { IdAsName } from '@/types/schema/apisix/common';
 import { pipeProduce } from '@/utils/producer';
 
 const SecretAddForm = () => {
@@ -53,11 +53,12 @@ const SecretAddForm = () => {
   });
 
   const form = useForm({
-    resolver: zodResolver(APISIX.Secret),
+    resolver: zodResolver(APISIX.Secret.and(IdAsName)),
     shouldUnregister: true,
     shouldFocusError: true,
     defaultValues: {
-      id: nanoid(),
+      // Its name, typed: nothing generated to stand for one.
+      id: '',
       manager: APISIX.Secret.options[0].shape.manager.value,
     },
     mode: 'all',
@@ -66,7 +67,7 @@ const SecretAddForm = () => {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit((d) => putSecret.mutateAsync(d))}>
-        <FormSectionGeneral />
+        <FormSectionGeneral idAsName />
         <FormPartSecret />
         <FormSubmitBtn>{t('form.btn.add')}</FormSubmitBtn>
       </form>

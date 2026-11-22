@@ -101,7 +101,7 @@ const CredentialDetailForm = (props: CredentialFormProps) => {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit((d) => putCredential.mutateAsync(d))}>
-        <FormSectionGeneral readOnly />
+        <FormSectionGeneral readOnly idAsName />
         <FormPartCredential />
         {!readOnly && (
           <Group>

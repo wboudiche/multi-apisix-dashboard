@@ -98,7 +98,7 @@ const SecretDetailForm = (props: Props) => {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit((d) => putSecret.mutateAsync(d))}>
-        <FormSectionGeneral readOnly />
+        <FormSectionGeneral readOnly idAsName />
         <FormPartSecret readOnlyManager />
         {!readOnly && (
           <Group>

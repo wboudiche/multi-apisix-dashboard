@@ -47,7 +47,8 @@ test.describe('CRUD secret with all fields (AWS)', () => {
       await secretsPom.getAddSecretBtn(page).click();
       await secretsPom.isAddPage(page);
 
-      await page.getByLabel('ID').fill(createdSecretId);
+      // A secret's ID is its name, typed.
+      await page.getByRole('textbox', { name: 'Name', exact: true }).fill(createdSecretId);
 
       // Select Manager AWS
       const managerSection = page.getByRole('group', { name: 'Secret Manager' });
