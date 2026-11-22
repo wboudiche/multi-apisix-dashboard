@@ -29,47 +29,81 @@ import (
 // idpRouteListTimeout bounds the read of every route of an instance.
 const idpRouteListTimeout = 30 * time.Second
 
-// readRouteHosts asks the instance's Admin API for a route and returns the
-// hosts it matches (its "host" and "hosts"), and whether it exists.
-func readRouteHosts(ctx context.Context, inst *models.Instance, routeID string) ([]string, bool, error) {
+// readAdminObject reads one object of the Admin API, reporting whether it
+// exists. It accepts the value-wrapped body and the flat one.
+func readAdminObject(ctx context.Context, inst *models.Instance, path string, dest any) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, routeLookupTimeout)
 	defer cancel()
 
-	req, err := newAdminRequest(ctx, inst, "/routes/"+url.PathEscape(routeID))
+	req, err := newAdminRequest(ctx, inst, path)
 	if err != nil {
-		return nil, false, err
+		return false, err
 	}
 	resp, err := proxyClient.Do(req)
 	if err != nil {
-		return nil, false, err
+		return false, err
 	}
 	defer resp.Body.Close()
 
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
-		return nil, false, nil
+		return false, nil
 	case resp.StatusCode < 200 || resp.StatusCode >= 300:
-		return nil, false, fmt.Errorf("admin API returned status %d", resp.StatusCode)
+		return false, fmt.Errorf("admin API returned status %d", resp.StatusCode)
 	}
+	var raw json.RawMessage
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return false, err
+	}
+	var wrapped struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if json.Unmarshal(raw, &wrapped) == nil && len(wrapped.Value) > 0 {
+		raw = wrapped.Value
+	}
+	return true, json.Unmarshal(raw, dest)
+}
 
-	type hostFields struct {
-		Host  string   `json:"host"`
-		Hosts []string `json:"hosts"`
+// hostFields are the fields of a route or service that say which hosts it
+// answers to.
+type hostFields struct {
+	Host      string   `json:"host"`
+	Hosts     []string `json:"hosts"`
+	ServiceID any      `json:"service_id"`
+}
+
+func (f hostFields) all() []string {
+	out := append([]string{}, f.Hosts...)
+	if f.Host != "" {
+		out = append(out, f.Host)
 	}
-	var body struct {
-		Value *hostFields `json:"value"`
-		hostFields
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	return out
+}
+
+// readRouteHosts asks the instance's Admin API for a route and returns the
+// hosts it matches (its "host" and "hosts", else those of its service), and
+// whether it exists.
+func readRouteHosts(ctx context.Context, inst *models.Instance, routeID string) ([]string, bool, error) {
+	var route hostFields
+	found, err := readAdminObject(ctx, inst, "/routes/"+url.PathEscape(routeID), &route)
+	if err != nil || !found {
 		return nil, false, err
 	}
-	f := body.hostFields
-	if body.Value != nil {
-		f = *body.Value
+	hosts := route.all()
+	if len(hosts) > 0 || route.ServiceID == nil {
+		return hosts, true, nil
 	}
-	hosts := append([]string{}, f.Hosts...)
-	if f.Host != "" {
-		hosts = append(hosts, f.Host)
+	serviceID := fmt.Sprint(route.ServiceID)
+	if serviceID == "" {
+		return hosts, true, nil
+	}
+	var service hostFields
+	sfound, err := readAdminObject(ctx, inst, "/services/"+url.PathEscape(serviceID), &service)
+	if err != nil {
+		return nil, false, err
+	}
+	if sfound {
+		hosts = service.all()
 	}
 	return hosts, true, nil
 }

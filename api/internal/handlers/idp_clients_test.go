@@ -114,7 +114,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		{"token jwks", createClientRequest{Mode: "token", ClientID: "a", Options: models.IdPClientOptions{Validation: "jwks"}}, true},
 		{"token no validation", createClientRequest{Mode: "token", ClientID: "a"}, false},
 		{"token bad validation", createClientRequest{Mode: "token", ClientID: "a", Options: models.IdPClientOptions{Validation: "x"}}, false},
-		{"token pkce", createClientRequest{Mode: "token", ClientID: "a", Options: models.IdPClientOptions{Validation: "jwks", PKCE: true}}, false},
+		{"token redirect_uri", createClientRequest{Mode: "token", ClientID: "a", RedirectURI: "https://h/cb", Options: models.IdPClientOptions{Validation: "jwks"}}, false},
 		{"bad mode", createClientRequest{Mode: "x", ClientID: "a"}, false},
 		{"bad id", createClientRequest{Mode: "token", ClientID: "-a", Options: models.IdPClientOptions{Validation: "jwks"}}, false},
 	}
@@ -138,7 +138,7 @@ func (m *memStore) GetJSON(_ context.Context, key string, dest interface{}) erro
 	defer m.mu.Unlock()
 	b, ok := m.data[key]
 	if !ok {
-		return errors.New("not found")
+		return nil // like EtcdClient.GetJSON: dest stays empty
 	}
 	return json.Unmarshal(b, dest)
 }
@@ -180,25 +180,38 @@ type fakeKC struct {
 	created   []services.ClientRepresentation
 	deleted   []string
 	secret    string
+	secretErr error
+	deleteErr error
+	calls     int
 }
 
 func (f *fakeKC) CreateClient(_ context.Context, rep services.ClientRepresentation) (string, error) {
+	f.calls++
 	if f.createErr != nil {
 		return "", f.createErr
 	}
 	f.created = append(f.created, rep)
 	return "uuid-1", nil
 }
-func (f *fakeKC) ClientSecret(context.Context, string) (string, error) { return f.secret, nil }
+func (f *fakeKC) ClientSecret(context.Context, string) (string, error) {
+	f.calls++
+	return f.secret, f.secretErr
+}
 func (f *fakeKC) DeleteClient(_ context.Context, id string) error {
+	f.calls++
 	f.deleted = append(f.deleted, id)
-	return nil
+	return f.deleteErr
 }
 
 type createFixture struct {
-	h     *IdPHandler
-	kc    *fakeKC
-	store *memStore
+	h      *IdPHandler
+	kc     *fakeKC
+	store  *memStore
+	inst   *models.Instance
+	owners map[string]string
+	hosts  map[string][]string // routes that exist, by id
+	role   string
+	ui     *models.UserInstance
 }
 
 func newCreateFixture(t *testing.T, hosts []string, found bool) *createFixture {
@@ -208,25 +221,40 @@ func newCreateFixture(t *testing.T, hosts []string, found bool) *createFixture {
 	p := &models.IdentityProvider{
 		Name: "kc", Type: models.IdPTypeKeycloak, BaseURL: "https://sso.test", Realm: "r",
 		AdminClientID: "adm", AdminClientSecret: "s3cr3t", ClientIDPrefix: "mad-",
-		InstanceIDs: []string{"i1"},
+		InstanceIDs: []string{"i1"}, DevelopersCanCreate: true,
 	}
 	if err := idps.Create(context.Background(), p); err != nil {
 		t.Fatal(err)
 	}
-	kc := &fakeKC{secret: "cl-secret"}
-	return &createFixture{
-		store: store,
-		kc:    kc,
-		h: &IdPHandler{
-			idps:           idps,
-			keycloak:       func(*models.IdentityProvider) services.KeycloakAPI { return kc },
-			readRouteHosts: func(context.Context, *models.Instance, string) ([]string, bool, error) { return hosts, found, nil },
-			routeOwner:     func(context.Context, string, string) (string, error) { return "t1", nil },
-			getInstance: func(_ context.Context, id string) (*models.Instance, error) {
-				return &models.Instance{ID: id}, nil
-			},
-		},
+	f := &createFixture{
+		store:  store,
+		kc:     &fakeKC{secret: "cl-secret"},
+		inst:   &models.Instance{ID: "i1", IsActive: true},
+		owners: map[string]string{"r1": "t1", "other": "t2"},
+		hosts:  map[string][]string{},
+		role:   models.RoleSuperAdmin,
 	}
+	if found {
+		f.hosts["r1"] = hosts
+	}
+	f.hosts["other"] = []string{"app.test"}
+	f.hosts["unowned"] = []string{"app.test"}
+	f.h = &IdPHandler{
+		idps:     idps,
+		keycloak: func(*models.IdentityProvider) services.KeycloakAPI { return f.kc },
+		readRouteHosts: func(_ context.Context, _ *models.Instance, id string) ([]string, bool, error) {
+			h, ok := f.hosts[id]
+			return h, ok, nil
+		},
+		routeOwner:  func(_ context.Context, _, id string) (string, error) { return f.owners[id], nil },
+		getInstance: func(context.Context, string) (*models.Instance, error) { return f.inst, nil },
+	}
+	return f
+}
+
+func (f *createFixture) asDeveloper() {
+	f.role = models.RoleDeveloper
+	f.ui = &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{"t1"}}
 }
 
 func (f *createFixture) idpID(t *testing.T) string {
@@ -245,9 +273,16 @@ func (f *createFixture) post(t *testing.T, body string) *httptest.ResponseRecord
 	c.Request.Header.Set("Content-Type", "application/json")
 	c.Request.Header.Set("X-Instance-ID", "i1")
 	c.Params = gin.Params{{Key: "id", Value: f.idpID(t)}}
-	c.Set(middleware.RoleKey, models.RoleSuperAdmin)
+	c.Set(middleware.RoleKey, f.role)
+	if f.ui != nil {
+		c.Set(middleware.UserInstanceKey, f.ui)
+	}
 	f.h.CreateClient(c)
 	return w
+}
+
+func loginFor(route string) string {
+	return `{"route_id":"` + route + `","client_id":"billing","mode":"login","redirect_uri":"https://app.test/cb"}`
 }
 
 const loginBody = `{"route_id":"r1","client_id":"billing","mode":"login","redirect_uri":"https://app.test/cb","options":{"pkce":true}}`
@@ -333,5 +368,121 @@ func TestCreateClientUnlinkedInstance(t *testing.T) {
 	f.h.CreateClient(c)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("status %d", w.Code)
+	}
+}
+
+func TestCreateClientDeveloperScope(t *testing.T) {
+	cases := []struct {
+		name   string
+		setup  func(f *createFixture)
+		route  string
+		status int
+	}{
+		{"setting off", func(f *createFixture) { f.asDeveloper(); f.disableDevelopers(t) }, "r1", 403},
+		{"other team's route", func(f *createFixture) { f.asDeveloper() }, "other", 403},
+		{"unowned route", func(f *createFixture) { f.asDeveloper() }, "unowned", 403},
+		{"missing route", func(f *createFixture) { f.asDeveloper() }, "nope", 403},
+		{"own team's route", func(f *createFixture) { f.asDeveloper() }, "r1", 201},
+	}
+	var bodies []string
+	for _, tc := range cases {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		tc.setup(f)
+		w := f.post(t, loginFor(tc.route))
+		if w.Code != tc.status {
+			t.Errorf("%s: status %d: %s", tc.name, w.Code, w.Body)
+		}
+		if tc.status == 403 {
+			if f.kc.calls != 0 {
+				t.Errorf("%s: keycloak got %d calls", tc.name, f.kc.calls)
+			}
+			bodies = append(bodies, w.Body.String())
+		}
+	}
+	for _, b := range bodies {
+		if b != bodies[0] {
+			t.Errorf("403 bodies differ: %q vs %q", b, bodies[0])
+		}
+	}
+}
+
+func (f *createFixture) disableDevelopers(t *testing.T) {
+	all, _ := f.h.idps.List(context.Background())
+	off := false
+	if _, err := f.h.idps.Update(context.Background(), all[0].ID, services.IdPUpdate{DevelopersCanCreate: &off}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCreateClientAdminMissingRoute404(t *testing.T) {
+	f := newCreateFixture(t, nil, true)
+	if w := f.post(t, loginFor("nope")); w.Code != http.StatusNotFound {
+		t.Fatalf("status %d", w.Code)
+	}
+}
+
+func TestCreateClientHostlessRoute(t *testing.T) {
+	f := newCreateFixture(t, nil, true)
+	f.asDeveloper()
+	w := f.post(t, loginBody)
+	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "an admin must create a login client for a route with no host") {
+		t.Fatalf("developer: %d %s", w.Code, w.Body)
+	}
+	if f.kc.calls != 0 {
+		t.Fatal("keycloak called")
+	}
+	f = newCreateFixture(t, nil, true)
+	if w := f.post(t, loginBody); w.Code != http.StatusCreated {
+		t.Fatalf("admin: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestCreateClientInactiveInstance(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.inst = &models.Instance{ID: "i1", IsActive: false}
+	if w := f.post(t, loginBody); w.Code != http.StatusNotFound || f.kc.calls != 0 {
+		t.Fatalf("inactive: %d calls %d", w.Code, f.kc.calls)
+	}
+	f.inst = nil
+	if w := f.post(t, loginBody); w.Code != http.StatusNotFound || f.kc.calls != 0 {
+		t.Fatalf("nil: %d calls %d", w.Code, f.kc.calls)
+	}
+}
+
+func TestCreateClientRollsBackWhenSecretFails(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.kc.secretErr = services.ErrKeycloakUnavailable
+	w := f.post(t, loginBody)
+	if w.Code != http.StatusBadGateway || len(f.kc.deleted) != 1 || f.kc.deleted[0] != "uuid-1" {
+		t.Fatalf("status %d deleted %v", w.Code, f.kc.deleted)
+	}
+}
+
+func TestCreateClientRollbackFailureNamesClient(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.store.failClients = true
+	f.kc.deleteErr = errors.New("boom")
+	w := f.post(t, loginBody)
+	if w.Code != http.StatusInternalServerError || !strings.Contains(w.Body.String(), "could not be removed from Keycloak: mad-billing") {
+		t.Fatalf("status %d: %s", w.Code, w.Body)
+	}
+	if strings.Contains(w.Body.String(), "it was removed") {
+		t.Fatal("claimed removal")
+	}
+}
+
+func TestCreateClientNormalisesOptions(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	w := f.post(t, `{"route_id":"r1","client_id":"billing","mode":"login","redirect_uri":"https://app.test/cb","options":{"pkce":true,"validation":"jwks","client_credentials":true}}`)
+	var out clientCredentials
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	if w.Code != 201 || out.Options != (models.IdPClientOptions{PKCE: true}) {
+		t.Fatalf("login: %d %+v", w.Code, out.Options)
+	}
+	w = f.post(t, `{"route_id":"r1","client_id":"b2","mode":"token","options":{"pkce":true,"validation":"jwks"}}`)
+	out = clientCredentials{}
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	if w.Code != 201 || out.Options.PKCE {
+		t.Fatalf("token: %d %+v", w.Code, out.Options)
 	}
 }

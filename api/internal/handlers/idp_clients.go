@@ -16,11 +16,14 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -88,6 +91,8 @@ func validRedirectURI(uri string, routeHosts []string) error {
 	return errors.New("redirect_uri host must be one of the route's hosts")
 }
 
+// validateCreateRequest checks the shape of a request, nothing that needs the
+// route or the gateway.
 func validateCreateRequest(r createClientRequest) error {
 	if !validClientIDSuffix(r.ClientID) {
 		return errors.New("client_id must be 1-64 letters, digits, '.', '_' or '-', starting with a letter or digit")
@@ -99,23 +104,56 @@ func validateCreateRequest(r createClientRequest) error {
 		if v := r.Options.Validation; v != "introspection" && v != "jwks" {
 			return errors.New("validation must be introspection or jwks in token mode")
 		}
-		if r.Options.PKCE {
-			return errors.New("pkce applies to login mode only")
+		if r.RedirectURI != "" {
+			return errors.New("redirect_uri applies to login mode only")
 		}
 		return nil
 	}
 	return errors.New("mode must be login or token")
 }
 
-func capKeycloakMessage(err error) string {
-	m := err.Error()
-	if len(m) > maxKeycloakMessage {
-		m = m[:maxKeycloakMessage]
+// normalizedOptions keeps, per mode, only the options that mean something
+// there: login has PKCE; token has its validation and client credentials.
+func normalizedOptions(r createClientRequest) models.IdPClientOptions {
+	if r.Mode == "login" {
+		return models.IdPClientOptions{PKCE: r.Options.PKCE}
 	}
-	return m
+	return models.IdPClientOptions{Validation: r.Options.Validation, ClientCredentials: r.Options.ClientCredentials}
+}
+
+func capKeycloakMessage(err error) string {
+	r := []rune(err.Error())
+	if len(r) > maxKeycloakMessage {
+		r = r[:maxKeycloakMessage]
+	}
+	return string(r)
+}
+
+// rollbackClient removes a client Keycloak just created, on a context that
+// outlives the request. It reports whether the client is gone.
+func rollbackClient(ctx context.Context, kc services.KeycloakAPI, kcID, uuid string) bool {
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := kc.DeleteClient(rctx, uuid); err != nil {
+		log.Printf("[idp] could not remove keycloak client %s (uuid %s) after a failed creation", kcID, uuid)
+		return false
+	}
+	return true
+}
+
+func rollbackFailure(c *gin.Context, removed bool, kcID, msg string) {
+	if removed {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": msg + "; it was removed from Keycloak"})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": msg + "; the client could not be removed from Keycloak: " + kcID})
 }
 
 // CreateClient provisions a Keycloak client for a route and registers it.
+//
+// The order keeps a caller who may not create from learning anything about a
+// route: who may create is decided before the route is read, and a missing
+// route answers a non-admin what another team's route does.
 func (h *IdPHandler) CreateClient(c *gin.Context) {
 	// :id is the connection here; the instance is the one the RBAC middleware
 	// checked the caller's role on.
@@ -126,7 +164,14 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	p, err := h.idps.Get(ctx, c.Param("id"))
-	if err != nil || !p.LinkedTo(instanceID) {
+	switch {
+	case errors.Is(err, services.ErrIdPNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "Identity provider not found"})
+		return
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Identity provider request failed"})
+		return
+	case !p.LinkedTo(instanceID):
 		c.JSON(http.StatusNotFound, gin.H{"error": "Identity provider not found"})
 		return
 	}
@@ -143,9 +188,19 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Coarse gate, before the gateway is asked anything.
+	scope := callerTeamScope(c)
+	if !scope.isAdmin && (scope.foreign || !p.DevelopersCanCreate || len(scope.writable) == 0) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
 	inst, err := h.getInstance(ctx, instanceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The instance could not be read"})
+		return
+	}
+	if inst == nil || !inst.IsActive {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found or inactive"})
 		return
 	}
 	hosts, found, err := h.readRouteHosts(ctx, inst, req.RouteID)
@@ -154,71 +209,89 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 		return
 	}
 	if !found {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
+		if scope.isAdmin {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		}
 		return
 	}
-	// Before any Keycloak call: the URI against the hosts of the route.
-	if req.Mode == "login" {
-		if err := validRedirectURI(req.RedirectURI, hosts); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-	}
-	// An owner that cannot be read is no owner: only an admin passes then.
 	owner, err := h.routeOwner(ctx, instanceID, req.RouteID)
 	if err != nil {
-		owner = ""
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The route's owner could not be read"})
+		return
 	}
-	scope := callerTeamScope(c)
 	if !mayCreateClient(scope, p, owner) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 		return
 	}
-
-	kcID := p.ClientIDPrefix + req.ClientID
+	// Before any Keycloak call: the URI against the hosts of the route. A
+	// route with no host, its service's included, gives nothing to bind it to:
+	// only an admin may then choose the address.
 	redirect := ""
 	if req.Mode == "login" {
 		redirect = req.RedirectURI
+		switch {
+		case len(hosts) > 0:
+			if err := validRedirectURI(redirect, hosts); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+		case !scope.isAdmin:
+			c.JSON(http.StatusForbidden, gin.H{"error": "an admin must create a login client for a route with no host"})
+			return
+		}
 	}
+	opts := normalizedOptions(req)
+
+	kcID := p.ClientIDPrefix + req.ClientID
 	kc := h.keycloak(p)
-	uuid, err := kc.CreateClient(ctx, services.BuildClientRepresentation(kcID, req.Mode, req.Options, redirect))
+	uuid, err := kc.CreateClient(ctx, services.BuildClientRepresentation(kcID, req.Mode, opts, redirect))
 	if err != nil {
 		keycloakFailure(c, err)
 		return
 	}
 	secret, err := kc.ClientSecret(ctx, uuid)
 	if err != nil {
-		_ = kc.DeleteClient(ctx, uuid)
+		removed := rollbackClient(ctx, kc, kcID, uuid)
+		if !removed {
+			rollbackFailure(c, false, kcID, "Could not read the client's secret")
+			return
+		}
 		keycloakFailure(c, err)
 		return
 	}
 	entry := &models.IdPClient{
 		IdPID: p.ID, InstanceID: instanceID, Realm: p.Realm, Prefix: p.ClientIDPrefix,
 		ClientID: kcID, KeycloakUUID: uuid, RouteID: req.RouteID, Mode: req.Mode,
-		Options: req.Options, RedirectURI: redirect, CreatedBy: middleware.GetUserID(c),
+		Options: opts, RedirectURI: redirect, CreatedBy: middleware.GetUserID(c),
 	}
 	if err := h.idps.RecordClient(ctx, entry); err != nil {
-		_ = kc.DeleteClient(ctx, uuid)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not register the client; it was removed from Keycloak"})
+		rollbackFailure(c, rollbackClient(ctx, kc, kcID, uuid), kcID, "Could not register the client")
 		return
 	}
 	out := clientCredentials{
 		ClientID: kcID, ClientSecret: secret, Discovery: services.DiscoveryURL(p),
-		Mode: req.Mode, Options: req.Options, RedirectURI: redirect,
+		Mode: req.Mode, Options: opts, RedirectURI: redirect,
 	}
-	if req.Mode == "token" && req.Options.Validation == "introspection" {
+	if req.Mode == "token" && opts.Validation == "introspection" {
 		out.IntrospectionEndpoint = services.IntrospectionURL(p)
 	}
 	c.JSON(http.StatusCreated, out)
 }
 
-// keycloakFailure maps an error of a Keycloak call to a response.
+// keycloakFailure maps an error of a Keycloak call to a response. Nothing of
+// a dial error or an internal address reaches the caller.
 func keycloakFailure(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrKeycloakClientExists):
 		c.JSON(http.StatusConflict, gin.H{"error": "this client ID already exists in Keycloak, choose another"})
-	case errors.Is(err, services.ErrKeycloakUnavailable), errors.Is(err, services.ErrKeycloakAuth), errors.Is(err, services.ErrKeycloakForbidden):
-		c.JSON(http.StatusBadGateway, gin.H{"error": capKeycloakMessage(err)})
+	case errors.Is(err, services.ErrKeycloakUnavailable):
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Keycloak could not be reached"})
+	case errors.Is(err, services.ErrKeycloakAuth):
+		c.JSON(http.StatusBadGateway, gin.H{"error": capKeycloakMessage(services.ErrKeycloakAuth)})
+	case errors.Is(err, services.ErrKeycloakForbidden):
+		c.JSON(http.StatusBadGateway, gin.H{"error": capKeycloakMessage(services.ErrKeycloakForbidden)})
 	default:
 		c.JSON(http.StatusBadGateway, gin.H{"error": "Keycloak request failed"})
 	}
