@@ -340,3 +340,51 @@ func TestFindClient(t *testing.T) {
 		t.Fatalf("after delete: %v", ids)
 	}
 }
+
+func TestUpdateRequiresSecretWhenDestinationChanges(t *testing.T) {
+	str := func(s string) *string { return &s }
+	cases := []struct {
+		name       string
+		update     IdPUpdate
+		wantErr    bool
+		wantSecret string
+	}{
+		{"base_url change without secret", IdPUpdate{BaseURL: str("https://evil.example.com")}, true, ""},
+		{"base_url change with secret", IdPUpdate{BaseURL: str("https://new.example.com"), AdminClientSecret: str("fresh")}, false, "fresh"},
+		{"base_url change with empty secret", IdPUpdate{BaseURL: str("https://evil.example.com"), AdminClientSecret: str("")}, true, ""},
+		{"realm change without secret", IdPUpdate{Realm: str("other")}, true, ""},
+		{"admin_client_id change without secret", IdPUpdate{AdminClientID: str("other")}, true, ""},
+		{"same base_url resubmitted", IdPUpdate{BaseURL: str("https://sso.example.com")}, false, "s3cret-value"},
+		{"name change", IdPUpdate{Name: str("renamed")}, false, "s3cret-value"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.Background()
+			s := NewIdPService(newFakeKV())
+			p := validIdP()
+			if err := s.Create(ctx, p); err != nil {
+				t.Fatal(err)
+			}
+			got, err := s.Update(ctx, p.ID, c.update)
+			stored, _ := s.Get(ctx, p.ID)
+			if c.wantErr {
+				if !errors.Is(err, ErrIdPInvalid) {
+					t.Fatalf("want ErrIdPInvalid, got %v", err)
+				}
+				if strings.Contains(err.Error(), "s3cret-value") {
+					t.Fatalf("error leaks the secret: %v", err)
+				}
+				if stored.AdminClientSecret != "s3cret-value" || stored.BaseURL != p.BaseURL {
+					t.Fatalf("a refused update must not change the record: %+v", stored)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.AdminClientSecret != c.wantSecret || stored.AdminClientSecret != c.wantSecret {
+				t.Fatalf("secret = %q, want %q", stored.AdminClientSecret, c.wantSecret)
+			}
+		})
+	}
+}

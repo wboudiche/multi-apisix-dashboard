@@ -218,6 +218,13 @@ func (s *IdPService) Update(ctx context.Context, id string, u IdPUpdate) (*model
 		}
 	}
 
+	// The stored secret must not follow the connection to a new destination:
+	// whoever repoints it has to enter the secret again.
+	destinationChanged := p.BaseURL != before.BaseURL || p.Realm != before.Realm || p.AdminClientID != before.AdminClientID
+	if destinationChanged && (u.AdminClientSecret == nil || *u.AdminClientSecret == "") {
+		return nil, fmt.Errorf("%w: the secret must be entered again when the URL, realm or admin client changes", ErrIdPInvalid)
+	}
+
 	p.UpdatedAt = models.NullTime(time.Now())
 	if err := s.store.PutJSON(ctx, models.KeyPrefixIdPs+id, p); err != nil {
 		return nil, err
