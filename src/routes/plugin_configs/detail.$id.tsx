@@ -36,10 +36,12 @@ import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
+import { ReassignTeamAction } from '@/components/page/ReassignTeamModal';
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 import { pipeProduce } from '@/utils/producer';
 
 type Props = {
@@ -119,7 +121,11 @@ function PluginConfigDetailPage() {
   // Per resource, like the list that leads here: the two halves of the
   // flow have to ask the same question, or one offers an edit the other
   // said was not available (#270).
-  const canEdit = usePermission().canWriteResource('plugin_configs');
+  const { canWriteResource, canWriteOwner } = usePermission();
+  // The team that owns it decides, as for a route (#455).
+  const { data, refetch } = useSuspenseQuery(getPluginConfigQueryOptions(id));
+  const teamId = ownerOf(data.value);
+  const canEdit = canWriteResource('plugin_configs') && canWriteOwner(teamId);
   const navigate = useNavigate();
 
   return (
@@ -130,6 +136,12 @@ function PluginConfigDetailPage() {
           title: t('info.detail.title', { name: t('pluginConfigs.singular') }),
           extra: (
             <Group>
+              <ReassignTeamAction
+                resourceType="plugin_configs"
+                resourceId={id}
+                currentTeamId={teamId}
+                onSaved={() => refetch()}
+              />
               {canEdit && (
                 <Button
                   onClick={() => setReadOnly(false)}

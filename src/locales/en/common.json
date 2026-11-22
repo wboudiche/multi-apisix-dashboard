@@ -591,7 +591,7 @@
       "success": "Team reassigned successfully",
       "error": "Failed to reassign team",
       "noTeam": "No team",
-      "unassignWarning": "Removing the team leaves this route owned by no team. It disappears from every non-admin list until an admin assigns it again.",
+      "unassignWarning": "Removing the team leaves this resource owned by no team. It disappears from every non-admin list until an admin assigns it again.",
       "unassignConfirm": "Remove team",
       "unassignSuccess": "Team removed successfully",
       "unassignError": "Failed to remove team"

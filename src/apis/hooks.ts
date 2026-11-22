@@ -119,6 +119,10 @@ const TEAM_OWNED_LISTS = new Set([
   'consumers',
   'consumer_groups',
   'stream_routes',
+  // Team-owned since #455: a viewer's list of these is their teams' alone.
+  'plugin_configs',
+  'ssls',
+  'protos',
 ]);
 
 /**

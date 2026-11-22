@@ -961,7 +961,7 @@
       "success": "Team erfolgreich neu zugewiesen",
       "error": "Team konnte nicht neu zugewiesen werden",
       "noTeam": "Kein Team",
-      "unassignWarning": "Ohne Team gehört diese Route niemandem. Sie verschwindet aus jeder Liste, die kein Admin sieht, bis ein Admin sie wieder zuweist.",
+      "unassignWarning": "Ohne Team gehört diese Ressource niemandem. Sie verschwindet aus jeder Liste, die kein Admin sieht, bis ein Admin sie wieder zuweist.",
       "unassignConfirm": "Team entfernen",
       "unassignSuccess": "Team erfolgreich entfernt",
       "unassignError": "Team konnte nicht entfernt werden"

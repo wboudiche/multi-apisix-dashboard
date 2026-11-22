@@ -36,10 +36,12 @@ import { FormSectionGeneral } from '@/components/form-slice/FormSectionGeneral';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { DetailGate } from '@/components/page/DetailGate';
 import PageHeader from '@/components/page/PageHeader';
+import { ReassignTeamAction } from '@/components/page/ReassignTeamModal';
 import { API_PROTOS } from '@/config/constant';
 import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX, type APISIXType } from '@/types/schema/apisix';
+import { ownerOf } from '@/utils/owner';
 import { pipeProduce } from '@/utils/producer';
 
 type ProtoFormProps = {
@@ -121,7 +123,11 @@ function ProtoDetailPage() {
   // Per resource, like the list that leads here: the two halves of the
   // flow have to ask the same question, or one offers an edit the other
   // said was not available (#270).
-  const canEdit = usePermission().canWriteResource('protos');
+  const { canWriteResource, canWriteOwner } = usePermission();
+  // The team that owns it decides, as for a route (#455).
+  const { data, refetch } = useSuspenseQuery(getProtoQueryOptions(id));
+  const teamId = ownerOf(data.value);
+  const canEdit = canWriteResource('protos') && canWriteOwner(teamId);
   const navigate = useNavigate();
 
   return (
@@ -132,6 +138,12 @@ function ProtoDetailPage() {
           title: t('info.detail.title', { name: t('protos.singular') }),
           extra: (
             <Group>
+              <ReassignTeamAction
+                resourceType="protos"
+                resourceId={id}
+                currentTeamId={teamId}
+                onSaved={() => refetch()}
+              />
               {canEdit && (
                 <Button
                   onClick={() => setReadOnly(false)}
