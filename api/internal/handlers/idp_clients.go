@@ -91,6 +91,23 @@ func validRedirectURI(uri string, routeHosts []string) error {
 	return errors.New("redirect_uri host must be one of the route's hosts")
 }
 
+// redirectHostAllowed reports whether a redirect URI host is one of the
+// admin-set domains or a subdomain of one. The comparison is case-insensitive
+// and ignores a trailing dot; "evilexample.com" is not a subdomain of
+// "example.com".
+func redirectHostAllowed(host string, domains []string) bool {
+	host = strings.TrimSuffix(strings.ToLower(host), ".")
+	if host == "" {
+		return false
+	}
+	for _, d := range domains {
+		if host == d || strings.HasSuffix(host, "."+d) {
+			return true
+		}
+	}
+	return false
+}
+
 // validateCreateRequest checks the shape of a request, nothing that needs the
 // route or the gateway.
 func validateCreateRequest(r createClientRequest) error {
@@ -240,6 +257,19 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 		case !scope.isAdmin:
 			c.JSON(http.StatusForbidden, gin.H{"error": "an admin must create a login client for a route with no host"})
 			return
+		}
+		// A developer writes the hosts of their routes, so the route's hosts do
+		// not bound them: the address must also sit inside a domain an admin
+		// set on the connection.
+		if !scope.isAdmin {
+			if len(p.RedirectDomains) == 0 {
+				c.JSON(http.StatusForbidden, gin.H{"error": "developers cannot create login clients on this connection: no redirect domain is set"})
+				return
+			}
+			if u, err := url.Parse(redirect); err != nil || !redirectHostAllowed(u.Hostname(), p.RedirectDomains) {
+				c.JSON(http.StatusForbidden, gin.H{"error": "redirect_uri host must be inside one of the connection's redirect domains"})
+				return
+			}
 		}
 	}
 	opts := normalizedOptions(req)

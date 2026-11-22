@@ -118,6 +118,7 @@ A new record under `/apisix-dashboard/idps/<id>`, modelled on `Instance`
 | `client_id_prefix` | every client created starts with it, e.g. `apisix-`; required, non-empty |
 | `instance_ids` | the instances that may use it |
 | `developers_can_create` | default false |
+| `redirect_domains` | up to 20 lowercase DNS names (no scheme, port, wildcard or leading dot); bounds the redirect address of a developer's login client; empty by default; changing it needs no secret and is not locked by existing clients |
 | `created_at`, `updated_at` | |
 
 Endpoints, under the existing super-admin group of `api/cmd/main.go`:
@@ -198,6 +199,14 @@ admin of the instance, or a developer and `developers_can_create` is on; the
 route exists and the caller may write it (its owning team is one they write
 to, the same rule as the proxy, `api/internal/handlers/caller_scope.go`); the
 client id is valid (Keycloak's charset, length) and prefixed.
+
+*Security-review call (R8):* a developer writes the hosts of their own routes, so
+binding a developer's login client to the route's hosts alone binds it to data
+the developer controls. In login mode a developer's redirect host must also
+equal one of the connection's `redirect_domains` or be a subdomain of one
+(`evilexample.com` is not a subdomain of `example.com`). With no domain set,
+developers cannot create login clients on that connection (403); admins and
+token mode are unaffected.
 
 *Builder-check call:* a 409 from Keycloak (the client id is taken) is refused
 with "this client ID already exists in Keycloak, choose another". The dashboard

@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -98,6 +99,19 @@ func TestValidateIdP(t *testing.T) {
 		{"empty admin secret", func(p *models.IdentityProvider) { p.AdminClientSecret = "" }, false},
 		{"uppercase prefix", func(p *models.IdentityProvider) { p.ClientIDPrefix = "Apisix_" }, false},
 		{"empty prefix", func(p *models.IdentityProvider) { p.ClientIDPrefix = "" }, false},
+		{"redirect domains valid", func(p *models.IdentityProvider) {
+			p.RedirectDomains = []string{"example.com", "a-b.example.org", "localhost"}
+		}, true},
+		{"redirect domain uppercase", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"Example.com"} }, false},
+		{"redirect domain wildcard", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"*.example.com"} }, false},
+		{"redirect domain leading dot", func(p *models.IdentityProvider) { p.RedirectDomains = []string{".example.com"} }, false},
+		{"redirect domain trailing dot", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"example.com."} }, false},
+		{"redirect domain scheme", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"https://example.com"} }, false},
+		{"redirect domain port", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"example.com:8443"} }, false},
+		{"redirect domain empty", func(p *models.IdentityProvider) { p.RedirectDomains = []string{""} }, false},
+		{"redirect domain empty label", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"a..b"} }, false},
+		{"redirect domains 20", func(p *models.IdentityProvider) { p.RedirectDomains = manyDomains(20) }, true},
+		{"redirect domains 21", func(p *models.IdentityProvider) { p.RedirectDomains = manyDomains(21) }, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -386,5 +400,37 @@ func TestUpdateRequiresSecretWhenDestinationChanges(t *testing.T) {
 				t.Fatalf("secret = %q, want %q", stored.AdminClientSecret, c.wantSecret)
 			}
 		})
+	}
+}
+
+func manyDomains(n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		out[i] = fmt.Sprintf("d%d.example.com", i)
+	}
+	return out
+}
+
+func TestUpdateRedirectDomainsNeedsNoSecretAndIsNotLocked(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	if err := s.Create(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordClient(ctx, &models.IdPClient{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u1"}); err != nil {
+		t.Fatal(err)
+	}
+	d := []string{"example.com"}
+	got, err := s.Update(ctx, p.ID, IdPUpdate{RedirectDomains: &d})
+	if err != nil {
+		t.Fatalf("update with clients and no secret: %v", err)
+	}
+	if len(got.RedirectDomains) != 1 || got.RedirectDomains[0] != "example.com" {
+		t.Fatalf("domains %v", got.RedirectDomains)
+	}
+	bad := []string{"*.example.com"}
+	if _, err := s.Update(ctx, p.ID, IdPUpdate{RedirectDomains: &bad}); !errors.Is(err, ErrIdPInvalid) {
+		t.Fatalf("want invalid, got %v", err)
 	}
 }

@@ -141,3 +141,14 @@ func (emptyStore) Delete(context.Context, string) error               { return n
 func (emptyStore) List(context.Context, string) (map[string][]byte, error) {
 	return nil, nil
 }
+
+func TestPublicIdPCarriesRedirectDomains(t *testing.T) {
+	b, _ := json.Marshal(publicIdP(&models.IdentityProvider{RedirectDomains: []string{"example.com"}}))
+	if !strings.Contains(string(b), `"redirect_domains":["example.com"]`) {
+		t.Fatalf("body %s", b)
+	}
+	b, _ = json.Marshal(publicIdP(&models.IdentityProvider{}))
+	if !strings.Contains(string(b), `"redirect_domains":[]`) {
+		t.Fatalf("nil must show as []: %s", b)
+	}
+}

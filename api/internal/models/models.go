@@ -357,9 +357,13 @@ type IdentityProvider struct {
 	ClientIDPrefix    string   `json:"client_id_prefix"` // only clients with this prefix are managed
 	InstanceIDs       []string `json:"instance_ids"`     // instances this provider may create clients for
 	// DevelopersCanCreate lets developers, not only admins, create clients.
-	DevelopersCanCreate bool     `json:"developers_can_create"`
-	CreatedAt           NullTime `json:"created_at"`
-	UpdatedAt           NullTime `json:"updated_at"`
+	DevelopersCanCreate bool `json:"developers_can_create"`
+	// RedirectDomains are the DNS names a developer's login client may redirect
+	// to (the name itself or any subdomain). Set by a super admin: a developer
+	// writes the hosts of their own routes, so those cannot bound a redirect.
+	RedirectDomains []string `json:"redirect_domains"`
+	CreatedAt       NullTime `json:"created_at"`
+	UpdatedAt       NullTime `json:"updated_at"`
 }
 
 // LinkedTo reports whether the provider is linked to the given instance.

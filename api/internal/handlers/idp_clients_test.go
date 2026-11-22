@@ -222,6 +222,7 @@ func newCreateFixture(t *testing.T, hosts []string, found bool) *createFixture {
 		Name: "kc", Type: models.IdPTypeKeycloak, BaseURL: "https://sso.test", Realm: "r",
 		AdminClientID: "adm", AdminClientSecret: "s3cr3t", ClientIDPrefix: "mad-",
 		InstanceIDs: []string{"i1"}, DevelopersCanCreate: true,
+		RedirectDomains: []string{"app.test"},
 	}
 	if err := idps.Create(context.Background(), p); err != nil {
 		t.Fatal(err)
@@ -740,4 +741,94 @@ func TestUseAndListRefuseTamperedEntry(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestRedirectHostAllowed(t *testing.T) {
+	cases := []struct {
+		name    string
+		host    string
+		domains []string
+		want    bool
+	}{
+		{"exact", "example.com", []string{"example.com"}, true},
+		{"subdomain", "app.example.com", []string{"example.com"}, true},
+		{"deep subdomain", "a.b.example.com", []string{"example.com"}, true},
+		{"suffix without dot", "evilexample.com", []string{"example.com"}, false},
+		{"parent of the domain", "com", []string{"example.com"}, false},
+		{"uppercase host", "APP.Example.COM", []string{"example.com"}, true},
+		{"trailing dot", "app.example.com.", []string{"example.com"}, true},
+		{"second domain", "x.other.org", []string{"example.com", "other.org"}, true},
+		{"empty list", "example.com", nil, false},
+		{"empty host", "", []string{"example.com"}, false},
+	}
+	for _, tc := range cases {
+		if got := redirectHostAllowed(tc.host, tc.domains); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func (f *createFixture) setDomains(t *testing.T, d []string) {
+	t.Helper()
+	if _, err := f.h.idps.Update(context.Background(), f.idpID(t), services.IdPUpdate{RedirectDomains: &d}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCreateClientDeveloperRedirectDomains(t *testing.T) {
+	t.Run("inside the domains", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.asDeveloper()
+		if w := f.post(t, loginBody); w.Code != http.StatusCreated {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+	})
+	t.Run("subdomain of a domain", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.setDomains(t, []string{"test"})
+		f.asDeveloper()
+		if w := f.post(t, loginBody); w.Code != http.StatusCreated {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+	})
+	t.Run("outside the domains", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.setDomains(t, []string{"corp.example"})
+		f.asDeveloper()
+		w := f.post(t, loginBody)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+		if f.kc.calls != 0 {
+			t.Fatalf("keycloak got %d calls", f.kc.calls)
+		}
+	})
+	t.Run("no domain set", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.setDomains(t, []string{})
+		f.asDeveloper()
+		w := f.post(t, loginBody)
+		if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "developers cannot create login clients on this connection: no redirect domain is set") {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+		if f.kc.calls != 0 {
+			t.Fatalf("keycloak got %d calls", f.kc.calls)
+		}
+	})
+	t.Run("admin outside the domains", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.setDomains(t, []string{"corp.example"})
+		if w := f.post(t, loginBody); w.Code != http.StatusCreated {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+	})
+	t.Run("token mode needs no domain", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.setDomains(t, []string{})
+		f.asDeveloper()
+		body := `{"route_id":"r1","client_id":"api","mode":"token","options":{"validation":"jwks"}}`
+		if w := f.post(t, body); w.Code != http.StatusCreated {
+			t.Fatalf("status %d: %s", w.Code, w.Body)
+		}
+	})
 }

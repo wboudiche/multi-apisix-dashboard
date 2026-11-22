@@ -46,6 +46,13 @@ var (
 	ErrIdPHasClients = errors.New("identity provider still has clients")
 )
 
+// maxRedirectDomains caps the redirect domains of one connection.
+const maxRedirectDomains = 20
+
+// redirectDomainPattern: lowercase DNS labels of letters, digits and dashes
+// (not at either end), separated by single dots.
+var redirectDomainPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
+
 var idpPrefixPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 
 // IdPUpdate is a partial update: a nil field is left as stored. A nil or empty
@@ -59,6 +66,7 @@ type IdPUpdate struct {
 	ClientIDPrefix      *string
 	InstanceIDs         *[]string
 	DevelopersCanCreate *bool
+	RedirectDomains     *[]string
 }
 
 // IdPService stores Keycloak connections and the registry of clients created
@@ -95,6 +103,14 @@ func validateIdP(p *models.IdentityProvider) error {
 	}
 	if !idpPrefixPattern.MatchString(p.ClientIDPrefix) {
 		return invalid("client_id_prefix must be 1 to 32 lowercase letters, digits or dashes, starting with a letter or digit")
+	}
+	if len(p.RedirectDomains) > maxRedirectDomains {
+		return invalid(fmt.Sprintf("at most %d redirect domains", maxRedirectDomains))
+	}
+	for _, d := range p.RedirectDomains {
+		if len(d) > 253 || !redirectDomainPattern.MatchString(d) {
+			return invalid("redirect_domains must be lowercase DNS names, without scheme, port, wildcard or leading dot")
+		}
 	}
 	return nil
 }
@@ -190,6 +206,9 @@ func (s *IdPService) Update(ctx context.Context, id string, u IdPUpdate) (*model
 	}
 	if u.DevelopersCanCreate != nil {
 		p.DevelopersCanCreate = *u.DevelopersCanCreate
+	}
+	if u.RedirectDomains != nil {
+		p.RedirectDomains = *u.RedirectDomains
 	}
 	if err := validateIdP(p); err != nil {
 		return nil, err

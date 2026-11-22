@@ -82,6 +82,7 @@ type idpResponse struct {
 	ClientIDPrefix      string          `json:"client_id_prefix"`
 	InstanceIDs         []string        `json:"instance_ids"`
 	DevelopersCanCreate bool            `json:"developers_can_create"`
+	RedirectDomains     []string        `json:"redirect_domains"`
 	CreatedAt           models.NullTime `json:"created_at"`
 	UpdatedAt           models.NullTime `json:"updated_at"`
 }
@@ -91,6 +92,10 @@ func publicIdP(p *models.IdentityProvider) idpResponse {
 	ids := p.InstanceIDs
 	if ids == nil {
 		ids = []string{}
+	}
+	domains := p.RedirectDomains
+	if domains == nil {
+		domains = []string{}
 	}
 	return idpResponse{
 		ID:                  p.ID,
@@ -103,6 +108,7 @@ func publicIdP(p *models.IdentityProvider) idpResponse {
 		ClientIDPrefix:      p.ClientIDPrefix,
 		InstanceIDs:         ids,
 		DevelopersCanCreate: p.DevelopersCanCreate,
+		RedirectDomains:     domains,
 		CreatedAt:           p.CreatedAt,
 		UpdatedAt:           p.UpdatedAt,
 	}
@@ -161,6 +167,7 @@ type createIdPRequest struct {
 	ClientIDPrefix      string   `json:"client_id_prefix"`
 	InstanceIDs         []string `json:"instance_ids"`
 	DevelopersCanCreate bool     `json:"developers_can_create"`
+	RedirectDomains     []string `json:"redirect_domains"`
 }
 
 type updateIdPRequest struct {
@@ -172,6 +179,7 @@ type updateIdPRequest struct {
 	ClientIDPrefix      *string   `json:"client_id_prefix"`
 	InstanceIDs         *[]string `json:"instance_ids"`
 	DevelopersCanCreate *bool     `json:"developers_can_create"`
+	RedirectDomains     *[]string `json:"redirect_domains"`
 }
 
 func (h *IdPHandler) ListIdPs(c *gin.Context) {
@@ -209,6 +217,7 @@ func (h *IdPHandler) CreateIdP(c *gin.Context) {
 		ClientIDPrefix:      req.ClientIDPrefix,
 		InstanceIDs:         req.InstanceIDs,
 		DevelopersCanCreate: req.DevelopersCanCreate,
+		RedirectDomains:     req.RedirectDomains,
 	}
 	if err := h.idps.Create(c.Request.Context(), p); err != nil {
 		idpError(c, err)
@@ -247,6 +256,7 @@ func (h *IdPHandler) UpdateIdP(c *gin.Context) {
 		ClientIDPrefix:      req.ClientIDPrefix,
 		InstanceIDs:         req.InstanceIDs,
 		DevelopersCanCreate: req.DevelopersCanCreate,
+		RedirectDomains:     req.RedirectDomains,
 	})
 	if err != nil {
 		idpError(c, err)
