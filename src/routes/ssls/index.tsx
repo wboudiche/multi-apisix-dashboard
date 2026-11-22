@@ -39,6 +39,7 @@ import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { certExpiry, EXPIRY_WARNING_DAYS } from '@/utils/cert-expiry';
+import { idColumnHidden } from '@/utils/id-column';
 import { isResourceEnabled } from '@/utils/status';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
@@ -215,7 +216,7 @@ function RouteComponent() {
           {...tableProps}
           loading={isLoading}
           search={false}
-          options={false}
+          {...idColumnHidden}
           pagination={pagination}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{

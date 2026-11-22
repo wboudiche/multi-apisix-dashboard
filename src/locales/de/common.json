@@ -252,7 +252,7 @@
       "close": "Schließen"
     },
     "consumers": {
-      "groupId": "Gruppen ID",
+      "groupId": "Consumer-Gruppe",
       "username": "Benutzername"
     },
     "disabled": "Deaktiviert, zum Aktivieren Schalter klicken",
@@ -262,7 +262,8 @@
     "info": {
       "create_time": "Erstellt am",
       "id": "ID",
-      "update_time": "Geändert am"
+      "update_time": "Geändert am",
+      "idAdvanced": "ID selbst festlegen"
     },
     "json": {
       "parseError": "JSON Format ist ungültig",
@@ -280,7 +281,7 @@
     },
     "plugins": {
       "addPlugin": "Plugin hinzufügen",
-      "configId": "Plugin-Konfigurations-ID",
+      "configId": "Plugin-Konfiguration",
       "editPlugin": "Plugin bearbeiten",
       "label": "Plugins",
       "orderedByPriority": "In der Reihenfolge aufgeführt, in der dieses Gateway sie ausführt.",

@@ -252,7 +252,7 @@
       "close": "关闭"
     },
     "consumers": {
-      "groupId": "分组 ID",
+      "groupId": "消费者组",
       "username": "用户名"
     },
     "disabled": "已禁用，点击开关启用",
@@ -262,7 +262,8 @@
     "info": {
       "create_time": "创建时间",
       "id": "ID",
-      "update_time": "更新时间"
+      "update_time": "更新时间",
+      "idAdvanced": "自行设置 ID"
     },
     "json": {
       "parseError": "JSON格式无效",
@@ -280,7 +281,7 @@
     },
     "plugins": {
       "addPlugin": "添加插件",
-      "configId": "插件配置ID",
+      "configId": "插件配置",
       "editPlugin": "编辑插件",
       "label": "插件",
       "orderedByPriority": "按本网关执行的顺序排列。",

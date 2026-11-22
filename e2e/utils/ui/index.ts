@@ -178,3 +178,16 @@ export const uiShowAllRows = async (page: Page) => {
   await listed;
   await expect(page.locator('.ant-table').first()).toBeVisible();
 };
+
+/**
+ * A new record's ID field. It is folded under "Set the ID yourself" - the
+ * ID is generated, and few set one by hand - so it is opened first.
+ */
+export const uiNewIdField = async (page: Page) => {
+  const field = page.getByRole('textbox', { name: 'ID', exact: true });
+  if (!(await field.isVisible())) {
+    await page.getByRole('button', { name: 'Set the ID yourself' }).click();
+  }
+  await expect(field).toBeVisible();
+  return field;
+};

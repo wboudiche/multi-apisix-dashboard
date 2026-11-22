@@ -21,7 +21,7 @@ import { deleteByPrefix } from '@e2e/utils/cleanup';
 import { randomId } from '@e2e/utils/common';
 import { e2eReq } from '@e2e/utils/req';
 import { test } from '@e2e/utils/test';
-import { uiCell } from '@e2e/utils/ui';
+import { uiCell, uiNewIdField } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
 import { putConsumerReq } from '@/apis/consumers';
@@ -266,9 +266,9 @@ test('should have Add Credential button', async ({ page }) => {
   });
 
   await test.step('verify add page has required fields', async () => {
-    // Verify ID field exists
-    const idField = page.getByLabel('ID', { exact: true }).first();
-    await expect(idField).toBeVisible();
+    // Verify ID field exists, generated and folded under "Set the ID yourself"
+    const idField = await uiNewIdField(page);
+    await expect(idField).not.toHaveValue('');
 
     // Verify Description field exists
     const descField = page.getByLabel('Description', { exact: true });

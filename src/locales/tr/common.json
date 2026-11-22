@@ -252,7 +252,7 @@
       "close": "Kapat"
     },
     "consumers": {
-      "groupId": "Grup ID",
+      "groupId": "Tüketici grubu",
       "username": "Kullanıcı Adı"
     },
     "disabled": "Pasif, aktif etmek için tıklayın",
@@ -262,7 +262,8 @@
     "info": {
       "create_time": "Oluşturulma",
       "id": "ID",
-      "update_time": "Güncellenme"
+      "update_time": "Güncellenme",
+      "idAdvanced": "Kimliği kendiniz belirleyin"
     },
     "json": {
       "parseError": "JSON formatı geçerli değil",
@@ -280,7 +281,7 @@
     },
     "plugins": {
       "addPlugin": "Plugin Ekle",
-      "configId": "Plugin Config ID",
+      "configId": "Eklenti yapılandırması",
       "editPlugin": "Plugin Düzenle",
       "label": "Plugin'ler",
       "orderedByPriority": "Bu ağ geçidinin çalıştırdığı sırayla listelenmiştir.",

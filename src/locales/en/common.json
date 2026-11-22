@@ -169,7 +169,7 @@
       "close": "Close"
     },
     "consumers": {
-      "groupId": "Group ID",
+      "groupId": "Consumer Group",
       "username": "Username"
     },
     "disabled": "Disabled, click switch to enable",
@@ -179,7 +179,8 @@
     "info": {
       "create_time": "Created At",
       "id": "ID",
-      "update_time": "Updated At"
+      "update_time": "Updated At",
+      "idAdvanced": "Set the ID yourself"
     },
     "json": {
       "parseError": "JSON format is not valid",
@@ -303,7 +304,7 @@
     },
     "plugins": {
       "addPlugin": "Add Plugin",
-      "configId": "Plugin Config ID",
+      "configId": "Plugin Config",
       "editPlugin": "Edit Plugin",
       "exampleConfig": "Example Configuration",
       "label": "Plugins",

@@ -612,6 +612,25 @@ select:focus,
   --mantine-color-dimmed: #5f6670;
 }
 
+/* ===== A record's ID ===== */
+
+/* Shown as a line of text, not a field: the input rule above gives every
+   input a border, a background and a height, and an ID read off a detail
+   page needs none of them - nor the background of a disabled one, which a
+   detail page's section is. Still an input, so it can be selected whole. */
+.id-line .mantine-Input-input,
+.id-line .mantine-Input-input:disabled,
+.id-line .mantine-Input-input[data-disabled] {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  font-family: var(--mantine-font-family-monospace) !important;
+  font-size: 0.8125rem !important;
+  color: var(--text-secondary) !important;
+}
+
 /* ===== Fields shown, not edited ===== */
 
 /* A detail page shows its record in disabled fields: their value is there to

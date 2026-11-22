@@ -21,6 +21,7 @@ import {
   uiFillMonacoEditor,
   uiGetMonacoEditor,
   uiHasToastMsg,
+  uiNewIdField,
 } from '@e2e/utils/ui';
 import { expect } from '@playwright/test';
 
@@ -34,8 +35,8 @@ test('should CRUD global rule with required fields only', async ({ page }) => {
 
   await test.step('add global rule with plugins only', async () => {
     // ID field should be auto-generated
-    const idInput = page.getByLabel('ID');
-    await expect(idInput).toBeVisible();
+    // Generated, and folded under "Set the ID yourself".
+    const idInput = await uiNewIdField(page);
     await expect(idInput).not.toHaveValue('');
     globalRuleId = await idInput.inputValue();
 

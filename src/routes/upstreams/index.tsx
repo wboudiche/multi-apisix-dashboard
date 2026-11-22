@@ -25,6 +25,7 @@ import { getUpstreamListQueryOptions, useUpstreamList } from '@/apis/hooks';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { ListWarningBanner } from '@/components/page/ListWarningBanner';
+import { NameOrId } from '@/components/page/NameOrId';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import type { UpstreamRow } from '@/components/page-slice/upstreams/upstream-row';
@@ -35,6 +36,7 @@ import { queryClient } from '@/config/global';
 import { usePermission } from '@/hooks/usePermission';
 import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { idColumnHidden } from '@/utils/id-column';
 import { ownerOf } from '@/utils/owner';
 import type { HealthNode } from '@/utils/upstream-health';
 import { summarizeHealth } from '@/utils/upstream-health';
@@ -69,6 +71,7 @@ function RouteComponent() {
       {
         dataIndex: ['value', 'name'],
         title: t('form.basic.name'),
+        render: (_, row) => <NameOrId value={row.value} />,
         key: 'name',
         valueType: 'text',
       },
@@ -256,7 +259,7 @@ function RouteComponent() {
           {...tableProps}
           loading={isLoading}
           search={false}
-          options={false}
+          {...idColumnHidden}
           pagination={pagination}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{

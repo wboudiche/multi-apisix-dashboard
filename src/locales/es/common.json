@@ -252,7 +252,7 @@
       "close": "Cerrar"
     },
     "consumers": {
-      "groupId": "ID de Grupo",
+      "groupId": "Grupo de consumidores",
       "username": "Nombre de usuario"
     },
     "disabled": "Deshabilitado, haga clic en el interruptor para habilitar",
@@ -262,7 +262,8 @@
     "info": {
       "create_time": "Creado en",
       "id": "ID",
-      "update_time": "Actualizado en"
+      "update_time": "Actualizado en",
+      "idAdvanced": "Definir el ID uno mismo"
     },
     "json": {
       "parseError": "El formato JSON no es válido",
@@ -282,7 +283,7 @@
     },
     "plugins": {
       "addPlugin": "Añadir Plugin",
-      "configId": "ID de Configuración de Plugin",
+      "configId": "Configuración de plugins",
       "editPlugin": "Editar Plugin",
       "label": "Plugins",
       "orderedByPriority": "Listados en el orden en que los ejecuta esta pasarela.",

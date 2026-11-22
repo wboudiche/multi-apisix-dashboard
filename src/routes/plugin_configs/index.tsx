@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { getPluginConfigListQueryOptions, usePluginConfigList } from '@/apis/hooks';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
+import { NameOrId } from '@/components/page/NameOrId';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
@@ -31,6 +32,7 @@ import { queryClient } from '@/config/global';
 import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
+import { idColumnHidden } from '@/utils/id-column';
 
 function PluginConfigsList() {
   const { t } = useTranslation();
@@ -55,6 +57,7 @@ function PluginConfigsList() {
       {
         dataIndex: ['value', 'name'],
         title: t('form.basic.name'),
+        render: (_, row) => <NameOrId value={row.value} />,
         key: 'name',
         valueType: 'text',
       },
@@ -107,7 +110,7 @@ function PluginConfigsList() {
         {...tableProps}
         loading={isLoading}
         search={false}
-        options={false}
+        {...idColumnHidden}
         pagination={pagination}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{

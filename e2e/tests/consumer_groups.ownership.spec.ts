@@ -17,7 +17,7 @@
 import { consumerGroupsPom } from '@e2e/pom/consumer_groups';
 import { ownershipMatrixSuite } from '@e2e/utils/ownership-test-helper';
 import { e2eReq } from '@e2e/utils/req';
-import { uiHasToastMsg } from '@e2e/utils/ui';
+import { uiHasToastMsg, uiNewIdField } from '@e2e/utils/ui';
 
 import { API_CONSUMER_GROUPS } from '@/config/constant';
 
@@ -39,7 +39,7 @@ ownershipMatrixSuite({
     await consumerGroupsPom.toIndex(page);
     await consumerGroupsPom.getAddConsumerGroupBtn(page).click();
 
-    const idField = page.getByRole('textbox', { name: 'ID', exact: true });
+    const idField = await uiNewIdField(page);
     await idField.clear();
     await idField.fill(name);
 

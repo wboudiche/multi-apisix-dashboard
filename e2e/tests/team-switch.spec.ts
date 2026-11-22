@@ -25,7 +25,7 @@ import {
   ensureUserInstanceRole,
   loginAdmin,
 } from '@e2e/utils/seed-client';
-import { uiFillMonacoEditor, uiGetMonacoEditor } from '@e2e/utils/ui';
+import { uiFillMonacoEditor, uiGetMonacoEditor, uiNewIdField } from '@e2e/utils/ui';
 import { i18n } from '@e2e/utils/ui/i18n';
 import { expect, type Page, test } from '@playwright/test';
 
@@ -114,7 +114,7 @@ const signInHere = async (page: Page, username: string, password: string) => {
 const createConsumerGroup = async (page: Page, id: string) => {
   await consumerGroupsPom.getAddConsumerGroupBtn(page).click();
   await consumerGroupsPom.isAddPage(page);
-  await page.getByRole('textbox', { name: 'ID', exact: true }).fill(id);
+  await (await uiNewIdField(page)).fill(id);
 
   // The form asks for at least one plugin.
   await page.getByRole('button', { name: 'Select Plugins' }).click();

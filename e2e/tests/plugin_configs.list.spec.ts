@@ -38,7 +38,9 @@ test('should navigate to plugin configs page', async ({ page }) => {
     // list table exists
     const table = page.getByRole('table');
     await expect(table).toBeVisible();
-    await expect(table.getByText('ID', { exact: true })).toBeVisible();
+    // Hidden until asked for, by the table's column setting.
+
+    await expect(table.getByText('ID', { exact: true })).toBeHidden();
     await expect(table.getByText('Name', { exact: true })).toBeVisible();
     await expect(table.getByText('Description', { exact: true })).toBeVisible();
     await expect(table.getByText('Actions', { exact: true })).toBeVisible();

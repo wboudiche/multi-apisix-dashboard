@@ -28,8 +28,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { getUpstreamQueryOptions } from '@/apis/hooks';
+import { getPluginConfigQueryOptions, getUpstreamQueryOptions } from '@/apis/hooks';
 import { TestConnectionButton } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
+import { usePermission } from '@/hooks/usePermission';
 import { isResourceEnabled } from '@/utils/status';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 
@@ -79,6 +80,19 @@ export const RoutePreviewSummary = ({ data }: Props) => {
     enabled: !!resolvedUpstreamId,
   });
   const fetchedUpstream = upstreamQuery.data?.value;
+  // The plugin config by its name, as the select above offered it, not the
+  // id it is stored by. Its id when it has none, or cannot be read - nor
+  // asked for by a role that may not list them, whose refusal would show
+  // as an error over a form with nothing wrong (#189).
+  const mayReadConfigs = usePermission().canAccessRoute('/plugin_configs');
+  const pluginConfigId = values.plugin_config_id as string | undefined;
+  const pluginConfigQuery = useQuery({
+    ...getPluginConfigQueryOptions(pluginConfigId ?? ''),
+    enabled: !!pluginConfigId && mayReadConfigs,
+    retry: false,
+  });
+  const pluginConfigName =
+    (pluginConfigQuery.data?.value as { name?: string } | undefined)?.name || pluginConfigId;
   const isCustom = upstreamId === UPSTREAM_CUSTOM || (!upstreamId && upstream?.nodes);
   const upstreamData = isCustom ? upstream : fetchedUpstream;
   const nodes = parseToNodes(upstreamData?.nodes);
@@ -211,7 +225,7 @@ export const RoutePreviewSummary = ({ data }: Props) => {
           ) : values.plugin_config_id ? (
             <Group gap="xs">
               <Text size="sm" c="dimmed">{t('form.plugins.configId')}:</Text>
-              <Code>{values.plugin_config_id}</Code>
+              <Code>{pluginConfigName}</Code>
             </Group>
           ) : (
             <Text size="sm" c="dimmed" fs="italic">{t('form.routes.preview.noPlugins')}</Text>
