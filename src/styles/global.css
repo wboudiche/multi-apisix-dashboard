@@ -668,7 +668,16 @@ select:focus,
   padding: 8px 14px !important;
   border-radius: var(--radius-md) !important;
   background: linear-gradient(180deg, #2D3136 0%, #1A1D21 100%) !important;
+  /* Light on this dark background whatever the scheme: Mantine's dark
+     scheme draws a light tooltip with black text, and that black stayed on
+     the dark background above - all but unreadable. */
+  color: #F0F2F5 !important;
   box-shadow: var(--shadow-md) !important;
+}
+
+/* On a dark page the tooltip's own dark needs an edge to stand apart. */
+[data-mantine-color-scheme="dark"] [class*="Tooltip-tooltip"] {
+  border: 1px solid var(--border-medium) !important;
 }
 
 /* ===== Scrollbar ===== */
