@@ -47,6 +47,7 @@ import {
   sameRestriction,
   writeRestriction,
 } from '@/utils/auth-clients';
+import type { OidcRouteContext } from '@/utils/keycloak-client';
 import { finishOidc, OIDC_PLUGIN, OIDC_PRIMARY_FIELDS, oidcMode } from '@/utils/oidc';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { withPriority } from '@/utils/plugin-priority';
@@ -75,6 +76,8 @@ export type PluginConfig = {
   restriction?: Record<string, unknown> | null;
 };
 export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
+  /** The route being edited, when it is one: lets openid-connect make a client for it. */
+  route?: OidcRouteContext;
   opened: boolean;
   onClose: () => void;
   onSave: (props: PluginConfig) => void;
@@ -271,6 +274,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     restrictionDefaultPriority,
     otherAuthPlugins,
     noTemplate,
+    route,
   } = props;
   const { name, config } = plugin;
   const { t } = useTranslation();
@@ -566,6 +570,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
                     config={formValue}
                     onChange={setFormValue}
                     readOnly={mode === 'view'}
+                    route={route}
                   />
                 ) : undefined
               }

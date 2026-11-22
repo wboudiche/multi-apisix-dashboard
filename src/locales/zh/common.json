@@ -502,7 +502,31 @@
         "noKeys": "它未发布用于校验其所签令牌的密钥（jwks_uri）。",
         "redirectHelp": "用户登录后提供方将其送回的地址：此路由所匹配路径上的完整地址。请在提供方处注册相同的地址。",
         "redirectMissing": "若不设置，网关会把用户送回每个页面自身地址加 /.apisix/redirect，该地址随页面变化：大多数提供方会拒绝。",
-        "redirectNotAbsolute": "提供方在此需要以 https://（或 http://）开头的完整地址，而不只是路径。"
+        "redirectNotAbsolute": "提供方在此需要以 https://（或 http://）开头的完整地址，而不只是路径。",
+        "kc": {
+          "title": "客户端",
+          "create": "在 Keycloak 中创建",
+          "reuse": "使用由控制台创建的客户端",
+          "hand": "填写已有的客户端",
+          "provider": "身份提供者",
+          "clientId": "客户端 ID",
+          "clientIdHelp": "根据路由名称给出建议。连接会在前面加上它自己的前缀。",
+          "pkce": "使用 PKCE",
+          "validation": "如何校验令牌？",
+          "introspection": "向提供者查询（introspection）",
+          "jwks": "校验其签名（JWKS）",
+          "clientCredentials": "允许应用程序也用自己的凭据登录（client credentials）",
+          "redirectHelp": "将作为用户可返回的唯一地址登记到提供者。请确认或修改。",
+          "createBtn": "创建客户端",
+          "saveFirst": "请先保存一次路由：客户端与它绑定。",
+          "pick": "客户端",
+          "pickPlaceholder": "选择客户端",
+          "useBtn": "使用此客户端",
+          "filled": "已填入客户端 {{id}}：discovery、客户端 ID 和密钥。",
+          "gone": "此客户端已不在 Keycloak 中。",
+          "createFailed": "无法创建客户端。",
+          "useFailed": "无法读取客户端。"
+        }
       },
       "configIdTyped": "插件配置ID"
     },

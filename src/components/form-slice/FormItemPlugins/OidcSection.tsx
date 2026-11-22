@@ -18,6 +18,7 @@ import { Alert, Button, Code, Paper, Radio, Stack, Text, TextInput, Title } from
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
+import type { OidcRouteContext } from '@/utils/keycloak-client';
 import {
   checkDiscovery,
   type DiscoveryCheck,
@@ -26,6 +27,8 @@ import {
   redirectUriProblem,
   withOidcMode,
 } from '@/utils/oidc';
+
+import { KeycloakClientPicker } from './KeycloakClientPicker';
 
 /** The provider's configuration could not be fetched from this page. */
 class Unreachable extends Error {}
@@ -59,6 +62,8 @@ export type OidcSectionProps = {
   config: Record<string, unknown>;
   onChange: (config: Record<string, unknown>) => void;
   readOnly?: boolean;
+  /** The route being edited: offers to make or reuse a Keycloak client for it. */
+  route?: OidcRouteContext;
 };
 
 /**
@@ -67,7 +72,7 @@ export type OidcSectionProps = {
  * and whether the provider's address answers, with what the mode chosen
  * needs from it.
  */
-export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) => {
+export const OidcSection = ({ config, onChange, readOnly, route }: OidcSectionProps) => {
   const { t } = useTranslation();
   const mode = oidcMode(config);
   const discovery = typeof config.discovery === 'string' ? config.discovery.trim() : '';
@@ -92,6 +97,9 @@ export const OidcSection = ({ config, onChange, readOnly }: OidcSectionProps) =>
   return (
     <Paper withBorder radius="md" p="md" data-testid="oidc-section">
       <Stack gap="sm">
+        {route && !readOnly && (
+          <KeycloakClientPicker config={config} onChange={onChange} route={route} />
+        )}
         <Button
           variant="light"
           w="fit-content"

@@ -66,7 +66,11 @@ export const IdentityProvidersTab = () => {
   const [deleting, setDeleting] = useState<Deleting | null>(null);
 
   const instanceName = (id: string) => instances.find((i) => i.id === id)?.name ?? id;
-  const refresh = () => queryClient.invalidateQueries({ queryKey: IDPS_KEY });
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: IDPS_KEY });
+    // What the route form offers is read from the same connections.
+    queryClient.invalidateQueries({ queryKey: ['idps', 'linked'] });
+  };
   const patch = (changes: Partial<IdpFormState>) => setForm((f) => ({ ...f, ...changes }));
 
   const open = (idp?: IdentityProvider) => {

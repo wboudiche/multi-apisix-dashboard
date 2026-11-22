@@ -525,7 +525,31 @@
         "noKeys": "It publishes no keys (jwks_uri) to check the tokens it signs.",
         "redirectHelp": "Where the provider sends people back after they sign in: a full address on a path this route matches. Register the same one with the provider.",
         "redirectMissing": "Without it, the gateway sends people back to each page's own address followed by /.apisix/redirect, which changes from page to page: most providers refuse that.",
-        "redirectNotAbsolute": "The provider needs a full address here, starting with https:// (or http://), not a path alone."
+        "redirectNotAbsolute": "The provider needs a full address here, starting with https:// (or http://), not a path alone.",
+        "kc": {
+          "title": "Client",
+          "create": "Create in Keycloak",
+          "reuse": "Use a client created by the dashboard",
+          "hand": "Enter an existing client",
+          "provider": "Provider",
+          "clientId": "Client ID",
+          "clientIdHelp": "Proposed from the route's name. The connection adds its own prefix in front.",
+          "pkce": "Use PKCE",
+          "validation": "How is a token checked?",
+          "introspection": "Ask the provider (introspection)",
+          "jwks": "Check its signature (JWKS)",
+          "clientCredentials": "Let applications also sign in with their own credentials (client credentials)",
+          "redirectHelp": "Registered with the provider as the only address people may return to. Confirm or edit it.",
+          "createBtn": "Create client",
+          "saveFirst": "Save the route once first: the client is tied to it.",
+          "pick": "Client",
+          "pickPlaceholder": "Pick a client",
+          "useBtn": "Use this client",
+          "filled": "Client {{id}} is filled in: discovery, client ID and secret.",
+          "gone": "This client no longer exists in Keycloak.",
+          "createFailed": "The client could not be created.",
+          "useFailed": "The client could not be read."
+        }
       },
       "configIdTyped": "Plugin Config ID"
     },

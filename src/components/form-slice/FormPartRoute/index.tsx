@@ -17,7 +17,7 @@
 import { Divider, InputWrapper, Text } from '@mantine/core';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { useFormContext, useWatch } from 'react-hook-form';
+import { type Control, type FieldValues, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -36,6 +36,7 @@ import { FormItemTextarea } from '@/components/form/Textarea';
 import { FormItemTextInput } from '@/components/form/TextInput';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX } from '@/types/schema/apisix';
+import type { OidcRouteContext } from '@/utils/keycloak-client';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 import { zGetDefault } from '@/utils/zod';
 
@@ -254,6 +255,18 @@ export const FormSectionUpstream = (
 export const FormSectionPlugins = () => {
   const { t } = useTranslation();
   const { control } = useFormContext<RoutePostType>();
+  // The route as the form holds it, for the Keycloak client picker. The id is
+  // only there once the route has been saved (the schema leaves it out).
+  const [id, name, host, hosts, uri, uris] = useWatch({
+    control: control as unknown as Control<FieldValues>,
+    name: ['id', 'name', 'host', 'hosts', 'uri', 'uris'],
+  }) as [string?, string?, string?, string[]?, string?, string[]?];
+  const route: OidcRouteContext = {
+    id: id || undefined,
+    name,
+    hosts: [...(host ? [host] : []), ...(hosts ?? [])],
+    uris: [...(uri ? [uri] : []), ...(uris ?? [])],
+  };
 
   // Whether this role may list plugin configs at all. The page permissions
   // mirror RolePermissions in api/internal/models/models.go, where a developer
@@ -326,7 +339,7 @@ export const FormSectionPlugins = () => {
         />
       )}
       <Divider my="xs" label={t('or')} />
-      <FormItemPlugins name="plugins" />
+      <FormItemPlugins name="plugins" route={route} />
     </FormSection>
   );
 };

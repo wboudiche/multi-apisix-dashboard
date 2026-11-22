@@ -502,7 +502,31 @@
         "noKeys": "İmzaladığı tokenları denetlemek için anahtar (jwks_uri) yayımlamıyor.",
         "redirectHelp": "Sağlayıcının, oturum açtıktan sonra kişileri geri gönderdiği yer: bu rotanın kapsadığı bir yolda tam bir adres. Aynısını sağlayıcıya kaydedin.",
         "redirectMissing": "Bu olmadan ağ geçidi kişileri her sayfanın kendi adresine /.apisix/redirect ekleyerek geri gönderir; bu sayfadan sayfaya değişir ve çoğu sağlayıcı bunu reddeder.",
-        "redirectNotAbsolute": "Sağlayıcının burada yalnızca bir yol değil, https:// (veya http://) ile başlayan tam bir adrese ihtiyacı var."
+        "redirectNotAbsolute": "Sağlayıcının burada yalnızca bir yol değil, https:// (veya http://) ile başlayan tam bir adrese ihtiyacı var.",
+        "kc": {
+          "title": "İstemci",
+          "create": "Keycloak'ta oluştur",
+          "reuse": "Panelin oluşturduğu bir istemciyi kullan",
+          "hand": "Var olan bir istemciyi gir",
+          "provider": "Sağlayıcı",
+          "clientId": "İstemci kimliği",
+          "clientIdHelp": "Rotanın adından önerildi. Bağlantı kendi önekini başa ekler.",
+          "pkce": "PKCE kullan",
+          "validation": "Bir belirteç nasıl doğrulanır?",
+          "introspection": "Sağlayıcıya sor (introspection)",
+          "jwks": "İmzasını denetle (JWKS)",
+          "clientCredentials": "Uygulamaların kendi kimlik bilgileriyle de oturum açmasına izin ver (client credentials)",
+          "redirectHelp": "Sağlayıcıya, kullanıcıların dönebileceği tek adres olarak kaydedilir. Onaylayın ya da düzenleyin.",
+          "createBtn": "İstemci oluştur",
+          "saveFirst": "Önce rotayı bir kez kaydedin: istemci ona bağlanır.",
+          "pick": "İstemci",
+          "pickPlaceholder": "Bir istemci seçin",
+          "useBtn": "Bu istemciyi kullan",
+          "filled": "{{id}} istemcisi dolduruldu: discovery, istemci kimliği ve gizli anahtar.",
+          "gone": "Bu istemci artık Keycloak'ta yok.",
+          "createFailed": "İstemci oluşturulamadı.",
+          "useFailed": "İstemci okunamadı."
+        }
       },
       "configIdTyped": "Plugin Config ID"
     },

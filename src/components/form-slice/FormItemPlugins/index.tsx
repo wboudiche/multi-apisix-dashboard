@@ -44,6 +44,7 @@ import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 import { RESTRICTION_PLUGIN } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
+import type { OidcRouteContext } from '@/utils/keycloak-client';
 import type { PluginConfigValue } from '@/utils/plugin-priority';
 import { effectivePriority, inExecutionOrder } from '@/utils/plugin-priority';
 
@@ -59,12 +60,14 @@ export type FormItemPluginsProps<T extends FieldValues> = InputWrapperProps &
   UseControllerProps<T> & {
     onChange?: (value: Record<string, unknown>) => void;
     context?: PluginContext;
+    /** The route these plugins belong to; lets openid-connect make a client for it. */
+    route?: OidcRouteContext;
   } & Partial<NeedPluginSchema>;
 
 export const FormItemPlugins = <T extends FieldValues>(
   props: FormItemPluginsProps<T>
 ) => {
-  const { context, ...propsWithoutContext } = props;
+  const { context, route, ...propsWithoutContext } = props;
   const {
     controllerProps,
     restProps: { schema = 'schema', ...restProps },
@@ -277,6 +280,7 @@ export const FormItemPlugins = <T extends FieldValues>(
           onEdit={(name) => pluginsOb.on('edit', name)}
         />
         <PluginEditorDrawer
+          route={route}
           showPriority
           showClients={context !== 'consumer' && schema === 'schema'}
           // Edited by its consumer_schema on a consumer: not from the

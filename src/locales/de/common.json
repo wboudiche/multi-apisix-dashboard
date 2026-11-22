@@ -502,7 +502,31 @@
         "noKeys": "Er veröffentlicht keine Schlüssel (jwks_uri), um die von ihm signierten Tokens zu prüfen.",
         "redirectHelp": "Wohin der Anbieter die Personen nach der Anmeldung zurückschickt: eine vollständige Adresse auf einem Pfad, den diese Route abdeckt. Registrieren Sie dieselbe beim Anbieter.",
         "redirectMissing": "Ohne sie schickt das Gateway die Personen an die Adresse der jeweiligen Seite mit angehängtem /.apisix/redirect zurück, die sich von Seite zu Seite ändert: Die meisten Anbieter lehnen das ab.",
-        "redirectNotAbsolute": "Der Anbieter braucht hier eine vollständige Adresse, die mit https:// (oder http://) beginnt, nicht nur einen Pfad."
+        "redirectNotAbsolute": "Der Anbieter braucht hier eine vollständige Adresse, die mit https:// (oder http://) beginnt, nicht nur einen Pfad.",
+        "kc": {
+          "title": "Client",
+          "create": "In Keycloak anlegen",
+          "reuse": "Einen vom Dashboard angelegten Client verwenden",
+          "hand": "Einen vorhandenen Client eingeben",
+          "provider": "Anbieter",
+          "clientId": "Client-ID",
+          "clientIdHelp": "Aus dem Namen der Route vorgeschlagen. Die Verbindung setzt ihr eigenes Präfix davor.",
+          "pkce": "PKCE verwenden",
+          "validation": "Wie wird ein Token geprüft?",
+          "introspection": "Beim Anbieter nachfragen (Introspection)",
+          "jwks": "Die Signatur prüfen (JWKS)",
+          "clientCredentials": "Anwendungen auch mit eigenen Zugangsdaten anmelden lassen (Client Credentials)",
+          "redirectHelp": "Beim Anbieter als einzige Adresse eingetragen, zu der Nutzer zurückkehren dürfen. Bestätigen oder ändern Sie sie.",
+          "createBtn": "Client anlegen",
+          "saveFirst": "Speichern Sie die Route zuerst einmal: Der Client ist an sie gebunden.",
+          "pick": "Client",
+          "pickPlaceholder": "Client auswählen",
+          "useBtn": "Diesen Client verwenden",
+          "filled": "Client {{id}} ist eingetragen: Discovery, Client-ID und Secret.",
+          "gone": "Dieser Client existiert in Keycloak nicht mehr.",
+          "createFailed": "Der Client konnte nicht angelegt werden.",
+          "useFailed": "Der Client konnte nicht gelesen werden."
+        }
       },
       "configIdTyped": "Plugin-Konfigurations-ID"
     },

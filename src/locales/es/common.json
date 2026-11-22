@@ -504,7 +504,31 @@
         "noKeys": "No publica claves (jwks_uri) para comprobar los tokens que firma.",
         "redirectHelp": "Adonde el proveedor devuelve a las personas tras iniciar sesión: una dirección completa en una ruta que esta ruta cubre. Registre la misma en el proveedor.",
         "redirectMissing": "Sin ella, la pasarela devuelve a las personas a la dirección de cada página seguida de /.apisix/redirect, que cambia de una página a otra: la mayoría de los proveedores lo rechazan.",
-        "redirectNotAbsolute": "El proveedor necesita aquí una dirección completa, que empiece por https:// (o http://), no solo una ruta."
+        "redirectNotAbsolute": "El proveedor necesita aquí una dirección completa, que empiece por https:// (o http://), no solo una ruta.",
+        "kc": {
+          "title": "Cliente",
+          "create": "Crear en Keycloak",
+          "reuse": "Usar un cliente creado por el panel",
+          "hand": "Introducir un cliente existente",
+          "provider": "Proveedor",
+          "clientId": "ID de cliente",
+          "clientIdHelp": "Propuesto a partir del nombre de la ruta. La conexión añade su propio prefijo delante.",
+          "pkce": "Usar PKCE",
+          "validation": "¿Cómo se comprueba un token?",
+          "introspection": "Preguntar al proveedor (introspección)",
+          "jwks": "Comprobar su firma (JWKS)",
+          "clientCredentials": "Permitir que las aplicaciones también inicien sesión con sus propias credenciales (client credentials)",
+          "redirectHelp": "Se registra en el proveedor como la única dirección a la que se puede volver. Confírmela o edítela.",
+          "createBtn": "Crear cliente",
+          "saveFirst": "Guarde primero la ruta una vez: el cliente queda asociado a ella.",
+          "pick": "Cliente",
+          "pickPlaceholder": "Elija un cliente",
+          "useBtn": "Usar este cliente",
+          "filled": "El cliente {{id}} está rellenado: discovery, ID de cliente y secreto.",
+          "gone": "Este cliente ya no existe en Keycloak.",
+          "createFailed": "No se pudo crear el cliente.",
+          "useFailed": "No se pudo leer el cliente."
+        }
       },
       "configIdTyped": "ID de Configuración de Plugin"
     },
