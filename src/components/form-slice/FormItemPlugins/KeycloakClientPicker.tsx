@@ -210,7 +210,12 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
         </Stack>
       )}
 
-      {choice === 'use' && (
+      {choice === 'use' && needsRoute && (
+        // Not on a route that is not saved yet: the add page keeps its form
+        // as a draft, and the secret this fills in would go with it.
+        <Text size="xs" c="dimmed">{t('form.plugins.oidc.kc.saveFirst')}</Text>
+      )}
+      {choice === 'use' && !needsRoute && (
         <Stack gap="xs">
           <Select
             label={t('form.plugins.oidc.kc.pick')}

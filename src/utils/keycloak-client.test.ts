@@ -57,6 +57,14 @@ describe('proposeClientIdSuffix', () => {
     expect(proposeClientIdSuffix({ name: 'a'.repeat(100), hosts: [], uris: [] })).toHaveLength(64);
     expect(proposeClientIdSuffix({ hosts: [], uris: [] })).toBe('');
   });
+  it('never starts with what the backend refuses first', () => {
+    expect(proposeClientIdSuffix({ name: '.hidden', hosts: [], uris: [] })).toBe('hidden');
+    expect(proposeClientIdSuffix({ name: '_private_api', hosts: [], uris: [] })).toBe('private_api');
+    expect(proposeClientIdSuffix({ name: '._-x', hosts: [], uris: [] })).toBe('x');
+    expect(proposeClientIdSuffix({ name: '...', id: 'r1', hosts: [], uris: [] })).toBe('r1');
+    const long = proposeClientIdSuffix({ name: `${'_'.repeat(70)}abc`, hosts: [], uris: [] });
+    expect(long).toBe('abc');
+  });
 });
 
 describe('applyClientCredentials', () => {

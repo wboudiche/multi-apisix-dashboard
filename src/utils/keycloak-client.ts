@@ -37,13 +37,21 @@ export const proposeRedirectUri = (hosts: string[], uris: string[]): string => {
   return `https://${host}${uri.slice(0, -1)}.apisix/redirect`;
 };
 
-/** What follows the connection's prefix in the client id: the route's name, or its id. */
-export const proposeClientIdSuffix = (route: OidcRouteContext): string =>
-  (route.name?.trim() || route.id || '')
+/**
+ * A client id suffix made of a name: lowercase, what it cannot hold made a
+ * dash, starting with a letter or digit as the backend requires
+ * (^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$), at most 64 long.
+ */
+const toClientIdSuffix = (name: string): string =>
+  name
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/^[._-]+|-+$/g, '')
     .slice(0, 64);
+
+/** What follows the connection's prefix in the client id: the route's name, or its id. */
+export const proposeClientIdSuffix = (route: OidcRouteContext): string =>
+  toClientIdSuffix(route.name?.trim() ?? '') || toClientIdSuffix(route.id ?? '');
 
 /** The plugin configuration with a client's credentials and the settings its mode needs. */
 export const applyClientCredentials = (
