@@ -65,11 +65,6 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
     retry: false,
   });
 
-  const creators = (linked.data ?? []).filter((p) => isAdmin || p.developers_can_create);
-  // The connection picked, else the first one the caller may create with.
-  const idpId = creators.find((p) => p.id === picked)?.id ?? creators[0]?.id ?? '';
-  const reusable = clients.data ?? [];
-
   const [choice, setChoice] = useState<Choice>('hand');
   const [picked, setPicked] = useState('');
   const [suffix, setSuffix] = useState(() => proposeClientIdSuffix(route));
@@ -81,11 +76,20 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
   const [filled, setFilled] = useState('');
   const [problem, setProblem] = useState('');
 
+  // Derived values stay below the state they read.
+  const creators = (linked.data ?? []).filter((p) => isAdmin || p.developers_can_create);
+  // The connection picked, else the first one the caller may create with.
+  const idpId = creators.find((p) => p.id === picked)?.id ?? creators[0]?.id ?? '';
+  const reusable = clients.data ?? [];
+
   const done = (c: ClientCredentials) => {
     onChange(applyClientCredentials(config, c));
     setFilled(c.client_id);
     setProblem('');
     setChoice('hand');
+    // The secret is not kept in the mutation cache.
+    create.reset();
+    use.reset();
   };
 
   const create = useMutation({

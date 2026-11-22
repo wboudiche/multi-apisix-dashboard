@@ -57,11 +57,18 @@ export const applyClientCredentials = (
     client_secret: c.client_secret,
   };
   if (c.mode === 'login') {
+    // What only a token check uses, and a redirect address of an earlier client.
     delete next.bearer_only;
+    delete next.use_jwks;
+    delete next.introspection_endpoint;
+    delete next.redirect_uri;
     next.use_pkce = c.options.pkce;
     if (c.redirect_uri) next.redirect_uri = c.redirect_uri;
     return next;
   }
+  // What only a login uses.
+  delete next.use_pkce;
+  delete next.redirect_uri;
   next.bearer_only = true;
   if (c.options.validation === 'jwks') {
     next.use_jwks = true;
@@ -69,6 +76,7 @@ export const applyClientCredentials = (
   } else {
     delete next.use_jwks;
     if (c.introspection_endpoint) next.introspection_endpoint = c.introspection_endpoint;
+    else delete next.introspection_endpoint;
   }
   return next;
 };

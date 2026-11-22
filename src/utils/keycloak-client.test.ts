@@ -97,4 +97,25 @@ describe('applyClientCredentials', () => {
     });
     expect(next).not.toHaveProperty('use_jwks');
   });
+  it('leaves no token setting behind when switching to a login', () => {
+    const next = applyClientCredentials(
+      { bearer_only: true, use_jwks: true, introspection_endpoint: 'i', redirect_uri: 'https://old/x' },
+      creds({})
+    );
+    expect(next).not.toHaveProperty('bearer_only');
+    expect(next).not.toHaveProperty('use_jwks');
+    expect(next).not.toHaveProperty('introspection_endpoint');
+    expect(next).not.toHaveProperty('redirect_uri');
+    expect(next).toMatchObject({ use_pkce: true });
+  });
+  it('leaves no login setting behind when switching to a token check', () => {
+    const next = applyClientCredentials(
+      { use_pkce: true, redirect_uri: 'https://old/x', introspection_endpoint: 'old' },
+      creds({ mode: 'token', options: { pkce: false, validation: 'jwks', client_credentials: false } })
+    );
+    expect(next).not.toHaveProperty('use_pkce');
+    expect(next).not.toHaveProperty('redirect_uri');
+    expect(next).not.toHaveProperty('introspection_endpoint');
+    expect(next).toMatchObject({ bearer_only: true, use_jwks: true });
+  });
 });
