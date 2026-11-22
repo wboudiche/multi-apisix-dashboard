@@ -174,3 +174,17 @@ test("a viewer's route that uses a plugin config they cannot read shows its id",
     );
   }
 });
+
+test("a viewer who opens another team's proto by its address sees an error, not the proto", async ({
+  page,
+}) => {
+  await permission.loginAs(page, fx().users.viewer.username, fx().users.viewer.password);
+  await permission.switchInstance(page, INSTANCE_NAME);
+  await page.goto(`/ui/protos/detail/${seeded.protos.theirs}`);
+
+  // The detail's 403 ends on the dashboard's error page, as for a route; what
+  // matters here is that nothing of the proto, nor an empty form, is shown.
+  await expect(page.getByText(i18n.t('dashboard.errorTitle'))).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('package e2e')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: i18n.t('form.btn.edit') })).toHaveCount(0);
+});
