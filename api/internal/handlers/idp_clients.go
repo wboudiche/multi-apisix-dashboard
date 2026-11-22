@@ -18,6 +18,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -414,7 +415,25 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 		}
 		created = routeCreateTimes(routes)
 	}
+	// The status variant reads every route of the instance once: statuses
+	// cannot be computed honestly without them.
+	withStatus := c.Query("status") != ""
+	var usedBy map[string][]string
+	if withStatus {
+		inst, err := h.getInstance(ctx, instanceID)
+		if err != nil || inst == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "The instance could not be read"})
+			return
+		}
+		routes, err := h.listRoutes(ctx, inst)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Could not read the routes from the gateway"})
+			return
+		}
+		usedBy = routesUsingClients(routes)
+	}
 	names := map[string]string{}
+	provs := map[string]*models.IdentityProvider{}
 	out := []clientListItem{}
 	for _, e := range entries {
 		if !managedEntry(e) {
@@ -433,6 +452,7 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 			}
 			name = p.Name
 			names[e.IdPID] = name
+			provs[e.IdPID] = p
 		}
 		if name == "" {
 			continue // the connection is gone
@@ -448,12 +468,142 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 		if !mayUseClient(scope, team) {
 			continue
 		}
-		out = append(out, clientListItem{
+		item := clientListItem{
 			UUID: e.KeycloakUUID, ClientID: e.ClientID, IdPID: e.IdPID, IdPName: name,
 			RouteID: e.RouteID, TeamID: team, Mode: e.Mode,
-		})
+		}
+		if withStatus {
+			rep, kcErr := h.keycloak(provs[e.IdPID]).GetClient(ctx, e.KeycloakUUID)
+			item.Routes = usedBy[e.ClientID]
+			item.Status = clientStatus(e, rep, kcErr, item.Routes)
+		}
+		out = append(out, item)
 	}
 	c.JSON(http.StatusOK, out)
+}
+
+// Statuses of a created client, as the list reports them.
+const (
+	statusOK      = "ok"
+	statusNoRoute = "no_route"
+	statusMissing = "missing"
+	statusChanged = "changed"
+	statusUnknown = "unknown"
+)
+
+// routesUsingClients maps each client_id named in a route's openid-connect
+// plugin to the ids of the routes that name it.
+func routesUsingClients(routes []map[string]any) map[string][]string {
+	out := map[string][]string{}
+	for _, r := range routes {
+		plugins, _ := r["plugins"].(map[string]any)
+		oidc, _ := plugins["openid-connect"].(map[string]any)
+		cid, _ := oidc["client_id"].(string)
+		id, ok := r["id"]
+		if cid == "" || !ok || id == nil {
+			continue
+		}
+		out[cid] = append(out[cid], fmt.Sprint(id))
+	}
+	return out
+}
+
+func sameStringSet(a, b []string) bool {
+	set := map[string]bool{}
+	for _, s := range a {
+		set[s] = true
+	}
+	other := map[string]bool{}
+	for _, s := range b {
+		other[s] = true
+	}
+	if len(set) != len(other) {
+		return false
+	}
+	for s := range set {
+		if !other[s] {
+			return false
+		}
+	}
+	return true
+}
+
+// clientStatus says how a created client stands: missing or unreadable in
+// Keycloak, used by no route, changed from what the dashboard made, or fine.
+func clientStatus(e *models.IdPClient, kc *services.ClientRepresentation, kcErr error, usedBy []string) string {
+	if errors.Is(kcErr, services.ErrKeycloakClientMissing) {
+		return statusMissing
+	}
+	if kcErr != nil || kc == nil {
+		return statusUnknown
+	}
+	if len(usedBy) == 0 {
+		return statusNoRoute
+	}
+	want := services.BuildClientRepresentation(e.ClientID, e.Mode, e.Options, e.RedirectURI)
+	const pkce = "pkce.code.challenge.method"
+	if kc.Enabled != want.Enabled ||
+		kc.StandardFlowEnabled != want.StandardFlowEnabled ||
+		kc.ImplicitFlowEnabled != want.ImplicitFlowEnabled ||
+		kc.DirectAccessGrantsEnabled != want.DirectAccessGrantsEnabled ||
+		kc.ServiceAccountsEnabled != want.ServiceAccountsEnabled ||
+		kc.PublicClient != want.PublicClient ||
+		!sameStringSet(kc.RedirectURIs, want.RedirectURIs) ||
+		(e.Mode == "login" && kc.Attributes[pkce] != want.Attributes[pkce]) {
+		return statusChanged
+	}
+	return statusOK
+}
+
+// DeleteClient removes a created client from Keycloak, then from the registry.
+// Admins of the instance only; a client the dashboard does not manage is never
+// touched. It is allowed whatever the status: the caller decides about routes
+// that still use it.
+func (h *IdPHandler) DeleteClient(c *gin.Context) {
+	instanceID, ok := requirePathInstance(c)
+	if !ok {
+		return
+	}
+	if !callerTeamScope(c).isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+	if !h.activeInstance(c, instanceID) {
+		return
+	}
+	ctx := c.Request.Context()
+	entry, err := h.idps.FindClient(ctx, instanceID, c.Param("uuid"))
+	switch {
+	case errors.Is(err, services.ErrIdPNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+		return
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Clients could not be read"})
+		return
+	}
+	if !managedEntry(entry) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+		return
+	}
+	p, err := h.idps.Get(ctx, entry.IdPID)
+	switch {
+	case errors.Is(err, services.ErrIdPNotFound):
+		// No connection, so no Keycloak to clean: drop the entry alone.
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Identity provider request failed"})
+		return
+	default:
+		if err := h.keycloak(p).DeleteClient(ctx, entry.KeycloakUUID); err != nil {
+			keycloakFailure(c, err)
+			return
+		}
+	}
+	if err := h.idps.DeleteClient(ctx, entry); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The client was removed from Keycloak but could not be unregistered"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+	c.Writer.WriteHeaderNow()
 }
 
 // UseClient answers what the openid-connect plugin needs for a client the

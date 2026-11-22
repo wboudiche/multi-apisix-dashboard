@@ -183,6 +183,16 @@ type fakeKC struct {
 	secretErr error
 	deleteErr error
 	calls     int
+	getRep    map[string]*services.ClientRepresentation
+	getErr    map[string]error
+}
+
+func (f *fakeKC) GetClient(_ context.Context, id string) (*services.ClientRepresentation, error) {
+	f.calls++
+	if err := f.getErr[id]; err != nil {
+		return nil, err
+	}
+	return f.getRep[id], nil
 }
 
 func (f *fakeKC) CreateClient(_ context.Context, rep services.ClientRepresentation) (string, error) {
@@ -679,7 +689,7 @@ func TestListClients(t *testing.T) {
 	if strings.Contains(w.Body.String(), "cl-secret") || strings.Contains(w.Body.String(), "s3cr3t") {
 		t.Fatal("secret leaked")
 	}
-	// admin, status=1: same list for now.
+	// admin, status=1: statuses are covered by TestListClientsWithStatus.
 	if w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients); w.Code != 200 {
 		t.Fatalf("admin status=1: %d", w.Code)
 	}
@@ -962,3 +972,159 @@ func TestListClientsDeveloperGatewayErrorIs502(t *testing.T) {
 }
 
 func trimBrackets(h string) string { return strings.Trim(h, "[]") }
+
+func TestRoutesUsingClients(t *testing.T) {
+	oidc := func(id any, cid string) map[string]any {
+		return map[string]any{"id": id, "plugins": map[string]any{"openid-connect": map[string]any{"client_id": cid}}}
+	}
+	got := routesUsingClients([]map[string]any{
+		oidc("r1", "apisix-a"),
+		oidc("r2", "apisix-a"),
+		{"id": "r3", "plugins": map[string]any{"limit-count": map[string]any{}}},
+		oidc("r4", "apisix-b"),
+		{"id": "r5"},
+	})
+	if len(got) != 2 || strings.Join(got["apisix-a"], ",") != "r1,r2" || strings.Join(got["apisix-b"], ",") != "r4" {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestClientStatus(t *testing.T) {
+	login := &models.IdPClient{ClientID: "mad-a", Mode: "login", RedirectURI: "https://app.test/cb", Options: models.IdPClientOptions{PKCE: true}}
+	want := func(e *models.IdPClient) *services.ClientRepresentation {
+		r := services.BuildClientRepresentation(e.ClientID, e.Mode, e.Options, e.RedirectURI)
+		return &r
+	}
+	mod := func(f func(r *services.ClientRepresentation)) *services.ClientRepresentation {
+		r := want(login)
+		f(r)
+		return r
+	}
+	used := []string{"r1"}
+	cases := []struct {
+		name string
+		kc   *services.ClientRepresentation
+		err  error
+		used []string
+		want string
+	}{
+		{"missing", nil, services.ErrKeycloakClientMissing, used, statusMissing},
+		{"missing wins over no route", nil, services.ErrKeycloakClientMissing, nil, statusMissing},
+		{"unknown on timeout", nil, services.ErrKeycloakUnavailable, used, statusUnknown},
+		{"no route", want(login), nil, nil, statusNoRoute},
+		{"changed: direct grants", mod(func(r *services.ClientRepresentation) { r.DirectAccessGrantsEnabled = true }), nil, used, statusChanged},
+		{"changed: redirect uris", mod(func(r *services.ClientRepresentation) { r.RedirectURIs = []string{"https://evil.test/*"} }), nil, used, statusChanged},
+		{"changed: extra redirect uri", mod(func(r *services.ClientRepresentation) { r.RedirectURIs = append(r.RedirectURIs, "https://x.test/") }), nil, used, statusChanged},
+		{"changed: disabled", mod(func(r *services.ClientRepresentation) { r.Enabled = false }), nil, used, statusChanged},
+		{"changed: pkce dropped", mod(func(r *services.ClientRepresentation) { r.Attributes = nil }), nil, used, statusChanged},
+		{"ok", want(login), nil, used, statusOK},
+		{"ok: uris in another order", mod(func(r *services.ClientRepresentation) { r.RedirectURIs = []string{"https://app.test/cb"} }), nil, used, statusOK},
+	}
+	for _, tc := range cases {
+		if got := clientStatus(login, tc.kc, tc.err, tc.used); got != tc.want {
+			t.Errorf("%s: got %s, want %s", tc.name, got, tc.want)
+		}
+	}
+	tok := &models.IdPClient{ClientID: "mad-t", Mode: "token", Options: models.IdPClientOptions{Validation: "jwks", ClientCredentials: true}}
+	if got := clientStatus(tok, want(tok), nil, used); got != statusOK {
+		t.Errorf("token ok: %s", got)
+	}
+}
+
+func TestClientStatusUnknownWhenKeycloakFails(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.seedClient(t, "u2", "r1", "token")
+	f.h.listRoutes = func(context.Context, *models.Instance) ([]map[string]any, error) {
+		return []map[string]any{
+			{"id": "r1", "plugins": map[string]any{"openid-connect": map[string]any{"client_id": "mad-u2"}}},
+		}, nil
+	}
+	rep := services.BuildClientRepresentation("mad-u2", "token", models.IdPClientOptions{Validation: "introspection"}, "")
+	f.kc.getRep = map[string]*services.ClientRepresentation{"u2": &rep}
+	f.kc.getErr = map[string]error{"u1": services.ErrKeycloakUnavailable}
+	w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients)
+	var items []clientListItem
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &items) != nil || len(items) != 2 {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+	by := map[string]clientListItem{}
+	for _, it := range items {
+		by[it.UUID] = it
+	}
+	if by["u1"].Status != statusUnknown || by["u2"].Status != statusOK || strings.Join(by["u2"].Routes, ",") != "r1" {
+		t.Fatalf("items %+v", by)
+	}
+}
+
+func TestListClientsStatusRouteListFailureIs502(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.h.listRoutes = func(context.Context, *models.Instance) ([]map[string]any, error) {
+		return nil, errors.New("down")
+	}
+	if w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients); w.Code != http.StatusBadGateway {
+		t.Fatalf("status %d", w.Code)
+	}
+}
+
+func TestDeleteClientRefusesDeveloper(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.asDeveloper()
+	if w := f.do(t, http.MethodDelete, "", "u1", f.h.DeleteClient); w.Code != http.StatusForbidden {
+		t.Fatalf("status %d", w.Code)
+	}
+	if len(f.kc.deleted) != 0 {
+		t.Fatal("keycloak was called")
+	}
+}
+
+func TestDeleteClient(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	if w := f.do(t, http.MethodDelete, "", "nope", f.h.DeleteClient); w.Code != http.StatusNotFound {
+		t.Fatalf("unknown: %d", w.Code)
+	}
+	// Keycloak down: 502 and the entry stays.
+	f.kc.deleteErr = services.ErrKeycloakUnavailable
+	if w := f.do(t, http.MethodDelete, "", "u1", f.h.DeleteClient); w.Code != http.StatusBadGateway {
+		t.Fatalf("down: %d", w.Code)
+	}
+	if _, err := f.h.idps.FindClient(context.Background(), "i1", "u1"); err != nil {
+		t.Fatalf("entry gone after a failed delete: %v", err)
+	}
+	f.kc.deleteErr = nil
+	if w := f.do(t, http.MethodDelete, "", "u1", f.h.DeleteClient); w.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d %s", w.Code, w.Body)
+	}
+	if strings.Join(f.kc.deleted, ",") != "u1,u1" { // the failed try, then the one that worked
+		t.Fatalf("deleted %v", f.kc.deleted)
+	}
+	if _, err := f.h.idps.FindClient(context.Background(), "i1", "u1"); !errors.Is(err, services.ErrIdPNotFound) {
+		t.Fatalf("entry kept: %v", err)
+	}
+}
+
+func TestDeleteClientNeverTouchesUnmanagedEntry(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	e := &models.IdPClient{IdPID: f.idpID(t), InstanceID: "i1", Prefix: "mad-", ClientID: "other-app", KeycloakUUID: "u9", RouteID: "r1", Mode: "token"}
+	if err := f.h.idps.RecordClient(context.Background(), e); err != nil {
+		t.Fatal(err)
+	}
+	if w := f.do(t, http.MethodDelete, "", "u9", f.h.DeleteClient); w.Code != http.StatusNotFound || len(f.kc.deleted) != 0 {
+		t.Fatalf("status %d deleted %v", w.Code, f.kc.deleted)
+	}
+}
+
+func TestDeleteClientConnectionGone(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.dropIdP(t)
+	if w := f.do(t, http.MethodDelete, "", "u1", f.h.DeleteClient); w.Code != http.StatusNoContent {
+		t.Fatalf("status %d: %s", w.Code, w.Body)
+	}
+	if len(f.kc.deleted) != 0 {
+		t.Fatal("keycloak was called without a connection")
+	}
+}

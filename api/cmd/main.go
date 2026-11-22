@@ -234,6 +234,7 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			protected.POST("/idps/:id/clients", rbac, idpHandler.CreateClient)
 			protected.GET("/instances/:id/oidc-clients", rbac, idpHandler.ListClients)
 			protected.POST("/instances/:id/oidc-clients/:uuid/use", rbac, idpHandler.UseClient)
+			protected.DELETE("/instances/:id/oidc-clients/:uuid", rbac, idpHandler.DeleteClient)
 
 			// Label taxonomy
 			protected.GET("/labels", labelHandler.ListLabels)
