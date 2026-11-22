@@ -379,3 +379,22 @@ test('a client deleted in Keycloak reads "Missing in Keycloak"', async ({ page }
     i18n.t('settings.oidcClients.status.missing')
   );
 });
+
+test('the OIDC clients tab still loads once the routes of this spec are gone', async ({
+  page,
+}) => {
+  const login = madeBy('login', LOGIN_TEST);
+  const token = await loginAdmin();
+  for (const r of Object.values(ROUTES)) {
+    await apiFetch(`${PROXY}/routes/${r.id}`, token, {
+      method: 'DELETE',
+      headers: onLocal(),
+    }).catch(() => undefined);
+  }
+
+  // On an instance with no route left, the gateway answers its route list
+  // with {} rather than [], which the tab once read as a failure (502): a
+  // failed list shows no row at all.
+  await settingsPom.toOidcClients(page);
+  await expect(settingsPom.rowShowing(page, login)).toBeVisible();
+});
