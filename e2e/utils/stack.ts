@@ -36,6 +36,7 @@ export const PORT_DEFAULTS = {
   E2E_CONTROL_PORT: 9090,
   E2E_ADMIN2_PORT: 9181,
   E2E_ETCD_PORT: 2379,
+  E2E_KEYCLOAK_PORT: 8180,
 } as const;
 
 type PortVar = keyof typeof PORT_DEFAULTS;
@@ -58,7 +59,20 @@ export const stack = {
   controlApi: at('E2E_LOCAL_CONTROL_URL', 'E2E_CONTROL_PORT'),
   /** The dashboard's etcd, for specs that write what the API no longer can. */
   etcd: at('E2E_ETCD_URL', 'E2E_ETCD_PORT'),
+  /**
+   * Keycloak, where the dashboard creates OIDC clients. The backend calls it
+   * at this address too, so it must be one the backend reaches.
+   */
+  keycloak: at('E2E_KEYCLOAK_URL', 'E2E_KEYCLOAK_PORT'),
 } as const;
+
+/**
+ * The realm imported into the e2e Keycloak (e2e/server/keycloak/realm-apis.json)
+ * and its service account, which may manage the realm's clients.
+ */
+export const KEYCLOAK_REALM = 'apis';
+export const KEYCLOAK_ADMIN_CLIENT_ID = 'apisix-dashboard';
+export const KEYCLOAK_ADMIN_CLIENT_SECRET = 'e2e-dashboard-secret';
 
 /** The admin key both gateways in the e2e stack share (e2e/server/apisix_conf.yml). */
 export const APISIX_ADMIN_KEY = 'edd1c9f034335f136f87ad84b625c8f1';

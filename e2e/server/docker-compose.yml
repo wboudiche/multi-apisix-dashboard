@@ -53,6 +53,7 @@ services:
     #   E2E_CONTROL_PORT  <-> E2E_LOCAL_CONTROL_URL
     #   E2E_ADMIN2_PORT   <-> E2E_STAGING_APISIX_URL
     #   E2E_ETCD_PORT     <-> E2E_ETCD_URL, and the backend's ETCD_ENDPOINTS
+    #   E2E_KEYCLOAK_PORT <-> E2E_KEYCLOAK_URL
     ports:
       # The gateway, not only the Admin API: a route test sends a request
       # through it, and the backend reaches it from the host (#152).
@@ -119,6 +120,28 @@ services:
       ETCD_LISTEN_CLIENT_URLS: 'http://0.0.0.0:2379'
     ports:
       - '${E2E_ETCD_PORT:-2379}:2379'
+    networks:
+      - apisix
+
+  # The identity provider the dashboard creates OIDC clients in. The realm
+  # `apis` is imported at start: a confidential client `apisix-dashboard`
+  # whose service account holds realm-management's manage-clients, which is
+  # what a connection declared in Settings needs. Reached from the host - the
+  # backend calls it, the gateways never do - so the backend and the specs use
+  # the same address (E2E_KEYCLOAK_PORT <-> E2E_KEYCLOAK_URL).
+  #
+  # start-dev: an in-memory H2 store, no TLS, no hostname to configure. The
+  # realm is imported again on every start, so nothing outlives the container.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: ['start-dev', '--import-realm']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    ports:
+      - '${E2E_KEYCLOAK_PORT:-8180}:8080'
     networks:
       - apisix
 
