@@ -1,0 +1,342 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package services
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
+)
+
+// fakeKV is an in-memory kvStore. Like EtcdClient, GetJSON leaves dest untouched
+// for a missing key. failPut makes every PutJSON fail.
+type fakeKV struct {
+	data    map[string][]byte
+	failPut bool
+}
+
+func newFakeKV() *fakeKV { return &fakeKV{data: map[string][]byte{}} }
+
+func (f *fakeKV) GetJSON(_ context.Context, key string, dest interface{}) error {
+	v, ok := f.data[key]
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(v, dest)
+}
+
+func (f *fakeKV) PutJSON(_ context.Context, key string, value interface{}) error {
+	if f.failPut {
+		return errors.New("put failed")
+	}
+	b, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	f.data[key] = b
+	return nil
+}
+
+func (f *fakeKV) Delete(_ context.Context, key string) error {
+	delete(f.data, key)
+	return nil
+}
+
+func (f *fakeKV) List(_ context.Context, prefix string) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	for k, v := range f.data {
+		if strings.HasPrefix(k, prefix) {
+			out[k] = v
+		}
+	}
+	return out, nil
+}
+
+func validIdP() *models.IdentityProvider {
+	return &models.IdentityProvider{
+		Name:              "corp",
+		Type:              models.IdPTypeKeycloak,
+		BaseURL:           "https://sso.example.com",
+		Realm:             "corp",
+		AdminClientID:     "dashboard",
+		AdminClientSecret: "s3cret-value",
+		ClientIDPrefix:    "apisix-",
+		InstanceIDs:       []string{"inst-a", "inst-b"},
+	}
+}
+
+func TestValidateIdP(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(p *models.IdentityProvider)
+		ok     bool
+	}{
+		{"valid", func(p *models.IdentityProvider) {}, true},
+		{"type lemonldap", func(p *models.IdentityProvider) { p.Type = "lemonldap" }, false},
+		{"base url without scheme", func(p *models.IdentityProvider) { p.BaseURL = "sso.example.com" }, false},
+		{"base url ends in realms", func(p *models.IdentityProvider) { p.BaseURL = "https://sso/realms/x" }, false},
+		{"empty realm", func(p *models.IdentityProvider) { p.Realm = "" }, false},
+		{"empty admin client id", func(p *models.IdentityProvider) { p.AdminClientID = "" }, false},
+		{"empty admin secret", func(p *models.IdentityProvider) { p.AdminClientSecret = "" }, false},
+		{"uppercase prefix", func(p *models.IdentityProvider) { p.ClientIDPrefix = "Apisix_" }, false},
+		{"empty prefix", func(p *models.IdentityProvider) { p.ClientIDPrefix = "" }, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p := validIdP()
+			c.mutate(p)
+			err := validateIdP(p)
+			if c.ok && err != nil {
+				t.Fatalf("want valid, got %v", err)
+			}
+			if !c.ok {
+				if !errors.Is(err, ErrIdPInvalid) {
+					t.Fatalf("want ErrIdPInvalid, got %v", err)
+				}
+				if strings.Contains(err.Error(), "s3cret-value") {
+					t.Fatalf("error leaks the secret: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestCreateSetsIDTypeAndDates(t *testing.T) {
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	p.Type = ""
+	if err := s.Create(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+	if p.ID == "" || p.Type != models.IdPTypeKeycloak || p.CreatedAt.IsZero() || p.UpdatedAt.IsZero() {
+		t.Fatalf("not initialised: %+v", p)
+	}
+	got, err := s.Get(context.Background(), p.ID)
+	if err != nil || got.Name != "corp" {
+		t.Fatalf("get: %v %+v", err, got)
+	}
+	if _, err := s.Get(context.Background(), "nope"); !errors.Is(err, ErrIdPNotFound) {
+		t.Fatalf("want ErrIdPNotFound, got %v", err)
+	}
+}
+
+func TestUpdateKeepsSecretWhenOmitted(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	if err := s.Create(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	name, empty := "renamed", ""
+	for _, secret := range []*string{nil, &empty} {
+		got, err := s.Update(ctx, p.ID, IdPUpdate{Name: &name, AdminClientSecret: secret})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.AdminClientSecret != "s3cret-value" || got.Name != "renamed" {
+			t.Fatalf("secret/name wrong: %+v", got)
+		}
+	}
+	newSecret := "other"
+	got, err := s.Update(ctx, p.ID, IdPUpdate{AdminClientSecret: &newSecret})
+	if err != nil || got.AdminClientSecret != "other" {
+		t.Fatalf("secret not replaced: %v %+v", err, got)
+	}
+}
+
+func TestUpdateRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	if err := s.Create(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	realm := ""
+	if _, err := s.Update(ctx, p.ID, IdPUpdate{Realm: &realm}); !errors.Is(err, ErrIdPInvalid) {
+		t.Fatalf("want ErrIdPInvalid, got %v", err)
+	}
+	if _, err := s.Update(ctx, "nope", IdPUpdate{}); !errors.Is(err, ErrIdPNotFound) {
+		t.Fatalf("want ErrIdPNotFound, got %v", err)
+	}
+}
+
+func TestUpdateLockedOnceClientsExist(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	if err := s.Create(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordClient(ctx, &models.IdPClient{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u1", ClientID: "apisix-x"}); err != nil {
+		t.Fatal(err)
+	}
+
+	realm, base, prefix := "other", "https://other.example.com", "zz-"
+	for name, u := range map[string]IdPUpdate{
+		"realm":                {Realm: &realm},
+		"base":                 {BaseURL: &base},
+		"prefix":               {ClientIDPrefix: &prefix},
+		"drop linked instance": {InstanceIDs: &[]string{"inst-b"}},
+	} {
+		_, err := s.Update(ctx, p.ID, u)
+		if !errors.Is(err, ErrIdPLocked) {
+			t.Fatalf("%s: want ErrIdPLocked, got %v", name, err)
+		}
+		if !strings.Contains(err.Error(), "1 clients depend on it") {
+			t.Fatalf("%s: count missing: %v", name, err)
+		}
+	}
+
+	name := "renamed"
+	if _, err := s.Update(ctx, p.ID, IdPUpdate{Name: &name}); err != nil {
+		t.Fatalf("name change: %v", err)
+	}
+	same := "corp"
+	if _, err := s.Update(ctx, p.ID, IdPUpdate{Realm: &same}); err != nil {
+		t.Fatalf("unchanged realm must not lock: %v", err)
+	}
+	if _, err := s.Update(ctx, p.ID, IdPUpdate{InstanceIDs: &[]string{"inst-a"}}); err != nil {
+		t.Fatalf("dropping an instance without entries: %v", err)
+	}
+	if _, err := s.Update(ctx, p.ID, IdPUpdate{InstanceIDs: &[]string{"inst-a", "inst-c"}}); err != nil {
+		t.Fatalf("adding an instance: %v", err)
+	}
+}
+
+func TestDeleteRefusedWithClientsUnlessForced(t *testing.T) {
+	ctx := context.Background()
+	kv := newFakeKV()
+	s := NewIdPService(kv)
+	p := validIdP()
+	if err := s.Create(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	other := validIdP()
+	if err := s.Create(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []*models.IdPClient{
+		{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u1"},
+		{IdPID: other.ID, InstanceID: "inst-a", KeycloakUUID: "u2"},
+	} {
+		if err := s.RecordClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Delete(ctx, p.ID, false); !errors.Is(err, ErrIdPHasClients) {
+		t.Fatalf("want ErrIdPHasClients, got %v", err)
+	}
+	if _, err := s.Get(ctx, p.ID); err != nil {
+		t.Fatalf("connection must survive a refused delete: %v", err)
+	}
+	if err := s.Delete(ctx, p.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Get(ctx, p.ID); !errors.Is(err, ErrIdPNotFound) {
+		t.Fatalf("want gone, got %v", err)
+	}
+	left, _ := s.ListClients(ctx, "")
+	if len(left) != 1 || left[0].IdPID != other.ID {
+		t.Fatalf("only the other connection's entry must remain: %+v", left)
+	}
+	if err := s.Delete(ctx, other.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(ctx, "nope", false); !errors.Is(err, ErrIdPNotFound) {
+		t.Fatalf("want ErrIdPNotFound, got %v", err)
+	}
+	// without entries, no force needed
+	free := validIdP()
+	_ = s.Create(ctx, free)
+	if err := s.Delete(ctx, free.ID, false); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestForInstance(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	a := validIdP()
+	a.InstanceIDs = []string{"inst-a"}
+	b := validIdP()
+	b.InstanceIDs = []string{"inst-b"}
+	for _, p := range []*models.IdentityProvider{a, b} {
+		if err := s.Create(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	all, err := s.List(ctx)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("list: %v %d", err, len(all))
+	}
+	got, err := s.ForInstance(ctx, "inst-b")
+	if err != nil || len(got) != 1 || got[0].ID != b.ID {
+		t.Fatalf("for instance: %v %+v", err, got)
+	}
+	none, _ := s.ForInstance(ctx, "inst-z")
+	if len(none) != 0 {
+		t.Fatalf("want none, got %+v", none)
+	}
+}
+
+func TestFindClient(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	_ = s.Create(ctx, p)
+	c := &models.IdPClient{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u1", ClientID: "apisix-x"}
+	if err := s.RecordClient(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	if c.CreatedAt.IsZero() {
+		t.Fatal("CreatedAt not set")
+	}
+	_ = s.RecordClient(ctx, &models.IdPClient{IdPID: p.ID, InstanceID: "inst-b", KeycloakUUID: "u2"})
+
+	got, err := s.FindClient(ctx, "inst-a", "u1")
+	if err != nil || got.ClientID != "apisix-x" {
+		t.Fatalf("find: %v %+v", err, got)
+	}
+	if _, err := s.FindClient(ctx, "inst-b", "u1"); !errors.Is(err, ErrIdPNotFound) {
+		t.Fatalf("wrong instance: want ErrIdPNotFound, got %v", err)
+	}
+	if _, err := s.FindClient(ctx, "inst-a", "zzz"); !errors.Is(err, ErrIdPNotFound) {
+		t.Fatalf("unknown uuid: want ErrIdPNotFound, got %v", err)
+	}
+
+	forA, _ := s.ListClients(ctx, "inst-a")
+	all, _ := s.ListClients(ctx, "")
+	if len(forA) != 1 || len(all) != 2 {
+		t.Fatalf("list clients: %d %d", len(forA), len(all))
+	}
+	if err := s.DeleteClient(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	ids := []string{}
+	rest, _ := s.ListClients(ctx, "")
+	for _, r := range rest {
+		ids = append(ids, r.KeycloakUUID)
+	}
+	sort.Strings(ids)
+	if len(ids) != 1 || ids[0] != "u2" {
+		t.Fatalf("after delete: %v", ids)
+	}
+}
