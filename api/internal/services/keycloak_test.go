@@ -72,7 +72,8 @@ func TestBuildClientRepresentation(t *testing.T) {
 		}
 	}
 	b, _ := json.Marshal(r)
-	if !strings.Contains(string(b), `"publicClient":false`) || !strings.Contains(string(b), `"redirectUris"`) {
+	if !strings.Contains(string(b), `"publicClient":false`) || !strings.Contains(string(b), `"enabled":true`) ||
+		!strings.Contains(string(b), `"implicitFlowEnabled":false`) || !strings.Contains(string(b), `"directAccessGrantsEnabled":false`) || !strings.Contains(string(b), `"redirectUris"`) {
 		t.Fatalf("json: %s", b)
 	}
 }
@@ -206,8 +207,8 @@ func TestKeycloakRefetchesTokenOn401(t *testing.T) {
 	if err := NewKeycloakClient(kcProvider(srv.URL), srv.Client()).DeleteClient(context.Background(), "a"); err != nil {
 		t.Fatal(err)
 	}
-	if tokens != 2 || calls != 2 {
-		t.Fatalf("tokens=%d calls=%d", tokens, calls)
+	if tk, cl := atomic.LoadInt32(&tokens), atomic.LoadInt32(&calls); tk != 2 || cl != 2 {
+		t.Fatalf("tokens=%d calls=%d", tk, cl)
 	}
 }
 
@@ -311,5 +312,64 @@ func TestDiscoveryAndIntrospectionURL(t *testing.T) {
 	}
 	if IntrospectionURL(p) != "https://kc.example/realms/gw/protocol/openid-connect/token/introspect" {
 		t.Fatal(IntrospectionURL(p))
+	}
+}
+
+func TestKeycloakDoesNotFollowRedirects(t *testing.T) {
+	var hit int32
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hit, 1)
+	}))
+	defer other.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/steal", http.StatusTemporaryRedirect)
+	}))
+	defer srv.Close()
+	err := NewKeycloakClient(kcProvider(srv.URL), srv.Client()).TestAccess(context.Background())
+	if err == nil || atomic.LoadInt32(&hit) != 0 {
+		t.Fatalf("err=%v hit=%d", err, hit)
+	}
+}
+
+func TestKeycloakRefetchesTokenInsideExpiryMargin(t *testing.T) {
+	var tokens int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/token") {
+			atomic.AddInt32(&tokens, 1)
+			_, _ = w.Write([]byte(`{"access_token":"tok","expires_in":60}`))
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	c := NewKeycloakClient(kcProvider(srv.URL), srv.Client()).(*keycloakClient)
+	now := time.Now()
+	c.now = func() time.Time { return now }
+	_ = c.DeleteClient(context.Background(), "a")
+	now = now.Add(29 * time.Second)
+	_ = c.DeleteClient(context.Background(), "a")
+	if n := atomic.LoadInt32(&tokens); n != 1 {
+		t.Fatalf("tokens before margin=%d", n)
+	}
+	now = now.Add(2 * time.Second) // 31 s in: inside the 30 s margin
+	_ = c.DeleteClient(context.Background(), "a")
+	if n := atomic.LoadInt32(&tokens); n != 2 {
+		t.Fatalf("tokens after margin=%d", n)
+	}
+}
+
+func TestKeycloakSecond401IsAuthError(t *testing.T) {
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if tokenOK(w, r) {
+			return
+		}
+		atomic.AddInt32(&calls, 1)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+	err := NewKeycloakClient(kcProvider(srv.URL), srv.Client()).DeleteClient(context.Background(), "a")
+	if !errors.Is(err, ErrKeycloakAuth) || atomic.LoadInt32(&calls) != 2 {
+		t.Fatalf("err=%v calls=%d", err, calls)
 	}
 }

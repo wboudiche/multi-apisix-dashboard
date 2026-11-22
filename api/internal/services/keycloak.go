@@ -49,6 +49,7 @@ const tokenExpirySkew = 30 * time.Second
 type ClientRepresentation struct {
 	ID                        string            `json:"id,omitempty"`
 	ClientID                  string            `json:"clientId"`
+	Enabled                   bool              `json:"enabled"`
 	Protocol                  string            `json:"protocol"`
 	PublicClient              bool              `json:"publicClient"`
 	StandardFlowEnabled       bool              `json:"standardFlowEnabled"`
@@ -64,6 +65,7 @@ type ClientRepresentation struct {
 func BuildClientRepresentation(clientID, mode string, o models.IdPClientOptions, redirectURI string) ClientRepresentation {
 	rep := ClientRepresentation{
 		ClientID:     clientID,
+		Enabled:      true,
 		Protocol:     "openid-connect",
 		RedirectURIs: []string{},
 	}
@@ -114,10 +116,14 @@ type keycloakClient struct {
 
 // NewKeycloakClient returns a client for the provider's realm. A nil httpClient uses http.DefaultClient.
 func NewKeycloakClient(p *models.IdentityProvider, httpClient *http.Client) KeycloakAPI {
-	if httpClient == nil {
-		httpClient = http.DefaultClient
+	// Never follow redirects: the token POST carries the client secret and Go
+	// resends a POST body on 307/308. A 3xx comes back as an unexpected status.
+	hc := http.Client{}
+	if httpClient != nil {
+		hc = *httpClient
 	}
-	return &keycloakClient{p: p, http: httpClient, now: time.Now}
+	hc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &keycloakClient{p: p, http: &hc, now: time.Now}
 }
 
 // keycloakReason reads Keycloak's error/errorMessage fields from a body and nothing else.
