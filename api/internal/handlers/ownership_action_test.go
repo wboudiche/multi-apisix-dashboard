@@ -79,3 +79,19 @@ func TestReassignBodyDecoding(t *testing.T) {
 		})
 	}
 }
+
+// A team can be given only what a team can own. Any other type was accepted,
+// and the record written for it was read by nothing but the count that keeps
+// its team from being deleted (#455).
+func TestOnlyTeamOwnedTypesCanBeReassigned(t *testing.T) {
+	for _, resourceType := range []string{"routes", "plugin_configs", "ssls", "protos"} {
+		if !reassignableType(resourceType) {
+			t.Errorf("%q must be reassignable", resourceType)
+		}
+	}
+	for _, resourceType := range []string{"global_rules", "secrets", "plugin_metadata", "", "../routes"} {
+		if reassignableType(resourceType) {
+			t.Errorf("%q must not be reassignable", resourceType)
+		}
+	}
+}

@@ -1236,6 +1236,13 @@ func ownershipActionFor(teamID *string) ownershipAction {
 	}
 }
 
+// reassignableType reports whether a resource type is one a team can be given.
+// A record for any other type is read by nothing - no filter, no write check -
+// but CountByTeam counts it, and a team it names can then not be deleted.
+func reassignableType(resourceType string) bool {
+	return teamScopedResources[resourceType]
+}
+
 // ReassignOwnership changes the team owner of a resource (admin only)
 func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 	jwtRole := middleware.GetRole(c)
@@ -1255,6 +1262,10 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 
 	resourceType := c.Param("resource_type")
 	resourceID := c.Param("resource_id")
+	if !reassignableType(resourceType) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "This resource type is not owned by a team"})
+		return
+	}
 
 	// A pointer, so that an omitted team_id (nil) stays an error while an
 	// explicitly empty one means "detach this resource from its team". A plain
