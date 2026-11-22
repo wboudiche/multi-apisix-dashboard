@@ -62,6 +62,12 @@ test('an auth plugin on a consumer is edited by its consumer schema', async ({ p
   const field = (name: string) => editor.locator('label').filter({ hasText: new RegExp(`^\\*?\\s*${name}$`) });
   await expect(field('key')).toBeVisible();
   await expect(field('header')).toHaveCount(0);
+
+  // Nor the route's example it would start from: header, query and
+  // hide_credentials would be saved on the consumer, where they mean nothing.
+  await editor.locator('label').filter({ hasText: /^JSON$/ }).click();
+  await expect(editor.locator('.monaco-editor').first()).toBeVisible();
+  await expect(editor.getByText('apikey')).toHaveCount(0);
 });
 
 test('a credential is offered only the plugins the gateway takes in one', async ({ page }) => {
@@ -72,6 +78,9 @@ test('a credential is offered only the plugins the gateway takes in one', async 
     await credentialsPom.isCredentialAddPage(page, username);
     const picker = await openPicker(page);
 
+    // The list drawn, so that a card missing below says something.
+    await expect(picker.getByTestId('plugin-key-auth')).toBeVisible();
+    await expect(picker.getByTestId('plugin-limit-count')).toHaveCount(0);
     await picker.getByPlaceholder('Search').fill('key-auth');
     await expect(picker.getByTestId('plugin-key-auth')).toBeVisible();
     // A quota is a consumer's, not a credential's: the gateway refuses it

@@ -104,6 +104,12 @@ export type PluginEditorDrawerProps = Pick<PluginCardListProps, 'mode'> & {
    */
   showClients?: boolean;
   /**
+   * The plugin is edited by another schema than the route's - an auth
+   * plugin on a consumer, by its consumer_schema - so the route-side
+   * example it would start from does not apply.
+   */
+  noTemplate?: boolean;
+  /**
    * The consumer-restriction the route holds now, beside this plugin: the
    * clients section reads who it lets through from it, and changes it.
    */
@@ -123,18 +129,30 @@ const toConfigStr = (p: object): string => {
   return !isEmptyConfig(p) ? JSON.stringify(p, null, 2) : '{}';
 };
 
-const getDefaultConfig = (name: string, config: object): string => {
+/**
+ * The example a plugin starts from: none when it is edited by another schema
+ * than the route's its template was written for - key-auth on a consumer
+ * takes a key, not the header a route reads one from.
+ */
+const templateOf = (name: string, noTemplate?: boolean) =>
+  noTemplate ? undefined : PLUGIN_TEMPLATES.find((tpl) => tpl.plugin === name);
+
+const getDefaultConfig = (name: string, config: object, noTemplate?: boolean): string => {
   if (!isEmptyConfig(config)) return toConfigStr(config);
-  const template = PLUGIN_TEMPLATES.find((tpl) => tpl.plugin === name);
+  const template = templateOf(name, noTemplate);
   if (template && !isEmpty(template.config)) {
     return JSON.stringify(template.config, null, 2);
   }
   return '{}';
 };
 
-const getDefaultConfigObj = (name: string, config: object): Record<string, unknown> => {
+const getDefaultConfigObj = (
+  name: string,
+  config: object,
+  noTemplate?: boolean
+): Record<string, unknown> => {
   if (!isEmptyConfig(config)) return config as Record<string, unknown>;
-  const template = PLUGIN_TEMPLATES.find((tpl) => tpl.plugin === name);
+  const template = templateOf(name, noTemplate);
   if (template && !isEmpty(template.config)) {
     return template.config as Record<string, unknown>;
   }
@@ -155,11 +173,19 @@ const hasFormableProperties = (schema: SchemaObj | undefined): schema is SchemaO
   return Object.keys(schema.properties).some((k) => k !== '_meta');
 };
 
-const SchemaHints = ({ schema, name }: { schema: SchemaObj; name: string }) => {
+const SchemaHints = ({
+  schema,
+  name,
+  noTemplate,
+}: {
+  schema: SchemaObj;
+  name: string;
+  noTemplate?: boolean;
+}) => {
   const { t } = useTranslation();
   const [exampleOpened, { toggle: toggleExample }] = useDisclosure(false);
 
-  const template = PLUGIN_TEMPLATES.find((tpl) => tpl.plugin === name);
+  const template = templateOf(name, noTemplate);
 
   const requiredFields = useMemo(() => {
     const req = schema?.required || [];
@@ -244,6 +270,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     restriction,
     restrictionDefaultPriority,
     otherAuthPlugins,
+    noTemplate,
   } = props;
   const { name, config } = plugin;
   const { t } = useTranslation();
@@ -252,13 +279,13 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
 
   const [editorMode, setEditorMode] = useState<string>(canShowForm ? 'form' : 'json');
   const [formValue, setFormValue] = useState<Record<string, unknown>>(() =>
-    getDefaultConfigObj(name, config)
+    getDefaultConfigObj(name, config, noTemplate)
   );
 
   const methods = useForm<{ config: string }>({
     criteriaMode: 'all',
     disabled: mode === 'view',
-    defaultValues: { config: getDefaultConfig(name, config) },
+    defaultValues: { config: getDefaultConfig(name, config, noTemplate) },
   });
 
   // Who may call, as the clients section shows it: read from the route's
@@ -280,7 +307,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
     lastPlugin.restrictionKey !== restrictionKey
   ) {
     setLastPlugin({ name, config, canShowForm, restrictionKey });
-    setFormValue(getDefaultConfigObj(name, config));
+    setFormValue(getDefaultConfigObj(name, config, noTemplate));
     setEditorMode(canShowForm ? 'form' : 'json');
     setAccess(readRestriction(restriction));
   }
@@ -308,8 +335,8 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
   }, [clientsShown, accessChanged, access, restriction]);
 
   useEffect(() => {
-    methods.setValue('config', getDefaultConfig(name, config));
-  }, [config, name, methods, canShowForm]);
+    methods.setValue('config', getDefaultConfig(name, config, noTemplate));
+  }, [config, name, methods, canShowForm, noTemplate]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -487,7 +514,7 @@ export const PluginEditorDrawer = (props: PluginEditorDrawerProps) => {
       )}
 
       {editorMode === 'json' && schemaObj && name && (
-        <SchemaHints schema={schemaObj} name={name} />
+        <SchemaHints schema={schemaObj} name={name} noTemplate={noTemplate} />
       )}
 
       {editorMode === 'form' && canShowForm ? (

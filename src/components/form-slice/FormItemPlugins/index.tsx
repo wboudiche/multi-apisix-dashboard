@@ -279,6 +279,12 @@ export const FormItemPlugins = <T extends FieldValues>(
         <PluginEditorDrawer
           showPriority
           showClients={context !== 'consumer' && schema === 'schema'}
+          // Edited by its consumer_schema on a consumer: not from the
+          // route-side example of its template.
+          noTemplate={
+            context === 'consumer' &&
+            !!pluginsOb.pluginSchemaObj.get(pluginsOb.curPlugin.name)?.consumer_schema
+          }
           restriction={toJS(pluginsOb.__map.get(RESTRICTION_PLUGIN))}
           restrictionDefaultPriority={pluginsOb.priorityDefaults[RESTRICTION_PLUGIN]}
           otherAuthPlugins={pluginsOb.selected.filter(
