@@ -501,7 +501,8 @@
         "redirectHelp": "Sağlayıcının, oturum açtıktan sonra kişileri geri gönderdiği yer: bu rotanın kapsadığı bir yolda tam bir adres. Aynısını sağlayıcıya kaydedin.",
         "redirectMissing": "Bu olmadan ağ geçidi kişileri her sayfanın kendi adresine /.apisix/redirect ekleyerek geri gönderir; bu sayfadan sayfaya değişir ve çoğu sağlayıcı bunu reddeder.",
         "redirectNotAbsolute": "Sağlayıcının burada yalnızca bir yol değil, https:// (veya http://) ile başlayan tam bir adrese ihtiyacı var."
-      }
+      },
+      "configIdTyped": "Plugin Config ID"
     },
     "protos": {
       "content": "İçerik",

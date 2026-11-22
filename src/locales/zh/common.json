@@ -501,7 +501,8 @@
         "redirectHelp": "用户登录后提供方将其送回的地址：此路由所匹配路径上的完整地址。请在提供方处注册相同的地址。",
         "redirectMissing": "若不设置，网关会把用户送回每个页面自身地址加 /.apisix/redirect，该地址随页面变化：大多数提供方会拒绝。",
         "redirectNotAbsolute": "提供方在此需要以 https://（或 http://）开头的完整地址，而不只是路径。"
-      }
+      },
+      "configIdTyped": "插件配置ID"
     },
     "protos": {
       "content": "内容",

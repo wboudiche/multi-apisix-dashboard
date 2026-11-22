@@ -28,9 +28,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { getPluginConfigQueryOptions, getUpstreamQueryOptions } from '@/apis/hooks';
+import { getUpstreamQueryOptions } from '@/apis/hooks';
 import { TestConnectionButton } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
+import { API_PLUGIN_CONFIGS, SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
+import { req } from '@/config/req';
 import { usePermission } from '@/hooks/usePermission';
+import type { APISIXType } from '@/types/schema/apisix';
 import { isResourceEnabled } from '@/utils/status';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 
@@ -86,8 +89,16 @@ export const RoutePreviewSummary = ({ data }: Props) => {
   // as an error over a form with nothing wrong (#189).
   const mayReadConfigs = usePermission().canAccessRoute('/plugin_configs');
   const pluginConfigId = values.plugin_config_id as string | undefined;
+  // Quietly: a config of another team's answers 403 to this role, and a
+  // name it cannot have is no error over a form with nothing wrong.
   const pluginConfigQuery = useQuery({
-    ...getPluginConfigQueryOptions(pluginConfigId ?? ''),
+    queryKey: ['plugin-config-name', pluginConfigId],
+    queryFn: () =>
+      req
+        .get<unknown, APISIXType['RespPluginConfigDetail']>(`${API_PLUGIN_CONFIGS}/${pluginConfigId}`, {
+          headers: { [SKIP_INTERCEPTOR_HEADER]: ['401', '403', '404', '502', '504'] },
+        })
+        .then((r) => r.data),
     enabled: !!pluginConfigId && mayReadConfigs,
     retry: false,
   });

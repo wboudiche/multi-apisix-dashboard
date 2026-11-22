@@ -55,7 +55,8 @@ test('a list hides its ID column until the column setting shows it', async ({ pa
   await expect(table.getByRole('columnheader', { name: 'ID' })).toBeVisible();
 });
 
-test('a detail page shows the ID as a line to copy, not a field', async ({ page }) => {
+test('a detail page shows the ID as a line to copy, not a field', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await uiGoto(page, '/upstreams/detail/$id', { id });
   const field = page.getByRole('textbox', { name: 'ID', exact: true });
   await expect(field).toHaveValue(id);
@@ -63,7 +64,11 @@ test('a detail page shows the ID as a line to copy, not a field', async ({ page 
   await expect
     .poll(() => field.evaluate((el) => getComputedStyle(el).borderTopStyle))
     .toBe('none');
-  await expect(page.getByRole('button', { name: 'Copy' }).first()).toBeVisible();
+  // Usable read-only, and what it copies is the ID.
+  const copy = page.getByRole('button', { name: 'Copy' }).first();
+  await expect(copy).toBeEnabled();
+  await copy.click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(id);
 });
 
 test('a new record\'s ID is generated, and folded away until asked for', async ({ page }) => {

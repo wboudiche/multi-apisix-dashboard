@@ -70,6 +70,7 @@ const IdLine = () => {
         name="id"
         value={id}
         readOnly
+        disabled
         variant="unstyled"
         size="xs"
         className="id-line"
@@ -142,10 +143,11 @@ export const FormSectionGeneralContent = (props: FormSectionGeneralProps) => {
 };
 
 export const FormSectionGeneral = (props: FormSectionGeneralProps) => {
-  const { readOnly = false } = props;
   const { t } = useTranslation();
   return (
-    <FormSection legend={t('form.general.title')} disabled={readOnly}>
+    // Not disabled as a whole: its fields have a fieldset of their own, and
+    // the ID line's copy button, outside it, has to stay usable read-only.
+    <FormSection legend={t('form.general.title')}>
       <FormSectionGeneralContent {...props} />
     </FormSection>
   );

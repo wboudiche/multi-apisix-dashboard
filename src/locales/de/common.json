@@ -501,7 +501,8 @@
         "redirectHelp": "Wohin der Anbieter die Personen nach der Anmeldung zurückschickt: eine vollständige Adresse auf einem Pfad, den diese Route abdeckt. Registrieren Sie dieselbe beim Anbieter.",
         "redirectMissing": "Ohne sie schickt das Gateway die Personen an die Adresse der jeweiligen Seite mit angehängtem /.apisix/redirect zurück, die sich von Seite zu Seite ändert: Die meisten Anbieter lehnen das ab.",
         "redirectNotAbsolute": "Der Anbieter braucht hier eine vollständige Adresse, die mit https:// (oder http://) beginnt, nicht nur einen Pfad."
-      }
+      },
+      "configIdTyped": "Plugin-Konfigurations-ID"
     },
     "protos": {
       "content": "Inhalt",

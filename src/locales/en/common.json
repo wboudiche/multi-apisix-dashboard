@@ -524,7 +524,8 @@
         "redirectHelp": "Where the provider sends people back after they sign in: a full address on a path this route matches. Register the same one with the provider.",
         "redirectMissing": "Without it, the gateway sends people back to each page's own address followed by /.apisix/redirect, which changes from page to page: most providers refuse that.",
         "redirectNotAbsolute": "The provider needs a full address here, starting with https:// (or http://), not a path alone."
-      }
+      },
+      "configIdTyped": "Plugin Config ID"
     },
     "protos": {
       "content": "Content",

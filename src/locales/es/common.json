@@ -503,7 +503,8 @@
         "redirectHelp": "Adonde el proveedor devuelve a las personas tras iniciar sesión: una dirección completa en una ruta que esta ruta cubre. Registre la misma en el proveedor.",
         "redirectMissing": "Sin ella, la pasarela devuelve a las personas a la dirección de cada página seguida de /.apisix/redirect, que cambia de una página a otra: la mayoría de los proveedores lo rechazan.",
         "redirectNotAbsolute": "El proveedor necesita aquí una dirección completa, que empiece por https:// (o http://), no solo una ruta."
-      }
+      },
+      "configIdTyped": "ID de Configuración de Plugin"
     },
     "protos": {
       "content": "Contenido",
