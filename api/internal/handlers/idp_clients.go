@@ -286,6 +286,13 @@ func mayUseClient(scope teamScope, team string) bool {
 	return scope.isAdmin || scope.mayWrite(team)
 }
 
+// managedEntry reports whether a registry entry is one the dashboard may read,
+// return or delete the Keycloak client of: its client_id carries the prefix
+// stored on the entry, and that prefix is not empty.
+func managedEntry(e *models.IdPClient) bool {
+	return e.Prefix != "" && strings.HasPrefix(e.ClientID, e.Prefix)
+}
+
 // clientListItem is one registry entry as the list shows it. Status and Routes
 // are filled by the status variant only.
 type clientListItem struct {
@@ -323,7 +330,8 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 		return
 	}
 	scope := callerTeamScope(c)
-	// A viewer has nothing to use; the status variant is for admins.
+	// len(writable)==0 is the viewers-403 rule: a viewer has nothing to use.
+	// The status variant is for admins.
 	if !scope.isAdmin && (scope.foreign || len(scope.writable) == 0 || c.Query("status") != "") {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 		return
@@ -340,6 +348,9 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 	names := map[string]string{}
 	out := []clientListItem{}
 	for _, e := range entries {
+		if !managedEntry(e) {
+			continue
+		}
 		name, known := names[e.IdPID]
 		if !known {
 			p, err := h.idps.Get(ctx, e.IdPID)
@@ -406,6 +417,10 @@ func (h *IdPHandler) UseClient(c *gin.Context) {
 		return
 	case err != nil:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Clients could not be read"})
+		return
+	}
+	if !managedEntry(entry) {
+		notFound("Client not found")
 		return
 	}
 	team, err := h.routeOwner(ctx, instanceID, entry.RouteID)

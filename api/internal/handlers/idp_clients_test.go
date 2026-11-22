@@ -590,6 +590,7 @@ func TestUseClientScope(t *testing.T) {
 		{"developer missing", func(f *createFixture) { f.asDeveloper() }, "nope", 403},
 		{"developer other team", func(f *createFixture) { f.asDeveloper() }, "u2", 403},
 		{"developer own team", func(f *createFixture) { f.asDeveloper() }, "u1", 200},
+		{"developer unowned route", func(f *createFixture) { f.asDeveloper(); f.seedClient(t, "u3", "unowned", "login") }, "u3", 403},
 		{"viewer", func(f *createFixture) {
 			f.role = models.RoleViewer
 			f.ui = &models.UserInstance{Role: models.RoleViewer, TeamIDs: []string{"t1"}}
@@ -608,6 +609,9 @@ func TestUseClientScope(t *testing.T) {
 			t.Errorf("%s: status %d: %s", tc.name, w.Code, w.Body)
 		}
 		if tc.status == 403 {
+			if f.kc.calls != 0 {
+				t.Errorf("%s: keycloak got %d calls", tc.name, f.kc.calls)
+			}
 			forbidden = append(forbidden, w.Body.String())
 		}
 	}
@@ -691,5 +695,49 @@ func TestListClientsSkipsDeletedConnection(t *testing.T) {
 	w := f.do(t, http.MethodGet, "", "", f.h.ListClients)
 	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != "[]" {
 		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+}
+
+func TestManagedEntry(t *testing.T) {
+	cases := []struct {
+		name string
+		e    models.IdPClient
+		want bool
+	}{
+		{"prefixed", models.IdPClient{Prefix: "mad-", ClientID: "mad-x"}, true},
+		{"without the prefix", models.IdPClient{Prefix: "mad-", ClientID: "admin-cli"}, false},
+		{"empty prefix", models.IdPClient{Prefix: "", ClientID: "mad-x"}, false},
+	}
+	for _, tc := range cases {
+		if got := managedEntry(&tc.e); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestUseAndListRefuseTamperedEntry(t *testing.T) {
+	for _, role := range []string{models.RoleSuperAdmin, models.RoleDeveloper} {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.seedClient(t, "u1", "r1", "login")
+		e, err := f.h.idps.FindClient(context.Background(), "i1", "u1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.ClientID = "realm-management"
+		if err := f.h.idps.RecordClient(context.Background(), e); err != nil {
+			t.Fatal(err)
+		}
+		if role == models.RoleDeveloper {
+			f.asDeveloper()
+		}
+		want := map[string]int{models.RoleSuperAdmin: 404, models.RoleDeveloper: 403}[role]
+		if w := f.do(t, http.MethodPost, "", "u1", f.h.UseClient); w.Code != want || f.kc.calls != 0 {
+			t.Errorf("%s: use %d, %d keycloak calls", role, w.Code, f.kc.calls)
+		}
+		if role == models.RoleSuperAdmin {
+			if w := f.do(t, http.MethodGet, "", "", f.h.ListClients); strings.TrimSpace(w.Body.String()) != "[]" {
+				t.Errorf("list offers it: %s", w.Body)
+			}
+		}
 	}
 }
