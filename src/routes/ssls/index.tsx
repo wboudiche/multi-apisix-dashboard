@@ -23,18 +23,16 @@ import { useAtomValue } from 'jotai';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getSSLListQueryOptions, useSSLList } from '@/apis/hooks';
-import { getSSLListReq } from '@/apis/ssls';
+import { getEverySSLQueryOptions, getSSLListQueryOptions, useListTeamId, useSSLList } from '@/apis/hooks';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { NameOrId } from '@/components/page/NameOrId';
 import PageHeader from '@/components/page/PageHeader';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
-import { API_SSLS, PAGE_SIZE_MAX } from '@/config/constant';
+import { API_SSLS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import i18n from '@/config/i18n';
-import { reqFor } from '@/config/req';
 import { rowId, useTableRowSelection } from '@/hooks/useTableRowSelection';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
@@ -80,9 +78,11 @@ function RouteComponent() {
   // says nothing about the certificate expiring on page three, while reading
   // like a total - and a gateway with forty certificates is exactly where this
   // is worth having (#145).
+  // Kept under the team that narrows the list too (#455): a pick in the header
+  // moves the banner with the table.
+  const listTeamId = useListTeamId();
   const { data: everySSL } = useQuery({
-    queryKey: ['ssls', currentInstanceId, 'all'],
-    queryFn: () => getSSLListReq(reqFor(currentInstanceId), { page: 1, page_size: PAGE_SIZE_MAX }),
+    ...getEverySSLQueryOptions(currentInstanceId, listTeamId),
     staleTime: 60_000,
   });
 
