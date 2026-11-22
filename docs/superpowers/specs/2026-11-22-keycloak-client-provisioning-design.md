@@ -249,7 +249,12 @@ APISIX keeps a `create_time` sent in a request body, so the dashboard's proxy
 strips `create_time` and `update_time` from every write to `routes` (the
 collection and one route): the value is not caller-writable, APISIX sets it on
 a create and keeps the previous one on an update. For a developer, the list and
-`use` answer 502 when the gateway cannot be read.
+`use` answer 502 when the gateway cannot be read. The same proxy checks a route
+write body is exactly one JSON object (400 otherwise) and forwards the object it
+checked, not the raw bytes. A successful delete of a route also sets
+`route_create_time` to 0 on the entries made for it (they keep their `route_id`
+and become admin-only), so a route re-created under the same id within the same
+second inherits nothing.
 
 ### Route form
 

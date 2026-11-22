@@ -315,6 +315,29 @@ func (s *IdPService) FindClient(ctx context.Context, instanceID, uuid string) (*
 	return nil, ErrIdPNotFound
 }
 
+// DetachRoute clears the route create time of every entry of an instance made
+// for the route, once the route is deleted: a route later created under the
+// same id, even within the same second, then inherits nothing. The entries keep
+// their route id, and are admin-only from then on. It returns how many changed.
+func (s *IdPService) DetachRoute(ctx context.Context, instanceID, routeID string) (int, error) {
+	entries, err := s.ListClients(ctx, instanceID)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, c := range entries {
+		if c.RouteID != routeID || c.RouteCreateTime == 0 {
+			continue
+		}
+		c.RouteCreateTime = 0
+		if err := s.store.PutJSON(ctx, models.IdPClientKey(c.IdPID, c.KeycloakUUID), c); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
 func (s *IdPService) DeleteClient(ctx context.Context, c *models.IdPClient) error {
 	return s.store.Delete(ctx, models.IdPClientKey(c.IdPID, c.KeycloakUUID))
 }

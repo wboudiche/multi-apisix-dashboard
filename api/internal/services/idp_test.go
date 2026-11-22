@@ -437,3 +437,37 @@ func TestUpdateRedirectDomainsNeedsNoSecretAndIsNotLocked(t *testing.T) {
 		t.Fatalf("want invalid, got %v", err)
 	}
 }
+
+func TestDetachRoute(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	_ = s.Create(ctx, p)
+	for _, c := range []*models.IdPClient{
+		{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u1", RouteID: "r1", RouteCreateTime: 100},
+		{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u2", RouteID: "r1", RouteCreateTime: 100},
+		{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u3", RouteID: "r2", RouteCreateTime: 100},
+		{IdPID: p.ID, InstanceID: "inst-b", KeycloakUUID: "u4", RouteID: "r1", RouteCreateTime: 100},
+	} {
+		if err := s.RecordClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n, err := s.DetachRoute(ctx, "inst-a", "r1")
+	if err != nil || n != 2 {
+		t.Fatalf("n=%d err=%v", n, err)
+	}
+	want := map[string]int64{"u1": 0, "u2": 0, "u3": 100, "u4": 100}
+	all, _ := s.ListClients(ctx, "")
+	for _, c := range all {
+		if c.RouteCreateTime != want[c.KeycloakUUID] {
+			t.Errorf("%s: create time %d", c.KeycloakUUID, c.RouteCreateTime)
+		}
+		if c.KeycloakUUID == "u1" && c.RouteID != "r1" {
+			t.Errorf("route id lost: %q", c.RouteID)
+		}
+	}
+	if n, err := s.DetachRoute(ctx, "inst-a", "r1"); err != nil || n != 0 {
+		t.Fatalf("second detach: n=%d err=%v", n, err)
+	}
+}

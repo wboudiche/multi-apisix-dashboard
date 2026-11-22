@@ -88,7 +88,6 @@ func main() {
 	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService)
 	teamHandler := handlers.NewTeamHandler(teamService, ownershipService, authService)
 	overviewHandler := handlers.NewOverviewHandler(overviewService)
-	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService)
 	upstreamHandler := handlers.NewUpstreamHandler()
 	routeTestHandler := handlers.NewRouteTestHandler(ownershipService)
 	labelHandler := handlers.NewLabelHandler(labelService, authService)
@@ -96,6 +95,7 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(policyService)
 	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceService)
 	idpService := services.NewIdPService(etcdClient)
+	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService, idpService)
 	readRouteHosts, listRoutes := handlers.NewIdPRouteReaders()
 	idpHandler := handlers.NewIdPHandler(idpService, ownershipService, instanceService,
 		func(p *models.IdentityProvider) services.KeycloakAPI { return services.NewKeycloakClient(p, nil) },

@@ -157,16 +157,35 @@ func TestStripRouteTimestamps(t *testing.T) {
 			t.Errorf("%s: got %s want %s", tc.name, got, tc.want)
 		}
 	}
-	for _, body := range []string{``, `[1]`, `"x"`, `null`, `{bad`, `42`} {
-		got, err := stripRouteTimestamps([]byte(body))
-		if err != nil || string(got) != body {
-			t.Errorf("%q: got %q err %v, want it untouched", body, got, err)
+	// An empty body is APISIX's to answer.
+	if got, err := stripRouteTimestamps(nil); err != nil || len(got) != 0 {
+		t.Errorf("empty: got %q err %v", got, err)
+	}
+	// Anything that is not exactly one JSON object Go can read is refused, so
+	// APISIX never reads a body the proxy did not check.
+	for _, body := range []string{
+		`[1]`, `"x"`, `null`, `42`, `{bad`,
+		`{"uri":"/a","priority":0x0,"create_time":1}`,
+		`{"uri":"/a","priority":NaN}`,
+		`{"uri":"/a","priority":Infinity}`,
+		"{\"uri\":\"/a\tb\"}",
+		`{"uri":"/a"} {"create_time":1}`,
+		`{"uri":"/a"}x`,
+		`{"uri":"/a","uri":`,
+	} {
+		if got, err := stripRouteTimestamps([]byte(body)); err == nil {
+			t.Errorf("%q: accepted as %q", body, got)
 		}
 	}
-	// Unmodified bodies keep their exact bytes.
-	in := `{ "uri" : "/a" }`
-	if got, _ := stripRouteTimestamps([]byte(in)); string(got) != in {
-		t.Errorf("rewrote a body with nothing to strip: %s", got)
+	// What is forwarded is the re-marshalled object, numbers exact.
+	got, err := stripRouteTimestamps([]byte(`{ "n" : 1.10, "big": 12345678901234567890, "html": "<a&b>", "create_time": 1 }`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"n":1.10`, `"big":12345678901234567890`, `"html":"<a&b>"`} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("%s lacks %s", got, want)
+		}
 	}
 }
 
@@ -177,8 +196,8 @@ func TestStripsRouteTimestampsFor(t *testing.T) {
 	}{
 		{"POST", "routes", "/routes", true},
 		{"PUT", "routes", "/routes/r1", true},
-		{"PATCH", "routes", "/routes/r1", true},
 		{"PUT", "routes", "/routes", true},
+		{"PATCH", "routes", "/routes/r1", false}, // not routed in main.go
 		{"PATCH", "routes", "/routes/r1/uri", false},
 		{"GET", "routes", "/routes/r1", false},
 		{"DELETE", "routes", "/routes/r1", false},
@@ -188,6 +207,27 @@ func TestStripsRouteTimestampsFor(t *testing.T) {
 	for _, tc := range cases {
 		if got := stripsRouteTimestampsFor(tc.method, tc.rtype, tc.path); got != tc.want {
 			t.Errorf("%s %s: got %v want %v", tc.method, tc.path, got, tc.want)
+		}
+	}
+}
+
+func TestDetachesRoute(t *testing.T) {
+	cases := []struct {
+		method, rtype, id, path string
+		status                  int
+		want                    bool
+	}{
+		{"DELETE", "routes", "r1", "/routes/r1", 200, true},
+		{"DELETE", "routes", "r1", "/routes/r1", 404, false},
+		{"DELETE", "routes", "r1", "/routes/r1", 500, false},
+		{"DELETE", "routes", "", "/routes", 200, false},
+		{"DELETE", "routes", "r1", "/routes/r1/sub", 200, false},
+		{"DELETE", "services", "s1", "/services/s1", 200, false},
+		{"PUT", "routes", "r1", "/routes/r1", 200, false},
+	}
+	for _, tc := range cases {
+		if got := detachesRoute(tc.method, tc.rtype, tc.id, tc.path, tc.status); got != tc.want {
+			t.Errorf("%s %s %d: got %v want %v", tc.method, tc.path, tc.status, got, tc.want)
 		}
 	}
 }
