@@ -37,7 +37,7 @@ func TestOrphanedOwnership(t *testing.T) {
 		"/ownership/live/routes/r-present":  team,
 		"/ownership/live/routes/r-gone":     team,
 		"/ownership/live/consumers/alice":   team,
-		"/ownership/live/ssls/s1":           team,
+		"/ownership/live/global_rules/g1":   team,
 		"/ownership/live/services/unlisted": team,
 		"/ownership/dead/routes/r1":         team,
 		"/ownership/dead/secrets/vault":     team,
@@ -57,8 +57,8 @@ func TestOrphanedOwnership(t *testing.T) {
 
 	want := []OrphanedOwnership{
 		{Key: "/ownership/dead/secrets/vault", InstanceID: "dead", ResourceType: "secrets", ResourceID: "vault", TeamID: "t1", Reason: OwnershipTypeNotShared},
+		{Key: "/ownership/live/global_rules/g1", InstanceID: "live", ResourceType: "global_rules", ResourceID: "g1", TeamID: "t1", Reason: OwnershipTypeNotShared},
 		{Key: "/ownership/live/routes/r-gone", InstanceID: "live", ResourceType: "routes", ResourceID: "r-gone", TeamID: "t1", Reason: OwnershipResourceGone},
-		{Key: "/ownership/live/ssls/s1", InstanceID: "live", ResourceType: "ssls", ResourceID: "s1", TeamID: "t1", Reason: OwnershipTypeNotShared},
 		{Key: "/ownership/removed/routes/r1", InstanceID: "removed", ResourceType: "routes", ResourceID: "r1", TeamID: "t1", Reason: OwnershipInstanceGone},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -132,7 +132,7 @@ func TestJudgeOwnership(t *testing.T) {
 		"/ownership/live/services/outside":  team,
 		"/ownership/off/routes/x":           team,
 		"/ownership/garbled/routes/y":       team,
-		"/ownership/garbled/ssls/z":         team,
+		"/ownership/garbled/global_rules/z": team,
 		"/ownership/down/consumers/c":       team,
 		"/ownership/down/routes/r":          team,
 		"/ownership/down/upstreams/u":       team,
@@ -159,7 +159,7 @@ func TestJudgeOwnership(t *testing.T) {
 		keys = append(keys, o.Key+" "+o.Reason)
 	}
 	wantKeys := []string{
-		"/ownership/garbled/ssls/z " + OwnershipTypeNotShared,
+		"/ownership/garbled/global_rules/z " + OwnershipTypeNotShared,
 		"/ownership/live/routes/gone " + OwnershipResourceGone,
 	}
 	if !reflect.DeepEqual(keys, wantKeys) {
