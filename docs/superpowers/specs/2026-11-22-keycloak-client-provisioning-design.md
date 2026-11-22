@@ -142,6 +142,11 @@ secret, name, other instances and the developer setting stay editable. Without
 this, existing entries would point at the wrong realm or fall outside the
 prefix and could no longer be managed.
 
+Deleting an instance drops the registry entries of its clients and unlinks it
+from every connection (`IdPService.ForgetInstance`): neither could be undone
+by hand once the instance is gone. The Keycloak clients stay in Keycloak, and
+their client ids are logged for the operator to remove there.
+
 ### Calling Keycloak
 
 A small client in `api/internal/services` (`keycloak.go`):
@@ -154,6 +159,17 @@ A small client in `api/internal/services` (`keycloak.go`):
 - Secret: `GET .../clients/{uuid}/client-secret`.
 - Read for drift: `GET .../clients/{uuid}`; 404 means gone.
 - Delete: `DELETE .../clients/{uuid}`.
+
+One client per connection is kept (rebuilt when the connection's `updated_at`
+changes), so its token serves every request; concurrent callers share one
+token fetch, none waits past its own deadline, and a failed fetch is answered
+for 5 s without asking again. The status list's Keycloak reads share one 30 s
+deadline, and a connection found unreachable is not asked again in that list;
+rows not reached read "unknown".
+
+Created clients keep Keycloak's default `fullScopeAllowed: true` (R6): their
+tokens carry the user's realm roles, as a client made by hand in the console
+would. Narrowing roles and scopes is left to the roles/scopes follow-up.
 
 The service account needs the `manage-clients` role of `realm-management` in
 that realm (documented in the Settings tab's help text). Recommended to the
@@ -200,6 +216,12 @@ admin of the instance, or a developer and `developers_can_create` is on; the
 route exists and the caller may write it (its owning team is one they write
 to, the same rule as the proxy, `api/internal/handlers/caller_scope.go`); the
 client id is valid (Keycloak's charset, length) and prefixed.
+
+In login mode the redirect URI is an absolute http(s) URL without wildcard,
+fragment or credentials, and, when the route (or its service) has hosts, its
+host is one of them, case ignored. A route host `*.x.y` accepts a redirect
+host with exactly one more label (`a.x.y`; not `x.y`, not `a.b.x.y`), as APISIX
+matches it.
 
 *Security-review call (R8):* a developer writes the hosts of their own routes, so
 binding a developer's login client to the route's hosts alone binds it to data
