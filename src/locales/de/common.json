@@ -1256,7 +1256,6 @@
       "maxLengthBelowMin": "Die Höchstlänge darf nicht kleiner als die Mindestlänge sein.",
       "negativeValue": "Anzahlen und Zeiträume dürfen nicht negativ sein."
     },
-    "nothingToManage": "Für Ihre Rolle gibt es hier auf dieser Instanz nichts zu verwalten.",
     "idp": {
       "title": "Identitätsanbieter",
       "add": "Identitätsanbieter hinzufügen",
@@ -1300,6 +1299,29 @@
       "deleteTitle": "Identitätsanbieter löschen",
       "deleteConfirm": "{{name}} löschen? Die zugehörigen Clients in Keycloak bleiben unberührt.",
       "deleteAnyway": "Trotzdem löschen"
+    },
+    "oidcClients": {
+      "title": "OIDC-Clients",
+      "help": "Die für diese Instanz aus dem Dashboard erstellten Clients und die Routen, die sie verwenden. Beim Löschen wird der Client auch in Keycloak entfernt.",
+      "empty": "Noch kein OIDC-Client aus dem Dashboard erstellt.",
+      "loadFailed": "Die OIDC-Clients konnten nicht geladen werden.",
+      "column": {
+        "clientId": "Client-ID",
+        "provider": "Anbieter"
+      },
+      "status": {
+        "ok": "In Verwendung",
+        "noRoute": "Keine Route",
+        "missing": "In Keycloak fehlt",
+        "changed": "In Keycloak geändert",
+        "unknown": "Unbekannt",
+        "unknownHelp": "Keycloak konnte nicht gelesen werden, daher ist der Zustand dieses Clients unbekannt."
+      },
+      "deleteTitle": "OIDC-Client löschen",
+      "deleteConfirm": "Den Client {{name}} löschen? Er wird in Keycloak und im Dashboard entfernt.",
+      "deleteConfirmRoutes": "Den Client {{name}} löschen? Er wird in Keycloak und im Dashboard entfernt, und diese Routen können danach niemanden mehr anmelden: {{routes}}.",
+      "deleted": "OIDC-Client gelöscht",
+      "deleteFailed": "Der OIDC-Client konnte nicht gelöscht werden"
     }
   },
   "sources": {

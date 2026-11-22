@@ -19,12 +19,16 @@ import { describe, expect, it } from 'vitest';
 import { settingsTabsFor } from './tabs';
 
 describe('the tabs of the settings page', () => {
-  it('are the super admin\'s: policy and identity providers', () => {
-    expect(settingsTabsFor('super_admin')).toEqual(['password-policy', 'identity-providers']);
+  it('are the super admin\'s: policy, identity providers and OIDC clients', () => {
+    expect(settingsTabsFor('super_admin')).toEqual([
+      'password-policy',
+      'identity-providers',
+      'oidc-clients',
+    ]);
   });
 
-  it('show an instance admin nothing that is a super admin\'s', () => {
-    expect(settingsTabsFor('instance_admin')).toEqual([]);
+  it('show an instance admin the OIDC clients only', () => {
+    expect(settingsTabsFor('instance_admin')).toEqual(['oidc-clients']);
   });
 
   it('show nobody else anything, and fail closed on an unknown role', () => {

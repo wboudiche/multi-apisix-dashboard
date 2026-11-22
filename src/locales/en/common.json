@@ -1172,7 +1172,6 @@
       "maxLengthBelowMin": "The maximum length cannot be less than the minimum length.",
       "negativeValue": "Counts and durations cannot be negative."
     },
-    "nothingToManage": "There is nothing to manage here for your role on this instance.",
     "idp": {
       "title": "Identity providers",
       "add": "Add identity provider",
@@ -1216,6 +1215,29 @@
       "deleteTitle": "Delete identity provider",
       "deleteConfirm": "Delete {{name}}? Its clients in Keycloak are not touched.",
       "deleteAnyway": "Delete anyway"
+    },
+    "oidcClients": {
+      "title": "OIDC clients",
+      "help": "The clients created from the dashboard for this instance, and the routes that use them. Deleting one removes it from Keycloak too.",
+      "empty": "No OIDC client created from the dashboard yet.",
+      "loadFailed": "The OIDC clients could not be loaded.",
+      "column": {
+        "clientId": "Client ID",
+        "provider": "Provider"
+      },
+      "status": {
+        "ok": "In use",
+        "noRoute": "No route",
+        "missing": "Missing in Keycloak",
+        "changed": "Changed in Keycloak",
+        "unknown": "Unknown",
+        "unknownHelp": "Keycloak could not be read, so the state of this client is not known."
+      },
+      "deleteTitle": "Delete OIDC client",
+      "deleteConfirm": "Delete the client {{name}}? It is removed from Keycloak and from the dashboard.",
+      "deleteConfirmRoutes": "Delete the client {{name}}? It is removed from Keycloak and from the dashboard, and these routes will no longer be able to sign anyone in: {{routes}}.",
+      "deleted": "OIDC client deleted",
+      "deleteFailed": "Failed to delete the OIDC client"
     }
   },
   "sources": {

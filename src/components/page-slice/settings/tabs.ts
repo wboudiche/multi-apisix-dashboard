@@ -16,13 +16,15 @@
  */
 import type { Role } from '@/hooks/usePermission';
 
-export type SettingsTab = 'password-policy' | 'identity-providers';
+export type SettingsTab = 'password-policy' | 'identity-providers' | 'oidc-clients';
 
 /**
  * The tabs of the settings page a role gets, in order. The password policy and
  * the connections are the super admin's; the OIDC clients of the current
- * instance (which admins of that instance get too) join this list with their
- * tab.
+ * instance are also an admin of that instance's.
  */
-export const settingsTabsFor = (role: Role | undefined): SettingsTab[] =>
-  role === 'super_admin' ? ['password-policy', 'identity-providers'] : [];
+export const settingsTabsFor = (role: Role | undefined): SettingsTab[] => {
+  if (role === 'super_admin') return ['password-policy', 'identity-providers', 'oidc-clients'];
+  if (role === 'instance_admin') return ['oidc-clients'];
+  return [];
+};

@@ -1250,7 +1250,6 @@
       "maxLengthBelowMin": "最大长度不能小于最小长度。",
       "negativeValue": "计数和时长不能为负数。"
     },
-    "nothingToManage": "您在此实例上的角色没有可管理的内容。",
     "idp": {
       "title": "身份提供商",
       "add": "添加身份提供商",
@@ -1294,6 +1293,29 @@
       "deleteTitle": "删除身份提供商",
       "deleteConfirm": "删除 {{name}}？它在 Keycloak 中的客户端不受影响。",
       "deleteAnyway": "仍然删除"
+    },
+    "oidcClients": {
+      "title": "OIDC 客户端",
+      "help": "从面板为此实例创建的客户端及使用它们的路由。删除客户端时也会将其从 Keycloak 中移除。",
+      "empty": "尚未从面板创建任何 OIDC 客户端。",
+      "loadFailed": "无法加载 OIDC 客户端。",
+      "column": {
+        "clientId": "客户端 ID",
+        "provider": "提供商"
+      },
+      "status": {
+        "ok": "使用中",
+        "noRoute": "无路由",
+        "missing": "Keycloak 中缺失",
+        "changed": "已在 Keycloak 中更改",
+        "unknown": "未知",
+        "unknownHelp": "无法读取 Keycloak,因此不清楚此客户端的状态。"
+      },
+      "deleteTitle": "删除 OIDC 客户端",
+      "deleteConfirm": "删除客户端 {{name}}?它将从 Keycloak 和面板中移除。",
+      "deleteConfirmRoutes": "删除客户端 {{name}}?它将从 Keycloak 和面板中移除,以下路由将无法再让任何人登录:{{routes}}。",
+      "deleted": "OIDC 客户端已删除",
+      "deleteFailed": "删除 OIDC 客户端失败"
     }
   },
   "sources": {

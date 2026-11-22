@@ -1256,7 +1256,6 @@
       "maxLengthBelowMin": "En uzun uzunluk en kısa uzunluktan küçük olamaz.",
       "negativeValue": "Sayılar ve süreler negatif olamaz."
     },
-    "nothingToManage": "Bu örnekte rolünüz için burada yönetilecek bir şey yok.",
     "idp": {
       "title": "Kimlik sağlayıcılar",
       "add": "Kimlik sağlayıcı ekle",
@@ -1300,6 +1299,29 @@
       "deleteTitle": "Kimlik sağlayıcıyı sil",
       "deleteConfirm": "{{name}} silinsin mi? Keycloak'taki istemcilerine dokunulmaz.",
       "deleteAnyway": "Yine de sil"
+    },
+    "oidcClients": {
+      "title": "OIDC istemcileri",
+      "help": "Bu örnek için panelden oluşturulan istemciler ve onları kullanan rotalar. Birini silmek onu Keycloak'tan da kaldırır.",
+      "empty": "Henüz panelden oluşturulmuş bir OIDC istemcisi yok.",
+      "loadFailed": "OIDC istemcileri yüklenemedi.",
+      "column": {
+        "clientId": "İstemci kimliği",
+        "provider": "Sağlayıcı"
+      },
+      "status": {
+        "ok": "Kullanımda",
+        "noRoute": "Rota yok",
+        "missing": "Keycloak'ta yok",
+        "changed": "Keycloak'ta değişti",
+        "unknown": "Bilinmiyor",
+        "unknownHelp": "Keycloak okunamadığından bu istemcinin durumu bilinmiyor."
+      },
+      "deleteTitle": "OIDC istemcisini sil",
+      "deleteConfirm": "{{name}} istemcisi silinsin mi? Keycloak'tan ve panelden kaldırılır.",
+      "deleteConfirmRoutes": "{{name}} istemcisi silinsin mi? Keycloak'tan ve panelden kaldırılır; şu rotalar artık kimseyi oturum açtıramaz: {{routes}}.",
+      "deleted": "OIDC istemcisi silindi",
+      "deleteFailed": "OIDC istemcisi silinemedi"
     }
   },
   "sources": {

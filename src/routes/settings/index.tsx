@@ -19,6 +19,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
 import { IdentityProvidersTab } from '@/components/page-slice/settings/IdentityProvidersTab';
+import { OidcClientsTab } from '@/components/page-slice/settings/OidcClientsTab';
 import { PasswordPolicyTab } from '@/components/page-slice/settings/PasswordPolicyTab';
 import { settingsTabsFor } from '@/components/page-slice/settings/tabs';
 import { usePermission } from '@/hooks/usePermission';
@@ -38,18 +39,6 @@ const Settings = () => {
     );
   }
 
-  // An admin of the instance reaches the page for the OIDC clients of that
-  // instance; until that tab exists they have nothing here.
-  if (tabs.length === 0) {
-    return (
-      <Container size="sm">
-        <Paper p="xl" withBorder ta="center">
-          <Text c="dimmed">{t('settings.nothingToManage')}</Text>
-        </Paper>
-      </Container>
-    );
-  }
-
   return (
     <Container size="lg">
       <Title order={2} mb="lg">{t('sources.settings')}</Title>
@@ -60,6 +49,9 @@ const Settings = () => {
           )}
           {tabs.includes('identity-providers') && (
             <Tabs.Tab value="identity-providers">{t('settings.idp.title')}</Tabs.Tab>
+          )}
+          {tabs.includes('oidc-clients') && (
+            <Tabs.Tab value="oidc-clients">{t('settings.oidcClients.title')}</Tabs.Tab>
           )}
         </Tabs.List>
         {tabs.includes('password-policy') && (
@@ -72,6 +64,11 @@ const Settings = () => {
         {tabs.includes('identity-providers') && (
           <Tabs.Panel value="identity-providers">
             <IdentityProvidersTab />
+          </Tabs.Panel>
+        )}
+        {tabs.includes('oidc-clients') && (
+          <Tabs.Panel value="oidc-clients">
+            <OidcClientsTab />
           </Tabs.Panel>
         )}
       </Tabs>

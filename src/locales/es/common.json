@@ -1258,7 +1258,6 @@
       "maxLengthBelowMin": "La longitud máxima no puede ser menor que la longitud mínima.",
       "negativeValue": "Los recuentos y las duraciones no pueden ser negativos."
     },
-    "nothingToManage": "No hay nada que gestionar aquí con su rol en esta instancia.",
     "idp": {
       "title": "Proveedores de identidad",
       "add": "Añadir proveedor de identidad",
@@ -1302,6 +1301,29 @@
       "deleteTitle": "Eliminar proveedor de identidad",
       "deleteConfirm": "¿Eliminar {{name}}? Sus clientes en Keycloak no se tocan.",
       "deleteAnyway": "Eliminar de todos modos"
+    },
+    "oidcClients": {
+      "title": "Clientes OIDC",
+      "help": "Los clientes creados desde el panel para esta instancia y las rutas que los usan. Al eliminar uno, también se quita de Keycloak.",
+      "empty": "Aún no se ha creado ningún cliente OIDC desde el panel.",
+      "loadFailed": "No se pudieron cargar los clientes OIDC.",
+      "column": {
+        "clientId": "ID de cliente",
+        "provider": "Proveedor"
+      },
+      "status": {
+        "ok": "En uso",
+        "noRoute": "Sin ruta",
+        "missing": "Falta en Keycloak",
+        "changed": "Modificado en Keycloak",
+        "unknown": "Desconocido",
+        "unknownHelp": "No se pudo leer Keycloak, por lo que se desconoce el estado de este cliente."
+      },
+      "deleteTitle": "Eliminar cliente OIDC",
+      "deleteConfirm": "¿Eliminar el cliente {{name}}? Se quita de Keycloak y del panel.",
+      "deleteConfirmRoutes": "¿Eliminar el cliente {{name}}? Se quita de Keycloak y del panel, y estas rutas ya no podrán autenticar a nadie: {{routes}}.",
+      "deleted": "Cliente OIDC eliminado",
+      "deleteFailed": "No se pudo eliminar el cliente OIDC"
     }
   },
   "sources": {
