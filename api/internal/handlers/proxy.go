@@ -490,6 +490,9 @@ type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
 	idpService       *services.IdPService
+	// getInstance is instanceService.GetInstance, a field so a test can serve
+	// an instance without etcd.
+	getInstance func(ctx context.Context, id string) (*models.Instance, error)
 	// Held per handler rather than per request: paging through an
 	// upstream-filtered list is several requests, and re-reading the whole
 	// service table on each was the cost this exists to remove.
@@ -506,6 +509,7 @@ type ProxyHandler struct {
 
 func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService, idpService *services.IdPService) *ProxyHandler {
 	return &ProxyHandler{
+		getInstance:        instanceService.GetInstance,
 		idpService:         idpService,
 		instanceService:    instanceService,
 		ownershipService:   ownershipService,
@@ -621,7 +625,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
-	instance, err := h.instanceService.GetInstance(c.Request.Context(), instanceID)
+	instance, err := h.getInstance(c.Request.Context(), instanceID)
 	if err != nil || instance == nil || !instance.IsActive {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found or inactive"})
 		return
