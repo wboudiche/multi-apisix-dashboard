@@ -303,8 +303,8 @@ status:
 - **Changed in Keycloak** - redirect URIs or enabled flows differ from the
   registry.
 
-Delete is offered for the first three; a client still used by a route asks for
-a confirmation naming those routes.
+Delete is offered in every state; a client still used by a route asks for a
+confirmation naming those routes.
 
 ### Permissions summary
 
