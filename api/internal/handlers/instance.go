@@ -44,13 +44,30 @@ type InstanceHandler struct {
 	instanceService *services.InstanceService
 	authService     *services.AuthService
 	teamService     *services.TeamService
+	idpService      *services.IdPService
 }
 
-func NewInstanceHandler(instanceService *services.InstanceService, authService *services.AuthService, teamService *services.TeamService) *InstanceHandler {
+func NewInstanceHandler(instanceService *services.InstanceService, authService *services.AuthService, teamService *services.TeamService, idpService *services.IdPService) *InstanceHandler {
 	return &InstanceHandler{
 		instanceService: instanceService,
 		authService:     authService,
 		teamService:     teamService,
+		idpService:      idpService,
+	}
+}
+
+// forgetIdPClients drops the OIDC client registry entries of a deleted
+// instance and unlinks it from every Keycloak connection. The instance is
+// already gone: a failure is logged, not returned, as for the ownership
+// records the proxy cleans up after a delete.
+func (h *InstanceHandler) forgetIdPClients(c *gin.Context, instanceID string) {
+	if h.idpService == nil {
+		return
+	}
+	ctx, cancel := ownershipWriteContext(c.Request.Context())
+	defer cancel()
+	if _, err := h.idpService.ForgetInstance(ctx, instanceID); err != nil {
+		log.Printf("[instance %s] was deleted, but its OIDC clients could not be forgotten: %v", instanceID, err)
 	}
 }
 
@@ -520,9 +537,15 @@ func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 	}
 
 	if err := h.instanceService.DeleteInstance(c.Request.Context(), instanceID); err != nil {
+		// A later cleanup failed after the instance itself went: its clients
+		// are forgotten all the same.
+		if gone, gerr := h.instanceService.GetInstance(c.Request.Context(), instanceID); gerr == nil && gone == nil {
+			h.forgetIdPClients(c, instanceID)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.forgetIdPClients(c, instanceID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Instance deleted"})
 }

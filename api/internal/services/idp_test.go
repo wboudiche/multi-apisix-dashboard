@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
@@ -469,5 +470,65 @@ func TestDetachRoute(t *testing.T) {
 	}
 	if n, err := s.DetachRoute(ctx, "inst-a", "r1"); err != nil || n != 0 {
 		t.Fatalf("second detach: n=%d err=%v", n, err)
+	}
+}
+
+func TestForgetInstance(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	both := validIdP()
+	both.InstanceIDs = []string{"inst-a", "inst-b"}
+	onlyA := validIdP()
+	onlyA.InstanceIDs = []string{"inst-a"}
+	onlyB := validIdP()
+	onlyB.InstanceIDs = []string{"inst-b"}
+	for _, p := range []*models.IdentityProvider{both, onlyA, onlyB} {
+		if err := s.Create(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	before, _ := s.Get(ctx, both.ID)
+	for _, c := range []*models.IdPClient{
+		{IdPID: both.ID, InstanceID: "inst-a", KeycloakUUID: "u1", ClientID: "mad-1", RouteID: "r1"},
+		{IdPID: onlyA.ID, InstanceID: "inst-a", KeycloakUUID: "u2", ClientID: "mad-2", RouteID: "r2"},
+		{IdPID: both.ID, InstanceID: "inst-b", KeycloakUUID: "u3", ClientID: "mad-3", RouteID: "r1"},
+	} {
+		if err := s.RecordClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	n, err := s.ForgetInstance(ctx, "inst-a")
+	if err != nil || n != 2 {
+		t.Fatalf("n=%d err=%v", n, err)
+	}
+	all, _ := s.ListClients(ctx, "")
+	if len(all) != 1 || all[0].KeycloakUUID != "u3" {
+		t.Fatalf("entries left: %+v", all)
+	}
+	for id, want := range map[string]string{both.ID: "inst-b", onlyA.ID: "", onlyB.ID: "inst-b"} {
+		p, err := s.Get(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Join(p.InstanceIDs, ","); got != want {
+			t.Errorf("%s linked to %q, want %q", p.ID, got, want)
+		}
+		if p.AdminClientSecret == "" {
+			t.Errorf("%s lost its secret", p.ID)
+		}
+	}
+	after, _ := s.Get(ctx, both.ID)
+	if !time.Time(after.UpdatedAt).After(time.Time(before.UpdatedAt)) {
+		t.Error("an unlinked connection keeps its updated_at, so its cached client would too")
+	}
+
+	// Nothing of the deleted instance holds the connection any more.
+	none := []string{}
+	if _, err := s.Update(ctx, onlyA.ID, IdPUpdate{InstanceIDs: &none}); err != nil {
+		t.Fatalf("update after forget: %v", err)
+	}
+	if n, err := s.ForgetInstance(ctx, "inst-a"); err != nil || n != 0 {
+		t.Fatalf("second forget: n=%d err=%v", n, err)
 	}
 }

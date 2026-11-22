@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"regexp"
 	"strings"
@@ -334,6 +335,46 @@ func (s *IdPService) DetachRoute(ctx context.Context, instanceID, routeID string
 			return n, err
 		}
 		n++
+	}
+	return n, nil
+}
+
+// ForgetInstance drops what the connections hold of an instance that was
+// deleted: the registry entries of its clients, which nothing could remove
+// any more (deleting a client needs an active instance), and its link to every
+// connection, which those entries would otherwise lock. The Keycloak clients
+// themselves are left in Keycloak; their client ids are logged so an operator
+// can remove them there. It returns how many entries were dropped.
+func (s *IdPService) ForgetInstance(ctx context.Context, instanceID string) (int, error) {
+	entries, err := s.ListClients(ctx, instanceID)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, c := range entries {
+		if err := s.store.Delete(ctx, models.IdPClientKey(c.IdPID, c.KeycloakUUID)); err != nil {
+			return n, err
+		}
+		n++
+		log.Printf("[idp] instance %s was deleted: client %s is no longer tracked and stays in Keycloak",
+			instanceID, c.ClientID)
+	}
+	linked, err := s.ForInstance(ctx, instanceID)
+	if err != nil {
+		return n, err
+	}
+	for _, p := range linked {
+		kept := make([]string, 0, len(p.InstanceIDs))
+		for _, id := range p.InstanceIDs {
+			if id != instanceID {
+				kept = append(kept, id)
+			}
+		}
+		p.InstanceIDs = kept
+		p.UpdatedAt = models.NullTime(time.Now())
+		if err := s.store.PutJSON(ctx, models.KeyPrefixIdPs+p.ID, p); err != nil {
+			return n, err
+		}
 	}
 	return n, nil
 }

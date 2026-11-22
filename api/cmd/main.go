@@ -85,7 +85,6 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService, teamService, policyService)
-	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService)
 	teamHandler := handlers.NewTeamHandler(teamService, ownershipService, authService)
 	overviewHandler := handlers.NewOverviewHandler(overviewService)
 	upstreamHandler := handlers.NewUpstreamHandler()
@@ -95,6 +94,7 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(policyService)
 	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceService)
 	idpService := services.NewIdPService(etcdClient)
+	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService, idpService)
 	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService, idpService)
 	readRouteHosts, listRoutes := handlers.NewIdPRouteReaders()
 	// One Keycloak client per connection, so its service-account token is
