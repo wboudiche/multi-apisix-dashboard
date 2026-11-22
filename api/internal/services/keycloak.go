@@ -104,14 +104,30 @@ func IntrospectionURL(p *models.IdentityProvider) string {
 	return keycloakBase(p) + "/protocol/openid-connect/token/introspect"
 }
 
+// tokenFailureTTL is how long a failed token fetch is answered to every
+// caller without asking Keycloak again, so a dead Keycloak is not hammered.
+const tokenFailureTTL = 5 * time.Second
+
 type keycloakClient struct {
 	p    *models.IdentityProvider
 	http *http.Client
 	now  func() time.Time
 
-	mu     sync.Mutex
-	token  string
-	expiry time.Time
+	// mu guards the fields below and is never held across a network call.
+	mu        sync.Mutex
+	token     string
+	expiry    time.Time
+	failErr   error
+	failUntil time.Time
+	inflight  *tokenFetch
+}
+
+// tokenFetch is one token request every concurrent caller waits on; done is
+// closed once token and err are set.
+type tokenFetch struct {
+	done  chan struct{}
+	token string
+	err   error
 }
 
 // NewKeycloakClient returns a client for the provider's realm. A nil httpClient uses http.DefaultClient.
@@ -179,7 +195,7 @@ func (c *keycloakClient) do(ctx context.Context, method, target string, body []b
 	return resp.StatusCode, resp.Header, b, nil
 }
 
-func (c *keycloakClient) fetchToken(ctx context.Context) (string, error) {
+func (c *keycloakClient) fetchToken(ctx context.Context) (string, time.Time, error) {
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
 		"client_id":     {c.p.AdminClientID},
@@ -188,34 +204,77 @@ func (c *keycloakClient) fetchToken(ctx context.Context) (string, error) {
 	status, _, body, err := c.do(ctx, http.MethodPost, keycloakBase(c.p)+"/protocol/openid-connect/token",
 		[]byte(form.Encode()), "application/x-www-form-urlencoded", "")
 	if err != nil {
-		return "", err
+		return "", time.Time{}, err
 	}
 	if status == http.StatusUnauthorized || (status == http.StatusBadRequest && keycloakReason(body) == "invalid_client") {
-		return "", ErrKeycloakAuth
+		return "", time.Time{}, ErrKeycloakAuth
 	}
 	if status != http.StatusOK {
-		return "", keycloakStatusError("token", status, body)
+		return "", time.Time{}, keycloakStatusError("token", status, body)
 	}
 	var t struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int    `json:"expires_in"`
 	}
 	if json.Unmarshal(body, &t) != nil || t.AccessToken == "" {
-		return "", errors.New("keycloak token: unreadable response")
+		return "", time.Time{}, errors.New("keycloak token: unreadable response")
 	}
-	c.token = t.AccessToken
-	c.expiry = c.now().Add(time.Duration(t.ExpiresIn)*time.Second - tokenExpirySkew)
-	return c.token, nil
+	return t.AccessToken, c.now().Add(time.Duration(t.ExpiresIn)*time.Second - tokenExpirySkew), nil
 }
 
-func (c *keycloakClient) bearer(ctx context.Context, force bool) (string, error) {
+// bearer returns a token for the Admin API. rejected is a token Keycloak just
+// answered 401 to, or "": it is dropped only if it is still the cached one,
+// so a token another caller already replaced is used, not refetched.
+//
+// Concurrent callers share one fetch, and its failure for tokenFailureTTL.
+// The fetch runs on its own context, bounded by keycloakRequestTimeout, so a
+// caller that gives up does not cancel it for the others; each waiter stops
+// waiting when its own context ends.
+func (c *keycloakClient) bearer(ctx context.Context, rejected string) (string, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if !force && c.token != "" && c.now().Before(c.expiry) {
-		return c.token, nil
+	if rejected != "" && c.token == rejected {
+		c.token = ""
 	}
-	c.token = ""
-	return c.fetchToken(ctx)
+	if c.token != "" && c.now().Before(c.expiry) {
+		tok := c.token
+		c.mu.Unlock()
+		return tok, nil
+	}
+	if c.failErr != nil && c.now().Before(c.failUntil) {
+		err := c.failErr
+		c.mu.Unlock()
+		return "", err
+	}
+	f := c.inflight
+	if f == nil {
+		f = &tokenFetch{done: make(chan struct{})}
+		c.inflight = f
+		go c.runFetch(context.WithoutCancel(ctx), f)
+	}
+	c.mu.Unlock()
+
+	select {
+	case <-f.done:
+		return f.token, f.err
+	case <-ctx.Done():
+		return "", fmt.Errorf("%w: %v", ErrKeycloakUnavailable, ctx.Err())
+	}
+}
+
+func (c *keycloakClient) runFetch(ctx context.Context, f *tokenFetch) {
+	tok, expiry, err := c.fetchToken(ctx)
+	c.mu.Lock()
+	if err != nil {
+		c.token = ""
+		c.failErr, c.failUntil = err, c.now().Add(tokenFailureTTL)
+	} else {
+		c.token, c.expiry = tok, expiry
+		c.failErr = nil
+	}
+	c.inflight = nil
+	f.token, f.err = tok, err
+	c.mu.Unlock()
+	close(f.done)
 }
 
 // admin calls the Admin API; a 401 refetches the token once and retries.
@@ -225,11 +284,13 @@ func (c *keycloakClient) admin(ctx context.Context, method, path string, body []
 	if body != nil {
 		ct = "application/json"
 	}
+	rejected := ""
 	for attempt := 0; ; attempt++ {
-		tok, err := c.bearer(ctx, attempt > 0)
+		tok, err := c.bearer(ctx, rejected)
 		if err != nil {
 			return 0, nil, nil, err
 		}
+		rejected = tok
 		status, h, b, err := c.do(ctx, method, target, body, ct, tok)
 		if err != nil {
 			return 0, nil, nil, err
