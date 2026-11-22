@@ -11,11 +11,14 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
+// limitations under the License.
 
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -66,6 +69,7 @@ func TestPublicIdPNeverCarriesSecret(t *testing.T) {
 func TestIdPEndpointsRefuseNonSuperAdmin(t *testing.T) {
 	h := &IdPHandler{idps: services.NewIdPService(nil)}
 	ui := &models.UserInstance{Role: models.RoleInstanceAdmin}
+	dev := &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{"t1"}}
 	for name, fn := range map[string]gin.HandlerFunc{
 		"list":   h.ListIdPs,
 		"create": h.CreateIdP,
@@ -79,6 +83,19 @@ func TestIdPEndpointsRefuseNonSuperAdmin(t *testing.T) {
 		if w.Code != http.StatusForbidden {
 			t.Errorf("%s: status %d, want 403", name, w.Code)
 		}
+		c, w = idpCtx(http.MethodGet, models.RoleDeveloper, dev, "k1", "i1")
+		fn(c)
+		if w.Code != http.StatusForbidden {
+			t.Errorf("%s as developer: status %d, want 403", name, w.Code)
+		}
+	}
+
+	// Positive control: a super admin is not refused (the empty store then
+	// answers something else, but never 403).
+	c, w := idpCtx(http.MethodGet, models.RoleSuperAdmin, nil, "k1", "i1")
+	(&IdPHandler{idps: services.NewIdPService(emptyStore{})}).GetIdP(c)
+	if w.Code == http.StatusForbidden {
+		t.Errorf("super_admin got 403")
 	}
 }
 
@@ -111,4 +128,16 @@ func TestRequirePathInstanceMismatch(t *testing.T) {
 	if id, ok := requirePathInstance(c); !ok || id != "i1" {
 		t.Fatal("match refused")
 	}
+}
+
+// emptyStore is a store with nothing in it.
+type emptyStore struct{}
+
+func (emptyStore) GetJSON(context.Context, string, interface{}) error {
+	return errors.New("not found")
+}
+func (emptyStore) PutJSON(context.Context, string, interface{}) error { return nil }
+func (emptyStore) Delete(context.Context, string) error               { return nil }
+func (emptyStore) List(context.Context, string) (map[string][]byte, error) {
+	return nil, nil
 }

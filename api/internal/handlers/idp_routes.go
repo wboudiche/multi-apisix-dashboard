@@ -11,6 +11,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
+// limitations under the License.
 
 package handlers
 
@@ -24,6 +25,9 @@ import (
 
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
+
+// idpRouteListTimeout bounds the read of every route of an instance.
+const idpRouteListTimeout = 30 * time.Second
 
 // readRouteExists asks the instance's Admin API whether a route exists.
 func readRouteExists(ctx context.Context, inst *models.Instance, routeID string) (bool, error) {
@@ -52,7 +56,7 @@ func readRouteExists(ctx context.Context, inst *models.Instance, routeID string)
 // listInstanceRoutes returns the configuration of every route of the instance,
 // each as the object APISIX holds (the "value" of its list entry).
 func listInstanceRoutes(ctx context.Context, inst *models.Instance) ([]map[string]any, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, idpRouteListTimeout)
 	defer cancel()
 
 	req, err := newAdminRequest(ctx, inst, "/routes")

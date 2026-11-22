@@ -229,10 +229,10 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			// Password policy (readable by any authenticated user)
 			protected.GET("/settings/password-policy", settingsHandler.GetPasswordPolicy)
 
-			// Label taxonomy
 			// Connections linked to an instance: its admins and developers.
 			protected.GET("/instances/:id/idps", rbac, idpHandler.ListLinkedIdPs)
 
+			// Label taxonomy
 			protected.GET("/labels", labelHandler.ListLabels)
 			protected.POST("/labels", labelHandler.CreateLabel)
 			protected.PUT("/labels/:key", labelHandler.UpdateLabel)
