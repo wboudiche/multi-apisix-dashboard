@@ -1141,12 +1141,57 @@
     "save": "Save policy",
     "saved": "Password policy saved",
     "saveError": "Failed to save policy",
-    "accessDenied": "Only Super Admins can edit settings.",
+    "accessDenied": "Settings are for administrators.",
     "invalid": {
       "minLengthTooLow": "The minimum length must be at least {{limit}}.",
       "maxLengthTooHigh": "The maximum length can be at most {{limit}}: bcrypt ignores anything longer.",
       "maxLengthBelowMin": "The maximum length cannot be less than the minimum length.",
       "negativeValue": "Counts and durations cannot be negative."
+    },
+    "nothingToManage": "There is nothing to manage here for your role on this instance.",
+    "idp": {
+      "title": "Identity providers",
+      "add": "Add identity provider",
+      "addTitle": "New identity provider",
+      "editTitle": "Edit identity provider",
+      "empty": "No identity provider yet.",
+      "serviceAccountHelp": "The admin client is a service account. It needs the manage-clients role of realm-management in the realm.",
+      "column": {
+        "name": "Name",
+        "urlRealm": "URL / realm"
+      },
+      "field": {
+        "baseUrl": "Base URL",
+        "baseUrlHint": "The server root, without /realms/<realm>.",
+        "realm": "Realm",
+        "adminClientId": "Admin client ID",
+        "adminClientSecret": "Admin client secret",
+        "secretUnchanged": "Unchanged",
+        "secretHint": "Never shown again. Enter it again whenever the URL, realm or admin client changes.",
+        "prefix": "Client ID prefix",
+        "prefixHint": "Every client created through this connection starts with it.",
+        "instances": "Instances that may use it",
+        "developersCanCreate": "Developers can create clients",
+        "redirectDomains": "Redirect domains",
+        "redirectDomainsHint": "Developers can create login clients only for these domains. With none, they cannot create login clients."
+      },
+      "test": {
+        "button": "Test connection",
+        "ok": "The connection works.",
+        "auth": "Keycloak refused the admin client ID or secret.",
+        "forbidden": "The admin client signed in but may not manage clients in this realm. Give it the manage-clients role.",
+        "unavailable": "Keycloak could not be reached. Check the base URL and the realm.",
+        "failed": "The test could not be run."
+      },
+      "created": "Identity provider created",
+      "updated": "Identity provider saved",
+      "deleted": "Identity provider deleted",
+      "loadFailed": "Failed to load identity providers",
+      "saveFailed": "Failed to save the identity provider",
+      "deleteFailed": "Failed to delete the identity provider",
+      "deleteTitle": "Delete identity provider",
+      "deleteConfirm": "Delete {{name}}? Its clients in Keycloak are not touched.",
+      "deleteAnyway": "Delete anyway"
     }
   },
   "sources": {

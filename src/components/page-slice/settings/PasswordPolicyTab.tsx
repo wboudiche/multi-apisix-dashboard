@@ -1,0 +1,134 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import { Button, Group, NumberInput, Paper, Stack, Switch, Title } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import type { TFunction } from 'i18next';
+import { Fragment, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { type PasswordPolicy, policyApi } from '@/apis/policy';
+
+type PolicyRefusal = { error?: string; code?: string; limit?: number };
+
+/**
+ * Which bound a refused policy crossed, in the reader's language.
+ *
+ * The backend names it with a code as well as an English sentence, and the
+ * sentence was all this screen showed: the most common error on it was English
+ * in every language (#340). A code this build does not know falls back on the
+ * sentence, which still says what is wrong.
+ */
+const refusalMessage = (t: TFunction, body?: PolicyRefusal): string | undefined => {
+  switch (body?.code) {
+    case 'min_length_too_low':
+      return t('settings.invalid.minLengthTooLow', { limit: body.limit });
+    case 'max_length_too_high':
+      return t('settings.invalid.maxLengthTooHigh', { limit: body.limit });
+    case 'max_length_below_min':
+      return t('settings.invalid.maxLengthBelowMin');
+    case 'negative_value':
+      return t('settings.invalid.negativeValue');
+    default:
+      return body?.error;
+  }
+};
+
+export const PasswordPolicyTab = () => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ['password-policy'], queryFn: policyApi.get });
+  const [form, setForm] = useState<PasswordPolicy | null>(null);
+
+  // Take each policy the query answers with — the first load, and the refetch
+  // after a save — while rendering rather than in an effect.
+  const [lastData, setLastData] = useState<PasswordPolicy | undefined>(undefined);
+  if (data !== lastData) {
+    setLastData(data);
+    if (data) setForm(data);
+  }
+
+  const mutation = useMutation({
+    mutationFn: policyApi.update,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['password-policy'] });
+      notifications.show({ message: t('settings.saved'), color: 'green' });
+    },
+    onError: (error) => {
+      // Surface the specific reason the server refused the policy instead of
+      // a generic failure message.
+      const body = axios.isAxiosError(error)
+        ? (error.response?.data as PolicyRefusal | undefined)
+        : undefined;
+      notifications.show({
+        message: refusalMessage(t, body) ?? t('settings.saveError'),
+        color: 'red',
+      });
+    },
+  });
+
+  if (!form) return null;
+
+  const num = (key: keyof PasswordPolicy, label: string) => (
+    <NumberInput
+      label={label}
+      value={form[key] as number}
+      min={0}
+      onChange={(v) => setForm({ ...form, [key]: Number(v) || 0 })}
+    />
+  );
+  const sw = (key: keyof PasswordPolicy, label: string) => (
+    <Switch
+      label={label}
+      checked={form[key] as boolean}
+      onChange={(e) => setForm({ ...form, [key]: e.currentTarget.checked })}
+    />
+  );
+
+  // Built here, not in the JSX: a key written as an argument inside it is read
+  // by the no-literal-string rule as text.
+  const fields = [
+    num('min_length', t('settings.minLength')),
+    num('max_length', t('settings.maxLength')),
+    sw('require_uppercase', t('settings.requireUppercase')),
+    sw('require_lowercase', t('settings.requireLowercase')),
+    sw('require_digit', t('settings.requireDigit')),
+    sw('require_symbol', t('settings.requireSymbol')),
+    num('history_depth', t('settings.historyDepth')),
+    num('expiry_days', t('settings.expiryDays')),
+    num('lockout_threshold', t('settings.lockoutThreshold')),
+    num('lockout_window_minutes', t('settings.lockoutWindowMinutes')),
+  ];
+
+  return (
+    <Paper p="xl" withBorder>
+      <Stack gap="md">
+        <Title order={3}>{t('settings.passwordPolicy')}</Title>
+        {fields.map((field, i) => (
+          <Fragment key={i}>{field}</Fragment>
+        ))}
+        <Group justify="flex-end">
+          <Button loading={mutation.isPending} onClick={() => mutation.mutate(form)}>
+            {t('settings.save')}
+          </Button>
+        </Group>
+      </Stack>
+    </Paper>
+  );
+};
+

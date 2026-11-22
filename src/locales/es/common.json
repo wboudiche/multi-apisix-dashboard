@@ -1227,12 +1227,57 @@
     "save": "Guardar política",
     "saved": "Política de contraseñas guardada",
     "saveError": "Error al guardar la política",
-    "accessDenied": "Solo los Super Administradores pueden editar la configuración.",
+    "accessDenied": "La configuración es solo para administradores.",
     "invalid": {
       "minLengthTooLow": "La longitud mínima debe ser de al menos {{limit}}.",
       "maxLengthTooHigh": "La longitud máxima puede ser como mucho {{limit}}: bcrypt ignora lo que exceda.",
       "maxLengthBelowMin": "La longitud máxima no puede ser menor que la longitud mínima.",
       "negativeValue": "Los recuentos y las duraciones no pueden ser negativos."
+    },
+    "nothingToManage": "No hay nada que gestionar aquí con su rol en esta instancia.",
+    "idp": {
+      "title": "Proveedores de identidad",
+      "add": "Añadir proveedor de identidad",
+      "addTitle": "Nuevo proveedor de identidad",
+      "editTitle": "Editar proveedor de identidad",
+      "empty": "Aún no hay proveedores de identidad.",
+      "serviceAccountHelp": "El cliente de administración es una cuenta de servicio. Necesita el rol manage-clients de realm-management en el realm.",
+      "column": {
+        "name": "Nombre",
+        "urlRealm": "URL / realm"
+      },
+      "field": {
+        "baseUrl": "URL base",
+        "baseUrlHint": "La raíz del servidor, sin /realms/<realm>.",
+        "realm": "Realm",
+        "adminClientId": "ID del cliente de administración",
+        "adminClientSecret": "Secreto del cliente de administración",
+        "secretUnchanged": "Sin cambios",
+        "secretHint": "No se vuelve a mostrar. Vuelva a introducirlo cuando cambie la URL, el realm o el cliente de administración.",
+        "prefix": "Prefijo del ID de cliente",
+        "prefixHint": "Todo cliente creado con esta conexión empieza por él.",
+        "instances": "Instancias que pueden usarla",
+        "developersCanCreate": "Los desarrolladores pueden crear clientes",
+        "redirectDomains": "Dominios de redirección",
+        "redirectDomainsHint": "Los desarrolladores solo pueden crear clientes de inicio de sesión para estos dominios. Sin ninguno, no pueden crearlos."
+      },
+      "test": {
+        "button": "Probar la conexión",
+        "ok": "La conexión funciona.",
+        "auth": "Keycloak rechazó el ID o el secreto del cliente de administración.",
+        "forbidden": "El cliente de administración inició sesión, pero no puede gestionar clientes en este realm. Asígnele el rol manage-clients.",
+        "unavailable": "No se pudo contactar con Keycloak. Compruebe la URL base y el realm.",
+        "failed": "No se pudo ejecutar la prueba."
+      },
+      "created": "Proveedor de identidad creado",
+      "updated": "Proveedor de identidad guardado",
+      "deleted": "Proveedor de identidad eliminado",
+      "loadFailed": "No se pudieron cargar los proveedores de identidad",
+      "saveFailed": "No se pudo guardar el proveedor de identidad",
+      "deleteFailed": "No se pudo eliminar el proveedor de identidad",
+      "deleteTitle": "Eliminar proveedor de identidad",
+      "deleteConfirm": "¿Eliminar {{name}}? Sus clientes en Keycloak no se tocan.",
+      "deleteAnyway": "Eliminar de todos modos"
     }
   },
   "sources": {

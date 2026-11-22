@@ -1225,12 +1225,57 @@
     "save": "Politikayı kaydet",
     "saved": "Şifre politikası kaydedildi",
     "saveError": "Politika kaydedilemedi",
-    "accessDenied": "Ayarları yalnızca Süper Adminler düzenleyebilir.",
+    "accessDenied": "Ayarlar yalnızca yöneticilere açıktır.",
     "invalid": {
       "minLengthTooLow": "En kısa uzunluk en az {{limit}} olmalıdır.",
       "maxLengthTooHigh": "En uzun uzunluk en fazla {{limit}} olabilir: bcrypt daha uzununu yok sayar.",
       "maxLengthBelowMin": "En uzun uzunluk en kısa uzunluktan küçük olamaz.",
       "negativeValue": "Sayılar ve süreler negatif olamaz."
+    },
+    "nothingToManage": "Bu örnekte rolünüz için burada yönetilecek bir şey yok.",
+    "idp": {
+      "title": "Kimlik sağlayıcılar",
+      "add": "Kimlik sağlayıcı ekle",
+      "addTitle": "Yeni kimlik sağlayıcı",
+      "editTitle": "Kimlik sağlayıcıyı düzenle",
+      "empty": "Henüz kimlik sağlayıcı yok.",
+      "serviceAccountHelp": "Yönetici istemcisi bir hizmet hesabıdır. Realm içinde realm-management'ın manage-clients rolüne ihtiyaç duyar.",
+      "column": {
+        "name": "Ad",
+        "urlRealm": "URL / realm"
+      },
+      "field": {
+        "baseUrl": "Temel URL",
+        "baseUrlHint": "Sunucu kökü; /realms/<realm> olmadan.",
+        "realm": "Realm",
+        "adminClientId": "Yönetici istemci kimliği",
+        "adminClientSecret": "Yönetici istemci sırrı",
+        "secretUnchanged": "Değişmedi",
+        "secretHint": "Bir daha gösterilmez. URL, realm veya yönetici istemcisi değiştiğinde yeniden girin.",
+        "prefix": "İstemci kimliği öneki",
+        "prefixHint": "Bu bağlantıyla oluşturulan her istemci bununla başlar.",
+        "instances": "Kullanabilecek örnekler",
+        "developersCanCreate": "Geliştiriciler istemci oluşturabilir",
+        "redirectDomains": "Yönlendirme alan adları",
+        "redirectDomainsHint": "Geliştiriciler oturum açma istemcilerini yalnızca bu alan adları için oluşturabilir. Hiçbiri yoksa oluşturamazlar."
+      },
+      "test": {
+        "button": "Bağlantıyı sına",
+        "ok": "Bağlantı çalışıyor.",
+        "auth": "Keycloak yönetici istemci kimliğini veya sırrını reddetti.",
+        "forbidden": "Yönetici istemcisi oturum açtı ancak bu realm'de istemcileri yönetemiyor. Ona manage-clients rolünü verin.",
+        "unavailable": "Keycloak'a ulaşılamadı. Temel URL'yi ve realm'i kontrol edin.",
+        "failed": "Test çalıştırılamadı."
+      },
+      "created": "Kimlik sağlayıcı oluşturuldu",
+      "updated": "Kimlik sağlayıcı kaydedildi",
+      "deleted": "Kimlik sağlayıcı silindi",
+      "loadFailed": "Kimlik sağlayıcılar yüklenemedi",
+      "saveFailed": "Kimlik sağlayıcı kaydedilemedi",
+      "deleteFailed": "Kimlik sağlayıcı silinemedi",
+      "deleteTitle": "Kimlik sağlayıcıyı sil",
+      "deleteConfirm": "{{name}} silinsin mi? Keycloak'taki istemcilerine dokunulmaz.",
+      "deleteAnyway": "Yine de sil"
     }
   },
   "sources": {

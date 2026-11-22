@@ -1225,12 +1225,57 @@
     "save": "Richtlinie speichern",
     "saved": "Passwortrichtlinie gespeichert",
     "saveError": "Richtlinie konnte nicht gespeichert werden",
-    "accessDenied": "Nur Super-Admins können Einstellungen bearbeiten.",
+    "accessDenied": "Einstellungen sind Administratoren vorbehalten.",
     "invalid": {
       "minLengthTooLow": "Die Mindestlänge muss mindestens {{limit}} betragen.",
       "maxLengthTooHigh": "Die Höchstlänge darf höchstens {{limit}} betragen: bcrypt ignoriert alles Längere.",
       "maxLengthBelowMin": "Die Höchstlänge darf nicht kleiner als die Mindestlänge sein.",
       "negativeValue": "Anzahlen und Zeiträume dürfen nicht negativ sein."
+    },
+    "nothingToManage": "Für Ihre Rolle gibt es hier auf dieser Instanz nichts zu verwalten.",
+    "idp": {
+      "title": "Identitätsanbieter",
+      "add": "Identitätsanbieter hinzufügen",
+      "addTitle": "Neuer Identitätsanbieter",
+      "editTitle": "Identitätsanbieter bearbeiten",
+      "empty": "Noch kein Identitätsanbieter.",
+      "serviceAccountHelp": "Der Admin-Client ist ein Service-Account. Er benötigt im Realm die Rolle manage-clients von realm-management.",
+      "column": {
+        "name": "Name",
+        "urlRealm": "URL / Realm"
+      },
+      "field": {
+        "baseUrl": "Basis-URL",
+        "baseUrlHint": "Die Server-Wurzel, ohne /realms/<realm>.",
+        "realm": "Realm",
+        "adminClientId": "Admin-Client-ID",
+        "adminClientSecret": "Admin-Client-Secret",
+        "secretUnchanged": "Unverändert",
+        "secretHint": "Wird nie wieder angezeigt. Geben Sie es erneut ein, sobald sich URL, Realm oder Admin-Client ändern.",
+        "prefix": "Client-ID-Präfix",
+        "prefixHint": "Jeder über diese Verbindung erstellte Client beginnt damit.",
+        "instances": "Instanzen, die sie nutzen dürfen",
+        "developersCanCreate": "Entwickler dürfen Clients erstellen",
+        "redirectDomains": "Weiterleitungsdomains",
+        "redirectDomainsHint": "Entwickler können Login-Clients nur für diese Domains erstellen. Ohne Eintrag können sie keine Login-Clients erstellen."
+      },
+      "test": {
+        "button": "Verbindung testen",
+        "ok": "Die Verbindung funktioniert.",
+        "auth": "Keycloak hat Admin-Client-ID oder Secret abgelehnt.",
+        "forbidden": "Der Admin-Client konnte sich anmelden, darf in diesem Realm aber keine Clients verwalten. Weisen Sie ihm die Rolle manage-clients zu.",
+        "unavailable": "Keycloak ist nicht erreichbar. Prüfen Sie Basis-URL und Realm.",
+        "failed": "Der Test konnte nicht ausgeführt werden."
+      },
+      "created": "Identitätsanbieter erstellt",
+      "updated": "Identitätsanbieter gespeichert",
+      "deleted": "Identitätsanbieter gelöscht",
+      "loadFailed": "Identitätsanbieter konnten nicht geladen werden",
+      "saveFailed": "Identitätsanbieter konnte nicht gespeichert werden",
+      "deleteFailed": "Identitätsanbieter konnte nicht gelöscht werden",
+      "deleteTitle": "Identitätsanbieter löschen",
+      "deleteConfirm": "{{name}} löschen? Die zugehörigen Clients in Keycloak bleiben unberührt.",
+      "deleteAnyway": "Trotzdem löschen"
     }
   },
   "sources": {
