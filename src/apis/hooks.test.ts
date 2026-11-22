@@ -103,3 +103,20 @@ describe('the instance a query belongs to', () => {
     expect(hooks.getRouteQueryOptions('r1').queryKey).toEqual(['route', 'B', 'r1']);
   });
 });
+
+describe('the every-certificate list behind the SSL banner', () => {
+  // SSLs belong to a team since #455: the banner counted over a list kept under
+  // a key without the team, so a pick in the header left it on the team before
+  // while the table below had moved on.
+  it('is kept and asked for under the team that narrows it', async () => {
+    thisTabOn('A');
+    const forT1 = hooks.getEverySSLQueryOptions('A', 't1');
+    const forT2 = hooks.getEverySSLQueryOptions('A', 't2');
+    expect(forT1.queryKey).not.toEqual(forT2.queryKey);
+
+    await (forT1.queryFn as () => Promise<unknown>)();
+    const last = sent[sent.length - 1];
+    expect(last?.headers.get('X-Team-ID')).toBe('t1');
+    expect(last?.params).toMatchObject({ page: 1, page_size: 500 });
+  });
+});

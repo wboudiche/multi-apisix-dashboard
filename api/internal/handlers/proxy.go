@@ -919,10 +919,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	}
 
 	// An SSL's expiry is not a field APISIX stores - it is what the certificate
-	// says - and ssls are not team-scoped, so this sits outside the block
-	// below rather than inside it (#145).
-	// resourceID == "" rather than isListGET: that flag also means "a list this
-	// proxy filters by team", which ssls are not.
+	// says (#145). Annotated here, before the team filter below, so the rows a
+	// viewer is left with carry it as an admin's do; ssls are team-owned since
+	// #455. resourceID == "" rather than isListGET, so the annotation does not
+	// depend on whether the list is one this proxy filters.
 	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK &&
 		resourceType == "ssls" && resourceID == "" {
 		respBody = annotateCertificateList(respBody)
@@ -1236,6 +1236,13 @@ func ownershipActionFor(teamID *string) ownershipAction {
 	}
 }
 
+// reassignableType reports whether a resource type is one a team can be given.
+// A record for any other type is read by nothing - no filter, no write check -
+// but CountByTeam counts it, and a team it names can then not be deleted.
+func reassignableType(resourceType string) bool {
+	return teamScopedResources[resourceType]
+}
+
 // ReassignOwnership changes the team owner of a resource (admin only)
 func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 	jwtRole := middleware.GetRole(c)
@@ -1255,6 +1262,10 @@ func (h *ProxyHandler) ReassignOwnership(c *gin.Context) {
 
 	resourceType := c.Param("resource_type")
 	resourceID := c.Param("resource_id")
+	if !reassignableType(resourceType) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "This resource type is not owned by a team"})
+		return
+	}
 
 	// A pointer, so that an omitted team_id (nil) stays an error while an
 	// explicitly empty one means "detach this resource from its team". A plain

@@ -62,6 +62,22 @@ func main() {
 	instanceService := services.NewInstanceService(etcdClient)
 	teamService := services.NewTeamService(etcdClient)
 	ownershipService := services.NewOwnershipService(etcdClient)
+	// Once per etcd, before anything is served: plugin configs, SSLs and protos
+	// became team-owned in #455, and the records old writes left for them named
+	// a team nobody chose. Fatal: served without it, those records would go on
+	// deciding who sees what, and a backend that cannot reach etcd here serves
+	// nothing anyway. The next start tries again - the marker is set last.
+	// Bounded: the etcd client retries an unreachable endpoint forever, so
+	// without a deadline the start hung here instead of failing.
+	migrateCtx, cancelMigrate := context.WithTimeout(context.Background(), 30*time.Second)
+	dropped, err := ownershipService.DropRecordsFromBeforeTeamOwnership(migrateCtx)
+	cancelMigrate()
+	if err != nil {
+		log.Fatalf("Could not drop the ownership records written before #455: %v", err)
+	}
+	if dropped > 0 {
+		log.Printf("Dropped %d ownership record(s) of plugin configs, SSLs or protos written before they were team-owned (#455)", dropped)
+	}
 	labelService := services.NewLabelService(etcdClient)
 	maintenanceService := services.NewMaintenanceService(etcdClient)
 	overviewService := services.NewOverviewService(instanceService, ownershipService)

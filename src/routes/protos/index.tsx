@@ -24,18 +24,23 @@ import { getProtoListQueryOptions, useProtoList } from '@/apis/hooks';
 import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import PageHeader from '@/components/page/PageHeader';
+import { TeamListFilter } from '@/components/page/TeamListFilter';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_PROTOS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { rowId, useTableRowSelection } from '@/hooks/useTableRowSelection';
+import { useTeamColumn } from '@/hooks/useTeamColumn';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 
 function RouteComponent() {
   const { t } = useTranslation();
 
-  const { data, isLoading, refetch, pagination, listKey } = useProtoList();
+  const { data, isLoading, refetch, pagination, listKey, setParams } = useProtoList();
+  const search = Route.useSearch();
+  // Whose each proto is, and which have nobody's (#455).
+  const teamColumn = useTeamColumn<APISIXType['RespProtoList']['data']['list'][number]>();
   // Never more than the rows on screen: see useRowSelection (#371).
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
@@ -53,6 +58,7 @@ function RouteComponent() {
         key: 'id',
         valueType: 'text',
       },
+      teamColumn,
       {
         title: t('table.actions'),
         valueType: 'option',
@@ -75,7 +81,7 @@ function RouteComponent() {
         ],
       },
     ];
-  }, [t, refetch]);
+  }, [t, refetch, teamColumn]);
 
   return (
     <>
@@ -91,6 +97,12 @@ function RouteComponent() {
           pagination={pagination}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{
+            filter: (
+              <TeamListFilter
+                value={search.team_id}
+                onChange={(team) => setParams({ team_id: team, page: 1 })}
+              />
+            ),
             menu: {
               type: 'inline',
               items: [

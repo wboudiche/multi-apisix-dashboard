@@ -961,7 +961,7 @@
       "success": "Takım başarıyla yeniden atandı",
       "error": "Takım yeniden atanamadı",
       "noTeam": "Takım yok",
-      "unassignWarning": "Takımı kaldırmak bu rotayı takımsız bırakır. Bir yönetici yeniden atayana kadar yönetici olmayan hiçbir listede görünmez.",
+      "unassignWarning": "Takımı kaldırmak bu kaynağı takımsız bırakır. Bir yönetici yeniden atayana kadar yönetici olmayan hiçbir listede görünmez.",
       "unassignConfirm": "Takımı kaldır",
       "unassignSuccess": "Takım başarıyla kaldırıldı",
       "unassignError": "Takım kaldırılamadı"
@@ -1273,7 +1273,8 @@
     "previousPage": "Önceki sayfa",
     "nextPage": "Sonraki sayfa",
     "firstPage": "İlk sayfa",
-    "lastPage": "Son sayfa"
+    "lastPage": "Son sayfa",
+    "filterByTeam": "Takıma göre filtrele"
   },
   "upstreams": {
     "health": "Durum",

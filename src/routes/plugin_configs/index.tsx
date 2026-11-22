@@ -25,18 +25,23 @@ import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { NameOrId } from '@/components/page/NameOrId';
 import PageHeader from '@/components/page/PageHeader';
+import { TeamListFilter } from '@/components/page/TeamListFilter';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_PLUGIN_CONFIGS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import { rowId, rowNameOrId, useTableRowSelection } from '@/hooks/useTableRowSelection';
+import { useTeamColumn } from '@/hooks/useTeamColumn';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
 import { idColumnHidden } from '@/utils/id-column';
 
 function PluginConfigsList() {
   const { t } = useTranslation();
-  const { data, isLoading, refetch, pagination, listKey } = usePluginConfigList();
+  const { data, isLoading, refetch, pagination, listKey, setParams } = usePluginConfigList();
+  const search = Route.useSearch();
+  // Whose each plugin config is, and which have nobody's (#455).
+  const teamColumn = useTeamColumn<APISIXType['RespPluginConfigItem']>();
   // Never more than the rows on screen: see useRowSelection (#371).
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
@@ -78,6 +83,7 @@ function PluginConfigsList() {
           return new Date(Number(text) * 1000).toISOString();
         },
       },
+      teamColumn,
       {
         title: t('table.actions'),
         valueType: 'option',
@@ -100,7 +106,7 @@ function PluginConfigsList() {
         ],
       },
     ];
-  }, [refetch, t]);
+  }, [refetch, t, teamColumn]);
 
   return (
     <AntdConfigProvider>
@@ -114,6 +120,12 @@ function PluginConfigsList() {
         pagination={pagination}
         cardProps={{ bodyStyle: { padding: 0 } }}
         toolbar={{
+          filter: (
+            <TeamListFilter
+              value={search.team_id}
+              onChange={(team) => setParams({ team_id: team, page: 1 })}
+            />
+          ),
           menu: {
             type: 'inline',
             items: [

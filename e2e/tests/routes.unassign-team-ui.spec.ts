@@ -84,7 +84,7 @@ test('warns before detaching a route, then leaves it owned by no team', async ({
 
   await expect(
     dialog.getByText(
-      'Removing the team leaves this route owned by no team. It disappears from every non-admin list until an admin assigns it again.'
+      'Removing the team leaves this resource owned by no team. It disappears from every non-admin list until an admin assigns it again.'
     )
   ).toBeVisible();
 

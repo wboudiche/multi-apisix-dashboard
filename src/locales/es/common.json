@@ -963,7 +963,7 @@
       "success": "Equipo reasignado correctamente",
       "error": "No se ha podido reasignar el equipo",
       "noTeam": "Sin equipo",
-      "unassignWarning": "Al quitar el equipo, esta ruta deja de pertenecer a ninguno. Desaparece de todas las listas que no sean de administrador hasta que un administrador la vuelva a asignar.",
+      "unassignWarning": "Al quitar el equipo, este recurso deja de pertenecer a ninguno. Desaparece de todas las listas que no sean de administrador hasta que un administrador lo vuelva a asignar.",
       "unassignConfirm": "Quitar el equipo",
       "unassignSuccess": "Equipo quitado correctamente",
       "unassignError": "No se ha podido quitar el equipo"
@@ -1275,7 +1275,8 @@
     "previousPage": "Página anterior",
     "nextPage": "Página siguiente",
     "firstPage": "Primera página",
-    "lastPage": "Última página"
+    "lastPage": "Última página",
+    "filterByTeam": "Filtrar por equipo"
   },
   "upstreams": {
     "health": "Estado",

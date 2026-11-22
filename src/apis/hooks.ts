@@ -20,7 +20,7 @@ import { useAtomValue } from 'jotai';
 
 import { getRouteListReq, getRouteReq } from '@/apis/routes';
 import { getUpstreamListReq, getUpstreamReq } from '@/apis/upstreams';
-import { SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
+import { PAGE_SIZE_MAX, SKIP_INTERCEPTOR_HEADER } from '@/config/constant';
 import { reqFor } from '@/config/req';
 import { currentInstanceIdAtom, selectedInstanceId } from '@/stores/instance';
 import { listTeamId, listTeamIdAtom } from '@/stores/team';
@@ -119,6 +119,10 @@ const TEAM_OWNED_LISTS = new Set([
   'consumers',
   'consumer_groups',
   'stream_routes',
+  // Team-owned since #455: a viewer's list of these is their teams' alone.
+  'plugin_configs',
+  'ssls',
+  'protos',
 ]);
 
 /**
@@ -304,6 +308,13 @@ export const usePluginConfigList = genUseList(
 export const getSSLQueryOptions = genDetailQueryOptions('ssl', getSSLReq);
 export const getSSLListQueryOptions = genListQueryOptions('ssls', getSSLListReq);
 export const useSSLList = genUseList('/ssls/', getSSLListQueryOptions);
+/**
+ * Every certificate on the instance the caller may see, not the page shown:
+ * what the SSL page's expiry banner counts (#145). Under the list's own key, so
+ * it follows the team that narrows SSLs since they belong to one (#455).
+ */
+export const getEverySSLQueryOptions = (instanceId: string, teamId: string) =>
+  getSSLListQueryOptions({ page: 1, page_size: PAGE_SIZE_MAX }, instanceId, teamId);
 
 export const getConsumerQueryOptions = genDetailQueryOptions(
   'consumer',

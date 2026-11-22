@@ -84,7 +84,7 @@ test('lists the records with nothing to own, and purges only the keys it is sent
   const token = await loginAdmin();
   const local = fx().localInstanceId;
   const resourceGone = await seedRecord(local, 'routes', randomId('e2e-gone-route'));
-  const notShared = await seedRecord(local, 'ssls', randomId('e2e-ssl'));
+  const notShared = await seedRecord(local, 'global_rules', randomId('e2e-global-rule'));
   const instanceGone = await seedRecord(randomId('e2e-gone-instance'), 'routes', 'r1');
 
   // A record the proxy writes for a route that exists.

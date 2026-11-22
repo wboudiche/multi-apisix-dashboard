@@ -313,6 +313,13 @@ func NormalizeTeamIDs(ids []string) []string {
 // a team (tracked in the ownership store). Reads of these must be filtered to
 // the caller's team for non-admins. Catalog endpoints like plugins/labels are
 // not team-owned and are intentionally excluded so they are never filtered.
+//
+// Plugin configs, SSLs and protos each serve one team's traffic, so a viewer
+// sees only their teams' (#455); only an admin writes them. Global rules and
+// plugin metadata stay instance-wide: they act on all of the gateway's traffic,
+// and hiding them would leave a team unable to tell why its routes behave as
+// they do. Secrets are not here yet: /secrets/<manager>/<id> has two segments,
+// and an ownership record keys a resource by one.
 var TeamScopedResources = map[string]bool{
 	"routes":          true,
 	"services":        true,
@@ -320,6 +327,9 @@ var TeamScopedResources = map[string]bool{
 	"consumers":       true,
 	"consumer_groups": true,
 	"stream_routes":   true,
+	"plugin_configs":  true,
+	"ssls":            true,
+	"protos":          true,
 }
 
 // Ownership tracks which team owns a specific resource on an instance
@@ -386,6 +396,9 @@ const (
 	ConfigKeyAdminInitialized = "config/admin_initialized"
 	ConfigKeyDefaultPassword  = "config/default_password"
 	ConfigKeyPasswordPolicy   = "config/password_policy"
+	// Set once the ownership records written before #455 for the types it made
+	// team-owned are dropped (OwnershipService.DropRecordsFromBeforeTeamOwnership).
+	ConfigKeyTeamOwnedSince455 = KeyPrefixConfig + "migrations/team_owned_since_455"
 )
 
 // KeyPrefix constants
