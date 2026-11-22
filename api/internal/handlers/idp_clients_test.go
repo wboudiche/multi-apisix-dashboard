@@ -486,3 +486,210 @@ func TestCreateClientNormalisesOptions(t *testing.T) {
 		t.Fatalf("token: %d %+v", w.Code, out.Options)
 	}
 }
+
+func TestMayUseClient(t *testing.T) {
+	dev := teamScope{writable: []string{"t1"}, teams: []string{"t1"}}
+	cases := []struct {
+		name  string
+		scope teamScope
+		team  string
+		want  bool
+	}{
+		{"admin unowned", teamScope{isAdmin: true}, "", true},
+		{"admin any team", teamScope{isAdmin: true}, "t9", true},
+		{"developer own team", dev, "t1", true},
+		{"developer other team", dev, "t2", false},
+		{"developer unowned", dev, "", false},
+		{"viewer own team", teamScope{teams: []string{"t1"}}, "t1", false},
+	}
+	for _, tc := range cases {
+		if got := mayUseClient(tc.scope, tc.team); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// seedClient registers a client the dashboard "created" for a route.
+func (f *createFixture) seedClient(t *testing.T, uuid, route, mode string) {
+	t.Helper()
+	e := &models.IdPClient{
+		IdPID: f.idpID(t), InstanceID: "i1", Realm: "r", Prefix: "mad-",
+		ClientID: "mad-" + uuid, KeycloakUUID: uuid, RouteID: route, Mode: mode,
+		Options: models.IdPClientOptions{Validation: "introspection"},
+	}
+	if mode == "login" {
+		e.Options = models.IdPClientOptions{PKCE: true}
+		e.RedirectURI = "https://app.test/cb"
+	}
+	if err := f.h.idps.RecordClient(context.Background(), e); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (f *createFixture) do(t *testing.T, method, query, uuid string, h gin.HandlerFunc) *httptest.ResponseRecorder {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(method, "/?"+query, nil)
+	c.Request.Header.Set("X-Instance-ID", "i1")
+	c.Params = gin.Params{{Key: "id", Value: "i1"}, {Key: "uuid", Value: uuid}}
+	c.Set(middleware.InstanceIDKey, "i1")
+	c.Set(middleware.RoleKey, f.role)
+	if f.ui != nil {
+		c.Set(middleware.UserInstanceKey, f.ui)
+	}
+	h(c)
+	return w
+}
+
+func TestUseClientMissingInKeycloakIs410(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.kc.secretErr = services.ErrKeycloakClientMissing
+	w := f.do(t, http.MethodPost, "", "u1", f.h.UseClient)
+	if w.Code != http.StatusGone || !strings.Contains(w.Body.String(), "no longer exists in Keycloak") {
+		t.Fatalf("status %d: %s", w.Code, w.Body)
+	}
+}
+
+func TestUseClientAnswersCredentials(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "token")
+	w := f.do(t, http.MethodPost, "", "u1", f.h.UseClient)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", w.Code, w.Body)
+	}
+	var out map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	if out["client_secret"] != "cl-secret" || out["client_id"] != "mad-u1" || out["mode"] != "token" ||
+		out["discovery"] == "" || out["introspection_endpoint"] == nil {
+		t.Fatalf("body %v", out)
+	}
+	if strings.Contains(w.Body.String(), "s3cr3t") {
+		t.Fatal("admin secret leaked")
+	}
+}
+
+func TestUseClientKeycloakDown(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.kc.secretErr = services.ErrKeycloakUnavailable
+	if w := f.do(t, http.MethodPost, "", "u1", f.h.UseClient); w.Code != http.StatusBadGateway {
+		t.Fatalf("status %d: %s", w.Code, w.Body)
+	}
+}
+
+func TestUseClientScope(t *testing.T) {
+	cases := []struct {
+		name   string
+		setup  func(f *createFixture)
+		uuid   string
+		status int
+	}{
+		{"admin missing", func(f *createFixture) {}, "nope", 404},
+		{"developer missing", func(f *createFixture) { f.asDeveloper() }, "nope", 403},
+		{"developer other team", func(f *createFixture) { f.asDeveloper() }, "u2", 403},
+		{"developer own team", func(f *createFixture) { f.asDeveloper() }, "u1", 200},
+		{"viewer", func(f *createFixture) {
+			f.role = models.RoleViewer
+			f.ui = &models.UserInstance{Role: models.RoleViewer, TeamIDs: []string{"t1"}}
+		}, "u1", 403},
+		{"connection deleted, admin", func(f *createFixture) { f.dropIdP(t) }, "u1", 404},
+		{"connection deleted, developer", func(f *createFixture) { f.asDeveloper(); f.dropIdP(t) }, "u1", 403},
+	}
+	var forbidden []string
+	for _, tc := range cases {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.seedClient(t, "u1", "r1", "login")
+		f.seedClient(t, "u2", "other", "login")
+		tc.setup(f)
+		w := f.do(t, http.MethodPost, "", tc.uuid, f.h.UseClient)
+		if w.Code != tc.status {
+			t.Errorf("%s: status %d: %s", tc.name, w.Code, w.Body)
+		}
+		if tc.status == 403 {
+			forbidden = append(forbidden, w.Body.String())
+		}
+	}
+	for _, b := range forbidden {
+		if b != forbidden[0] {
+			t.Errorf("403 bodies differ: %q vs %q", b, forbidden[0])
+		}
+	}
+}
+
+func (f *createFixture) dropIdP(t *testing.T) {
+	t.Helper()
+	// Only the connection: its registry entries stay, as after a lost write.
+	if err := f.store.Delete(context.Background(), models.KeyPrefixIdPs+f.idpID(t)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUseClientOwnerLookupError500(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.h.routeOwner = func(context.Context, string, string) (string, error) { return "", errors.New("etcd down") }
+	if w := f.do(t, http.MethodPost, "", "u1", f.h.UseClient); w.Code != http.StatusInternalServerError {
+		t.Fatalf("status %d", w.Code)
+	}
+}
+
+func TestListClients(t *testing.T) {
+	setup := func(f *createFixture) {
+		f.seedClient(t, "u1", "r1", "login")
+		f.seedClient(t, "u2", "other", "token")
+	}
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	setup(f)
+	w := f.do(t, http.MethodGet, "", "", f.h.ListClients)
+	var items []map[string]any
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &items) != nil || len(items) != 2 {
+		t.Fatalf("admin: %d %s", w.Code, w.Body)
+	}
+	byUUID := map[string]map[string]any{}
+	for _, it := range items {
+		byUUID[it["uuid"].(string)] = it
+	}
+	u1 := byUUID["u1"]
+	if u1["client_id"] != "mad-u1" || u1["idp_name"] != "kc" || u1["route_id"] != "r1" || u1["team_id"] != "t1" || u1["mode"] != "login" {
+		t.Fatalf("item %v", u1)
+	}
+	if strings.Contains(w.Body.String(), "cl-secret") || strings.Contains(w.Body.String(), "s3cr3t") {
+		t.Fatal("secret leaked")
+	}
+	// admin, status=1: same list for now.
+	if w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients); w.Code != 200 {
+		t.Fatalf("admin status=1: %d", w.Code)
+	}
+
+	f = newCreateFixture(t, []string{"app.test"}, true)
+	setup(f)
+	f.asDeveloper()
+	w = f.do(t, http.MethodGet, "", "", f.h.ListClients)
+	items = nil
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &items) != nil || len(items) != 1 || items[0]["uuid"] != "u1" {
+		t.Fatalf("developer: %d %s", w.Code, w.Body)
+	}
+	if w := f.do(t, http.MethodGet, "status=1", "", f.h.ListClients); w.Code != 403 {
+		t.Fatalf("developer status=1: %d", w.Code)
+	}
+
+	f = newCreateFixture(t, []string{"app.test"}, true)
+	setup(f)
+	f.role = models.RoleViewer
+	f.ui = &models.UserInstance{Role: models.RoleViewer, TeamIDs: []string{"t1"}}
+	if w := f.do(t, http.MethodGet, "", "", f.h.ListClients); w.Code != 403 {
+		t.Fatalf("viewer: %d", w.Code)
+	}
+}
+
+func TestListClientsSkipsDeletedConnection(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	f.seedClient(t, "u1", "r1", "login")
+	f.dropIdP(t)
+	w := f.do(t, http.MethodGet, "", "", f.h.ListClients)
+	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+}

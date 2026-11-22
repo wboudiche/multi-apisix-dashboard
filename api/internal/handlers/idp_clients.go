@@ -280,6 +280,171 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 	c.JSON(http.StatusCreated, out)
 }
 
+// mayUseClient: an admin always; anyone else when they write to the team that
+// currently owns the client's route.
+func mayUseClient(scope teamScope, team string) bool {
+	return scope.isAdmin || scope.mayWrite(team)
+}
+
+// clientListItem is one registry entry as the list shows it. Status and Routes
+// are filled by the status variant only.
+type clientListItem struct {
+	UUID     string   `json:"uuid"`
+	ClientID string   `json:"client_id"`
+	IdPID    string   `json:"idp_id"`
+	IdPName  string   `json:"idp_name"`
+	RouteID  string   `json:"route_id"`
+	TeamID   string   `json:"team_id"`
+	Mode     string   `json:"mode"`
+	Status   string   `json:"status,omitempty"`
+	Routes   []string `json:"routes,omitempty"`
+}
+
+// activeInstance reads the instance of the path and answers 404 or 500 when it
+// cannot be used.
+func (h *IdPHandler) activeInstance(c *gin.Context, instanceID string) bool {
+	inst, err := h.getInstance(c.Request.Context(), instanceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The instance could not be read"})
+		return false
+	}
+	if inst == nil || !inst.IsActive {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found or inactive"})
+		return false
+	}
+	return true
+}
+
+// ListClients lists the registry entries of an instance the caller may use.
+// The team of each is the live owner of its route, never a stored copy.
+func (h *IdPHandler) ListClients(c *gin.Context) {
+	instanceID, ok := requirePathInstance(c)
+	if !ok {
+		return
+	}
+	scope := callerTeamScope(c)
+	// A viewer has nothing to use; the status variant is for admins.
+	if !scope.isAdmin && (scope.foreign || len(scope.writable) == 0 || c.Query("status") != "") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+	if !h.activeInstance(c, instanceID) {
+		return
+	}
+	ctx := c.Request.Context()
+	entries, err := h.idps.ListClients(ctx, instanceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Clients could not be read"})
+		return
+	}
+	names := map[string]string{}
+	out := []clientListItem{}
+	for _, e := range entries {
+		name, known := names[e.IdPID]
+		if !known {
+			p, err := h.idps.Get(ctx, e.IdPID)
+			switch {
+			case errors.Is(err, services.ErrIdPNotFound):
+				names[e.IdPID] = ""
+				continue
+			case err != nil:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Identity provider request failed"})
+				return
+			}
+			name = p.Name
+			names[e.IdPID] = name
+		}
+		if name == "" {
+			continue // the connection is gone
+		}
+		team, err := h.routeOwner(ctx, instanceID, e.RouteID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "The route's owner could not be read"})
+			return
+		}
+		if !mayUseClient(scope, team) {
+			continue
+		}
+		out = append(out, clientListItem{
+			UUID: e.KeycloakUUID, ClientID: e.ClientID, IdPID: e.IdPID, IdPName: name,
+			RouteID: e.RouteID, TeamID: team, Mode: e.Mode,
+		})
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// UseClient answers what the openid-connect plugin needs for a client the
+// dashboard created, reading its secret from Keycloak now. A caller who may
+// not use it, and one naming a client that does not exist, get the same 403:
+// the path tells nobody which clients exist.
+func (h *IdPHandler) UseClient(c *gin.Context) {
+	instanceID, ok := requirePathInstance(c)
+	if !ok {
+		return
+	}
+	scope := callerTeamScope(c)
+	if !scope.isAdmin && (scope.foreign || len(scope.writable) == 0) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+	if !h.activeInstance(c, instanceID) {
+		return
+	}
+	ctx := c.Request.Context()
+	// notFound is what a client that is not there answers this caller.
+	notFound := func(msg string) {
+		if scope.isAdmin {
+			c.JSON(http.StatusNotFound, gin.H{"error": msg})
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		}
+	}
+	entry, err := h.idps.FindClient(ctx, instanceID, c.Param("uuid"))
+	switch {
+	case errors.Is(err, services.ErrIdPNotFound):
+		notFound("Client not found")
+		return
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Clients could not be read"})
+		return
+	}
+	team, err := h.routeOwner(ctx, instanceID, entry.RouteID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The route's owner could not be read"})
+		return
+	}
+	if !mayUseClient(scope, team) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+	p, err := h.idps.Get(ctx, entry.IdPID)
+	switch {
+	case errors.Is(err, services.ErrIdPNotFound):
+		notFound("Identity provider not found")
+		return
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Identity provider request failed"})
+		return
+	}
+	secret, err := h.keycloak(p).ClientSecret(ctx, entry.KeycloakUUID)
+	if errors.Is(err, services.ErrKeycloakClientMissing) {
+		c.JSON(http.StatusGone, gin.H{"error": "the client no longer exists in Keycloak"})
+		return
+	}
+	if err != nil {
+		keycloakFailure(c, err)
+		return
+	}
+	out := clientCredentials{
+		ClientID: entry.ClientID, ClientSecret: secret, Discovery: services.DiscoveryURL(p),
+		Mode: entry.Mode, Options: entry.Options, RedirectURI: entry.RedirectURI,
+	}
+	if entry.Mode == "token" && entry.Options.Validation == "introspection" {
+		out.IntrospectionEndpoint = services.IntrospectionURL(p)
+	}
+	c.JSON(http.StatusOK, out)
+}
+
 // keycloakFailure maps an error of a Keycloak call to a response. Nothing of
 // a dial error or an internal address reaches the caller.
 func keycloakFailure(c *gin.Context, err error) {

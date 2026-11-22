@@ -232,6 +232,8 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			// Connections linked to an instance: its admins and developers.
 			protected.GET("/instances/:id/idps", rbac, idpHandler.ListLinkedIdPs)
 			protected.POST("/idps/:id/clients", rbac, idpHandler.CreateClient)
+			protected.GET("/instances/:id/oidc-clients", rbac, idpHandler.ListClients)
+			protected.POST("/instances/:id/oidc-clients/:uuid/use", rbac, idpHandler.UseClient)
 
 			// Label taxonomy
 			protected.GET("/labels", labelHandler.ListLabels)
