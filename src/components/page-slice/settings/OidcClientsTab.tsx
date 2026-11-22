@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Alert, Badge, Box, Button, Group, Modal, Paper, Stack, Table, Text, Tooltip } from '@mantine/core';
+import { Alert, Badge, Box, Button, Group, Loader, Modal, Paper, Stack, Table, Text, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAtomValue } from 'jotai';
@@ -41,6 +41,7 @@ export const OidcClientsTab = () => {
   const {
     data: clients = [],
     isError,
+    isLoading,
     error,
   } = useQuery({
     queryKey: ['oidc-clients', instanceId, 'status'],
@@ -117,7 +118,16 @@ export const OidcClientsTab = () => {
                 </Table.Tr>
               );
             })}
-            {clients.length === 0 && !isError && (
+            {isLoading && (
+              <Table.Tr>
+                <Table.Td colSpan={6}>
+                  <Box ta="center" py="lg">
+                    <Loader size="sm" data-testid="oidc-clients-loading" />
+                  </Box>
+                </Table.Td>
+              </Table.Tr>
+            )}
+            {clients.length === 0 && !isError && !isLoading && (
               <Table.Tr>
                 <Table.Td colSpan={6}>
                   <Box ta="center" py="lg">
