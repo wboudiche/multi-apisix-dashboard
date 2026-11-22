@@ -1275,7 +1275,8 @@
     "previousPage": "Página anterior",
     "nextPage": "Página siguiente",
     "firstPage": "Primera página",
-    "lastPage": "Última página"
+    "lastPage": "Última página",
+    "filterByTeam": "Filtrar por equipo"
   },
   "upstreams": {
     "health": "Estado",

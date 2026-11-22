@@ -1189,7 +1189,8 @@
     "previousPage": "Previous page",
     "nextPage": "Next page",
     "firstPage": "First page",
-    "lastPage": "Last page"
+    "lastPage": "Last page",
+    "filterByTeam": "Filter by team"
   },
   "upstreams": {
     "health": "Health",

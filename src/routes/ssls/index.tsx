@@ -28,12 +28,14 @@ import { BatchDeleteBtn } from '@/components/page/BatchDeleteBtn';
 import { DeleteResourceBtn } from '@/components/page/DeleteResourceBtn';
 import { NameOrId } from '@/components/page/NameOrId';
 import PageHeader from '@/components/page/PageHeader';
+import { TeamListFilter } from '@/components/page/TeamListFilter';
 import { ToAddPageBtn, ToDetailPageBtn } from '@/components/page/ToAddPageBtn';
 import { AntdConfigProvider } from '@/config/antdConfigProvider';
 import { API_SSLS } from '@/config/constant';
 import { queryClient } from '@/config/global';
 import i18n from '@/config/i18n';
 import { rowId, useTableRowSelection } from '@/hooks/useTableRowSelection';
+import { useTeamColumn } from '@/hooks/useTeamColumn';
 import { currentInstanceIdAtom } from '@/stores/instance';
 import type { APISIXType } from '@/types/schema/apisix';
 import { pageSearchSchema } from '@/types/schema/pageSearch';
@@ -65,7 +67,11 @@ const sslName = (record: SSLRow) => sslSni(record) ?? record.value.id;
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { data, isLoading, refetch, pagination, listKey } = useSSLList();
+  const { data, isLoading, refetch, pagination, listKey, setParams } = useSSLList();
+  const search = Route.useSearch();
+  // Whose each certificate is, and which have nobody's: after #455 an admin
+  // assigns the ones that existed before, and finds them here.
+  const teamColumn = useTeamColumn<SSLRow>();
   // Never more than the rows on screen: see useRowSelection (#371).
   const { selectedIds, setSelectedIds, tableProps } = useTableRowSelection(
     data.list,
@@ -177,6 +183,7 @@ function RouteComponent() {
           );
         },
       },
+      teamColumn,
       {
         title: t('table.actions'),
         valueType: 'option',
@@ -199,7 +206,7 @@ function RouteComponent() {
         ],
       },
     ];
-  }, [t, refetch]);
+  }, [t, refetch, teamColumn]);
 
   return (
     <>
@@ -223,6 +230,12 @@ function RouteComponent() {
           pagination={pagination}
           cardProps={{ bodyStyle: { padding: 0 } }}
           toolbar={{
+            filter: (
+              <TeamListFilter
+                value={search.team_id}
+                onChange={(team) => setParams({ team_id: team, page: 1 })}
+              />
+            ),
             menu: {
               type: 'inline',
               items: [

@@ -20,7 +20,7 @@ import { getFixtures } from '@e2e/utils/fixtures';
 import { apiFetch, HttpError, loginAdmin } from '@e2e/utils/seed-client';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { i18n } from '@e2e/utils/ui/i18n';
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 /**
  * Plugin configs, SSLs and protos were instance-wide: a viewer listed and
@@ -61,6 +61,8 @@ test.describe.configure({ mode: 'serial' });
 
 // For each type: one object of the viewer's team, one of another team, one of none.
 const seeded = {} as Record<Type, { mine: string; theirs: string; none: string }>;
+// And what a list row shows of each: an SSL its SNI, the others their id.
+const shown = {} as Record<Type, { mine: string; theirs: string; none: string }>;
 
 test.beforeAll(async () => {
   const admin = await loginAdmin();
@@ -71,14 +73,18 @@ test.beforeAll(async () => {
       none: randomId('e2e-ts-none'),
     };
     const owners = { mine: fx().viewersTeamId, theirs: fx().backendTeamId, none: undefined };
+    const labels = { ...ids };
     for (const k of ['mine', 'theirs', 'none'] as const) {
+      const body = await TYPES[type](ids[k]);
+      if ('snis' in body) labels[k] = body.snis[0];
       await apiFetch(`${PROXY}/${type}/${ids[k]}`, admin, {
         method: 'PUT',
         headers: on(owners[k]),
-        json: await TYPES[type](ids[k]),
+        json: body,
       });
     }
     seeded[type] = ids;
+    shown[type] = labels;
   }
 });
 
@@ -92,6 +98,14 @@ test.afterAll(async () => {
     }
   }
 });
+
+const asAdmin = async (page: Page) => {
+  await permission.loginAs(page, fx().users.admin.username, fx().users.admin.password);
+  await permission.switchInstance(page, INSTANCE_NAME);
+};
+
+/** The table row that shows `text`: an SSL by its SNI, the others by their id. */
+const rowShowing = (page: Page, text: string) => page.getByRole('row').filter({ hasText: text });
 
 const listIds = async (type: Type, token: string) => {
   const res = (await apiFetch(`${PROXY}/${type}?page=1&page_size=500`, token, {
@@ -120,6 +134,35 @@ for (const type of Object.keys(TYPES) as Type[]) {
   test(`an admin lists every ${type}, whatever its team`, async () => {
     const { ids } = await listIds(type, await loginAdmin());
     expect(ids).toEqual(expect.arrayContaining(Object.values(seeded[type])));
+  });
+
+  // Each of the objects a release leaves without a team is assigned from its
+  // own page: the list says which team has what, and finds those with none.
+  test(`an admin sees in the list which team each of the ${type} belongs to`, async ({
+    page,
+  }) => {
+    await asAdmin(page);
+    await page.goto(`/ui/${type}/?team_id=${fx().backendTeamId}&page_size=100`);
+
+    await expect(rowShowing(page, shown[type].theirs).getByText('Backend Team', { exact: true }))
+      .toBeVisible();
+    await expect(rowShowing(page, shown[type].mine)).toHaveCount(0);
+  });
+
+  test(`an admin finds the ${type} of no team with the list's team filter`, async ({ page }) => {
+    await asAdmin(page);
+    await page.goto(`/ui/${type}/?page_size=100`);
+    await expect(rowShowing(page, shown[type].mine)).toHaveCount(1);
+
+    await page.getByRole('textbox', { name: i18n.t('table.filterByTeam') }).click();
+    await page
+      .getByRole('option', { name: i18n.t('routes.list.filterTeamUnassigned'), exact: true })
+      .click();
+
+    await expect(page).toHaveURL(/team_id=__none__/);
+    await expect(rowShowing(page, shown[type].none)).toHaveCount(1);
+    await expect(rowShowing(page, shown[type].mine)).toHaveCount(0);
+    await expect(rowShowing(page, shown[type].theirs)).toHaveCount(0);
   });
 }
 

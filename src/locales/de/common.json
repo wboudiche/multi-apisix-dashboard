@@ -1273,7 +1273,8 @@
     "previousPage": "Vorherige Seite",
     "nextPage": "Nächste Seite",
     "firstPage": "Erste Seite",
-    "lastPage": "Letzte Seite"
+    "lastPage": "Letzte Seite",
+    "filterByTeam": "Nach Team filtern"
   },
   "upstreams": {
     "health": "Zustand",
