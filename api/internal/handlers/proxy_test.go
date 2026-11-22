@@ -17,6 +17,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -133,5 +134,60 @@ func TestStripDashboardFieldsPreservesNumberPrecision(t *testing.T) {
 	}
 	if strings.Contains(got, "__team_id") {
 		t.Errorf("stripDashboardFields(%s) = %s, want __team_id removed", body, got)
+	}
+}
+
+func TestStripRouteTimestamps(t *testing.T) {
+	cases := []struct {
+		name, body, want string
+	}{
+		{"both removed", `{"uri":"/a","create_time":1,"update_time":2}`, `{"uri":"/a"}`},
+		{"create only", `{"uri":"/a","create_time":5}`, `{"uri":"/a"}`},
+		{"nested kept", `{"uri":"/a","plugins":{"x":{"create_time":3}}}`, `{"uri":"/a","plugins":{"x":{"create_time":3}}}`},
+		{"none", `{"uri":"/a"}`, `{"uri":"/a"}`},
+		{"big id exact", `{"id":9007199254740993,"create_time":1}`, `{"id":9007199254740993}`},
+	}
+	for _, tc := range cases {
+		got, err := stripRouteTimestamps([]byte(tc.body))
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		var g, w any
+		if json.Unmarshal(got, &g) != nil || json.Unmarshal([]byte(tc.want), &w) != nil || !reflect.DeepEqual(g, w) {
+			t.Errorf("%s: got %s want %s", tc.name, got, tc.want)
+		}
+	}
+	for _, body := range []string{``, `[1]`, `"x"`, `null`, `{bad`, `42`} {
+		got, err := stripRouteTimestamps([]byte(body))
+		if err != nil || string(got) != body {
+			t.Errorf("%q: got %q err %v, want it untouched", body, got, err)
+		}
+	}
+	// Unmodified bodies keep their exact bytes.
+	in := `{ "uri" : "/a" }`
+	if got, _ := stripRouteTimestamps([]byte(in)); string(got) != in {
+		t.Errorf("rewrote a body with nothing to strip: %s", got)
+	}
+}
+
+func TestStripsRouteTimestampsFor(t *testing.T) {
+	cases := []struct {
+		method, rtype, path string
+		want                bool
+	}{
+		{"POST", "routes", "/routes", true},
+		{"PUT", "routes", "/routes/r1", true},
+		{"PATCH", "routes", "/routes/r1", true},
+		{"PUT", "routes", "/routes", true},
+		{"PATCH", "routes", "/routes/r1/uri", false},
+		{"GET", "routes", "/routes/r1", false},
+		{"DELETE", "routes", "/routes/r1", false},
+		{"PUT", "services", "/services/s1", false},
+		{"PUT", "stream_routes", "/stream_routes/s1", false},
+	}
+	for _, tc := range cases {
+		if got := stripsRouteTimestampsFor(tc.method, tc.rtype, tc.path); got != tc.want {
+			t.Errorf("%s %s: got %v want %v", tc.method, tc.path, got, tc.want)
+		}
 	}
 }

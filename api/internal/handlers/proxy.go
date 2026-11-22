@@ -123,6 +123,38 @@ func stripDashboardFields(body []byte) []byte {
 	return cleaned
 }
 
+// stripRouteTimestamps removes the top-level create_time and update_time from
+// a route write. APISIX keeps a create_time the body carries, and the client
+// registry binds to it (route_create_time), so the caller must not set it: left
+// out, APISIX sets it on a create and keeps the previous one on an update. A
+// body that is not a JSON object is returned untouched for APISIX to refuse.
+func stripRouteTimestamps(body []byte) ([]byte, error) {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	var route map[string]any
+	if err := decoder.Decode(&route); err != nil || route == nil {
+		return body, nil
+	}
+	_, hasCreate := route["create_time"]
+	_, hasUpdate := route["update_time"]
+	if !hasCreate && !hasUpdate {
+		return body, nil
+	}
+	delete(route, "create_time")
+	delete(route, "update_time")
+	return json.Marshal(route)
+}
+
+// stripsRouteTimestampsFor reports whether a request is a write to the routes
+// collection or to one route, not to something beneath a route.
+func stripsRouteTimestampsFor(method, resourceType, path string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch:
+		return resourceType == "routes" && !beneathResource(path)
+	}
+	return false
+}
+
 // injectTeamID adds the owning team to a single-resource Admin API response,
 // under the same field the list path uses.
 //
@@ -783,6 +815,13 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	if c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut ||
 		c.Request.Method == http.MethodPatch {
 		bodyBytes = stripDashboardFields(bodyBytes)
+	}
+	if stripsRouteTimestampsFor(c.Request.Method, resourceType, path) {
+		var err error
+		if bodyBytes, err = stripRouteTimestamps(bodyBytes); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+			return
+		}
 	}
 
 	proxyReq, _ := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(bodyBytes))

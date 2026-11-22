@@ -838,6 +838,26 @@ func TestCreateClientDeveloperRedirectDomains(t *testing.T) {
 			t.Fatalf("status %d: %s", w.Code, w.Body)
 		}
 	})
+	t.Run("IP host refused", func(t *testing.T) {
+		for _, host := range []string{"127.0.0.1", "[::1]"} {
+			f := newCreateFixture(t, []string{trimBrackets(host)}, true)
+			f.setDomains(t, []string{"test"})
+			f.asDeveloper()
+			body := `{"route_id":"r1","client_id":"billing","mode":"login","redirect_uri":"https://` + host + `/cb"}`
+			if w := f.post(t, body); w.Code != http.StatusForbidden || f.kc.calls != 0 {
+				t.Errorf("%s: status %d, %d calls: %s", host, w.Code, f.kc.calls, w.Body)
+			}
+		}
+	})
+	t.Run("non-ASCII host refused", func(t *testing.T) {
+		f := newCreateFixture(t, []string{"app\u00e9.test"}, true)
+		f.setDomains(t, []string{"test"})
+		f.asDeveloper()
+		body := `{"route_id":"r1","client_id":"billing","mode":"login","redirect_uri":"https://app\u00e9.test/cb"}`
+		if w := f.post(t, body); w.Code != http.StatusForbidden || f.kc.calls != 0 {
+			t.Fatalf("status %d, %d calls: %s", w.Code, f.kc.calls, w.Body)
+		}
+	})
 	t.Run("token mode needs no domain", func(t *testing.T) {
 		f := newCreateFixture(t, []string{"app.test"}, true)
 		f.setDomains(t, []string{})
@@ -940,3 +960,5 @@ func TestListClientsDeveloperGatewayErrorIs502(t *testing.T) {
 		t.Fatalf("status %d", w.Code)
 	}
 }
+
+func trimBrackets(h string) string { return strings.Trim(h, "[]") }

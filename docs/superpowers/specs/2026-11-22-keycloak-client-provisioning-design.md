@@ -205,7 +205,8 @@ client id is valid (Keycloak's charset, length) and prefixed.
 binding a developer's login client to the route's hosts alone binds it to data
 the developer controls. In login mode a developer's redirect host must also
 equal one of the connection's `redirect_domains` or be a subdomain of one
-(`evilexample.com` is not a subdomain of `example.com`). With no domain set,
+(`evilexample.com` is not a subdomain of `example.com`). A domain's last label cannot be all digits, and a developer's redirect host
+must be ASCII (punycode) and not an IP address. With no domain set,
 developers cannot create login clients on that connection (403); admins and
 token mode are unaffected.
 
@@ -244,6 +245,11 @@ require the live route to exist with the same `create_time` as the entry's
 answer is the same oracle-free 403 and the entry stays admin-only. Admins are
 not subject to it, and a client still follows its route when an admin reassigns
 the route, since the create time does not change.
+APISIX keeps a `create_time` sent in a request body, so the dashboard's proxy
+strips `create_time` and `update_time` from every write to `routes` (the
+collection and one route): the value is not caller-writable, APISIX sets it on
+a create and keeps the previous one on an update. For a developer, the list and
+`use` answer 502 when the gateway cannot be read.
 
 ### Route form
 

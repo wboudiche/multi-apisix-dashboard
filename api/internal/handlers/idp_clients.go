@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -89,6 +90,15 @@ func validRedirectURI(uri string, routeHosts []string) error {
 		}
 	}
 	return errors.New("redirect_uri host must be one of the route's hosts")
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] > 0x7F {
+			return false
+		}
+	}
+	return true
 }
 
 // redirectHostAllowed reports whether a redirect URI host is one of the
@@ -267,7 +277,11 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "developers cannot create login clients on this connection: no redirect domain is set"})
 				return
 			}
-			if u, err := url.Parse(redirect); err != nil || !redirectHostAllowed(u.Hostname(), p.RedirectDomains) {
+			// Punycode only, and never an IP literal: neither can be matched
+			// against a domain by name.
+			u, err := url.Parse(redirect)
+			if err != nil || !isASCII(u.Hostname()) || net.ParseIP(u.Hostname()) != nil ||
+				!redirectHostAllowed(u.Hostname(), p.RedirectDomains) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "redirect_uri host must be inside one of the connection's redirect domains"})
 				return
 			}

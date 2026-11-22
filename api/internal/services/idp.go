@@ -111,6 +111,10 @@ func validateIdP(p *models.IdentityProvider) error {
 		if len(d) > 253 || !redirectDomainPattern.MatchString(d) {
 			return invalid("redirect_domains must be lowercase DNS names, without scheme, port, wildcard or leading dot")
 		}
+		// An all-digit last label ("1", "0.1") could stand for an IP address.
+		if last := d[strings.LastIndex(d, ".")+1:]; strings.Trim(last, "0123456789") == "" {
+			return invalid("the last label of a redirect domain cannot be all digits")
+		}
 	}
 	return nil
 }

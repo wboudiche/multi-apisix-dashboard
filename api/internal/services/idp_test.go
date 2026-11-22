@@ -110,6 +110,9 @@ func TestValidateIdP(t *testing.T) {
 		{"redirect domain port", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"example.com:8443"} }, false},
 		{"redirect domain empty", func(p *models.IdentityProvider) { p.RedirectDomains = []string{""} }, false},
 		{"redirect domain empty label", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"a..b"} }, false},
+		{"redirect domain numeric last label", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"0.1"} }, false},
+		{"redirect domain single digit", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"1"} }, false},
+		{"redirect domain digits inside last label", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"corp.1a"} }, true},
 		{"redirect domains 20", func(p *models.IdentityProvider) { p.RedirectDomains = manyDomains(20) }, true},
 		{"redirect domains 21", func(p *models.IdentityProvider) { p.RedirectDomains = manyDomains(21) }, false},
 	}
