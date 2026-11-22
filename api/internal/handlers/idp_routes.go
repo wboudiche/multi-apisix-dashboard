@@ -16,8 +16,10 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -150,15 +152,42 @@ func listInstanceRoutes(ctx context.Context, inst *models.Instance) ([]map[strin
 	}
 
 	var body struct {
-		List []struct {
-			Value map[string]any `json:"value"`
-		} `json:"list"`
+		List json.RawMessage `json:"list"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return nil, err
 	}
-	out := make([]map[string]any, 0, len(body.List))
-	for _, e := range body.List {
+	return decodeRouteList(body.List)
+}
+
+// decodeRouteList reads the "list" of a collection. APISIX answers an empty
+// collection with {} rather than [] (as src/config/req.ts and countReferences
+// know), so {} is no route; an array is the routes; anything else, a missing
+// or null list included, is a shape this cannot read and an error rather than
+// "no route".
+func decodeRouteList(raw json.RawMessage) ([]map[string]any, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) > 0 && trimmed[0] == '{' {
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal(trimmed, &obj); err != nil {
+			return nil, err
+		}
+		if len(obj) != 0 {
+			return nil, errors.New("admin API route list is a non-empty object")
+		}
+		return []map[string]any{}, nil
+	}
+	if len(trimmed) == 0 || trimmed[0] != '[' {
+		return nil, errors.New("admin API answered no route list")
+	}
+	var entries []struct {
+		Value map[string]any `json:"value"`
+	}
+	if err := json.Unmarshal(trimmed, &entries); err != nil {
+		return nil, err
+	}
+	out := make([]map[string]any, 0, len(entries))
+	for _, e := range entries {
 		if e.Value != nil {
 			out = append(out, e.Value)
 		}
