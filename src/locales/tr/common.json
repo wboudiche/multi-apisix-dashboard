@@ -264,7 +264,8 @@
       "id": "ID",
       "update_time": "Güncellenme",
       "idAdvanced": "Kimliği kendiniz belirleyin",
-      "idAsNameHint": "Yalnızca harf, rakam ve - _ . Daha sonra değiştirilemez."
+      "idAsNameHint": "Yalnızca harf, rakam ve - _ . Daha sonra değiştirilemez.",
+      "copyId": "{{label}} kopyala"
     },
     "json": {
       "parseError": "JSON formatı geçerli değil",

@@ -264,7 +264,8 @@
       "id": "ID",
       "update_time": "Geändert am",
       "idAdvanced": "ID selbst festlegen",
-      "idAsNameHint": "Nur Buchstaben, Ziffern und - _ . Kann später nicht geändert werden."
+      "idAsNameHint": "Nur Buchstaben, Ziffern und - _ . Kann später nicht geändert werden.",
+      "copyId": "{{label}} kopieren"
     },
     "json": {
       "parseError": "JSON Format ist ungültig",

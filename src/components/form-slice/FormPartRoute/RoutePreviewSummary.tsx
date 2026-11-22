@@ -102,9 +102,11 @@ export const RoutePreviewSummary = ({ data }: Props) => {
     queryKey: ['plugin-config-name', instanceId, teamId, pluginConfigId],
     queryFn: () =>
       req
-        .get<unknown, APISIXType['RespPluginConfigDetail']>(`${API_PLUGIN_CONFIGS}/${pluginConfigId}`, {
+        .get<unknown, APISIXType['RespPluginConfigDetail']>(`${API_PLUGIN_CONFIGS}/${encodeURIComponent(pluginConfigId ?? '')}`, {
           headers: {
             ...(instanceId && { 'X-Instance-ID': instanceId }),
+            // The team its key names, not the one selected when it runs.
+            'X-Team-ID': teamId ?? '',
             [SKIP_INTERCEPTOR_HEADER]: ['401', '403', '404', '502', '504'],
           },
         })

@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 import { ActionIcon, CopyButton, Group, Text, TextInput, Tooltip } from '@mantine/core';
-import { useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -85,7 +84,7 @@ const IdLine = ({ asName }: { asName?: boolean }) => {
               color={copied ? 'teal' : 'gray'}
               size="sm"
               onClick={copy}
-              aria-label={t('form.json.copy')}
+              aria-label={t('form.info.copyId', { label })}
             >
               {copied ? <IconCheck /> : <IconCopy />}
             </ActionIcon>
@@ -101,9 +100,11 @@ const IdLine = ({ asName }: { asName?: boolean }) => {
  * Opened by itself when the ID is no longer the one generated.
  */
 const NewID = () => {
-  const { getValues } = useFormContext<APISIXType['Info']>();
+  const { formState } = useFormContext<APISIXType['Info']>();
   const { t } = useTranslation();
-  const [generated] = useState(() => getValues('id'));
+  // The form's own default, which follows a reset - a restored draft, a
+  // copy - rather than the value at mount.
+  const generated = formState.defaultValues?.id;
   return (
     <AdvancedSection
       label={t('form.info.idAdvanced')}

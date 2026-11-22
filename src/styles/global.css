@@ -617,7 +617,8 @@ select:focus,
 /* Shown as a line of text, not a field: the input rule above gives every
    input a border, a background and a height, and an ID read off a detail
    page needs none of them - nor the background of a disabled one, which a
-   detail page's section is. Still an input, so it can be selected whole. */
+   detail page's section is. Disabled, as a record's ID is not to be edited:
+   the copy button beside it is how it is taken whole. */
 .id-line .mantine-Input-input,
 .id-line .mantine-Input-input:disabled,
 .id-line .mantine-Input-input[data-disabled] {

@@ -66,7 +66,7 @@ test('a detail page shows the ID as a line to copy, not a field', async ({ page,
     .poll(() => field.evaluate((el) => getComputedStyle(el).borderTopStyle))
     .toBe('none');
   // Usable read-only, and what it copies is the ID.
-  const copy = page.getByRole('button', { name: 'Copy' }).first();
+  const copy = page.getByRole('button', { name: 'Copy the ID', exact: true });
   await expect(copy).toBeEnabled();
   await copy.click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(id);

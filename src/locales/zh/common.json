@@ -264,7 +264,8 @@
       "id": "ID",
       "update_time": "更新时间",
       "idAdvanced": "自行设置 ID",
-      "idAsNameHint": "仅限字母、数字和 - _ .，之后无法更改。"
+      "idAsNameHint": "仅限字母、数字和 - _ .，之后无法更改。",
+      "copyId": "复制{{label}}"
     },
     "json": {
       "parseError": "JSON格式无效",

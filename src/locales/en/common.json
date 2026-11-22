@@ -181,7 +181,8 @@
       "id": "ID",
       "update_time": "Updated At",
       "idAdvanced": "Set the ID yourself",
-      "idAsNameHint": "Letters, digits and - _ . only. It cannot be changed later."
+      "idAsNameHint": "Letters, digits and - _ . only. It cannot be changed later.",
+      "copyId": "Copy the {{label}}"
     },
     "json": {
       "parseError": "JSON format is not valid",

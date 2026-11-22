@@ -16,6 +16,8 @@
  */
 import { z } from 'zod';
 
+import { requiredString } from '@/utils/zod';
+
 const Labels = z.record(z.string());
 
 const Expr = z.array(z.unknown());
@@ -48,11 +50,13 @@ const Info = ID.merge(Timestamp);
  * its id pattern allows. Keys under form.validation.
  */
 export const IdAsName = z.object({
-  id: z
-    .string()
-    .min(1, 'form.validation.nameRequired')
+  id: requiredString('form.validation.nameRequired')
     .max(64, 'form.validation.idAsName')
-    .regex(/^[a-zA-Z0-9-_.]+$/, 'form.validation.idAsName'),
+    .regex(/^[a-zA-Z0-9-_.]+$/, 'form.validation.idAsName')
+    // The pattern lets them through, and in the request's path they are
+    // dot segments the browser resolves away: . names the collection, ..
+    // its parent.
+    .refine((id) => id !== '.' && id !== '..', 'form.validation.idAsName'),
 });
 
 const HttpMethod = z.union([
