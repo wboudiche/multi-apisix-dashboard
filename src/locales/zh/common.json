@@ -1080,7 +1080,7 @@
       "accessAnyone": "任何人",
       "accessKey": "持有密钥的客户端",
       "accessBasic": "用户名和密码",
-      "accessHint": "其他认证方式（JWT、HMAC、OpenID Connect）请在高级表单中设置。",
+      "accessHint": "其他认证方式（JWT、HMAC、通过 OpenID Connect 在浏览器中登录）请在高级表单中设置。",
       "accessBasicHint": "密码会随每个请求发送：请仅通过 HTTPS 调用此路由。",
       "accessService": "该服务已限制可调用者：下面的选择以其为起点，并会替换该服务对此路由的限制。",
       "accessServiceCustom": "该服务以此列表无法显示的方式限制可调用者。此路由将保留该限制：请在服务上修改。",

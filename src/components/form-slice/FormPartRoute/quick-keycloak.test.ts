@@ -20,6 +20,7 @@ import type { LinkedIdp, OidcClientItem } from '@/apis/idps';
 import type { KeycloakSaveFailure } from '@/components/page/quick-route-keycloak';
 
 import {
+  effectiveKeycloakChoice,
   failureMessageKey,
   failureReason,
   initialKeycloakChoice,
@@ -139,5 +140,22 @@ describe('failureReason', () => {
     expect(failureReason(failure({ cause: { message: 'Network Error' } }))).toBe('Network Error');
     expect(failureReason(failure({ cause: {} }))).toBeUndefined();
     expect(failureReason(failure({ cause: undefined }))).toBeUndefined();
+  });
+});
+
+describe('effectiveKeycloakChoice', () => {
+  const reusable = [client('b', 'token')];
+  it('never leaves the route without its token: no choice yet is one left to make', () => {
+    expect(effectiveKeycloakChoice(null, reusable)).toEqual({ kind: 'reuse', uuid: '' });
+  });
+  it('keeps a client still in the list', () => {
+    expect(effectiveKeycloakChoice({ kind: 'reuse', uuid: 'b' }, reusable)).toEqual({ kind: 'reuse', uuid: 'b' });
+  });
+  it('drops a client gone from the list, which the select can no longer show', () => {
+    expect(effectiveKeycloakChoice({ kind: 'reuse', uuid: 'gone' }, reusable)).toEqual({ kind: 'reuse', uuid: '' });
+  });
+  it('leaves a creation as it is', () => {
+    const create = { kind: 'create', idpId: 'a', suffix: 'orders', validation: 'jwks' } as const;
+    expect(effectiveKeycloakChoice(create, [])).toEqual(create);
   });
 });

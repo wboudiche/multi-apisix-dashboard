@@ -52,6 +52,23 @@ export const initialKeycloakChoice = (creators: LinkedIdp[], suffix: string): Ke
     ? { kind: 'create', idpId: creators[0].id, suffix, validation: 'jwks' }
     : { kind: 'reuse', uuid: '' };
 
+/**
+ * The choice the route is saved with. Fails closed: with no choice yet, it is
+ * a client still to pick - never no authentication while the control says
+ * Keycloak token. A reused client gone from the list (deleted, or the list
+ * read again) is one the select can no longer show, so it is picked again.
+ */
+export const effectiveKeycloakChoice = (
+  choice: KeycloakChoice | null,
+  reusable: OidcClientItem[]
+): KeycloakChoice => {
+  if (!choice) return { kind: 'reuse', uuid: '' };
+  if (choice.kind === 'reuse' && choice.uuid && !reusable.some((c) => c.uuid === choice.uuid)) {
+    return { kind: 'reuse', uuid: '' };
+  }
+  return choice;
+};
+
 /** Another instance: its connections and clients are others, so the choice starts over. */
 export const keycloakChoiceAfterInstanceChange = (): KeycloakChoice | null => null;
 

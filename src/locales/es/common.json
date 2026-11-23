@@ -1088,7 +1088,7 @@
       "accessAnyone": "Cualquiera",
       "accessKey": "Clientes con una clave",
       "accessBasic": "Usuario y contraseña",
-      "accessHint": "Otras autenticaciones - JWT, HMAC, OpenID Connect - están en el formulario avanzado.",
+      "accessHint": "Otras autenticaciones - JWT, HMAC, un inicio de sesión en el navegador con OpenID Connect - están en el formulario avanzado.",
       "accessBasicHint": "La contraseña viaja con cada solicitud: llame a esta ruta solo por HTTPS.",
       "accessService": "El servicio ya limita quién puede llamar: la elección de abajo parte de ello y lo reemplaza para esta ruta.",
       "accessServiceCustom": "El servicio limita quién puede llamar de una forma que esta lista no puede mostrar. Se mantiene para esta ruta: cámbielo en el servicio.",

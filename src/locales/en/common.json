@@ -1002,7 +1002,7 @@
       "accessAnyone": "Anyone",
       "accessKey": "Clients with a key",
       "accessBasic": "Username and password",
-      "accessHint": "Other authentications - JWT, HMAC, OpenID Connect - are in the advanced form.",
+      "accessHint": "Other authentications - JWT, HMAC, a login in the browser with OpenID Connect - are in the advanced form.",
       "accessBasicHint": "The password travels with every request: call this route over HTTPS only.",
       "accessService": "The service already limits who can call: the choice below starts from it, and replaces it for this route.",
       "accessServiceCustom": "The service limits who can call in a way this list cannot show. It is kept for this route: change it on the service.",

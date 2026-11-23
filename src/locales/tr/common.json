@@ -1086,7 +1086,7 @@
       "accessAnyone": "Herkes",
       "accessKey": "Anahtarı olan istemciler",
       "accessBasic": "Kullanıcı adı ve parola",
-      "accessHint": "Diğer kimlik doğrulamaları - JWT, HMAC, OpenID Connect - gelişmiş formdadır.",
+      "accessHint": "Diğer kimlik doğrulamaları - JWT, HMAC, OpenID Connect ile tarayıcıda oturum açma - gelişmiş formdadır.",
       "accessBasicHint": "Parola her istekle gönderilir: bu rotayı yalnızca HTTPS üzerinden çağırın.",
       "accessService": "Servis kimin çağırabileceğini zaten sınırlıyor: aşağıdaki seçim buradan başlar ve bu rota için onun yerini alır.",
       "accessServiceCustom": "Servis kimin çağırabileceğini bu listenin gösteremeyeceği bir şekilde sınırlıyor. Bu rota için korunur: servis üzerinden değiştirin.",

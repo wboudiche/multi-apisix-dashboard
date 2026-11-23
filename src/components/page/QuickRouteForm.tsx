@@ -66,6 +66,7 @@ import {
   ROUTE_DRAFT_KEY,
 } from '@/components/form-slice/FormPartRoute/quick-create';
 import {
+  effectiveKeycloakChoice,
   failureMessageKey,
   failureReason,
   initialKeycloakChoice,
@@ -284,8 +285,10 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   // the instance: no token to ask for.
   if (accessChoice === 'openid-connect' && !keycloakOffered) setAccessChoice('anyone');
   const proposedSuffix = proposeClientIdSuffix({ name: name.trim() || path.trim(), hosts: [], uris: [] });
-  const keycloakShown: KeycloakChoice | null =
-    keycloak?.kind === 'create' && !suffixTyped ? { ...keycloak, suffix: proposedSuffix } : keycloak;
+  const keycloakShown = effectiveKeycloakChoice(
+    keycloak?.kind === 'create' && !suffixTyped ? { ...keycloak, suffix: proposedSuffix } : keycloak,
+    reusable
+  );
   if (serviceRead && seededFor !== serviceId) {
     setSeededFor(serviceId);
     const start = inherited ?? { mode: 'any' as const };
@@ -294,7 +297,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const inheritedNames = inherited?.mode === 'only' ? inherited.names : NO_STORED_NAMES;
   const access: QuickAccess | undefined = duplicating
     ? undefined
-    : accessChoice === 'openid-connect' && keycloakShown
+    : accessChoice === 'openid-connect'
       ? { plugin: 'openid-connect', keycloak: keycloakShown }
       : isQuickAuthPlugin(accessChoice)
         ? {
@@ -756,7 +759,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                 />
               </Box>
             ))}
-            {accessChoice === 'openid-connect' && keycloakShown && (
+            {accessChoice === 'openid-connect' && (
               <QuickKeycloakSection
                 choice={keycloakShown}
                 onChange={(next) => {
