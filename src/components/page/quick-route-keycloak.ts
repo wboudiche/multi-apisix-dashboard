@@ -14,9 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { ClientCredentials, OidcClientItem } from '@/apis/idps';
+import type { AxiosInstance } from 'axios';
+
+import type { ClientCredentials, oidcClientApi, OidcClientItem, PinnedScope } from '@/apis/idps';
 import type { KeycloakChoice } from '@/components/form-slice/FormPartRoute/quick-create';
 import type { RoutePostType } from '@/components/form-slice/FormPartRoute/schema';
+import { API_ROUTES } from '@/config/constant';
 import { applyClientCredentials } from '@/utils/keycloak-client';
 
 /** What the save needs from the outside, so the order of its steps can be tested alone. */
@@ -31,6 +34,39 @@ export type KeycloakSaveDeps = {
   listClients(): Promise<OidcClientItem[]>;
   deleteClient(uuid: string): Promise<void>;
   isAdmin: boolean;
+};
+
+/** The clients the save's requests go through, taken as arguments so a test can stand in for them. */
+export type PinnedSaveIO = {
+  /** `reqFor`: the Admin API client, every request addressed to the instance and with the headers given. */
+  routesFor: (instanceId: string, headers: Record<string, string>) => AxiosInstance;
+  oidc: Pick<typeof oidcClientApi, 'create' | 'use' | 'list' | 'remove'>;
+};
+
+/**
+ * The save's requests, every one of them for the instance and the team of
+ * `pin` - the ones selected when Create was clicked. Read from the selection
+ * at each request, a switch made between two steps sent the rest of the chain
+ * to another instance: the PUT that attaches the client would create there an
+ * enabled route holding its secret.
+ */
+export const pinnedKeycloakDeps = (pin: PinnedScope, isAdmin: boolean, io: PinnedSaveIO): KeycloakSaveDeps => {
+  const routes = io.routesFor(pin.instanceId, { 'X-Team-ID': pin.teamId });
+  return {
+    postRoute: async (body) =>
+      (await routes.post<unknown, { data: { value: { id: string } } }>(API_ROUTES, body)).data.value.id,
+    putRoute: async (id, body) => {
+      await routes.put(`${API_ROUTES}/${id}`, body);
+    },
+    deleteRoute: async (id) => {
+      await routes.delete(`${API_ROUTES}/${id}`);
+    },
+    createClient: (idpId, body) => io.oidc.create(idpId, body, pin),
+    useClient: (uuid) => io.oidc.use(pin.instanceId, uuid, pin),
+    listClients: () => io.oidc.list(pin.instanceId, false, pin),
+    deleteClient: (uuid) => io.oidc.remove(pin.instanceId, uuid, pin),
+    isAdmin,
+  };
 };
 
 export type KeycloakSaveFailure = {

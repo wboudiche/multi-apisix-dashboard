@@ -40,9 +40,17 @@ apiClient.interceptors.request.use((config) => {
     if (instanceId) {
         config.headers.set('X-Instance-ID', instanceId);
     }
-    // The team this tab has on that instance: for the selected one, the team
-    // its header shows; for one a request names, this tab's pick for it, or
-    // the stored team before it has made one (see selectedTeamId, #195).
+    // The team a caller names wins, as `req` keeps one: a chain of requests
+    // pinned when it started must not follow a pick made while it runs.
+    // Named empty is none.
+    const namedTeam = config.headers.get('X-Team-ID');
+    if (typeof namedTeam === 'string') {
+        if (!namedTeam) config.headers.delete('X-Team-ID');
+        return config;
+    }
+    // Otherwise the team this tab has on that instance: for the selected one,
+    // the team its header shows; for one a request names, this tab's pick for
+    // it, or the stored team before it has made one (see selectedTeamId, #195).
     const teamId = selectedTeamId(instanceId);
     if (teamId) {
         config.headers['X-Team-ID'] = teamId;

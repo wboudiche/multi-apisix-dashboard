@@ -23,6 +23,8 @@ import {
   type KeycloakSaveDeps,
   KeycloakSaveError,
   type KeycloakSaveFailure,
+  pinnedKeycloakDeps,
+  type PinnedSaveIO,
   saveWithKeycloak,
 } from './quick-route-keycloak';
 
@@ -284,5 +286,56 @@ describe('saveWithKeycloak', () => {
     const f = await failureOf(saveWithKeycloak(t.deps, form, 1, create));
     expect(f).toMatchObject({ client: 'left', clientId: creds.client_id });
     expect(deleted).toEqual([]);
+  });
+});
+
+describe('the requests of a save', () => {
+  it('all go to the instance and team of the click', async () => {
+    const calls: unknown[][] = [];
+    const routes = {
+      post: async (...a: unknown[]) => {
+        calls.push(['post', ...a]);
+        return { data: { value: { id: 'r1' } } };
+      },
+      put: async (...a: unknown[]) => {
+        calls.push(['put', ...a]);
+      },
+      delete: async (...a: unknown[]) => {
+        calls.push(['delete', ...a]);
+      },
+    };
+    const record = (name: string) => async (...a: unknown[]) => {
+      calls.push([name, ...a]);
+      return name === 'list' ? [] : creds;
+    };
+    const io = {
+      routesFor: (instanceId: string, headers: Record<string, string>) => {
+        calls.push(['routesFor', instanceId, headers]);
+        return routes;
+      },
+      oidc: { create: record('create'), use: record('use'), list: record('list'), remove: record('remove') },
+    } as unknown as PinnedSaveIO;
+    const pin = { instanceId: 'A', teamId: 't2' };
+    const deps = pinnedKeycloakDeps(pin, false, io);
+
+    expect(await deps.postRoute(form)).toBe('r1');
+    await deps.putRoute('r1', form);
+    await deps.deleteRoute('r1');
+    await deps.createClient('kc', {});
+    await deps.useClient('u1');
+    await deps.listClients();
+    await deps.deleteClient('u1');
+
+    expect(calls).toEqual([
+      ['routesFor', 'A', { 'X-Team-ID': 't2' }],
+      ['post', '/routes', form],
+      ['put', '/routes/r1', form],
+      ['delete', '/routes/r1'],
+      ['create', 'kc', {}, pin],
+      ['use', 'A', 'u1', pin],
+      ['list', 'A', false, pin],
+      ['remove', 'A', 'u1', pin],
+    ]);
+    expect(deps.isAdmin).toBe(false);
   });
 });

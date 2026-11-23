@@ -117,6 +117,17 @@ describe('the instance the dashboard’s own client addresses', () => {
     expect(lastHeader('X-Team-ID')).toBe('team-b');
   });
 
+  it('keeps the team the caller names, and none when it names none', async () => {
+    thisTabOn('A');
+
+    await apiClient.get('/api/v1/labels', { headers: { 'X-Instance-ID': 'B', 'X-Team-ID': 'team-x' } });
+    expect(lastHeader('X-Instance-ID')).toBe('B');
+    expect(lastHeader('X-Team-ID')).toBe('team-x');
+
+    await apiClient.get('/api/v1/labels', { headers: { 'X-Team-ID': '' } });
+    expect(lastHeader('X-Team-ID')).toBeUndefined();
+  });
+
   it('is the stored one before this tab has any', async () => {
     thisTabOn('');
     anotherTabSwitchesTo('B');
