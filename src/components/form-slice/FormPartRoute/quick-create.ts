@@ -418,6 +418,10 @@ export const quickRouteToDraft = (q: QuickRoute): RoutePostType => {
     delete draft.upstream;
     delete draft.upstream_id;
   }
+  // The login is asked of the wizard and not yet set: the draft carries no
+  // authentication, and enabled it would be saved open to anyone. It starts
+  // disabled, for the wizard to enable once the plugin is configured.
+  if (q.access?.plugin === 'openid-connect') draft.status = 0;
   return draft;
 };
 

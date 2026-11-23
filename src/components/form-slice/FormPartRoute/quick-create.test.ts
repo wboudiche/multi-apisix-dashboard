@@ -166,6 +166,14 @@ describe('quickRouteToDraft', () => {
     expect(draft.upstream).toEqual(ROUTE_ADD_DEFAULTS.upstream);
   });
 
+  it('hands a browser login over disabled: the wizard has yet to set its plugin', () => {
+    const keycloak = { kind: 'reuse' as const, uuid: '' };
+    const draft = quickRouteToDraft({ ...base, status: 1, access: { plugin: 'openid-connect', keycloak } });
+    expect(draft.status).toBe(0);
+    expect(draft.plugins?.['openid-connect']).toBeUndefined();
+    expect(quickRouteToDraft({ ...base, status: 1 }).status).toBe(1);
+  });
+
   it('keeps every method when none is chosen, rather than the wizard\'s four', () => {
     expect(quickRouteToDraft({ ...base, methods: [] }).methods).toBeUndefined();
   });
