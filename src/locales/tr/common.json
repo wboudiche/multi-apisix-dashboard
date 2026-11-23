@@ -1102,7 +1102,12 @@
         "hour": "saat",
         "day": "gün"
       },
-      "override": "Arka uca gönderilen isteği değiştir"
+      "override": "Arka uca gönderilen isteği değiştir",
+      "keycloak": {
+        "connectionRequired": "Bir Keycloak bağlantısı seçin.",
+        "clientIdRequired": "İstemciye bir kimlik verin.",
+        "clientRequired": "Yeniden kullanılacak bir istemci seçin."
+      }
     }
   },
   "globalRules": {

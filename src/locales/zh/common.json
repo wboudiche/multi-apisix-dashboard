@@ -1096,7 +1096,12 @@
         "hour": "小时",
         "day": "天"
       },
-      "override": "修改发送到后端的请求"
+      "override": "修改发送到后端的请求",
+      "keycloak": {
+        "connectionRequired": "请选择一个 Keycloak 连接。",
+        "clientIdRequired": "请为客户端指定一个 ID。",
+        "clientRequired": "请选择要复用的客户端。"
+      }
     }
   },
   "globalRules": {

@@ -39,6 +39,15 @@ export const QUICK_AUTH_PLUGINS = ['key-auth', 'basic-auth'] as const;
 export type QuickAuthPlugin = (typeof QUICK_AUTH_PLUGINS)[number];
 
 /**
+ * How a route asks for a Keycloak token: a client made with the route, or one
+ * that already exists. The plugin is written when the route is saved, since
+ * a client's secret is known only once Keycloak has made it.
+ */
+export type KeycloakChoice =
+  | { kind: 'create'; idpId: string; suffix: string; validation: 'jwks' | 'introspection' }
+  | { kind: 'reuse'; uuid: string };
+
+/**
  * Who may call the route: anyone, or the clients of one authentication. Its
  * settings are its defaults, or the ones the route's service gives it: the
  * route's own replaces the service's, so a header the service named would be
@@ -46,6 +55,7 @@ export type QuickAuthPlugin = (typeof QUICK_AUTH_PLUGINS)[number];
  */
 export type QuickAccess =
   | { plugin: null }
+  | { plugin: 'openid-connect'; keycloak: KeycloakChoice }
   | {
       plugin: QuickAuthPlugin;
       restriction: Restriction;
@@ -198,6 +208,10 @@ export const rateLimitPlugins = (
   };
 };
 
+/** Whether the access makes the gateway know the caller as a consumer. */
+const isConsumerAccess = (access: QuickAccess | undefined): boolean =>
+  !!access?.plugin && (QUICK_AUTH_PLUGINS as readonly string[]).includes(access.plugin);
+
 /**
  * The plugins an access comes to: the authentication with its defaults, and
  * the consumer-restriction when only the clients picked may call - the same
@@ -206,7 +220,7 @@ export const rateLimitPlugins = (
 export const accessPlugins = (
   access: QuickAccess | undefined
 ): Record<string, Record<string, unknown>> => {
-  if (!access?.plugin) return {};
+  if (!access?.plugin || access.plugin === 'openid-connect') return {};
   const { plugin, restriction, config, inheritedRestriction } = access;
   return {
     [plugin]: { ...config },
@@ -325,7 +339,7 @@ export const quickRouteToForm = (q: QuickRoute): RoutePostType => {
     status: q.status,
     plugins: {
       ...accessPlugins(q.access),
-      ...rateLimitPlugins(q.rateLimit, !!q.rateLimit?.byClient || !!q.access?.plugin),
+      ...rateLimitPlugins(q.rateLimit, !!q.rateLimit?.byClient || isConsumerAccess(q.access)),
       ...withRewrite(requestRewrite(q.override)),
     },
     ...(q.methods.length > 0 && { methods: q.methods as RoutePostType['methods'] }),
@@ -468,7 +482,15 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   else if (d.kind === 'service' && !d.serviceId) errors.destination = DESTINATION_MISSING.service;
 
   const a = q.access;
-  if (a?.plugin && a.restriction.mode === 'only' && a.restriction.names.length === 0) {
+  if (a?.plugin === 'openid-connect') {
+    const k = a.keycloak;
+    if (k.kind === 'create') {
+      if (!k.idpId) errors.access = 'form.quickRoute.keycloak.connectionRequired';
+      else if (!k.suffix.trim()) errors.access = 'form.quickRoute.keycloak.clientIdRequired';
+    } else if (!k.uuid) {
+      errors.access = 'form.quickRoute.keycloak.clientRequired';
+    }
+  } else if (a?.plugin && a.restriction.mode === 'only' && a.restriction.names.length === 0) {
     errors.access = 'form.plugins.clients.accessEmpty';
   }
 

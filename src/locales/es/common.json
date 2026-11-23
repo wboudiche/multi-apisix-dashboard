@@ -1104,7 +1104,12 @@
         "hour": "hora",
         "day": "día"
       },
-      "override": "Cambiar la solicitud enviada al backend"
+      "override": "Cambiar la solicitud enviada al backend",
+      "keycloak": {
+        "connectionRequired": "Elija una conexión de Keycloak.",
+        "clientIdRequired": "Asigne un id al cliente.",
+        "clientRequired": "Elija un cliente para reutilizar."
+      }
     }
   },
   "globalRules": {

@@ -19,7 +19,9 @@ import { describe, expect, it } from 'vitest';
 import type { Restriction as QuickRestriction } from '@/utils/auth-clients';
 
 import {
+  answerErrors,
   destinationUrlError,
+  type KeycloakChoice,
   proposeRouteName,
   type QuickRoute,
   quickRouteErrors,
@@ -595,5 +597,45 @@ describe('the request sent to the backend', () => {
       'form.validation.headerTwice'
     );
     expect(headersError({ headers: { set: { 'X-Env': 'prod' } } })).toBeUndefined();
+  });
+});
+
+describe('Keycloak token access', () => {
+  const create = { kind: 'create', idpId: 'i', suffix: 's', validation: 'jwks' } as const;
+  const withAccess = (keycloak: KeycloakChoice): QuickRoute => ({
+    ...base,
+    access: { plugin: 'openid-connect', keycloak },
+  });
+
+  it('posts no openid-connect and no consumer-restriction', () => {
+    const { plugins } = quickRouteToForm(withAccess(create));
+    expect(plugins).not.toHaveProperty('openid-connect');
+    expect(plugins).not.toHaveProperty('consumer-restriction');
+  });
+
+  it('counts a limit by IP address', () => {
+    const q = { ...withAccess(create), rateLimit: { count: 5, per: 'minute' as const } };
+    expect(quickRouteToForm(q).plugins?.['limit-count']).toMatchObject({ key: 'remote_addr' });
+  });
+
+  it('hands nothing of it to the advanced form', () => {
+    const draft = quickRouteToDraft(withAccess(create));
+    expect(draft.plugins).not.toHaveProperty('openid-connect');
+    expect(JSON.stringify(draft)).not.toMatch(/keycloak|secret/);
+  });
+
+  it('refuses a create with no connection or no client id', () => {
+    expect(answerErrors(withAccess({ ...create, idpId: '' })).access).toBe(
+      'form.quickRoute.keycloak.connectionRequired'
+    );
+    expect(answerErrors(withAccess({ ...create, suffix: '  ' })).access).toBe(
+      'form.quickRoute.keycloak.clientIdRequired'
+    );
+  });
+
+  it('refuses a reuse with no client picked', () => {
+    expect(answerErrors(withAccess({ kind: 'reuse', uuid: '' })).access).toBe(
+      'form.quickRoute.keycloak.clientRequired'
+    );
   });
 });
