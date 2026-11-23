@@ -125,6 +125,7 @@ func TestValidateIdP(t *testing.T) {
 		{"gateway url with credentials", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://u:p@keycloak" }, false},
 		{"gateway url with query", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://keycloak?x=1" }, false},
 		{"gateway url with fragment", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://keycloak#x" }, false},
+		{"gateway url with empty query", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://keycloak:8080?" }, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -100,7 +100,7 @@ func validateIdP(p *models.IdentityProvider) error {
 		switch {
 		case err != nil || (g.Scheme != "http" && g.Scheme != "https") || g.Host == "":
 			return invalid("gateway_base_url must be an absolute http(s) URL")
-		case g.User != nil || g.RawQuery != "" || g.Fragment != "" || strings.Contains(p.GatewayBaseURL, "#"):
+		case g.User != nil || g.RawQuery != "" || g.ForceQuery || g.Fragment != "" || strings.Contains(p.GatewayBaseURL, "#"):
 			return invalid("gateway_base_url cannot carry credentials, a query or a fragment")
 		case strings.HasPrefix(strings.TrimRight(g.Path, "/"), "/realms"):
 			return invalid("gateway_base_url must be the server root, without /realms/<realm>")
