@@ -18,7 +18,10 @@ import { Anchor, Radio, Select, Stack, TextInput } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 
 import type { LinkedIdp, OidcClientItem } from '@/apis/idps';
+import { usePermission } from '@/hooks/usePermission';
+import { useTeamNames } from '@/hooks/useTeamColumn';
 import { errorText } from '@/utils/error-text';
+import { clientOptionLabel } from '@/utils/keycloak-client';
 
 import type { KeycloakChoice } from './quick-create';
 
@@ -52,6 +55,8 @@ export const QuickKeycloakSection = ({
   onAdvanced,
 }: Props) => {
   const { t } = useTranslation();
+  const { isAdmin } = usePermission();
+  const teamNames = useTeamNames();
   const shown = error ? errorText(error) : undefined;
 
   const switchKind = (kind: string) => {
@@ -117,7 +122,10 @@ export const QuickKeycloakSection = ({
           label={t('form.quickRoute.keycloak.client')}
           placeholder={t('form.plugins.oidc.kc.pickPlaceholder')}
           searchable
-          data={reusable.map((c) => ({ value: c.uuid, label: `${c.client_id} - ${c.idp_name}` }))}
+          data={reusable.map((c) => ({
+            value: c.uuid,
+            label: clientOptionLabel(c, isAdmin, (id) => teamNames.get(id)),
+          }))}
           value={choice.uuid || null}
           onChange={(v) => onChange({ kind: 'reuse', uuid: v ?? '' })}
           error={shown}

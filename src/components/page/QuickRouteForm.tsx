@@ -80,14 +80,15 @@ import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
 import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
 import { ConnectionTest } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
 import { API_ROUTES } from '@/config/constant';
-import { req } from '@/config/req';
+import { req, reqFor } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
 import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { ownTeamsAtom, selectedTeamId, sentTeamIdAtom } from '@/stores/team';
 import type { APISIXType } from '@/types/schema/apisix';
 import { readRestriction, type Restriction, RESTRICTION_PLUGIN } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
-import { proposeClientIdSuffix } from '@/utils/keycloak-client';
+import { actingTeam, proposeClientIdSuffix, usableClients } from '@/utils/keycloak-client';
 import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
 import { proxyFailureText } from '@/utils/team-refusal';
@@ -95,7 +96,7 @@ import IconTune from '~icons/material-symbols/tune';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
 import { ClientSecretDialog, type ShownClient } from './ClientSecretDialog';
-import { type KeycloakSaveDeps, KeycloakSaveError, saveWithKeycloak } from './quick-route-keycloak';
+import { KeycloakSaveError, pinnedKeycloakDeps, saveWithKeycloak } from './quick-route-keycloak';
 
 // The methods a route is most often limited to; the wizard offers the rest.
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -226,7 +227,14 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     () => (linked.data ?? []).filter((p) => isAdmin || p.developers_can_create),
     [linked.data, isAdmin]
   );
-  const reusable = useMemo(() => tokenClients(oidcClients.data ?? []), [oidcClients.data]);
+  // Only the clients of the team the route will belong to, for a non-admin.
+  const ownTeams = useAtomValue(ownTeamsAtom)[instanceId];
+  const sentTeam = useAtomValue(sentTeamIdAtom);
+  const team = actingTeam(ownTeams, sentTeam);
+  const reusable = useMemo(
+    () => tokenClients(usableClients(oidcClients.data ?? [], isAdmin, team)),
+    [oidcClients.data, isAdmin, team]
+  );
 
   const name = typedName ?? proposeRouteName(methods, path);
 
@@ -420,20 +428,9 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   // rather than through a mutation, whose cache would keep the secret.
   const createWithKeycloak = async (status: 0 | 1, choice: KeycloakChoice) => {
     const form = produceRoute(quickRouteToForm({ ...answers, status }));
-    const deps: KeycloakSaveDeps = {
-      postRoute: async (body) => (await postRouteReq(req, body)).data.value.id,
-      putRoute: async (id, body) => {
-        await req.put(`${API_ROUTES}/${id}`, body);
-      },
-      deleteRoute: async (id) => {
-        await req.delete(`${API_ROUTES}/${id}`);
-      },
-      createClient: (idpId, body) => oidcClientApi.create(idpId, body),
-      useClient: (uuid) => oidcClientApi.use(instanceId, uuid),
-      listClients: () => oidcClientApi.list(instanceId),
-      deleteClient: (uuid) => oidcClientApi.remove(instanceId, uuid),
-      isAdmin,
-    };
+    // The instance and team of the click, for every step of the chain.
+    const pin = { instanceId, teamId: selectedTeamId(instanceId) };
+    const deps = pinnedKeycloakDeps(pin, isAdmin, { routesFor: reqFor, oidc: oidcClientApi });
     try {
       const { credentials, created } = await saveWithKeycloak(deps, form, status, choice);
       notifications.show({

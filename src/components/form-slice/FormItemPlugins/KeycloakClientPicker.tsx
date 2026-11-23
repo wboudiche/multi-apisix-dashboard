@@ -23,13 +23,18 @@ import { useTranslation } from 'react-i18next';
 
 import { type ClientCredentials, oidcClientApi } from '@/apis/idps';
 import { usePermission } from '@/hooks/usePermission';
+import { useTeamNames } from '@/hooks/useTeamColumn';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { ownTeamsAtom, sentTeamIdAtom } from '@/stores/team';
 import { describeError } from '@/utils/api-error';
 import {
+  actingTeam,
   applyClientCredentials,
+  clientOptionLabel,
   type OidcRouteContext,
   proposeClientIdSuffix,
   proposeRedirectUri,
+  usableClients,
 } from '@/utils/keycloak-client';
 import { oidcMode } from '@/utils/oidc';
 
@@ -51,6 +56,9 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
   const queryClient = useQueryClient();
   const instanceId = useAtomValue(currentInstanceIdAtom) ?? '';
   const { isAdmin } = usePermission();
+  const teamNames = useTeamNames();
+  const ownTeams = useAtomValue(ownTeamsAtom)[instanceId];
+  const sentTeam = useAtomValue(sentTeamIdAtom);
   const mode = oidcMode(config);
 
   const linked = useQuery({
@@ -80,7 +88,8 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
   const creators = (linked.data ?? []).filter((p) => isAdmin || p.developers_can_create);
   // The connection picked, else the first one the caller may create with.
   const idpId = creators.find((p) => p.id === picked)?.id ?? creators[0]?.id ?? '';
-  const reusable = clients.data ?? [];
+  // Only the clients of the team the route belongs to, for a non-admin.
+  const reusable = usableClients(clients.data ?? [], isAdmin, actingTeam(ownTeams, sentTeam));
 
   const done = (c: ClientCredentials) => {
     onChange(applyClientCredentials(config, c));
@@ -223,7 +232,7 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
             searchable
             data={reusable.map((c) => ({
               value: c.uuid,
-              label: `${c.client_id} - ${c.idp_name}`,
+              label: clientOptionLabel(c, isAdmin, (id) => teamNames.get(id)),
             }))}
             value={uuid || null}
             onChange={(v) => setUuid(v ?? '')}

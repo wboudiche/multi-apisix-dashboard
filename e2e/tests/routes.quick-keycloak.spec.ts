@@ -278,7 +278,8 @@ test('reuses a client made earlier', async ({ page }) => {
   const { form, section } = await openKeycloakRoute(page, 'reuse');
   await section.getByRole('radio', { name: i18n.t('form.quickRoute.keycloak.reuse') }).check();
   await section.getByRole('textbox', { name: i18n.t('form.quickRoute.keycloak.client') }).click();
-  await page.getByRole('option', { name: `${SEED_ID} - ${IDP_NAME}`, exact: true }).click();
+  // An admin's option also names the client's team, after its own name.
+  await page.getByRole('option', { name: new RegExp(`^${SEED_ID} - ${IDP_NAME}( \\(.+\\))?$`) }).click();
   await form.getByRole('button', { name: i18n.t('form.quickRoute.create'), exact: true }).click();
 
   // Nothing new to show: the page goes straight back to the list.

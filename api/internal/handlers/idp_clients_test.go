@@ -235,6 +235,7 @@ type createFixture struct {
 	times  map[string]int64    // create_time of each route that exists; 100 unless set
 	role   string
 	ui     *models.UserInstance
+	team   string // X-Team-ID of the request, if any
 }
 
 func newCreateFixture(t *testing.T, hosts []string, found bool) *createFixture {
@@ -527,23 +528,86 @@ func TestCreateClientNormalisesOptions(t *testing.T) {
 }
 
 func TestMayUseClient(t *testing.T) {
-	dev := teamScope{writable: []string{"t1"}, teams: []string{"t1"}}
+	dev := teamScope{writable: []string{"t1"}, teams: []string{"t1"}, acting: "t1"}
+	two := teamScope{writable: []string{"t1", "t2"}, teams: []string{"t1", "t2"}}
+	actingT2 := two
+	actingT2.acting, actingT2.chosen = "t2", "t2"
 	cases := []struct {
 		name  string
 		scope teamScope
 		team  string
-		want  bool
+		use   bool
+		list  bool
 	}{
-		{"admin unowned", teamScope{isAdmin: true}, "", true},
-		{"admin any team", teamScope{isAdmin: true}, "t9", true},
-		{"developer own team", dev, "t1", true},
-		{"developer other team", dev, "t2", false},
-		{"developer unowned", dev, "", false},
-		{"viewer own team", teamScope{teams: []string{"t1"}}, "t1", false},
+		{"admin unowned", teamScope{isAdmin: true}, "", true, true},
+		{"admin any team", teamScope{isAdmin: true}, "t9", true, true},
+		{"developer own team", dev, "t1", true, true},
+		{"developer other team", dev, "t2", false, false},
+		{"developer unowned", dev, "", false, false},
+		{"viewer own team", teamScope{teams: []string{"t1"}}, "t1", false, false},
+		{"two teams acting t2, t2 client", actingT2, "t2", true, true},
+		{"two teams acting t2, t1 client", actingT2, "t1", false, true},
+		{"two teams none named", two, "t1", false, true},
 	}
 	for _, tc := range cases {
-		if got := mayUseClient(tc.scope, tc.team); got != tc.want {
-			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		if got := mayUseClient(tc.scope, tc.team); got != tc.use {
+			t.Errorf("%s: use got %v want %v", tc.name, got, tc.use)
+		}
+		if got := mayListClient(tc.scope, tc.team); got != tc.list {
+			t.Errorf("%s: list got %v want %v", tc.name, got, tc.list)
+		}
+	}
+}
+
+// A developer in several teams uses a client only for the team they act as:
+// the secret lands in a route of that team, and every member of it reads it.
+func TestUseClientActingTeam(t *testing.T) {
+	twoTeams := func(f *createFixture) {
+		f.role = models.RoleDeveloper
+		f.ui = &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{"t1", "t2"}}
+	}
+	cases := []struct {
+		name   string
+		setup  func(f *createFixture)
+		team   string // X-Team-ID
+		uuid   string // u1 belongs to t1, u2 to t2
+		status int
+		code   string
+	}{
+		{"two teams acting t2, t1 client", twoTeams, "t2", "u1", 403, ""},
+		{"two teams acting t1, t1 client", twoTeams, "t1", "u1", 200, ""},
+		{"two teams acting t2, t2 client", twoTeams, "t2", "u2", 200, ""},
+		{"two teams none named", twoTeams, "", "u1", 400, teamRequiredCode},
+		{"two teams naming a foreign team", twoTeams, "t9", "u1", 403, ""},
+		{"t1 developer, t2 viewer, acting t2", func(f *createFixture) {
+			twoTeams(f)
+			f.ui.TeamRoles = map[string]string{"t1": models.RoleDeveloper, "t2": models.RoleViewer}
+		}, "t2", "u1", 403, teamReadOnlyCode},
+		{"single team, own client", func(f *createFixture) { f.asDeveloper() }, "", "u1", 200, ""},
+		{"single team, other client", func(f *createFixture) { f.asDeveloper() }, "", "u2", 403, ""},
+		{"single team named, other client", func(f *createFixture) { f.asDeveloper() }, "t1", "u2", 403, ""},
+		{"admin, t1 client acting t2", func(f *createFixture) {}, "t2", "u1", 200, ""},
+		{"admin, no team named", func(f *createFixture) {}, "", "u2", 200, ""},
+		{"instance admin, t1 client acting t2", func(f *createFixture) {
+			f.role = models.RoleDeveloper
+			f.ui = &models.UserInstance{Role: models.RoleInstanceAdmin}
+		}, "t2", "u1", 200, ""},
+	}
+	for _, tc := range cases {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.seedClient(t, "u1", "r1", "login")
+		f.seedClient(t, "u2", "other", "login")
+		tc.setup(f)
+		f.team = tc.team
+		w := f.do(t, http.MethodPost, "", tc.uuid, f.h.UseClient)
+		if w.Code != tc.status {
+			t.Errorf("%s: status %d: %s", tc.name, w.Code, w.Body)
+		}
+		if tc.code != "" && !strings.Contains(w.Body.String(), tc.code) {
+			t.Errorf("%s: body %s lacks code %s", tc.name, w.Body, tc.code)
+		}
+		if tc.status != 200 && f.kc.calls != 0 {
+			t.Errorf("%s: keycloak got %d calls", tc.name, f.kc.calls)
 		}
 	}
 }
@@ -571,6 +635,9 @@ func (f *createFixture) do(t *testing.T, method, query, uuid string, h gin.Handl
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(method, "/?"+query, nil)
 	c.Request.Header.Set("X-Instance-ID", "i1")
+	if f.team != "" {
+		c.Request.Header.Set("X-Team-ID", f.team)
+	}
 	c.Params = gin.Params{{Key: "id", Value: "i1"}, {Key: "uuid", Value: uuid}}
 	c.Set(middleware.InstanceIDKey, "i1")
 	c.Set(middleware.RoleKey, f.role)
