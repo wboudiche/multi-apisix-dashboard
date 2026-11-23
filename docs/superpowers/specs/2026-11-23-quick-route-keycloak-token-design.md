@@ -1,6 +1,6 @@
 # Quick route: Keycloak token access — design
 
-Status: draft, 2026-11-23. Builds on the quick route page (#423, #447) and
+Status: implemented, 2026-11-23. Builds on the quick route page (#423, #447) and
 Keycloak client provisioning (#459).
 
 ## Intent
@@ -82,9 +82,10 @@ in one call. Reusing a client needs no route.
 1. `POST` the route with `status: 0`, without `openid-connect`.
 2. `POST /idps/:id/clients` with the route's id, `mode: token`, the options
    above.
-3. `PATCH` the route: `openid-connect` built with `applyClientCredentials`
-   (`bearer_only: true`, the audience check), and the status asked for
-   (published or draft).
+3. `PUT` the route again with the posted body plus `openid-connect` built with
+   `applyClientCredentials` (`bearer_only: true`, the audience check), and the
+   status asked for (published or draft). A PUT, not a PATCH: the backend proxy
+   forwards only GET, POST, PUT and DELETE.
 
 Reuse: `POST /instances/:id/oidc-clients/:uuid/use` first, then the route is
 posted once, with the plugin and the asked status.
@@ -105,7 +106,8 @@ posted once, with the plugin and the asked status.
 ### After success
 
 A dialog shows the client id, the secret and the token endpoint, each with a
-copy button, and says the secret is shown once (it is not stored by the
+copy button (the endpoint is the gateways' address for Keycloak, and the dialog
+says so), and says the secret is shown once (it is not stored by the
 dashboard and can be read again only in Keycloak). Closing it goes where the
 page goes today after a creation. A reused client shows its id only.
 
