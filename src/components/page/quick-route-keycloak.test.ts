@@ -34,7 +34,13 @@ const creds: ClientCredentials = {
   options: { pkce: false, validation: 'jwks', client_credentials: true },
 };
 
-const form = { name: 'orders', uris: ['/orders'], status: 1 } as unknown as RoutePostType;
+const form = {
+  name: 'orders',
+  uris: ['/orders'],
+  status: 1,
+  upstream: { type: 'roundrobin', nodes: [{ host: 'svc', port: 80, weight: 1 }] },
+  plugins: { 'limit-count': { count: 5, time_window: 60 } },
+} as unknown as RoutePostType;
 
 type Calls = string[];
 const entry = (uuid: string, over: Partial<OidcClientItem> = {}): OidcClientItem =>
@@ -43,7 +49,7 @@ const entry = (uuid: string, over: Partial<OidcClientItem> = {}): OidcClientItem
 const makeDeps = (over: Partial<KeycloakSaveDeps> = {}) => {
   const calls: Calls = [];
   const posted: RoutePostType[] = [];
-  const patched: Record<string, unknown>[] = [];
+  const puts: { id: string; body: RoutePostType }[] = [];
   const created: Record<string, unknown>[] = [];
   const deps: KeycloakSaveDeps = {
     postRoute: async (body) => {
@@ -51,9 +57,9 @@ const makeDeps = (over: Partial<KeycloakSaveDeps> = {}) => {
       posted.push(body);
       return 'r1';
     },
-    patchRoute: async (_id, body) => {
-      calls.push('patch');
-      patched.push(body);
+    putRoute: async (id, body) => {
+      calls.push('put');
+      puts.push({ id, body });
     },
     deleteRoute: async () => {
       calls.push('delete-route');
@@ -77,7 +83,7 @@ const makeDeps = (over: Partial<KeycloakSaveDeps> = {}) => {
     isAdmin: true,
     ...over,
   };
-  return { deps, calls, posted, patched, created };
+  return { deps, calls, posted, puts, created };
 };
 
 const create = { kind: 'create', idpId: 'idp1', suffix: 'orders', validation: 'jwks' } as const;
@@ -96,7 +102,7 @@ describe('saveWithKeycloak', () => {
   it('create: posts the route disabled, makes the client for it, then attaches and publishes', async () => {
     const t = makeDeps();
     const out = await saveWithKeycloak(t.deps, form, 1, create);
-    expect(t.calls).toEqual(['post', 'create', 'patch']);
+    expect(t.calls).toEqual(['post', 'create', 'put']);
     expect(t.posted[0].status).toBe(0);
     expect(t.posted[0].plugins?.['openid-connect']).toBeUndefined();
     expect(t.created[0]).toEqual({
@@ -105,7 +111,8 @@ describe('saveWithKeycloak', () => {
       mode: 'token',
       options: { pkce: false, validation: 'jwks', client_credentials: true },
     });
-    const body = t.patched[0] as { status: number; plugins: Record<string, Record<string, unknown>> };
+    expect(t.puts[0].id).toBe('r1');
+    const body = t.puts[0].body as unknown as { status: number; plugins: Record<string, Record<string, unknown>> };
     expect(body.status).toBe(1);
     const plugin = body.plugins['openid-connect'];
     expect(plugin.bearer_only).toBe(true);
@@ -114,13 +121,21 @@ describe('saveWithKeycloak', () => {
       (plugin.claim_validator as { audience: { match_with_client_id: boolean } }).audience
         .match_with_client_id
     ).toBe(true);
+    expect(body.plugins['limit-count']).toEqual({ count: 5, time_window: 60 });
+    expect(t.puts[0].body).toMatchObject({ name: 'orders', uris: ['/orders'], upstream: form.upstream });
+    expect(t.puts[0].body).toEqual({
+      ...t.posted[0],
+      status: 1,
+      plugins: { ...t.posted[0].plugins, 'openid-connect': plugin },
+    });
+    expect(t.puts[0].body).not.toHaveProperty('id');
     expect(out).toEqual({ routeId: 'r1', credentials: creds, created: true });
   });
 
-  it('create as draft keeps status 0 in the PATCH', async () => {
+  it('create as draft keeps status 0 in the PUT', async () => {
     const t = makeDeps();
     await saveWithKeycloak(t.deps, form, 0, create);
-    expect((t.patched[0] as { status: number }).status).toBe(0);
+    expect(t.puts[0].body.status).toBe(0);
   });
 
   it('client refused (409): deletes the route', async () => {
@@ -137,9 +152,9 @@ describe('saveWithKeycloak', () => {
 
   it('attach fails for an admin: deletes the route and the client', async () => {
     const t = makeDeps();
-    const cause = new Error('patch refused');
-    t.deps.patchRoute = async () => {
-      t.calls.push('patch');
+    const cause = new Error('put refused');
+    t.deps.putRoute = async () => {
+      t.calls.push('put');
       throw cause;
     };
     let deleted = '';
@@ -155,7 +170,7 @@ describe('saveWithKeycloak', () => {
   it('attach fails for a developer: deletes the route, leaves the client', async () => {
     const t = makeDeps({
       isAdmin: false,
-      patchRoute: async () => {
+      putRoute: async () => {
         throw new Error('no');
       },
     });
@@ -223,7 +238,7 @@ describe('saveWithKeycloak', () => {
         response: { status: 400, data: { error_msg: 'refused' } },
       });
     const t1 = makeDeps({
-      patchRoute: async () => {
+      putRoute: async () => {
         throw request();
       },
     });
@@ -258,7 +273,7 @@ describe('saveWithKeycloak', () => {
   ])('attach fails for an admin: leaves the client when the list holds %s', async (_n, list) => {
     const deleted: string[] = [];
     const t = makeDeps({
-      patchRoute: async () => {
+      putRoute: async () => {
         throw new Error('no');
       },
       listClients: async () => list,

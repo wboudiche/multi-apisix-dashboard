@@ -1042,7 +1042,8 @@
         "secretTitle": "Keycloak client created",
         "secretOnce": "Copy the secret now: it is shown only this once. The dashboard does not keep it, and it can be read again only in Keycloak.",
         "tokenEndpoint": "Token endpoint",
-        "clientSecret": "Client secret"
+        "clientSecret": "Client secret",
+        "tokenEndpointHint": "The address the gateways reach Keycloak at. A caller outside their network may need Keycloak's public address."
       },
       "accessKeycloak": "Keycloak token"
     }

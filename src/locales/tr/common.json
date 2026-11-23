@@ -1126,7 +1126,8 @@
         "secretTitle": "Keycloak istemcisi oluşturuldu",
         "secretOnce": "Gizli anahtarı şimdi kopyalayın: yalnızca bu kez gösterilir. Panel onu saklamaz ve yalnızca Keycloak'ta yeniden okunabilir.",
         "tokenEndpoint": "Belirteç uç noktası",
-        "clientSecret": "İstemci gizli anahtarı"
+        "clientSecret": "İstemci gizli anahtarı",
+        "tokenEndpointHint": "Ağ geçitlerinin Keycloak'a eriştiği adres. Ağlarının dışındaki bir istemci Keycloak'ın genel adresine ihtiyaç duyabilir."
       },
       "accessKeycloak": "Keycloak belirteci"
     }

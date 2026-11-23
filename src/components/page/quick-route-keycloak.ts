@@ -23,7 +23,8 @@ import { applyClientCredentials } from '@/utils/keycloak-client';
 export type KeycloakSaveDeps = {
   /** Returns the new route's id. */
   postRoute(body: RoutePostType): Promise<string>;
-  patchRoute(id: string, body: Record<string, unknown>): Promise<void>;
+  /** Replaces the route: the proxy forwards no PATCH, so the plugin is attached with a PUT of the whole body. */
+  putRoute(id: string, body: RoutePostType): Promise<void>;
   deleteRoute(id: string): Promise<void>;
   createClient(idpId: string, body: Record<string, unknown>): Promise<ClientCredentials>;
   useClient(uuid: string): Promise<ClientCredentials>;
@@ -123,7 +124,8 @@ const dropClient = async (
  * Saves a route that is protected by a Keycloak client, or leaves neither
  * behind. A reused client needs one request: the route is posted with the
  * plugin. A new client is made for a route that exists, so the route is
- * posted disabled first, then the client is made and the plugin attached; if
+ * posted disabled first, then the client is made and the route put again with
+ * the plugin; if
  * either fails, what was made is taken back.
  */
 export const saveWithKeycloak = async (
@@ -150,8 +152,9 @@ export const saveWithKeycloak = async (
   const plugins = { ...form.plugins };
   delete plugins['openid-connect'];
   let routeId: string;
+  const posted: RoutePostType = { ...form, status: 0, plugins };
   try {
-    routeId = await deps.postRoute({ ...form, status: 0, plugins });
+    routeId = await deps.postRoute(posted);
   } catch (cause) {
     throw new KeycloakSaveError({ step: 'route', cause: safeCause(cause), route: 'none', client: 'none' });
   }
@@ -176,9 +179,10 @@ export const saveWithKeycloak = async (
   }
 
   try {
-    await deps.patchRoute(routeId, {
+    await deps.putRoute(routeId, {
+      ...posted,
       status,
-      plugins: { 'openid-connect': applyClientCredentials({}, credentials) },
+      plugins: { ...plugins, 'openid-connect': applyClientCredentials({}, credentials) },
     });
   } catch (cause) {
     const deleted = await dropRoute(deps, routeId);

@@ -410,8 +410,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     const form = produceRoute(quickRouteToForm({ ...answers, status }));
     const deps: KeycloakSaveDeps = {
       postRoute: async (body) => (await postRouteReq(req, body)).data.value.id,
-      patchRoute: async (id, body) => {
-        await req.patch(`${API_ROUTES}/${id}`, body);
+      putRoute: async (id, body) => {
+        await req.put(`${API_ROUTES}/${id}`, body);
       },
       deleteRoute: async (id) => {
         await req.delete(`${API_ROUTES}/${id}`);

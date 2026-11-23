@@ -1126,7 +1126,8 @@
         "secretTitle": "Keycloak-Client angelegt",
         "secretOnce": "Kopieren Sie das Geheimnis jetzt: es wird nur dieses eine Mal angezeigt. Das Dashboard speichert es nicht, und es ist nur noch in Keycloak lesbar.",
         "tokenEndpoint": "Token-Endpunkt",
-        "clientSecret": "Client-Geheimnis"
+        "clientSecret": "Client-Geheimnis",
+        "tokenEndpointHint": "Die Adresse, unter der die Gateways Keycloak erreichen. Ein Aufrufer außerhalb ihres Netzwerks braucht möglicherweise die öffentliche Adresse von Keycloak."
       },
       "accessKeycloak": "Keycloak-Token"
     }

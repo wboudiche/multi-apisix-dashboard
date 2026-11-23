@@ -29,7 +29,7 @@ type Props = {
   onClose: () => void;
 };
 
-const Row = ({ label, value }: { label: string; value: string }) => (
+const Row = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
   <Stack gap={4}>
     <Text size="sm" fw={500}>
       {label}
@@ -40,6 +40,11 @@ const Row = ({ label, value }: { label: string; value: string }) => (
       </Code>
       <CopyValue value={value} />
     </Group>
+    {hint && (
+      <Text size="xs" c="dimmed">
+        {hint}
+      </Text>
+    )}
   </Stack>
 );
 
@@ -68,7 +73,11 @@ export const ClientSecretDialog = ({ client, onClose }: Props) => {
           </Text>
           <Row label={t('form.quickRoute.keycloak.clientId')} value={client.client_id} />
           <Row label={t('form.quickRoute.keycloak.clientSecret')} value={client.client_secret} />
-          <Row label={t('form.quickRoute.keycloak.tokenEndpoint')} value={tokenEndpoint(client.discovery)} />
+          <Row
+            label={t('form.quickRoute.keycloak.tokenEndpoint')}
+            value={tokenEndpoint(client.discovery)}
+            hint={t('form.quickRoute.keycloak.tokenEndpointHint')}
+          />
           <Group justify="flex-end">
             <Button onClick={onClose}>{t('form.btn.close')}</Button>
           </Group>

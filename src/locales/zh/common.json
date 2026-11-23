@@ -1120,7 +1120,8 @@
         "secretTitle": "Keycloak 客户端已创建",
         "secretOnce": "请立即复制密钥：它只显示这一次。控制台不会保存它，之后只能在 Keycloak 中再次查看。",
         "tokenEndpoint": "令牌端点",
-        "clientSecret": "客户端密钥"
+        "clientSecret": "客户端密钥",
+        "tokenEndpointHint": "网关访问 Keycloak 所用的地址。位于其网络之外的调用方可能需要 Keycloak 的公开地址。"
       },
       "accessKeycloak": "Keycloak 令牌"
     }

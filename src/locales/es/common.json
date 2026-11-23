@@ -1128,7 +1128,8 @@
         "secretTitle": "Cliente de Keycloak creado",
         "secretOnce": "Copie el secreto ahora: solo se muestra esta vez. El panel no lo guarda y solo se puede volver a leer en Keycloak.",
         "tokenEndpoint": "Endpoint de token",
-        "clientSecret": "Secreto del cliente"
+        "clientSecret": "Secreto del cliente",
+        "tokenEndpointHint": "La dirección con la que los gateways acceden a Keycloak. Un cliente fuera de su red puede necesitar la dirección pública de Keycloak."
       },
       "accessKeycloak": "Token de Keycloak"
     }
