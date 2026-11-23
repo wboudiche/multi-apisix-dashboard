@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { headerSelect } from '@e2e/pom/permission';
 import { routesPom } from '@e2e/pom/routes';
 import { deleteRoutesByNamePrefix } from '@e2e/utils/cleanup';
 import { getFixtures } from '@e2e/utils/fixtures';
@@ -23,7 +24,9 @@ import {
   createIdp,
   e2eConnection,
   gatewayDiscoveryUrl,
+  type Idp,
   listOidcClients,
+  type OidcClient,
 } from '@e2e/utils/keycloak';
 import { e2eReq, listEvery } from '@e2e/utils/req';
 import { apiFetch, loginAdmin } from '@e2e/utils/seed-client';
@@ -70,6 +73,8 @@ const ROUTES = {
   made: `${NAME_PREFIX}-made`,
   reuse: `${NAME_PREFIX}-reuse`,
   clash: `${NAME_PREFIX}-clash`,
+  moved: `${NAME_PREFIX}-moved`,
+  unoffered: `${NAME_PREFIX}-unoffered`,
 } as const;
 type RouteKey = keyof typeof ROUTES;
 const pathOf = (key: RouteKey) => `/${NAME_PREFIX}-${key}/*`;
@@ -115,8 +120,24 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await deleteRoutesByNamePrefix(NAME_PREFIX);
+  // A save the page should have refused would have landed on the second gateway.
+  for (const r of await stagingRoutes()) {
+    if (r.name?.startsWith(NAME_PREFIX)) {
+      await e2eReq.delete(`${API_ROUTES}/${r.id}`, { headers: onStaging() });
+    }
+  }
   await cleanUpKeycloak(NAME_PREFIX, CLIENT_PREFIX);
 });
+
+/** The second gateway, "Staging APISIX" to the dashboard. */
+const STAGING = 'Staging APISIX';
+const onStaging = () => ({ 'X-Instance-ID': getFixtures().stagingInstanceId });
+const stagingRoutes = async () =>
+  (
+    await e2eReq.get<unknown, { data: { list?: { value: APISIXType['Route'] }[] } }>(API_ROUTES, {
+      headers: onStaging(),
+    })
+  ).data.list?.map((r) => r.value) ?? [];
 
 const routesNamed = async (name: string) =>
   (await listEvery<APISIXType['Route']>(API_ROUTES))
@@ -296,4 +317,110 @@ test('a client that cannot be made leaves no route', async ({ page }) => {
 
   expect(await routesNamed(ROUTES.clash)).toEqual([]);
   expect(await ourClients()).toEqual(before);
+});
+
+/**
+ * Another instance picked in the header, as a person picks it: the page is
+ * not reloaded, so the form keeps what was typed and decides what becomes of
+ * the access chosen.
+ */
+const switchInHeader = async (page: Page, instance: string) => {
+  const switcher = headerSelect(page);
+  await switcher.click();
+  await page.getByRole('option', { name: instance, exact: true }).click();
+  await expect(switcher).toHaveValue(instance);
+};
+
+const accessRadio = (form: Locator, key: string) =>
+  form.getByRole('radio', { name: i18n.t(key), exact: true });
+
+/** Neither on the instance the form was opened on nor on the one it moved to. */
+const expectNoRoute = async (name: string) => {
+  expect((await stagingRoutes()).filter((r) => r.name === name)).toEqual([]);
+  expect(await routesNamed(name)).toEqual([]);
+};
+
+/**
+ * Switching instance with "Keycloak token" chosen used to take the access
+ * back to "Anyone" (fixed by "never open a quick keycloak route to all behind
+ * the user's back"): Create then saved a route open to all on the new
+ * instance. The access stays; only the client, which is the old instance's,
+ * is picked again.
+ */
+test('keeps the Keycloak token when the instance changes, and asks for a client again', async ({
+  page,
+}) => {
+  const token = await loginAdmin();
+  const fx = getFixtures();
+  // A connection of its own on both instances: the file's stays on Local only.
+  const both: Idp = await createIdp(token, {
+    ...e2eConnection(`${NAME_PREFIX}-both`, CLIENT_PREFIX),
+    instance_ids: [fx.localInstanceId, fx.stagingInstanceId],
+    gateway_base_url: KEYCLOAK_FROM_GATEWAY,
+  });
+  try {
+    const { form, section } = await openKeycloakRoute(page, 'moved');
+    await createNewClient(page, section, `${RUN}-moved`);
+
+    await switchInHeader(page, STAGING);
+
+    await expect(accessRadio(form, 'form.quickRoute.accessKeycloak')).toBeChecked();
+    await expect(accessRadio(form, 'form.quickRoute.accessAnyone')).not.toBeChecked();
+    // Offered here too: the section stays, with no client picked.
+    await expect(section).toBeVisible();
+    await expect(form.getByText(i18n.t('form.quickRoute.keycloak.notOffered'))).toHaveCount(0);
+
+    await form.getByRole('button', { name: i18n.t('form.quickRoute.create'), exact: true }).click();
+    await expect(section.getByText(i18n.t('form.quickRoute.keycloak.clientRequired'))).toBeVisible();
+    await expect(secretDialog(page)).toHaveCount(0);
+    await expect(form).toBeVisible();
+
+    await expectNoRoute(ROUTES.moved);
+    expect(await ourClients()).not.toContain(`${CLIENT_PREFIX}${RUN}-moved`);
+  } finally {
+    await apiFetch(`/api/v1/idps/${both.id}?force=true`, token, { method: 'DELETE' });
+  }
+});
+
+/**
+ * The same switch, to an instance with no connection and no token client:
+ * the Keycloak token is no longer offered, and the page says so and refuses
+ * to save rather than saving the route open to all.
+ */
+test('says Keycloak is not offered on an instance without it, and creates nothing', async ({
+  page,
+}) => {
+  const token = await loginAdmin();
+  const staging = getFixtures().stagingInstanceId;
+  const onIt = { headers: { 'X-Instance-ID': staging } };
+  // The premise: Staging offers no Keycloak - no connection, no token client.
+  const linked = (await apiFetch(`/api/v1/instances/${staging}/idps`, token, onIt)) as Idp[];
+  expect(linked, 'no Keycloak connection is linked to Staging').toEqual([]);
+  const clients = (await apiFetch(
+    `/api/v1/instances/${staging}/oidc-clients`,
+    token,
+    onIt
+  )) as OidcClient[];
+  expect(clients.filter((c) => c.mode === 'token'), 'Staging has no token client').toEqual([]);
+
+  const { form, section } = await openKeycloakRoute(page, 'unoffered');
+  await createNewClient(page, section, `${RUN}-unoffered`);
+
+  await switchInHeader(page, STAGING);
+
+  const notOffered = form
+    .getByRole('alert')
+    .filter({ hasText: i18n.t('form.quickRoute.keycloak.notOffered') });
+  await expect(notOffered).toBeVisible();
+  await expect(accessRadio(form, 'form.quickRoute.accessKeycloak')).toBeChecked();
+  await expect(accessRadio(form, 'form.quickRoute.accessAnyone')).not.toBeChecked();
+  await expect(section).toBeHidden();
+
+  await form.getByRole('button', { name: i18n.t('form.quickRoute.create'), exact: true }).click();
+  await expect(notOffered).toBeVisible();
+  await expect(secretDialog(page)).toHaveCount(0);
+  await expect(form).toBeVisible();
+
+  await expectNoRoute(ROUTES.unoffered);
+  expect(await ourClients()).not.toContain(`${CLIENT_PREFIX}${RUN}-unoffered`);
 });
