@@ -1107,8 +1107,22 @@
           "attachClientLeft": "无法将客户端 {{clientId}} 设置到路由 {{name}} 上：路由已删除，但客户端仍保留。它在“设置 > OIDC 客户端”中显示为“无路由”，需由管理员删除。",
           "routeKeptDisabled": "路由 {{name}} 既无法完成也无法删除：它已以禁用状态保留，不接收任何流量。请在其页面中删除或完善它。",
           "reuse": "无法使用该客户端：未创建任何内容。"
-        }
-      }
+        },
+        "create": "创建新客户端",
+        "reuse": "复用客户端",
+        "connection": "Keycloak 连接",
+        "clientId": "客户端 ID",
+        "validation": "如何校验令牌？",
+        "jwks": "校验其签名（JWKS）：每个请求无需调用 Keycloak",
+        "introspection": "向 Keycloak 查询（introspection）：已吊销的令牌会被立即拒绝",
+        "client": "要复用的客户端",
+        "loginHint": "浏览器登录请在高级表单中设置。",
+        "secretTitle": "Keycloak 客户端已创建",
+        "secretOnce": "请立即复制密钥：它只显示这一次。控制台不会保存它，之后只能在 Keycloak 中再次查看。",
+        "tokenEndpoint": "令牌端点",
+        "clientSecret": "客户端密钥"
+      },
+      "accessKeycloak": "Keycloak 令牌"
     }
   },
   "globalRules": {

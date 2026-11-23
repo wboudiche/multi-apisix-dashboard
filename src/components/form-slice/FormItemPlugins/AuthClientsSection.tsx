@@ -110,7 +110,7 @@ const fetchClients = async (plugin: AuthClientPlugin): Promise<Clients> => {
   };
 };
 
-const CopyValue = ({ value }: { value: string }) => {
+export const CopyValue = ({ value }: { value: string }) => {
   const { t } = useTranslation();
   return (
     <CopyButton value={value}>

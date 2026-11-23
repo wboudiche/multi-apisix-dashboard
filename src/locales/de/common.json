@@ -1113,8 +1113,22 @@
           "attachClientLeft": "Der Client {{clientId}} konnte nicht in die Route {{name}} eingetragen werden: die Route wurde gelöscht, der Client aber behalten. Er steht unter Einstellungen > OIDC-Clients als \"Keine Route\", damit ein Administrator ihn löscht.",
           "routeKeptDisabled": "Die Route {{name}} konnte weder fertiggestellt noch gelöscht werden: sie wurde deaktiviert behalten und nimmt keinen Verkehr an. Löschen oder vervollständigen Sie sie auf ihrer Seite.",
           "reuse": "Der Client konnte nicht verwendet werden: es wurde nichts angelegt."
-        }
-      }
+        },
+        "create": "Einen neuen Client anlegen",
+        "reuse": "Einen Client wiederverwenden",
+        "connection": "Keycloak-Verbindung",
+        "clientId": "Client-ID",
+        "validation": "Wie wird ein Token geprüft?",
+        "jwks": "Die Signatur prüfen (JWKS): kein Aufruf an Keycloak pro Anfrage",
+        "introspection": "Bei Keycloak nachfragen (Introspection): ein widerrufenes Token wird sofort abgelehnt",
+        "client": "Wiederzuverwendender Client",
+        "loginHint": "Eine Anmeldung im Browser wird im erweiterten Formular eingerichtet.",
+        "secretTitle": "Keycloak-Client angelegt",
+        "secretOnce": "Kopieren Sie das Geheimnis jetzt: es wird nur dieses eine Mal angezeigt. Das Dashboard speichert es nicht, und es ist nur noch in Keycloak lesbar.",
+        "tokenEndpoint": "Token-Endpunkt",
+        "clientSecret": "Client-Geheimnis"
+      },
+      "accessKeycloak": "Keycloak-Token"
     }
   },
   "globalRules": {

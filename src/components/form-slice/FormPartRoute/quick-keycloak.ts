@@ -55,8 +55,17 @@ export const initialKeycloakChoice = (creators: LinkedIdp[], suffix: string): Ke
 /** Another instance: its connections and clients are others, so the choice starts over. */
 export const keycloakChoiceAfterInstanceChange = (): KeycloakChoice | null => null;
 
+/** The sentences a failed save can be told in. */
+export type FailureMessageKey =
+  | 'form.quickRoute.keycloak.failed.routeKeptDisabled'
+  | 'form.quickRoute.keycloak.failed.reuse'
+  | 'form.quickRoute.keycloak.failed.clientRouteDeleted'
+  | 'form.quickRoute.keycloak.failed.attachClientLeft'
+  | 'form.quickRoute.keycloak.failed.attachRouteDeleted'
+  | 'routes.createFailed';
+
 /** What the page says of a failed save: what failed, and what was left behind. */
-export const failureMessageKey = (f: KeycloakSaveFailure): string => {
+export const failureMessageKey = (f: KeycloakSaveFailure): FailureMessageKey => {
   if (f.route === 'kept-disabled') return 'form.quickRoute.keycloak.failed.routeKeptDisabled';
   switch (f.step) {
     case 'reuse':

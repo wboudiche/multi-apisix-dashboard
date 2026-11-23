@@ -1029,8 +1029,22 @@
           "attachClientLeft": "The client {{clientId}} could not be set on the route {{name}}: the route was deleted, but the client was kept. It is listed under Settings > OIDC clients as \"No route\", for an administrator to delete.",
           "routeKeptDisabled": "The route {{name}} could not be finished nor deleted: it was kept, disabled, and takes no traffic. Delete it or complete it from its page.",
           "reuse": "The client could not be used: nothing was created."
-        }
-      }
+        },
+        "create": "Create a new client",
+        "reuse": "Reuse a client",
+        "connection": "Keycloak connection",
+        "clientId": "Client ID",
+        "validation": "How is a token checked?",
+        "jwks": "Check its signature (JWKS): no call to Keycloak per request",
+        "introspection": "Ask Keycloak (introspection): a revoked token is refused at once",
+        "client": "Client to reuse",
+        "loginHint": "A login in the browser is set up in the advanced form.",
+        "secretTitle": "Keycloak client created",
+        "secretOnce": "Copy the secret now: it is shown only this once. The dashboard does not keep it, and it can be read again only in Keycloak.",
+        "tokenEndpoint": "Token endpoint",
+        "clientSecret": "Client secret"
+      },
+      "accessKeycloak": "Keycloak token"
     }
   },
   "globalRules": {

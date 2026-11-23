@@ -1115,8 +1115,22 @@
           "attachClientLeft": "No se pudo asignar el cliente {{clientId}} a la ruta {{name}}: la ruta se eliminó, pero el cliente se conservó. Aparece en Configuraciones > Clientes OIDC como \"Sin ruta\", para que un administrador lo elimine.",
           "routeKeptDisabled": "La ruta {{name}} no se pudo completar ni eliminar: se conservó desactivada y no recibe tráfico. Elimínela o complétela desde su página.",
           "reuse": "No se pudo usar el cliente: no se creó nada."
-        }
-      }
+        },
+        "create": "Crear un cliente nuevo",
+        "reuse": "Reutilizar un cliente",
+        "connection": "Conexión de Keycloak",
+        "clientId": "ID de cliente",
+        "validation": "¿Cómo se comprueba un token?",
+        "jwks": "Comprobar su firma (JWKS): ninguna llamada a Keycloak por petición",
+        "introspection": "Preguntar a Keycloak (introspección): un token revocado se rechaza de inmediato",
+        "client": "Cliente que reutilizar",
+        "loginHint": "Un inicio de sesión en el navegador se configura en el formulario avanzado.",
+        "secretTitle": "Cliente de Keycloak creado",
+        "secretOnce": "Copie el secreto ahora: solo se muestra esta vez. El panel no lo guarda y solo se puede volver a leer en Keycloak.",
+        "tokenEndpoint": "Endpoint de token",
+        "clientSecret": "Secreto del cliente"
+      },
+      "accessKeycloak": "Token de Keycloak"
     }
   },
   "globalRules": {

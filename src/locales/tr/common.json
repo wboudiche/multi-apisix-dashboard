@@ -1113,8 +1113,22 @@
           "attachClientLeft": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: rota silindi ancak istemci kaldı. Bir yöneticinin silmesi için Ayarlar > OIDC istemcileri altında \"Rota yok\" olarak listelenir.",
           "routeKeptDisabled": "{{name}} rotası tamamlanamadı ve silinemedi: devre dışı olarak tutuldu ve trafik almıyor. Sayfasından silin veya tamamlayın.",
           "reuse": "İstemci kullanılamadı: hiçbir şey oluşturulmadı."
-        }
-      }
+        },
+        "create": "Yeni bir istemci oluştur",
+        "reuse": "Bir istemciyi yeniden kullan",
+        "connection": "Keycloak bağlantısı",
+        "clientId": "İstemci kimliği",
+        "validation": "Bir belirteç nasıl doğrulanır?",
+        "jwks": "İmzasını denetle (JWKS): istek başına Keycloak'a çağrı yok",
+        "introspection": "Keycloak'a sor (introspection): iptal edilen bir belirteç hemen reddedilir",
+        "client": "Yeniden kullanılacak istemci",
+        "loginHint": "Tarayıcıda oturum açma gelişmiş formda ayarlanır.",
+        "secretTitle": "Keycloak istemcisi oluşturuldu",
+        "secretOnce": "Gizli anahtarı şimdi kopyalayın: yalnızca bu kez gösterilir. Panel onu saklamaz ve yalnızca Keycloak'ta yeniden okunabilir.",
+        "tokenEndpoint": "Belirteç uç noktası",
+        "clientSecret": "İstemci gizli anahtarı"
+      },
+      "accessKeycloak": "Keycloak belirteci"
     }
   },
   "globalRules": {
