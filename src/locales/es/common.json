@@ -1108,7 +1108,14 @@
       "keycloak": {
         "connectionRequired": "Elija una conexión de Keycloak.",
         "clientIdRequired": "Asigne un id al cliente.",
-        "clientRequired": "Elija un cliente para reutilizar."
+        "clientRequired": "Elija un cliente para reutilizar.",
+        "failed": {
+          "clientRouteDeleted": "No se pudo crear el cliente de Keycloak, así que se eliminó la ruta {{name}}.",
+          "attachRouteDeleted": "No se pudo asignar el cliente {{clientId}} a la ruta {{name}}: se eliminaron los dos.",
+          "attachClientLeft": "No se pudo asignar el cliente {{clientId}} a la ruta {{name}}: la ruta se eliminó, pero el cliente se conservó. Aparece en Configuraciones > Clientes OIDC como \"Sin ruta\", para que un administrador lo elimine.",
+          "routeKeptDisabled": "La ruta {{name}} no se pudo completar ni eliminar: se conservó desactivada y no recibe tráfico. Elimínela o complétela desde su página.",
+          "reuse": "No se pudo usar el cliente: no se creó nada."
+        }
       }
     }
   },

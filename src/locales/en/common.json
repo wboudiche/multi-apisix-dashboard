@@ -1022,7 +1022,14 @@
       "keycloak": {
         "connectionRequired": "Pick a Keycloak connection.",
         "clientIdRequired": "Give the client an id.",
-        "clientRequired": "Pick a client to reuse."
+        "clientRequired": "Pick a client to reuse.",
+        "failed": {
+          "clientRouteDeleted": "The Keycloak client could not be created, so the route {{name}} was deleted.",
+          "attachRouteDeleted": "The client {{clientId}} could not be set on the route {{name}}: both were deleted.",
+          "attachClientLeft": "The client {{clientId}} could not be set on the route {{name}}: the route was deleted, but the client was kept. It is listed under Settings > OIDC clients as \"No route\", for an administrator to delete.",
+          "routeKeptDisabled": "The route {{name}} could not be finished nor deleted: it was kept, disabled, and takes no traffic. Delete it or complete it from its page.",
+          "reuse": "The client could not be used: nothing was created."
+        }
       }
     }
   },

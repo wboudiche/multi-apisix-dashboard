@@ -1100,7 +1100,14 @@
       "keycloak": {
         "connectionRequired": "请选择一个 Keycloak 连接。",
         "clientIdRequired": "请为客户端指定一个 ID。",
-        "clientRequired": "请选择要复用的客户端。"
+        "clientRequired": "请选择要复用的客户端。",
+        "failed": {
+          "clientRouteDeleted": "无法创建 Keycloak 客户端，因此已删除路由 {{name}}。",
+          "attachRouteDeleted": "无法将客户端 {{clientId}} 设置到路由 {{name}} 上：两者均已删除。",
+          "attachClientLeft": "无法将客户端 {{clientId}} 设置到路由 {{name}} 上：路由已删除，但客户端仍保留。它在“设置 > OIDC 客户端”中显示为“无路由”，需由管理员删除。",
+          "routeKeptDisabled": "路由 {{name}} 既无法完成也无法删除：它已以禁用状态保留，不接收任何流量。请在其页面中删除或完善它。",
+          "reuse": "无法使用该客户端：未创建任何内容。"
+        }
       }
     }
   },

@@ -1106,7 +1106,14 @@
       "keycloak": {
         "connectionRequired": "Bir Keycloak bağlantısı seçin.",
         "clientIdRequired": "İstemciye bir kimlik verin.",
-        "clientRequired": "Yeniden kullanılacak bir istemci seçin."
+        "clientRequired": "Yeniden kullanılacak bir istemci seçin.",
+        "failed": {
+          "clientRouteDeleted": "Keycloak istemcisi oluşturulamadı, bu yüzden {{name}} rotası silindi.",
+          "attachRouteDeleted": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: ikisi de silindi.",
+          "attachClientLeft": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: rota silindi ancak istemci kaldı. Bir yöneticinin silmesi için Ayarlar > OIDC istemcileri altında \"Rota yok\" olarak listelenir.",
+          "routeKeptDisabled": "{{name}} rotası tamamlanamadı ve silinemedi: devre dışı olarak tutuldu ve trafik almıyor. Sayfasından silin veya tamamlayın.",
+          "reuse": "İstemci kullanılamadı: hiçbir şey oluşturulmadı."
+        }
       }
     }
   },

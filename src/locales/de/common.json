@@ -1106,7 +1106,14 @@
       "keycloak": {
         "connectionRequired": "Wählen Sie eine Keycloak-Verbindung.",
         "clientIdRequired": "Geben Sie dem Client eine ID.",
-        "clientRequired": "Wählen Sie einen Client zur Wiederverwendung."
+        "clientRequired": "Wählen Sie einen Client zur Wiederverwendung.",
+        "failed": {
+          "clientRouteDeleted": "Der Keycloak-Client konnte nicht angelegt werden, daher wurde die Route {{name}} gelöscht.",
+          "attachRouteDeleted": "Der Client {{clientId}} konnte nicht in die Route {{name}} eingetragen werden: beide wurden gelöscht.",
+          "attachClientLeft": "Der Client {{clientId}} konnte nicht in die Route {{name}} eingetragen werden: die Route wurde gelöscht, der Client aber behalten. Er steht unter Einstellungen > OIDC-Clients als \"Keine Route\", damit ein Administrator ihn löscht.",
+          "routeKeptDisabled": "Die Route {{name}} konnte weder fertiggestellt noch gelöscht werden: sie wurde deaktiviert behalten und nimmt keinen Verkehr an. Löschen oder vervollständigen Sie sie auf ihrer Seite.",
+          "reuse": "Der Client konnte nicht verwendet werden: es wurde nichts angelegt."
+        }
       }
     }
   },
