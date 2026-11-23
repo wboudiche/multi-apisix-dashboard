@@ -37,6 +37,9 @@ const creds: ClientCredentials = {
 const form = { name: 'orders', uris: ['/orders'], status: 1 } as unknown as RoutePostType;
 
 type Calls = string[];
+const entry = (uuid: string, over: Partial<OidcClientItem> = {}): OidcClientItem =>
+  ({ uuid, client_id: creds.client_id, route_id: 'r1', idp_id: 'idp1', ...over }) as OidcClientItem;
+
 const makeDeps = (over: Partial<KeycloakSaveDeps> = {}) => {
   const calls: Calls = [];
   const posted: RoutePostType[] = [];
@@ -66,7 +69,7 @@ const makeDeps = (over: Partial<KeycloakSaveDeps> = {}) => {
     },
     listClients: async () => {
       calls.push('list');
-      return [{ uuid: 'u9', client_id: creds.client_id } as OidcClientItem];
+      return [entry('u9')];
     },
     deleteClient: async () => {
       calls.push('delete-client');
@@ -145,7 +148,7 @@ describe('saveWithKeycloak', () => {
     };
     const f = await failureOf(saveWithKeycloak(t.deps, form, 1, create));
     expect(f).toMatchObject({ step: 'attach', route: 'deleted', client: 'deleted' });
-    expect(f.cause).toBe(cause);
+    expect(f.cause).toEqual({ message: cause.message });
     expect(deleted).toBe('u9');
   });
 
@@ -211,5 +214,60 @@ describe('saveWithKeycloak', () => {
     const f = await failureOf(saveWithKeycloak(t.deps, form, 1, create));
     expect(f).toMatchObject({ step: 'route', route: 'none' });
     expect(t.calls).toEqual([]);
+  });
+
+  it('never keeps the request of a failed call, which holds the client secret', async () => {
+    const request = () =>
+      Object.assign(new Error('Request failed'), {
+        config: { data: JSON.stringify({ plugins: { 'openid-connect': { client_secret: 's3cret' } } }) },
+        response: { status: 400, data: { error_msg: 'refused' } },
+      });
+    const t1 = makeDeps({
+      patchRoute: async () => {
+        throw request();
+      },
+    });
+    const t2 = makeDeps({
+      postRoute: async () => {
+        throw request();
+      },
+    });
+    const reuse = { kind: 'reuse', uuid: 'u1' } as const;
+    for (const run of [
+      saveWithKeycloak(t1.deps, form, 1, create),
+      saveWithKeycloak(t2.deps, form, 1, reuse),
+      saveWithKeycloak(t2.deps, form, 1, create),
+    ]) {
+      let error: KeycloakSaveError | undefined;
+      try {
+        await run;
+      } catch (e) {
+        error = e as KeycloakSaveError;
+      }
+      expect(error).toBeInstanceOf(KeycloakSaveError);
+      expect(JSON.stringify(error?.failure)).not.toContain('s3cret');
+      expect(JSON.stringify(error?.cause)).not.toContain('s3cret');
+      expect(error?.failure.cause).toMatchObject({ status: 400, data: { error_msg: 'refused' } });
+    }
+  });
+
+  it.each([
+    ['another connection', [entry('a', { idp_id: 'idp2' })]],
+    ['another route', [entry('a', { route_id: 'r2' })]],
+    ['two matches', [entry('a'), entry('b')]],
+  ])('attach fails for an admin: leaves the client when the list holds %s', async (_n, list) => {
+    const deleted: string[] = [];
+    const t = makeDeps({
+      patchRoute: async () => {
+        throw new Error('no');
+      },
+      listClients: async () => list,
+      deleteClient: async (u) => {
+        deleted.push(u);
+      },
+    });
+    const f = await failureOf(saveWithKeycloak(t.deps, form, 1, create));
+    expect(f).toMatchObject({ client: 'left', clientId: creds.client_id });
+    expect(deleted).toEqual([]);
   });
 });

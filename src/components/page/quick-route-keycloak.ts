@@ -54,6 +54,25 @@ export class KeycloakSaveError extends Error {
   }
 }
 
+/**
+ * What of a rejection may be kept: its message and the backend's answer. A
+ * request error (an AxiosError) also carries the request it sent, whose body
+ * holds the client secret, so the error itself is never stored.
+ */
+export type SafeCause = { message?: string; status?: number; data?: unknown };
+
+const safeCause = (error: unknown): SafeCause => {
+  if (!error || typeof error !== 'object') return {};
+  const e = error as { message?: unknown; response?: { status?: unknown; data?: unknown } };
+  const out: SafeCause = {};
+  if (typeof e.message === 'string') out.message = e.message;
+  if (e.response && typeof e.response === 'object') {
+    if (typeof e.response.status === 'number') out.status = e.response.status;
+    if (e.response.data !== undefined) out.data = e.response.data;
+  }
+  return out;
+};
+
 const withPlugin = (
   form: RoutePostType,
   status: 0 | 1,
@@ -80,13 +99,20 @@ const dropRoute = async (deps: KeycloakSaveDeps, routeId: string): Promise<boole
 /** An administrator removes the client of a route that did not come to be; anyone else leaves it. */
 const dropClient = async (
   deps: KeycloakSaveDeps,
-  credentials: ClientCredentials
+  credentials: ClientCredentials,
+  routeId: string,
+  idpId: string
 ): Promise<'deleted' | 'left'> => {
   if (!deps.isAdmin) return 'left';
   try {
-    const found = (await deps.listClients()).find((c) => c.client_id === credentials.client_id);
-    if (!found) return 'left';
-    await deps.deleteClient(found.uuid);
+    // The id alone may be held by another connection or realm: only the client
+    // made for this route, on this connection, is ours, and only if it is one.
+    const found = (await deps.listClients()).filter(
+      (c) =>
+        c.client_id === credentials.client_id && c.route_id === routeId && c.idp_id === idpId
+    );
+    if (found.length !== 1) return 'left';
+    await deps.deleteClient(found[0].uuid);
     return 'deleted';
   } catch {
     return 'left';
@@ -111,13 +137,13 @@ export const saveWithKeycloak = async (
     try {
       credentials = await deps.useClient(choice.uuid);
     } catch (cause) {
-      throw new KeycloakSaveError({ step: 'reuse', cause, route: 'none', client: 'none' });
+      throw new KeycloakSaveError({ step: 'reuse', cause: safeCause(cause), route: 'none', client: 'none' });
     }
     try {
       const routeId = await deps.postRoute(withPlugin(form, status, credentials));
       return { routeId, credentials, created: false };
     } catch (cause) {
-      throw new KeycloakSaveError({ step: 'route', cause, route: 'none', client: 'none' });
+      throw new KeycloakSaveError({ step: 'route', cause: safeCause(cause), route: 'none', client: 'none' });
     }
   }
 
@@ -127,7 +153,7 @@ export const saveWithKeycloak = async (
   try {
     routeId = await deps.postRoute({ ...form, status: 0, plugins });
   } catch (cause) {
-    throw new KeycloakSaveError({ step: 'route', cause, route: 'none', client: 'none' });
+    throw new KeycloakSaveError({ step: 'route', cause: safeCause(cause), route: 'none', client: 'none' });
   }
 
   let credentials: ClientCredentials;
@@ -142,7 +168,7 @@ export const saveWithKeycloak = async (
     const deleted = await dropRoute(deps, routeId);
     throw new KeycloakSaveError({
       step: 'client',
-      cause,
+      cause: safeCause(cause),
       route: deleted ? 'deleted' : 'kept-disabled',
       routeId,
       client: 'none',
@@ -156,10 +182,10 @@ export const saveWithKeycloak = async (
     });
   } catch (cause) {
     const deleted = await dropRoute(deps, routeId);
-    const client = await dropClient(deps, credentials);
+    const client = await dropClient(deps, credentials, routeId, choice.idpId);
     throw new KeycloakSaveError({
       step: 'attach',
-      cause,
+      cause: safeCause(cause),
       route: deleted ? 'deleted' : 'kept-disabled',
       routeId,
       client,
