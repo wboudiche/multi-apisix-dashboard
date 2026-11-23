@@ -340,6 +340,81 @@ type Ownership struct {
 	TeamID       string `json:"team_id"`
 }
 
+// IdPTypeKeycloak is the only identity provider type the dashboard supports.
+const IdPTypeKeycloak = "keycloak"
+
+// IdentityProvider is a Keycloak realm the dashboard provisions OIDC clients in.
+// The admin service account is what the dashboard uses to call Keycloak's admin
+// API; its secret is stored here and must never leave the backend.
+type IdentityProvider struct {
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	Type              string   `json:"type"` // always IdPTypeKeycloak
+	BaseURL           string   `json:"base_url"`
+	Realm             string   `json:"realm"`
+	AdminClientID     string   `json:"admin_client_id"`
+	AdminClientSecret string   `json:"admin_client_secret"`
+	ClientIDPrefix    string   `json:"client_id_prefix"` // only clients with this prefix are managed
+	InstanceIDs       []string `json:"instance_ids"`     // instances this provider may create clients for
+	// DevelopersCanCreate lets developers, not only admins, create clients.
+	DevelopersCanCreate bool `json:"developers_can_create"`
+	// RedirectDomains are the DNS names a developer's login client may redirect
+	// to (the name itself or any subdomain). Set by a super admin: a developer
+	// writes the hosts of their own routes, so those cannot bound a redirect.
+	RedirectDomains []string `json:"redirect_domains"`
+	// GatewayBaseURL, when set, is the server root the gateways reach Keycloak
+	// at, written into the routes (discovery, introspection) in place of
+	// BaseURL, which stays the address the backend calls.
+	GatewayBaseURL string   `json:"gateway_base_url,omitempty"`
+	CreatedAt      NullTime `json:"created_at"`
+	UpdatedAt      NullTime `json:"updated_at"`
+}
+
+// LinkedTo reports whether the provider is linked to the given instance.
+func (p IdentityProvider) LinkedTo(instanceID string) bool {
+	for _, id := range p.InstanceIDs {
+		if id == instanceID {
+			return true
+		}
+	}
+	return false
+}
+
+// IdPClientOptions are the switches chosen when a client is created.
+type IdPClientOptions struct {
+	PKCE              bool   `json:"pkce"`
+	Validation        string `json:"validation"` // "introspection" | "jwks", token mode only
+	ClientCredentials bool   `json:"client_credentials"`
+}
+
+// IdPClient is the registry entry for a Keycloak client the dashboard created.
+// It records what was provisioned, not the secret: a client's secret is never
+// stored and is read back from Keycloak when needed.
+type IdPClient struct {
+	IdPID        string `json:"idp_id"`
+	InstanceID   string `json:"instance_id"`
+	Realm        string `json:"realm"`
+	Prefix       string `json:"prefix"`
+	ClientID     string `json:"client_id"`
+	KeycloakUUID string `json:"keycloak_uuid"`
+	RouteID      string `json:"route_id"`
+	// RouteCreateTime is the APISIX create_time of the route when the client
+	// was made. A route re-created under the same id has another one, so it
+	// does not inherit the client.
+	RouteCreateTime int64            `json:"route_create_time"`
+	Mode            string           `json:"mode"` // "login" | "token"
+	Options         IdPClientOptions `json:"options"`
+	RedirectURI     string           `json:"redirect_uri"`
+	CreatedBy       string           `json:"created_by"`
+	CreatedAt       NullTime         `json:"created_at"`
+}
+
+// IdPClientKey returns the etcd key of a registry entry: one per Keycloak client
+// UUID, grouped under the provider that owns it.
+func IdPClientKey(idpID, uuid string) string {
+	return KeyPrefixIdPClients + idpID + "/" + uuid
+}
+
 // Role represents a role with permissions
 type Role struct {
 	Name        string   `json:"name"`
@@ -411,6 +486,8 @@ const (
 	KeyPrefixTeams         = "/teams/"
 	KeyPrefixOwnership     = "/ownership/"
 	KeyPrefixLabels        = "/labels/"
+	KeyPrefixIdPs          = "/idps/"
+	KeyPrefixIdPClients    = "/idp_clients/"
 )
 
 // Label represents a managed label key with allowed values

@@ -123,6 +123,59 @@ func stripDashboardFields(body []byte) []byte {
 	return cleaned
 }
 
+// stripRouteTimestamps removes the top-level create_time and update_time from
+// a route write. APISIX keeps a create_time the body carries, and the client
+// registry binds to it (route_create_time), so the caller must not set it: left
+// out, APISIX sets it on a create and keeps the previous one on an update.
+//
+// It fails closed: a non-empty body must be exactly one JSON object Go can
+// read, with nothing after it, and what is returned is that object
+// re-marshalled, never the caller's bytes, so APISIX's parser cannot read
+// something this one did not check. Numbers stay exact. An empty body is
+// returned as it is, for APISIX to answer.
+func stripRouteTimestamps(body []byte) ([]byte, error) {
+	if len(bytes.TrimSpace(body)) == 0 {
+		return body, nil
+	}
+	invalid := errors.New("invalid JSON body")
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	var route map[string]any
+	if err := decoder.Decode(&route); err != nil || route == nil {
+		return nil, invalid
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return nil, invalid
+	}
+	delete(route, "create_time")
+	delete(route, "update_time")
+	var out bytes.Buffer
+	enc := json.NewEncoder(&out)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(route); err != nil {
+		return nil, invalid
+	}
+	return bytes.TrimSpace(out.Bytes()), nil
+}
+
+// stripsRouteTimestampsFor reports whether a request is a write to the routes
+// collection or to one route, not to something beneath a route. Only POST and
+// PUT: cmd/main.go routes no PATCH to the proxy.
+func stripsRouteTimestampsFor(method, resourceType, path string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut:
+		return resourceType == "routes" && !beneathResource(path)
+	}
+	return false
+}
+
+// detachesRoute reports whether a finished request deleted a route, so the
+// clients made for it must be detached from it.
+func detachesRoute(method, resourceType, resourceID, path string, status int) bool {
+	return method == http.MethodDelete && status == http.StatusOK &&
+		resourceType == "routes" && resourceID != "" && namesResourceItself(path)
+}
+
 // injectTeamID adds the owning team to a single-resource Admin API response,
 // under the same field the list path uses.
 //
@@ -436,6 +489,10 @@ func unownedWriteDenied(resourceExists bool) bool {
 type ProxyHandler struct {
 	instanceService  *services.InstanceService
 	ownershipService *services.OwnershipService
+	idpService       *services.IdPService
+	// getInstance is instanceService.GetInstance, a field so a test can serve
+	// an instance without etcd.
+	getInstance func(ctx context.Context, id string) (*models.Instance, error)
 	// Held per handler rather than per request: paging through an
 	// upstream-filtered list is several requests, and re-reading the whole
 	// service table on each was the cost this exists to remove.
@@ -450,8 +507,10 @@ type ProxyHandler struct {
 	upstreamHealth *upstreamHealthCache
 }
 
-func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService) *ProxyHandler {
+func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService, idpService *services.IdPService) *ProxyHandler {
 	return &ProxyHandler{
+		getInstance:        instanceService.GetInstance,
+		idpService:         idpService,
 		instanceService:    instanceService,
 		ownershipService:   ownershipService,
 		serviceUpstreams:   newServiceUpstreamCache(time.Now),
@@ -566,7 +625,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
-	instance, err := h.instanceService.GetInstance(c.Request.Context(), instanceID)
+	instance, err := h.getInstance(c.Request.Context(), instanceID)
 	if err != nil || instance == nil || !instance.IsActive {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Instance not found or inactive"})
 		return
@@ -784,6 +843,13 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		c.Request.Method == http.MethodPatch {
 		bodyBytes = stripDashboardFields(bodyBytes)
 	}
+	if stripsRouteTimestampsFor(c.Request.Method, resourceType, path) {
+		var err error
+		if bodyBytes, err = stripRouteTimestamps(bodyBytes); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
+			return
+		}
+	}
 
 	proxyReq, _ := http.NewRequest(c.Request.Method, targetURL, bytes.NewReader(bodyBytes))
 	for key, values := range c.Request.Header {
@@ -915,6 +981,19 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		if err != nil {
 			log.Printf("[instance %s] %s %s was deleted, but its ownership record could not be removed: %v",
 				instanceID, resourceType, resourceID, err)
+		}
+	}
+
+	// Clients made for a deleted route are detached from it, so a route
+	// created later under the same id inherits none, whatever its create_time.
+	// As above, the route is already gone: a failure is logged, not returned.
+	if h.idpService != nil && detachesRoute(c.Request.Method, resourceType, resourceID, path, resp.StatusCode) {
+		ctx, cancel := ownershipWriteContext(c.Request.Context())
+		_, err := h.idpService.DetachRoute(ctx, instanceID, resourceID)
+		cancel()
+		if err != nil {
+			log.Printf("[instance %s] routes %s was deleted, but its OIDC clients could not be detached: %v",
+				instanceID, resourceID, err)
 		}
 	}
 

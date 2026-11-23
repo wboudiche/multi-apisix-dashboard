@@ -502,7 +502,31 @@
         "noKeys": "Er veröffentlicht keine Schlüssel (jwks_uri), um die von ihm signierten Tokens zu prüfen.",
         "redirectHelp": "Wohin der Anbieter die Personen nach der Anmeldung zurückschickt: eine vollständige Adresse auf einem Pfad, den diese Route abdeckt. Registrieren Sie dieselbe beim Anbieter.",
         "redirectMissing": "Ohne sie schickt das Gateway die Personen an die Adresse der jeweiligen Seite mit angehängtem /.apisix/redirect zurück, die sich von Seite zu Seite ändert: Die meisten Anbieter lehnen das ab.",
-        "redirectNotAbsolute": "Der Anbieter braucht hier eine vollständige Adresse, die mit https:// (oder http://) beginnt, nicht nur einen Pfad."
+        "redirectNotAbsolute": "Der Anbieter braucht hier eine vollständige Adresse, die mit https:// (oder http://) beginnt, nicht nur einen Pfad.",
+        "kc": {
+          "title": "Client",
+          "create": "In Keycloak anlegen",
+          "reuse": "Einen vom Dashboard angelegten Client verwenden",
+          "hand": "Einen vorhandenen Client eingeben",
+          "provider": "Anbieter",
+          "clientId": "Client-ID",
+          "clientIdHelp": "Aus dem Namen der Route vorgeschlagen. Die Verbindung setzt ihr eigenes Präfix davor.",
+          "pkce": "PKCE verwenden",
+          "validation": "Wie wird ein Token geprüft?",
+          "introspection": "Beim Anbieter nachfragen (Introspection)",
+          "jwks": "Die Signatur prüfen (JWKS)",
+          "clientCredentials": "Anwendungen auch mit eigenen Zugangsdaten anmelden lassen (Client Credentials)",
+          "redirectHelp": "Beim Anbieter als einzige Adresse eingetragen, zu der Nutzer zurückkehren dürfen. Bestätigen oder ändern Sie sie.",
+          "createBtn": "Client anlegen",
+          "saveFirst": "Speichern Sie die Route zuerst einmal: Der Client ist an sie gebunden.",
+          "pick": "Client",
+          "pickPlaceholder": "Client auswählen",
+          "useBtn": "Diesen Client verwenden",
+          "filled": "Client {{id}} ist eingetragen: Discovery, Client-ID und Secret.",
+          "gone": "Dieser Client existiert in Keycloak nicht mehr.",
+          "createFailed": "Der Client konnte nicht angelegt werden.",
+          "useFailed": "Der Client konnte nicht gelesen werden."
+        }
       },
       "configIdTyped": "Plugin-Konfigurations-ID"
     },
@@ -1225,12 +1249,81 @@
     "save": "Richtlinie speichern",
     "saved": "Passwortrichtlinie gespeichert",
     "saveError": "Richtlinie konnte nicht gespeichert werden",
-    "accessDenied": "Nur Super-Admins können Einstellungen bearbeiten.",
+    "accessDenied": "Einstellungen sind Administratoren vorbehalten.",
     "invalid": {
       "minLengthTooLow": "Die Mindestlänge muss mindestens {{limit}} betragen.",
       "maxLengthTooHigh": "Die Höchstlänge darf höchstens {{limit}} betragen: bcrypt ignoriert alles Längere.",
       "maxLengthBelowMin": "Die Höchstlänge darf nicht kleiner als die Mindestlänge sein.",
       "negativeValue": "Anzahlen und Zeiträume dürfen nicht negativ sein."
+    },
+    "idp": {
+      "title": "Identitätsanbieter",
+      "add": "Identitätsanbieter hinzufügen",
+      "addTitle": "Neuer Identitätsanbieter",
+      "editTitle": "Identitätsanbieter bearbeiten",
+      "empty": "Noch kein Identitätsanbieter.",
+      "serviceAccountHelp": "Der Admin-Client ist ein Service-Account. Er benötigt im Realm die Rolle manage-clients von realm-management.",
+      "column": {
+        "name": "Name",
+        "urlRealm": "URL / Realm"
+      },
+      "field": {
+        "baseUrl": "Basis-URL",
+        "baseUrlHint": "Die Server-Wurzel, ohne /realms/<realm>.",
+        "realm": "Realm",
+        "adminClientId": "Admin-Client-ID",
+        "adminClientSecret": "Admin-Client-Secret",
+        "secretUnchanged": "Unverändert",
+        "secretHint": "Wird nie wieder angezeigt. Geben Sie es erneut ein, sobald sich URL, Realm oder Admin-Client ändern.",
+        "prefix": "Client-ID-Präfix",
+        "prefixHint": "Jeder über diese Verbindung erstellte Client beginnt damit.",
+        "instances": "Instanzen, die sie nutzen dürfen",
+        "developersCanCreate": "Entwickler dürfen Clients erstellen",
+        "redirectDomains": "Weiterleitungsdomains",
+        "redirectDomainsHint": "Entwickler können Login-Clients nur für diese Domains erstellen. Ohne Eintrag können sie keine Login-Clients erstellen.",
+        "gatewayBaseUrl": "Gateway-Adresse",
+        "gatewayBaseUrlHint": "Wo die Gateways Keycloak erreichen, falls nicht unter der Basis-URL. Sie wird in die Routen geschrieben, daher muss Keycloak unter beiden Adressen denselben Issuer angeben. Bereits gespeicherte Routen behalten ihre Adresse."
+      },
+      "test": {
+        "button": "Verbindung testen",
+        "ok": "Die Verbindung funktioniert.",
+        "auth": "Keycloak hat Admin-Client-ID oder Secret abgelehnt.",
+        "forbidden": "Der Admin-Client konnte sich anmelden, darf in diesem Realm aber keine Clients verwalten. Weisen Sie ihm die Rolle manage-clients zu.",
+        "unavailable": "Keycloak ist nicht erreichbar. Prüfen Sie Basis-URL und Realm.",
+        "failed": "Der Test konnte nicht ausgeführt werden."
+      },
+      "created": "Identitätsanbieter erstellt",
+      "updated": "Identitätsanbieter gespeichert",
+      "deleted": "Identitätsanbieter gelöscht",
+      "loadFailed": "Identitätsanbieter konnten nicht geladen werden",
+      "saveFailed": "Identitätsanbieter konnte nicht gespeichert werden",
+      "deleteFailed": "Identitätsanbieter konnte nicht gelöscht werden",
+      "deleteTitle": "Identitätsanbieter löschen",
+      "deleteConfirm": "{{name}} löschen? Die zugehörigen Clients in Keycloak bleiben unberührt.",
+      "deleteAnyway": "Trotzdem löschen"
+    },
+    "oidcClients": {
+      "title": "OIDC-Clients",
+      "help": "Die für diese Instanz aus dem Dashboard erstellten Clients und die Routen, die sie verwenden. Beim Löschen wird der Client auch in Keycloak entfernt.",
+      "empty": "Noch kein OIDC-Client aus dem Dashboard erstellt.",
+      "loadFailed": "Die OIDC-Clients konnten nicht geladen werden.",
+      "column": {
+        "clientId": "Client-ID",
+        "provider": "Anbieter"
+      },
+      "status": {
+        "ok": "In Verwendung",
+        "noRoute": "Keine Route",
+        "missing": "In Keycloak fehlt",
+        "changed": "In Keycloak geändert",
+        "unknown": "Unbekannt",
+        "unknownHelp": "Keycloak konnte nicht gelesen werden, daher ist der Zustand dieses Clients unbekannt."
+      },
+      "deleteTitle": "OIDC-Client löschen",
+      "deleteConfirm": "Den Client {{name}} löschen? Er wird in Keycloak und im Dashboard entfernt.",
+      "deleteConfirmRoutes": "Den Client {{name}} löschen? Er wird in Keycloak und im Dashboard entfernt, und diese Routen können danach niemanden mehr anmelden: {{routes}}.",
+      "deleted": "OIDC-Client gelöscht",
+      "deleteFailed": "Der OIDC-Client konnte nicht gelöscht werden"
     }
   },
   "sources": {

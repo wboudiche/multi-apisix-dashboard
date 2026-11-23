@@ -126,3 +126,37 @@ describe('a role per team', () => {
     expect(store.get(permissionsAtom).canWriteOwner('a')).toBe(true);
   });
 });
+
+describe('the settings page', () => {
+  beforeEach(() => {
+    storage.clear();
+    clearTeamPicks();
+  });
+
+  const reaches = (role: UserInstanceRole['role']) => {
+    signIn({ ...mixed, role });
+    return store.get(permissionsAtom).canAccessRoute('/settings');
+  };
+
+  it('is reached by an admin of the instance, not by a developer or a viewer', () => {
+    expect(reaches('instance_admin')).toBe(true);
+    expect(reaches('developer')).toBe(false);
+    expect(reaches('viewer')).toBe(false);
+  });
+
+  it('is reached by a super admin', () => {
+    store.set(currentUserAtom, {
+      id: 'u',
+      username: 'u',
+      email: '',
+      role: 'super_admin',
+      created_at: null,
+    });
+    expect(store.get(permissionsAtom).canAccessRoute('/settings')).toBe(true);
+  });
+
+  it('leaves the pages that stay with the super admin where they were', () => {
+    signIn({ ...mixed, role: 'instance_admin' });
+    expect(store.get(permissionsAtom).canAccessRoute('/users')).toBe(false);
+  });
+});

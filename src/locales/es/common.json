@@ -504,7 +504,31 @@
         "noKeys": "No publica claves (jwks_uri) para comprobar los tokens que firma.",
         "redirectHelp": "Adonde el proveedor devuelve a las personas tras iniciar sesión: una dirección completa en una ruta que esta ruta cubre. Registre la misma en el proveedor.",
         "redirectMissing": "Sin ella, la pasarela devuelve a las personas a la dirección de cada página seguida de /.apisix/redirect, que cambia de una página a otra: la mayoría de los proveedores lo rechazan.",
-        "redirectNotAbsolute": "El proveedor necesita aquí una dirección completa, que empiece por https:// (o http://), no solo una ruta."
+        "redirectNotAbsolute": "El proveedor necesita aquí una dirección completa, que empiece por https:// (o http://), no solo una ruta.",
+        "kc": {
+          "title": "Cliente",
+          "create": "Crear en Keycloak",
+          "reuse": "Usar un cliente creado por el panel",
+          "hand": "Introducir un cliente existente",
+          "provider": "Proveedor",
+          "clientId": "ID de cliente",
+          "clientIdHelp": "Propuesto a partir del nombre de la ruta. La conexión añade su propio prefijo delante.",
+          "pkce": "Usar PKCE",
+          "validation": "¿Cómo se comprueba un token?",
+          "introspection": "Preguntar al proveedor (introspección)",
+          "jwks": "Comprobar su firma (JWKS)",
+          "clientCredentials": "Permitir que las aplicaciones también inicien sesión con sus propias credenciales (client credentials)",
+          "redirectHelp": "Se registra en el proveedor como la única dirección a la que se puede volver. Confírmela o edítela.",
+          "createBtn": "Crear cliente",
+          "saveFirst": "Guarde primero la ruta una vez: el cliente queda asociado a ella.",
+          "pick": "Cliente",
+          "pickPlaceholder": "Elija un cliente",
+          "useBtn": "Usar este cliente",
+          "filled": "El cliente {{id}} está rellenado: discovery, ID de cliente y secreto.",
+          "gone": "Este cliente ya no existe en Keycloak.",
+          "createFailed": "No se pudo crear el cliente.",
+          "useFailed": "No se pudo leer el cliente."
+        }
       },
       "configIdTyped": "ID de Configuración de Plugin"
     },
@@ -1227,12 +1251,81 @@
     "save": "Guardar política",
     "saved": "Política de contraseñas guardada",
     "saveError": "Error al guardar la política",
-    "accessDenied": "Solo los Super Administradores pueden editar la configuración.",
+    "accessDenied": "La configuración es solo para administradores.",
     "invalid": {
       "minLengthTooLow": "La longitud mínima debe ser de al menos {{limit}}.",
       "maxLengthTooHigh": "La longitud máxima puede ser como mucho {{limit}}: bcrypt ignora lo que exceda.",
       "maxLengthBelowMin": "La longitud máxima no puede ser menor que la longitud mínima.",
       "negativeValue": "Los recuentos y las duraciones no pueden ser negativos."
+    },
+    "idp": {
+      "title": "Proveedores de identidad",
+      "add": "Añadir proveedor de identidad",
+      "addTitle": "Nuevo proveedor de identidad",
+      "editTitle": "Editar proveedor de identidad",
+      "empty": "Aún no hay proveedores de identidad.",
+      "serviceAccountHelp": "El cliente de administración es una cuenta de servicio. Necesita el rol manage-clients de realm-management en el realm.",
+      "column": {
+        "name": "Nombre",
+        "urlRealm": "URL / realm"
+      },
+      "field": {
+        "baseUrl": "URL base",
+        "baseUrlHint": "La raíz del servidor, sin /realms/<realm>.",
+        "realm": "Realm",
+        "adminClientId": "ID del cliente de administración",
+        "adminClientSecret": "Secreto del cliente de administración",
+        "secretUnchanged": "Sin cambios",
+        "secretHint": "No se vuelve a mostrar. Vuelva a introducirlo cuando cambie la URL, el realm o el cliente de administración.",
+        "prefix": "Prefijo del ID de cliente",
+        "prefixHint": "Todo cliente creado con esta conexión empieza por él.",
+        "instances": "Instancias que pueden usarla",
+        "developersCanCreate": "Los desarrolladores pueden crear clientes",
+        "redirectDomains": "Dominios de redirección",
+        "redirectDomainsHint": "Los desarrolladores solo pueden crear clientes de inicio de sesión para estos dominios. Sin ninguno, no pueden crearlos.",
+        "gatewayBaseUrl": "Dirección para las pasarelas",
+        "gatewayBaseUrlHint": "Dónde alcanzan las pasarelas a Keycloak, si no es en la URL base. Se escribe en las rutas, así que Keycloak debe dar el mismo emisor en ambas direcciones. Las rutas ya guardadas conservan su dirección."
+      },
+      "test": {
+        "button": "Probar la conexión",
+        "ok": "La conexión funciona.",
+        "auth": "Keycloak rechazó el ID o el secreto del cliente de administración.",
+        "forbidden": "El cliente de administración inició sesión, pero no puede gestionar clientes en este realm. Asígnele el rol manage-clients.",
+        "unavailable": "No se pudo contactar con Keycloak. Compruebe la URL base y el realm.",
+        "failed": "No se pudo ejecutar la prueba."
+      },
+      "created": "Proveedor de identidad creado",
+      "updated": "Proveedor de identidad guardado",
+      "deleted": "Proveedor de identidad eliminado",
+      "loadFailed": "No se pudieron cargar los proveedores de identidad",
+      "saveFailed": "No se pudo guardar el proveedor de identidad",
+      "deleteFailed": "No se pudo eliminar el proveedor de identidad",
+      "deleteTitle": "Eliminar proveedor de identidad",
+      "deleteConfirm": "¿Eliminar {{name}}? Sus clientes en Keycloak no se tocan.",
+      "deleteAnyway": "Eliminar de todos modos"
+    },
+    "oidcClients": {
+      "title": "Clientes OIDC",
+      "help": "Los clientes creados desde el panel para esta instancia y las rutas que los usan. Al eliminar uno, también se quita de Keycloak.",
+      "empty": "Aún no se ha creado ningún cliente OIDC desde el panel.",
+      "loadFailed": "No se pudieron cargar los clientes OIDC.",
+      "column": {
+        "clientId": "ID de cliente",
+        "provider": "Proveedor"
+      },
+      "status": {
+        "ok": "En uso",
+        "noRoute": "Sin ruta",
+        "missing": "Falta en Keycloak",
+        "changed": "Modificado en Keycloak",
+        "unknown": "Desconocido",
+        "unknownHelp": "No se pudo leer Keycloak, por lo que se desconoce el estado de este cliente."
+      },
+      "deleteTitle": "Eliminar cliente OIDC",
+      "deleteConfirm": "¿Eliminar el cliente {{name}}? Se quita de Keycloak y del panel.",
+      "deleteConfirmRoutes": "¿Eliminar el cliente {{name}}? Se quita de Keycloak y del panel, y estas rutas ya no podrán autenticar a nadie: {{routes}}.",
+      "deleted": "Cliente OIDC eliminado",
+      "deleteFailed": "No se pudo eliminar el cliente OIDC"
     }
   },
   "sources": {

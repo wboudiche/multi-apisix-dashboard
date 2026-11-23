@@ -1,0 +1,30 @@
+{
+  "realm": "apis",
+  "enabled": true,
+  "sslRequired": "none",
+  "clients": [
+    {
+      "clientId": "apisix-dashboard",
+      "name": "APISIX dashboard (e2e)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "e2e-dashboard-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-apisix-dashboard",
+      "enabled": true,
+      "serviceAccountClientId": "apisix-dashboard",
+      "clientRoles": {
+        "realm-management": ["manage-clients", "view-clients"]
+      }
+    }
+  ]
+}

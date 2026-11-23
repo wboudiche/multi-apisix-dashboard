@@ -149,6 +149,19 @@ jobs:
             done
           ' || (echo "APISIX Control API not reachable after $TIMEOUT seconds" && exit 1)
 
+      - name: Waiting for Keycloak's realm
+        run: |
+          # The realm is imported at start, after the server boots: a 200 on
+          # the realm itself is the point where the dashboard can be given a
+          # connection to it. Keycloak takes far longer than APISIX to start.
+          TIMEOUT=120
+          timeout $TIMEOUT bash -c '
+            until curl -sf -o /dev/null http://127.0.0.1:${E2E_KEYCLOAK_PORT:-8180}/realms/apis; do
+              echo "Waiting for the Keycloak realm..."
+              sleep 5
+            done
+          ' || (echo "Keycloak realm not ready after $TIMEOUT seconds" && exit 1)
+
       - name: Start Go backend
         env:
           PORT: "8086"

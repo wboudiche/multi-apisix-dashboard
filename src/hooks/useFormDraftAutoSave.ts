@@ -17,6 +17,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { type UseFormReturn, useWatch } from 'react-hook-form';
 
+import { withoutPluginSecrets } from '@/utils/form-draft';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const useFormDraftAutoSave = (key: string, form: UseFormReturn<any>) => {
   const watchedValues = useWatch({ control: form.control });
@@ -37,7 +39,7 @@ export const useFormDraftAutoSave = (key: string, form: UseFormReturn<any>) => {
         const values = form.getValues();
         // Only save if there's meaningful data
         if (values.name || values.uri || values.uris?.length) {
-          localStorage.setItem(key, JSON.stringify(values));
+          localStorage.setItem(key, JSON.stringify(withoutPluginSecrets(values)));
         }
       } catch {
         // Ignore serialization errors

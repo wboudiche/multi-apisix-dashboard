@@ -502,7 +502,31 @@
         "noKeys": "它未发布用于校验其所签令牌的密钥（jwks_uri）。",
         "redirectHelp": "用户登录后提供方将其送回的地址：此路由所匹配路径上的完整地址。请在提供方处注册相同的地址。",
         "redirectMissing": "若不设置，网关会把用户送回每个页面自身地址加 /.apisix/redirect，该地址随页面变化：大多数提供方会拒绝。",
-        "redirectNotAbsolute": "提供方在此需要以 https://（或 http://）开头的完整地址，而不只是路径。"
+        "redirectNotAbsolute": "提供方在此需要以 https://（或 http://）开头的完整地址，而不只是路径。",
+        "kc": {
+          "title": "客户端",
+          "create": "在 Keycloak 中创建",
+          "reuse": "使用由控制台创建的客户端",
+          "hand": "填写已有的客户端",
+          "provider": "身份提供者",
+          "clientId": "客户端 ID",
+          "clientIdHelp": "根据路由名称给出建议。连接会在前面加上它自己的前缀。",
+          "pkce": "使用 PKCE",
+          "validation": "如何校验令牌？",
+          "introspection": "向提供者查询（introspection）",
+          "jwks": "校验其签名（JWKS）",
+          "clientCredentials": "允许应用程序也用自己的凭据登录（client credentials）",
+          "redirectHelp": "将作为用户可返回的唯一地址登记到提供者。请确认或修改。",
+          "createBtn": "创建客户端",
+          "saveFirst": "请先保存一次路由：客户端与它绑定。",
+          "pick": "客户端",
+          "pickPlaceholder": "选择客户端",
+          "useBtn": "使用此客户端",
+          "filled": "已填入客户端 {{id}}：discovery、客户端 ID 和密钥。",
+          "gone": "此客户端已不在 Keycloak 中。",
+          "createFailed": "无法创建客户端。",
+          "useFailed": "无法读取客户端。"
+        }
       },
       "configIdTyped": "插件配置ID"
     },
@@ -1219,12 +1243,81 @@
     "save": "保存策略",
     "saved": "密码策略已保存",
     "saveError": "保存策略失败",
-    "accessDenied": "只有超级管理员可以编辑设置。",
+    "accessDenied": "设置仅限管理员使用。",
     "invalid": {
       "minLengthTooLow": "最小长度必须至少为 {{limit}}。",
       "maxLengthTooHigh": "最大长度最多为 {{limit}}：bcrypt 会忽略超出的部分。",
       "maxLengthBelowMin": "最大长度不能小于最小长度。",
       "negativeValue": "计数和时长不能为负数。"
+    },
+    "idp": {
+      "title": "身份提供商",
+      "add": "添加身份提供商",
+      "addTitle": "新建身份提供商",
+      "editTitle": "编辑身份提供商",
+      "empty": "尚无身份提供商。",
+      "serviceAccountHelp": "管理客户端是一个服务账号，它需要在该 realm 中拥有 realm-management 的 manage-clients 角色。",
+      "column": {
+        "name": "名称",
+        "urlRealm": "URL / realm"
+      },
+      "field": {
+        "baseUrl": "基础 URL",
+        "baseUrlHint": "服务器根地址，不含 /realms/<realm>。",
+        "realm": "Realm",
+        "adminClientId": "管理客户端 ID",
+        "adminClientSecret": "管理客户端密钥",
+        "secretUnchanged": "保持不变",
+        "secretHint": "不会再次显示。当 URL、realm 或管理客户端更改时，请重新输入。",
+        "prefix": "客户端 ID 前缀",
+        "prefixHint": "通过此连接创建的每个客户端都以它开头。",
+        "instances": "可使用它的实例",
+        "developersCanCreate": "开发者可以创建客户端",
+        "redirectDomains": "重定向域名",
+        "redirectDomainsHint": "开发者只能为这些域名创建登录客户端。未设置时，他们无法创建登录客户端。",
+        "gatewayBaseUrl": "网关访问地址",
+        "gatewayBaseUrlHint": "网关访问 Keycloak 的地址（若与基础 URL 不同）。该地址会写入路由，因此 Keycloak 在两个地址上必须给出相同的 issuer。已保存的路由保留原地址。"
+      },
+      "test": {
+        "button": "测试连接",
+        "ok": "连接正常。",
+        "auth": "Keycloak 拒绝了管理客户端 ID 或密钥。",
+        "forbidden": "管理客户端已登录，但无权管理此 realm 中的客户端。请授予它 manage-clients 角色。",
+        "unavailable": "无法连接 Keycloak。请检查基础 URL 和 realm。",
+        "failed": "无法运行测试。"
+      },
+      "created": "身份提供商已创建",
+      "updated": "身份提供商已保存",
+      "deleted": "身份提供商已删除",
+      "loadFailed": "加载身份提供商失败",
+      "saveFailed": "保存身份提供商失败",
+      "deleteFailed": "删除身份提供商失败",
+      "deleteTitle": "删除身份提供商",
+      "deleteConfirm": "删除 {{name}}？它在 Keycloak 中的客户端不受影响。",
+      "deleteAnyway": "仍然删除"
+    },
+    "oidcClients": {
+      "title": "OIDC 客户端",
+      "help": "从面板为此实例创建的客户端及使用它们的路由。删除客户端时也会将其从 Keycloak 中移除。",
+      "empty": "尚未从面板创建任何 OIDC 客户端。",
+      "loadFailed": "无法加载 OIDC 客户端。",
+      "column": {
+        "clientId": "客户端 ID",
+        "provider": "提供商"
+      },
+      "status": {
+        "ok": "使用中",
+        "noRoute": "无路由",
+        "missing": "Keycloak 中缺失",
+        "changed": "已在 Keycloak 中更改",
+        "unknown": "未知",
+        "unknownHelp": "无法读取 Keycloak,因此不清楚此客户端的状态。"
+      },
+      "deleteTitle": "删除 OIDC 客户端",
+      "deleteConfirm": "删除客户端 {{name}}?它将从 Keycloak 和面板中移除。",
+      "deleteConfirmRoutes": "删除客户端 {{name}}?它将从 Keycloak 和面板中移除,以下路由将无法再让任何人登录:{{routes}}。",
+      "deleted": "OIDC 客户端已删除",
+      "deleteFailed": "删除 OIDC 客户端失败"
     }
   },
   "sources": {

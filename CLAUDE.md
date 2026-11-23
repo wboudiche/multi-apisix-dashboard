@@ -46,7 +46,7 @@ PORT=8086 ETCD_ENDPOINTS=http://localhost:2379 ADMIN_PASSWORD=admin ./bin/api
 ### Stack bring-up
 
 ```sh
-docker compose -f e2e/server/docker-compose.yml up -d   # APISIX :9180 + etcd
+docker compose -f e2e/server/docker-compose.yml up -d   # APISIX :9180 + etcd + Keycloak 127.0.0.1:8180
 go build -C api -o ../bin/api ./cmd                     # build backend
 PORT=8086 ETCD_ENDPOINTS=http://localhost:2379 ./bin/api &
 pnpm install --frozen-lockfile && pnpm dev              # frontend :5173
@@ -56,7 +56,7 @@ Open <http://localhost:5173/ui>, log in with `admin / admin`.
 
 The e2e compose publishes its etcd on the host at `:2379` (container `server-etcd-1`), and that is the etcd the locally-run backend uses. The `deploy/` compose is a separate, self-contained stack that consumes the published image; its etcd is not published.
 
-Every port the e2e stack publishes can be moved when the host already uses one — a busy port stops the whole container, so a Prometheus on `:9090` takes the gateway's Admin API down with its Control API (#344): `E2E_GATEWAY_PORT` (9080), `E2E_ADMIN_PORT` (9180), `E2E_CONTROL_PORT` (9090), `E2E_ADMIN2_PORT` (9181), `E2E_ETCD_PORT` (2379). `deploy/` has `DASHBOARD_PORT`, `GATEWAY_PORT`, `GATEWAY2_PORT`.
+Every port the e2e stack publishes can be moved when the host already uses one — a busy port stops the whole container, so a Prometheus on `:9090` takes the gateway's Admin API down with its Control API (#344): `E2E_GATEWAY_PORT` (9080), `E2E_ADMIN_PORT` (9180), `E2E_CONTROL_PORT` (9090), `E2E_ADMIN2_PORT` (9181), `E2E_ETCD_PORT` (2379), `E2E_KEYCLOAK_PORT` (8180, bound to `127.0.0.1` like the Control API's 9090; `E2E_KEYCLOAK_URL` overrides the address the specs use). `deploy/` has `DASHBOARD_PORT`, `GATEWAY_PORT`, `GATEWAY2_PORT`.
 
 Setting the port is enough: `e2e/utils/stack.ts` builds every address the suite and the seed use from these, and `compose-ports.test.ts` holds the compose defaults to the same numbers. The `E2E_*_URL` variables still override it, for a run whose stack is not on this host. Two things do not follow automatically — the backend's `ETCD_ENDPOINTS`, and anything you put in a `.env`: docker compose reads `.env` from the compose file's own directory (`e2e/server/`), while the suite's dotenv reads the repo root.
 
@@ -98,6 +98,8 @@ api/
     │   ├── instance.go
     │   ├── ownership.go ← per-resource team ownership on each instance
     │   ├── label.go    ← label key/value catalog (+ _test.go); offered by the filter, not enforced on writes
+    │   ├── idp.go      ← Keycloak connections + the registry of clients created through them
+    │   ├── keycloak.go ← Keycloak Admin REST client (service-account token, create/read/delete client)
     │   └── overview.go ← cross-instance aggregation
     ├── handlers/       ← HTTP layer (one per resource + proxy.go for APISIX passthrough)
     ├── middleware/
@@ -117,6 +119,8 @@ api/
 /labels/<key>
 /roles/<name>
 /config/admin_initialized
+/idps/<idpID>                           ← Keycloak connection, service-account secret included
+/idp_clients/<idpID>/<keycloakUUID>     ← a client the dashboard created (never its secret)
 ```
 
 **Static UI** — when `UI_DIR` is set the backend serves that directory under `/ui` (`handlers/spa.go`, registered as `NoRoute`); anything outside `/ui` stays a JSON 404. Unset in dev. The root `Dockerfile` builds the SPA and the binary into one image (`ghcr.io/wboudiche/multi-apisix-dashboard`, pushed by `.github/workflows/docker.yml` on `vX.Y.Z` tags); `deploy/docker-compose.yml` runs it with etcd and two APISIX.
@@ -146,7 +150,8 @@ src/routes/
 ├── overview/index.tsx    ← gateway health, global resource matrix, instance connectivity
 ├── instances/index.tsx   ← CRUD APISIX instances (Admin URL + admin key registered here)
 ├── teams/index.tsx       ← CRUD teams
-└── users/index.tsx       ← CRUD users, per-instance role + team assignments
+├── users/index.tsx       ← CRUD users, per-instance role + team assignments
+└── settings/index.tsx    ← tabs: password policy, identity providers (Keycloak), OIDC clients
 ```
 
 All other resource pages (routes, services, upstreams, consumers, ssls, …) come from upstream but are edited to support labels, team-ownership chips, and viewer-role write-gating.
@@ -174,10 +179,11 @@ All other resource pages (routes, services, upstreams, consumers, ssls, …) com
 - `super_admin` shortcircuits (never narrowed by instance assignments).
 - Otherwise: look up the user's `UserInstance` record for `currentInstanceIdAtom`, fall back to `user.role`.
 - Use this hook anywhere you'd otherwise check the user's role manually — it has the per-instance logic, the nav-gating logic (`SUPER_ADMIN_ONLY` paths like `/users`, `/instances`, `/teams`), and the developer-resource allowlist baked in.
+- `/settings` is not super-admin only: it is `ADMIN_ONLY`, open to an admin of the current instance, and the page shows the tabs the role gets (`settingsTabsFor`, `src/components/page-slice/settings/tabs.ts`). The password policy and the identity providers stay the super admin's; an instance admin sees only **OIDC clients**, the clients created for that instance. The backend checks each endpoint on its own.
 
 ### Data fetching
 
-TanStack Query is still the data layer. Route `loader`s call `queryClient.ensureQueryData(...QueryOptions(deps))`. The `src/apis/` directory has one file per resource (upstream pattern preserved) plus new files: `auth.ts`, `client.ts`, `instances.ts`, `teams.ts`, `users.ts`, `overview.ts`, `labels.ts`, `route-test.ts`. `src/apis/hooks.ts` is still the registry combining `genDetailQueryOptions` + `genListQueryOptions` + `genUseList`.
+TanStack Query is still the data layer. Route `loader`s call `queryClient.ensureQueryData(...QueryOptions(deps))`. The `src/apis/` directory has one file per resource (upstream pattern preserved) plus new files: `auth.ts`, `client.ts`, `instances.ts`, `teams.ts`, `users.ts`, `overview.ts`, `labels.ts`, `route-test.ts`, `idps.ts`. `src/apis/hooks.ts` is still the registry combining `genDetailQueryOptions` + `genListQueryOptions` + `genUseList`.
 
 ### Schemas & types
 
@@ -214,7 +220,7 @@ Specs in `e2e/tests/*.spec.ts`. POM pattern: each resource has `e2e/pom/<resourc
 
 A table cell is addressed with `uiCell` / `uiCellsShowing` (`e2e/utils/ui`), not `getByRole('cell', { name })`: a row's name is also in the name of the checkbox that selects it, so a name matched by substring is two cells. ESLint refuses the latter anywhere under `e2e/` (#372).
 
-Multi-tenant tests of note: `multi-instance.spec.ts`, `route-test.spec.ts`, `routes.reassign-team.spec.ts`, `routes.request-override.spec.ts`, `routes.proxy-e2e.spec.ts`. Some need a second APISIX (the e2e compose's `apisix2` service, which shares `e2e/server/apisix_conf.yml` with the first gateway) or the Go backend running on `:8086`.
+Multi-tenant tests of note: `multi-instance.spec.ts`, `route-test.spec.ts`, `routes.reassign-team.spec.ts`, `routes.request-override.spec.ts`, `routes.proxy-e2e.spec.ts`. Some need a second APISIX (the e2e compose's `apisix2` service, which shares `e2e/server/apisix_conf.yml` with the first gateway) or the Go backend running on `:8086`. The Keycloak specs (`settings.identity-providers.spec.ts`, `routes.keycloak-client.spec.ts`) need the compose's `keycloak` service, which takes a minute to import its realm: wait for `http://127.0.0.1:8180/realms/apis` to answer 200.
 
 Default target is the dev server, `http://localhost:5173/ui/`; override via `E2E_TARGET_URL`. The e2e stack serves no UI: `:9180` is the Admin API only.
 
@@ -253,4 +259,5 @@ A pull request opened by Dependabot takes its header from `.github/dependabot.ym
 - **`X-Team-ID` is client-controlled** for admins. A non-admin can only name one of the teams of their assignment (`UserInstance.TeamIDs`): another team is refused with `team_not_assigned`, none means all of their teams for a read and their only team for a create — a create with several teams and none named is refused with `team_required` (`handlers/caller_scope.go`). Records written before #301 hold a single `team_id`; `UserInstance` reads both shapes. The "admin" status is sourced from `UserInstance.Role`, not the JWT global role — only `super_admin` is honored from the JWT.
 - **Resource-type RBAC** is enforced in `handlers/proxy.go` via `models.HasResourcePermission(effRole, resourceType, "read"|"write")`. A `developer` is limited to the resource types in `models.RolePermissions[RoleDeveloper]` (routes/services/upstreams/consumers/consumer_groups/stream_routes); they cannot write to `ssls`, `global_rules`, `plugin_configs`, `secrets`, etc. Keep the role-table in `models.go` aligned with APISIX path segments (plural where APISIX is plural).
 - **Team-owned types** are `models.TeamScopedResources`: the developer's six plus `plugin_configs`, `ssls` and `protos` (#455), which only an admin writes. For those the proxy filters a non-admin's lists (and paginates them itself), refuses another team's detail, records the team selected on create and drops it on delete; the client keys their lists by team (`TEAM_OWNED_LISTS`, `src/apis/hooks.ts`). One with no owner is admin-only — objects created before a type joined the set stay so until an admin gives them a team from the detail page (`ReassignTeamAction`). `global_rules` and `plugin_metadata` are instance-wide on purpose (they act on all traffic); `secrets` are not team-owned yet: `/secrets/<manager>/<id>` has two segments and an ownership record keys one.
+- **Keycloak connections** (Settings → Identity providers, `handlers/idp.go`, `idp_clients.go`). The service-account secret (`admin_client_secret`) stays server-side: no response, error or log line carries it (`has_secret` says one is stored), and an update that leaves it empty keeps it. `base_url`, `realm` and `admin_client_id` cannot change without entering the secret again; once the connection has clients, `base_url`, `realm` and `client_id_prefix` cannot change at all, nor can an instance that has clients be unlinked (`services/idp.go`, `Update`). A created client's secret is never stored: create returns it once, "use" reads it again from Keycloak. A client's team is the live owner of its route. A developer creates a login client only when `developers_can_create` is on, on a route that has a host, with the redirect host inside the connection's `redirect_domains` (none set = no developer login clients); token clients need none of that, and admins are not bound by the domains. The proxy strips `create_time`/`update_time` from route writes and answers 400 to a route body that is not exactly one JSON object, because a client is tied to its route by `route_create_time`; deleting a route detaches its clients, which makes them admin-only. The OIDC clients tab's status comes from the routes that name a client's `client_id` in their `openid-connect` plugin ("No route" when none does), not from the route a client was made for. Deleting an instance drops its clients from the registry and unlinks it from every connection; the clients stay in Keycloak (their ids are logged). Created clients keep Keycloak's default full scope (R6): their tokens carry the user's realm roles. Every created client has an audience mapper putting its own id in `aud`, and the route gets `claim_validator.audience: { required: true, match_with_client_id: true }` (`applyClientCredentials`), so a route takes only its own client's tokens - without them it took any token of the realm, another team's included (403 for another client's token). The e2e stack's Keycloak (`keycloak` service, realm `apis` from `e2e/server/keycloak/realm-apis.json`) is what `routes.keycloak-client.spec.ts` and `settings.identity-providers.spec.ts` run against. The `discovery` and `introspection_endpoint` a created client writes into the route use the connection's `gateway_base_url` when set, `base_url` otherwise; the backend's own Keycloak calls always use `base_url`. Changing `gateway_base_url` neither locks nor asks for the secret again, and routes already saved keep their address (one address per instance is #460). Keycloak must give the same issuer at both addresses. In the e2e stack the gateway reaches it at `http://keycloak:8080` (`127.0.0.1:8180` is the container's own loopback): the client credentials spec sets that as the gateway address, and the compose pins Keycloak's hostname so a token fetched from the host carries the issuer the gateway reads.
 - **Two axios instances**: `req` for APISIX resource calls, `apiClient` for `/api/v1/*` calls to the Go backend. Mixing them up means the wrong headers (or no JWT) on a request — easy to do, hard to spot.

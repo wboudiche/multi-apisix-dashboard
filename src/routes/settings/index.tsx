@@ -14,78 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Button, Container, Group, NumberInput, Paper, Stack, Switch, Text, Title } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Container, Paper, Tabs, Text, Title } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
-import axios from 'axios';
-import type { TFunction } from 'i18next';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { type PasswordPolicy, policyApi } from '@/apis/policy';
+import { IdentityProvidersTab } from '@/components/page-slice/settings/IdentityProvidersTab';
+import { OidcClientsTab } from '@/components/page-slice/settings/OidcClientsTab';
+import { PasswordPolicyTab } from '@/components/page-slice/settings/PasswordPolicyTab';
+import { settingsTabsFor } from '@/components/page-slice/settings/tabs';
 import { usePermission } from '@/hooks/usePermission';
-
-type PolicyRefusal = { error?: string; code?: string; limit?: number };
-
-/**
- * Which bound a refused policy crossed, in the reader's language.
- *
- * The backend names it with a code as well as an English sentence, and the
- * sentence was all this screen showed: the most common error on it was English
- * in every language (#340). A code this build does not know falls back on the
- * sentence, which still says what is wrong.
- */
-const refusalMessage = (t: TFunction, body?: PolicyRefusal): string | undefined => {
-  switch (body?.code) {
-    case 'min_length_too_low':
-      return t('settings.invalid.minLengthTooLow', { limit: body.limit });
-    case 'max_length_too_high':
-      return t('settings.invalid.maxLengthTooHigh', { limit: body.limit });
-    case 'max_length_below_min':
-      return t('settings.invalid.maxLengthBelowMin');
-    case 'negative_value':
-      return t('settings.invalid.negativeValue');
-    default:
-      return body?.error;
-  }
-};
 
 const Settings = () => {
   const { t } = useTranslation();
-  const { isSuperAdmin } = usePermission();
-  const queryClient = useQueryClient();
-  const { data } = useQuery({ queryKey: ['password-policy'], queryFn: policyApi.get });
-  const [form, setForm] = useState<PasswordPolicy | null>(null);
+  const { role, isAdmin } = usePermission();
+  const tabs = settingsTabsFor(role);
 
-  // Take each policy the query answers with — the first load, and the refetch
-  // after a save — while rendering rather than in an effect.
-  const [lastData, setLastData] = useState<PasswordPolicy | undefined>(undefined);
-  if (data !== lastData) {
-    setLastData(data);
-    if (data) setForm(data);
-  }
-
-  const mutation = useMutation({
-    mutationFn: policyApi.update,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['password-policy'] });
-      notifications.show({ message: t('settings.saved'), color: 'green' });
-    },
-    onError: (error) => {
-      // Surface the specific reason the server refused the policy instead of
-      // a generic failure message.
-      const body = axios.isAxiosError(error)
-        ? (error.response?.data as PolicyRefusal | undefined)
-        : undefined;
-      notifications.show({
-        message: refusalMessage(t, body) ?? t('settings.saveError'),
-        color: 'red',
-      });
-    },
-  });
-
-  if (!isSuperAdmin) {
+  if (!isAdmin) {
     return (
       <Container size="sm">
         <Paper p="xl" withBorder ta="center">
@@ -94,46 +38,40 @@ const Settings = () => {
       </Container>
     );
   }
-  if (!form) return null;
-
-  const num = (key: keyof PasswordPolicy, label: string) => (
-    <NumberInput
-      label={label}
-      value={form[key] as number}
-      min={0}
-      onChange={(v) => setForm({ ...form, [key]: Number(v) || 0 })}
-    />
-  );
-  const sw = (key: keyof PasswordPolicy, label: string) => (
-    <Switch
-      label={label}
-      checked={form[key] as boolean}
-      onChange={(e) => setForm({ ...form, [key]: e.currentTarget.checked })}
-    />
-  );
 
   return (
-    <Container size="sm">
-      <Title order={2} mb="lg">{t('settings.passwordPolicy')}</Title>
-      <Paper p="xl" withBorder>
-        <Stack gap="md">
-          {num('min_length', t('settings.minLength'))}
-          {num('max_length', t('settings.maxLength'))}
-          {sw('require_uppercase', t('settings.requireUppercase'))}
-          {sw('require_lowercase', t('settings.requireLowercase'))}
-          {sw('require_digit', t('settings.requireDigit'))}
-          {sw('require_symbol', t('settings.requireSymbol'))}
-          {num('history_depth', t('settings.historyDepth'))}
-          {num('expiry_days', t('settings.expiryDays'))}
-          {num('lockout_threshold', t('settings.lockoutThreshold'))}
-          {num('lockout_window_minutes', t('settings.lockoutWindowMinutes'))}
-          <Group justify="flex-end">
-            <Button loading={mutation.isPending} onClick={() => mutation.mutate(form)}>
-              {t('settings.save')}
-            </Button>
-          </Group>
-        </Stack>
-      </Paper>
+    <Container size="lg">
+      <Title order={2} mb="lg">{t('sources.settings')}</Title>
+      <Tabs defaultValue={tabs[0]} keepMounted={false}>
+        <Tabs.List mb="md">
+          {tabs.includes('password-policy') && (
+            <Tabs.Tab value="password-policy">{t('settings.passwordPolicy')}</Tabs.Tab>
+          )}
+          {tabs.includes('identity-providers') && (
+            <Tabs.Tab value="identity-providers">{t('settings.idp.title')}</Tabs.Tab>
+          )}
+          {tabs.includes('oidc-clients') && (
+            <Tabs.Tab value="oidc-clients">{t('settings.oidcClients.title')}</Tabs.Tab>
+          )}
+        </Tabs.List>
+        {tabs.includes('password-policy') && (
+          <Tabs.Panel value="password-policy">
+            <Container size="sm" p={0} ml={0}>
+              <PasswordPolicyTab />
+            </Container>
+          </Tabs.Panel>
+        )}
+        {tabs.includes('identity-providers') && (
+          <Tabs.Panel value="identity-providers">
+            <IdentityProvidersTab />
+          </Tabs.Panel>
+        )}
+        {tabs.includes('oidc-clients') && (
+          <Tabs.Panel value="oidc-clients">
+            <OidcClientsTab />
+          </Tabs.Panel>
+        )}
+      </Tabs>
     </Container>
   );
 };

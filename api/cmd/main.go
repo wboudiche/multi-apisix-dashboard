@@ -85,16 +85,25 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService, teamService, policyService)
-	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService)
 	teamHandler := handlers.NewTeamHandler(teamService, ownershipService, authService)
 	overviewHandler := handlers.NewOverviewHandler(overviewService)
-	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService)
 	upstreamHandler := handlers.NewUpstreamHandler()
 	routeTestHandler := handlers.NewRouteTestHandler(ownershipService)
 	labelHandler := handlers.NewLabelHandler(labelService, authService)
 	wsdlHandler := handlers.NewWsdlHandler()
 	settingsHandler := handlers.NewSettingsHandler(policyService)
 	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceService)
+	idpService := services.NewIdPService(etcdClient)
+	instanceHandler := handlers.NewInstanceHandler(instanceService, authService, teamService, idpService)
+	proxyHandler := handlers.NewProxyHandler(instanceService, ownershipService, idpService)
+	readRouteHosts, listRoutes := handlers.NewIdPRouteReaders()
+	// One Keycloak client per connection, so its service-account token is
+	// fetched once per expiry rather than on every request.
+	keycloakClients := services.NewKeycloakClients(func(p *models.IdentityProvider) services.KeycloakAPI {
+		return services.NewKeycloakClient(p, nil)
+	})
+	idpHandler := handlers.NewIdPHandler(idpService, ownershipService, instanceService,
+		keycloakClients.For, readRouteHosts, listRoutes)
 
 	// Check for default admin creation
 	if etcdClient != nil {
@@ -104,7 +113,7 @@ func main() {
 	}
 
 	// Setup router
-	router := setupRouter(authService, instanceService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, maintenanceHandler, cfg.Server.UIDir)
+	router := setupRouter(authService, instanceService, authHandler, instanceHandler, teamHandler, overviewHandler, proxyHandler, upstreamHandler, routeTestHandler, labelHandler, wsdlHandler, settingsHandler, maintenanceHandler, idpHandler, cfg.Server.UIDir)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -129,7 +138,7 @@ func main() {
 	}
 }
 
-func setupRouter(authService *services.AuthService, instanceService *services.InstanceService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, maintenanceHandler *handlers.MaintenanceHandler, uiDir string) *gin.Engine {
+func setupRouter(authService *services.AuthService, instanceService *services.InstanceService, authHandler *handlers.AuthHandler, instanceHandler *handlers.InstanceHandler, teamHandler *handlers.TeamHandler, overviewHandler *handlers.OverviewHandler, proxyHandler *handlers.ProxyHandler, upstreamHandler *handlers.UpstreamHandler, routeTestHandler *handlers.RouteTestHandler, labelHandler *handlers.LabelHandler, wsdlHandler *handlers.WsdlHandler, settingsHandler *handlers.SettingsHandler, maintenanceHandler *handlers.MaintenanceHandler, idpHandler *handlers.IdPHandler, uiDir string) *gin.Engine {
 	router := gin.Default()
 
 	// CORS
@@ -224,6 +233,13 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 			// Password policy (readable by any authenticated user)
 			protected.GET("/settings/password-policy", settingsHandler.GetPasswordPolicy)
 
+			// Connections linked to an instance: its admins and developers.
+			protected.GET("/instances/:id/idps", rbac, idpHandler.ListLinkedIdPs)
+			protected.POST("/idps/:id/clients", rbac, idpHandler.CreateClient)
+			protected.GET("/instances/:id/oidc-clients", rbac, idpHandler.ListClients)
+			protected.POST("/instances/:id/oidc-clients/:uuid/use", rbac, idpHandler.UseClient)
+			protected.DELETE("/instances/:id/oidc-clients/:uuid", rbac, idpHandler.DeleteClient)
+
 			// Label taxonomy
 			protected.GET("/labels", labelHandler.ListLabels)
 			protected.POST("/labels", labelHandler.CreateLabel)
@@ -254,6 +270,14 @@ func setupRouter(authService *services.AuthService, instanceService *services.In
 				admin.GET("/instances/:id/dependencies", instanceHandler.GetInstanceDependencies)
 				admin.DELETE("/instances/:id", instanceHandler.DeleteInstance)
 				admin.GET("/instances/:id/test", instanceHandler.TestConnection)
+
+				// Identity provider connections (each handler checks super_admin)
+				admin.GET("/idps", idpHandler.ListIdPs)
+				admin.POST("/idps", idpHandler.CreateIdP)
+				admin.GET("/idps/:id", idpHandler.GetIdP)
+				admin.PUT("/idps/:id", idpHandler.UpdateIdP)
+				admin.DELETE("/idps/:id", idpHandler.DeleteIdP)
+				admin.POST("/idps/:id/test", idpHandler.TestIdP)
 
 				// Team management
 				admin.POST("/teams", teamHandler.CreateTeam)

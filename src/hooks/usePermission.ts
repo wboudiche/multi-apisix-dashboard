@@ -37,7 +37,11 @@ const DEVELOPER_RESOURCES = new Set([
 ]);
 
 // Resources that require super_admin
-const SUPER_ADMIN_ONLY = new Set(['/users', '/instances', '/teams', '/settings']);
+const SUPER_ADMIN_ONLY = new Set(['/users', '/instances', '/teams']);
+
+// Resources an admin of the current instance reaches too: settings holds the
+// OIDC clients of that instance next to what only a super admin may change.
+const ADMIN_ONLY = new Set(['/settings']);
 
 export type Permissions = {
   role: Role | undefined;
@@ -115,6 +119,7 @@ export const permissionsAtom = atom<Permissions>((get) => {
     if (!role) return false;
     if (isSuperAdmin) return true;
     if (SUPER_ADMIN_ONLY.has(path)) return false;
+    if (ADMIN_ONLY.has(path)) return isAdmin;
     if (role === 'developer' && !DEVELOPER_RESOURCES.has(path)) return false;
     return true;
   };
