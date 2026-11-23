@@ -28,6 +28,7 @@ import { apiFetch, HttpError, loginAdmin } from './seed-client';
 import {
   KEYCLOAK_ADMIN_CLIENT_ID,
   KEYCLOAK_ADMIN_CLIENT_SECRET,
+  KEYCLOAK_FROM_GATEWAY,
   KEYCLOAK_REALM,
   stack,
 } from './stack';
@@ -116,25 +117,39 @@ export const cleanUpKeycloak = async (namePrefix: string, clientPrefix: string) 
   }
 };
 
+/** The discovery document's address as the first gateway reaches it. */
+export const gatewayDiscoveryUrl = () =>
+  `${KEYCLOAK_FROM_GATEWAY}/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration`;
+
 /**
- * A token of the e2e service account, straight from Keycloak: what a spec
- * uses to change a client behind the dashboard's back.
+ * An access token for a client, by the client credentials grant: one call,
+ * as a backend calling a protected route makes it.
  */
-const keycloakToken = async (): Promise<string> => {
+export const clientCredentialsToken = async (
+  clientId: string,
+  clientSecret: string
+): Promise<string> => {
   const res = await fetch(
     `${stack.keycloak}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
     {
       method: 'POST',
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: KEYCLOAK_ADMIN_CLIENT_ID,
-        client_secret: KEYCLOAK_ADMIN_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
       }),
     }
   );
-  if (!res.ok) throw new Error(`[keycloak] token: ${res.status}`);
+  if (!res.ok) throw new Error(`[keycloak] token for ${clientId}: ${res.status}`);
   return ((await res.json()) as { access_token: string }).access_token;
 };
+
+/**
+ * A token of the e2e service account, straight from Keycloak: what a spec
+ * uses to change a client behind the dashboard's back.
+ */
+const keycloakToken = () =>
+  clientCredentialsToken(KEYCLOAK_ADMIN_CLIENT_ID, KEYCLOAK_ADMIN_CLIENT_SECRET);
 
 /** Deletes a client in Keycloak directly, by its internal id. */
 export const deleteInKeycloak = async (uuid: string) => {

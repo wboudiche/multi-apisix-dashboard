@@ -71,6 +71,12 @@ export const stack = {
  * and its service account, which may manage the realm's clients.
  */
 export const KEYCLOAK_REALM = 'apis';
+/**
+ * Keycloak as the first gateway reaches it, by its compose service name: the
+ * host's address is the gateway container's own loopback. The issuer stays the
+ * host's address either way (the compose file pins the hostname).
+ */
+export const KEYCLOAK_FROM_GATEWAY = 'http://keycloak:8080';
 export const KEYCLOAK_ADMIN_CLIENT_ID = 'apisix-dashboard';
 export const KEYCLOAK_ADMIN_CLIENT_SECRET = 'e2e-dashboard-secret';
 

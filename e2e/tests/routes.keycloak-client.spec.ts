@@ -20,11 +20,13 @@ import { deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { getFixtures } from '@e2e/utils/fixtures';
 import {
   cleanUpKeycloak,
+  clientCredentialsToken,
   createIdp,
   deleteInKeycloak,
   discoveryUrl,
   e2eConnection,
   findInKeycloak,
+  gatewayDiscoveryUrl,
   type Idp,
   listOidcClients,
   updateIdp,
@@ -35,6 +37,12 @@ import {
   ensureUserInstanceRole,
   loginAdmin,
 } from '@e2e/utils/seed-client';
+import {
+  KEYCLOAK_ADMIN_CLIENT_ID,
+  KEYCLOAK_ADMIN_CLIENT_SECRET,
+  KEYCLOAK_FROM_GATEWAY,
+  stack,
+} from '@e2e/utils/stack';
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { i18n } from '@e2e/utils/ui/i18n';
@@ -46,7 +54,9 @@ import { customAlphabet } from 'nanoid';
  * either mode, or reuses one the dashboard made; developers do so only when
  * the connection lets them, and a login client of theirs only inside the
  * connection's redirect domains. The OIDC clients tab then says which client
- * no route uses any more, and which is gone from Keycloak.
+ * no route uses any more, and which is gone from Keycloak. A backend gets a
+ * token for a created client by the client credentials grant, and the gateway
+ * lets it through the route that client protects, and nothing else.
  *
  * Seeded through the API, asserted on screen. Keycloak is the e2e stack's
  * (realm `apis`); the clients are removed from it in afterAll.
@@ -74,6 +84,7 @@ const ROUTES = {
   reuse: { id: `e2ekc-${RUN}-reuse`, host: `${RUN}-reuse.${DOMAIN}` },
   devIn: { id: `e2ekc-${RUN}-devin`, host: `${RUN}-devin.${DOMAIN}` },
   devOut: { id: `e2ekc-${RUN}-devout`, host: `${RUN}-devout.elsewhere.e2e.test` },
+  backend: { id: `e2ekc-${RUN}-backend`, host: `${RUN}-backend.${DOMAIN}` },
 } as const;
 type RouteKey = keyof typeof ROUTES;
 
@@ -94,6 +105,22 @@ const madeBy = (key: RouteKey, by: string): string => {
 const LOGIN_TEST = 'an admin creates a login client from a saved route';
 const TOKEN_TEST = 'an admin creates a token client checked by signature';
 
+/**
+ * What the gateway sends a request of the backend route to once it lets it
+ * through: Keycloak's realm document, a 200 that only a request past the
+ * openid-connect check gets. Every other route points nowhere.
+ */
+const upstreamOf = (key: RouteKey) =>
+  key === 'backend'
+    ? {
+        upstream: {
+          type: 'roundrobin',
+          nodes: [{ host: new URL(KEYCLOAK_FROM_GATEWAY).hostname, port: 8080, weight: 1 }],
+        },
+        plugins: { 'proxy-rewrite': { uri: '/realms/apis' } },
+      }
+    : { upstream: { type: 'roundrobin', nodes: [{ host: '127.0.0.1', port: 80, weight: 1 }] } };
+
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
@@ -107,7 +134,7 @@ test.beforeAll(async () => {
         name: `${RUN}-${key}`,
         uri: `/${r.id}/*`,
         host: r.host,
-        upstream: { type: 'roundrobin', nodes: [{ host: '127.0.0.1', port: 80, weight: 1 }] },
+        ...upstreamOf(key as RouteKey),
       },
     });
   }
@@ -254,6 +281,69 @@ test('the token client is reused on a second route', async ({ page }) => {
   expect(second?.client_secret).toBe(first?.client_secret);
   expect(second?.use_jwks).toBe(true);
   expect(second?.bearer_only).toBe(true);
+});
+
+test('a backend calls the route with a client credentials token, and only with one', async ({
+  page,
+  request,
+}) => {
+  const { drawer, section, kc } = await openOidcOnRoute(page, ROUTES.backend.id);
+  await section.getByRole('radio', { name: i18n.t('form.plugins.oidc.token') }).check();
+  await kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.create') }).check();
+  await chooseProvider(page, kc);
+  await kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.jwks') }).check();
+  await kc.getByRole('switch', { name: i18n.t('form.plugins.oidc.kc.clientCredentials') }).check();
+
+  made.backend = await createClient(page, kc);
+  await saveRoute(page, drawer);
+  expect((await findInKeycloak(made.backend))?.serviceAccountsEnabled).toBe(true);
+
+  // The route reads the discovery document at the address the dashboard
+  // reaches Keycloak at, which inside the gateway's container is its own
+  // loopback: point it at the one the gateway reaches, and change nothing else.
+  const admin = await loginAdmin();
+  const route = (await apiFetch(`${PROXY}/routes/${ROUTES.backend.id}`, admin, {
+    headers: onLocal(),
+  })) as { value: Record<string, unknown> & { plugins: Record<string, Record<string, unknown>> } };
+  const oidc = route.value.plugins['openid-connect'];
+  expect(oidc.client_id).toBe(made.backend);
+  await apiFetch(`${PROXY}/routes/${ROUTES.backend.id}`, admin, {
+    method: 'PUT',
+    headers: onLocal(fx().backendTeamId),
+    json: {
+      ...route.value,
+      plugins: {
+        ...route.value.plugins,
+        'openid-connect': { ...oidc, discovery: gatewayDiscoveryUrl() },
+      },
+    },
+  });
+
+  // What the backend does: one call for a token, then the route with it.
+  const token = await clientCredentialsToken(made.backend, String(oidc.client_secret));
+  // Playwright's client, not fetch: fetch drops the Host header the route matches on.
+  const call = async (authorization?: string) =>
+    (
+      await request.get(`${stack.gateway}/${ROUTES.backend.id}/orders`, {
+        headers: {
+          Host: ROUTES.backend.host,
+          ...(authorization ? { Authorization: authorization } : {}),
+        },
+      })
+    ).status();
+
+  // The gateway picks the route change up within a moment.
+  await expect.poll(() => call(`Bearer ${token}`), { timeout: 15_000 }).toBe(200);
+  expect(await call()).toBe(401);
+  expect(await call('Bearer not.a.token')).toBe(401);
+  // A token Keycloak signed for another client of the realm is not one the
+  // route was set up for, but the signature check accepts it all the same:
+  // checking by signature trusts the realm, not the client.
+  const other = await clientCredentialsToken(
+    KEYCLOAK_ADMIN_CLIENT_ID,
+    KEYCLOAK_ADMIN_CLIENT_SECRET
+  );
+  expect(await call(`Bearer ${other}`)).toBe(200);
 });
 
 test('an instance admin opens Settings on the OIDC clients alone', async ({ browser }) => {

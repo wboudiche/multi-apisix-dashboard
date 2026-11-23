@@ -126,12 +126,18 @@ services:
   # The identity provider the dashboard creates OIDC clients in. The realm
   # `apis` is imported at start: a confidential client `apisix-dashboard`
   # whose service account holds realm-management's manage-clients, which is
-  # what a connection declared in Settings needs. Reached from the host - the
-  # backend calls it, the gateways never do - so the backend and the specs use
-  # the same address (E2E_KEYCLOAK_PORT <-> E2E_KEYCLOAK_URL).
+  # what a connection declared in Settings needs. The backend and the specs
+  # reach it from the host, at the same address (E2E_KEYCLOAK_PORT <->
+  # E2E_KEYCLOAK_URL); the first gateway reaches it by service name, to check
+  # the tokens of the route a spec protects with a created client.
   #
-  # start-dev: an in-memory H2 store, no TLS, no hostname to configure. The
-  # realm is imported again on every start, so nothing outlives the container.
+  # start-dev: an in-memory H2 store, no TLS. The realm is imported again on
+  # every start, so nothing outlives the container. The hostname pins the
+  # issuer of every token to the host's address, whichever address asked for
+  # it; backchannel-dynamic leaves the server-to-server endpoints (keys, token,
+  # introspection) on the address the caller used, so the gateway that reads
+  # the discovery document at keycloak:8080 is sent to fetch its keys there
+  # too, and still finds the issuer of a token the host obtained.
   #
   # No bootstrap admin of the master realm: nothing here signs in as one - the
   # backend and the specs use the realm's own service account - and an
@@ -139,7 +145,11 @@ services:
   # loopback, as the Control API is: everything that calls it runs on the host.
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.7
-    command: ['start-dev', '--import-realm']
+    command:
+      - start-dev
+      - --import-realm
+      - --hostname=http://127.0.0.1:${E2E_KEYCLOAK_PORT:-8180}
+      - --hostname-backchannel-dynamic=true
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
     ports:
