@@ -72,9 +72,42 @@ export const effectiveKeycloakChoice = (
 /** Another instance: its connections and clients are others, so the choice starts over. */
 export const keycloakChoiceAfterInstanceChange = (): KeycloakChoice | null => null;
 
+/** What becomes of a Keycloak token picked as the access, when the page changes under it. */
+export type KeycloakAccessState = {
+  /**
+   * The access the form keeps. Only a service that sets an authentication of
+   * its own takes it back to anyone: the service then protects the route.
+   */
+  access: 'openid-connect' | 'anyone';
+  /** Whether the client picked starts over: another instance's are others. */
+  resetChoice: boolean;
+  /** Why the route cannot be saved as it stands, a key. */
+  error?: 'form.quickRoute.keycloak.notOffered';
+};
+
+/**
+ * A Keycloak token stays the access when the instance changes or Keycloak
+ * stops being offered: falling back to anyone would save a route open to
+ * all while the user asked for a token. Not offered, it blocks the save and
+ * says so, for another access to be picked.
+ */
+export const keycloakAccessState = (a: {
+  offered: boolean;
+  serviceHasAuth: boolean;
+  instanceChanged: boolean;
+}): KeycloakAccessState => {
+  if (a.serviceHasAuth) return { access: 'anyone', resetChoice: a.instanceChanged };
+  return {
+    access: 'openid-connect',
+    resetChoice: a.instanceChanged,
+    ...(!a.offered && { error: 'form.quickRoute.keycloak.notOffered' as const }),
+  };
+};
+
 /** The sentences a failed save can be told in. */
 export type FailureMessageKey =
   | 'form.quickRoute.keycloak.failed.routeKeptDisabled'
+  | 'form.quickRoute.keycloak.failed.routeKeptDisabledClientLeft'
   | 'form.quickRoute.keycloak.failed.reuse'
   | 'form.quickRoute.keycloak.failed.clientRouteDeleted'
   | 'form.quickRoute.keycloak.failed.attachClientLeft'
@@ -83,7 +116,12 @@ export type FailureMessageKey =
 
 /** What the page says of a failed save: what failed, and what was left behind. */
 export const failureMessageKey = (f: KeycloakSaveFailure): FailureMessageKey => {
-  if (f.route === 'kept-disabled') return 'form.quickRoute.keycloak.failed.routeKeptDisabled';
+  // A client left behind is said too: it is listed for an administrator to delete.
+  if (f.route === 'kept-disabled') {
+    return f.client === 'left'
+      ? 'form.quickRoute.keycloak.failed.routeKeptDisabledClientLeft'
+      : 'form.quickRoute.keycloak.failed.routeKeptDisabled';
+  }
   switch (f.step) {
     case 'reuse':
       return 'form.quickRoute.keycloak.failed.reuse';

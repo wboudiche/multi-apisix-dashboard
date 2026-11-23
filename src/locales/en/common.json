@@ -1028,7 +1028,8 @@
           "attachRouteDeleted": "The client {{clientId}} could not be set on the route {{name}}: both were deleted.",
           "attachClientLeft": "The client {{clientId}} could not be set on the route {{name}}: the route was deleted, but the client was kept. It is listed under Settings > OIDC clients as \"No route\", for an administrator to delete.",
           "routeKeptDisabled": "The route {{name}} could not be finished nor deleted: it was kept, disabled, and takes no traffic. Delete it or complete it from its page.",
-          "reuse": "The client could not be used: nothing was created."
+          "reuse": "The client could not be used: nothing was created.",
+          "routeKeptDisabledClientLeft": "The route {{name}} could not be finished nor deleted: it was kept, disabled, and takes no traffic. Delete it or complete it from its page. The client {{clientId}} was kept too: it is listed under Settings > OIDC clients."
         },
         "create": "Create a new client",
         "reuse": "Reuse a client",
@@ -1040,10 +1041,12 @@
         "client": "Client to reuse",
         "loginHint": "A login in the browser is set up in the advanced form.",
         "secretTitle": "Keycloak client created",
-        "secretOnce": "Copy the secret now: it is shown only this once. The dashboard does not keep it, and it can be read again only in Keycloak.",
+        "secretOnce": "Copy the secret now: the dashboard does not show it again. It stays in Keycloak and in the route's plugin settings.",
         "tokenEndpoint": "Token endpoint",
         "clientSecret": "Client secret",
-        "tokenEndpointHint": "The address the gateways reach Keycloak at. A caller outside their network may need Keycloak's public address."
+        "tokenEndpointHint": "The address the gateways reach Keycloak at. A caller outside their network may need Keycloak's public address.",
+        "notOffered": "Keycloak tokens are not available on this instance any more. Pick another access.",
+        "clientIdInvalid": "A client id starts with a letter or a digit, then letters, digits, '.', '_' or '-', at most 64 in all."
       },
       "accessKeycloak": "Keycloak token"
     }

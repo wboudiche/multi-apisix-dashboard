@@ -70,6 +70,7 @@ import {
   failureMessageKey,
   failureReason,
   initialKeycloakChoice,
+  keycloakAccessState,
   keycloakChoiceAfterInstanceChange,
   keycloakChoiceAvailable,
   tokenClients,
@@ -270,20 +271,30 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   // Another instance picked in the header: what was typed stays, and what
   // was picked from the last one's lists - an upstream, a service - goes.
   const [formInstance, setFormInstance] = useState(instanceId);
-  if (formInstance !== instanceId) {
+  const instanceChanged = formInstance !== instanceId;
+  if (instanceChanged) {
     setFormInstance(instanceId);
     setUpstreamId(null);
     setServiceId(null);
     setSeededFor(null);
-    // Its connections and clients are another instance's: the choice starts over.
-    setKeycloak(keycloakChoiceAfterInstanceChange());
-    setSuffixTyped(false);
-    if (accessChoice === 'openid-connect') setAccessChoice('anyone');
   }
   const keycloakOffered = keycloakChoiceAvailable({ duplicating, serviceHasAuth, creators, reusable });
-  // A service that sets an authentication of its own, or a Keycloak gone from
-  // the instance: no token to ask for.
-  if (accessChoice === 'openid-connect' && !keycloakOffered) setAccessChoice('anyone');
+  // A Keycloak token picked stays the access: on another instance its client
+  // is picked again, and with no Keycloak left the save is refused rather
+  // than made open to all. Only beside a service that authenticates, which
+  // protects the route, does it go back to anyone. Not judged while the
+  // instance's connections and clients are still being read.
+  const keycloakState = keycloakAccessState({
+    offered: keycloakOffered || linked.isLoading || oidcClients.isLoading,
+    serviceHasAuth,
+    instanceChanged,
+  });
+  if (keycloakState.resetChoice) {
+    setKeycloak(keycloakChoiceAfterInstanceChange());
+    setSuffixTyped(false);
+  }
+  if (accessChoice === 'openid-connect' && keycloakState.access === 'anyone') setAccessChoice('anyone');
+  const keycloakError = accessChoice === 'openid-connect' ? keycloakState.error : undefined;
   const proposedSuffix = proposeClientIdSuffix({ name: name.trim() || path.trim(), hosts: [], uris: [] });
   const keycloakShown = effectiveKeycloakChoice(
     keycloak?.kind === 'create' && !suffixTyped ? { ...keycloak, suffix: proposedSuffix } : keycloak,
@@ -378,7 +389,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     awaitingTarget && <ConnectionTest key="none" nodes={[]} scheme={undefined} />
   );
 
-  const errors = source ? duplicateRouteErrors(source, answers) : quickRouteErrors(answers);
+  const answerErrs = source ? duplicateRouteErrors(source, answers) : quickRouteErrors(answers);
+  const errors = keycloakError ? { ...answerErrs, access: keycloakError } : answerErrs;
   const valid = Object.keys(errors).length === 0;
   const shown = (key: string | undefined) => (showErrors ? errorText(key) : undefined);
 
@@ -734,7 +746,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                 { value: 'anyone', label: t('form.quickRoute.accessAnyone') },
                 { value: 'key-auth', label: t('form.quickRoute.accessKey') },
                 { value: 'basic-auth', label: t('form.quickRoute.accessBasic') },
-                ...(keycloakOffered
+                // Still shown while picked, so that what is picked is seen and changed.
+                ...(keycloakOffered || accessChoice === 'openid-connect'
                   ? [{ value: 'openid-connect', label: t('form.quickRoute.accessKeycloak') }]
                   : []),
               ]}
@@ -759,7 +772,12 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                 />
               </Box>
             ))}
-            {accessChoice === 'openid-connect' && (
+            {keycloakError && (
+              <Text size="xs" c="red" role="alert">
+                {t('form.quickRoute.keycloak.notOffered')}
+              </Text>
+            )}
+            {accessChoice === 'openid-connect' && !keycloakError && (
               <QuickKeycloakSection
                 choice={keycloakShown}
                 onChange={(next) => {

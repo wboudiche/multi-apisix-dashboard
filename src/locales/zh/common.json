@@ -1106,7 +1106,8 @@
           "attachRouteDeleted": "无法将客户端 {{clientId}} 设置到路由 {{name}} 上：两者均已删除。",
           "attachClientLeft": "无法将客户端 {{clientId}} 设置到路由 {{name}} 上：路由已删除，但客户端仍保留。它在“设置 > OIDC 客户端”中显示为“无路由”，需由管理员删除。",
           "routeKeptDisabled": "路由 {{name}} 既无法完成也无法删除：它已以禁用状态保留，不接收任何流量。请在其页面中删除或完善它。",
-          "reuse": "无法使用该客户端：未创建任何内容。"
+          "reuse": "无法使用该客户端：未创建任何内容。",
+          "routeKeptDisabledClientLeft": "路由 {{name}} 既无法完成也无法删除：它已以禁用状态保留，不接收任何流量。请在其页面中删除或完善它。客户端 {{clientId}} 也已保留：它显示在“设置 > OIDC 客户端”中。"
         },
         "create": "创建新客户端",
         "reuse": "复用客户端",
@@ -1118,10 +1119,12 @@
         "client": "要复用的客户端",
         "loginHint": "浏览器登录请在高级表单中设置。",
         "secretTitle": "Keycloak 客户端已创建",
-        "secretOnce": "请立即复制密钥：它只显示这一次。控制台不会保存它，之后只能在 Keycloak 中再次查看。",
+        "secretOnce": "请立即复制密钥：控制台不会再次显示它。它保存在 Keycloak 中以及该路由的插件设置中。",
         "tokenEndpoint": "令牌端点",
         "clientSecret": "客户端密钥",
-        "tokenEndpointHint": "网关访问 Keycloak 所用的地址。位于其网络之外的调用方可能需要 Keycloak 的公开地址。"
+        "tokenEndpointHint": "网关访问 Keycloak 所用的地址。位于其网络之外的调用方可能需要 Keycloak 的公开地址。",
+        "notOffered": "此实例上已无法再使用 Keycloak 令牌。请选择其他访问方式。",
+        "clientIdInvalid": "客户端 ID 以字母或数字开头，其后为字母、数字、'.'、'_' 或 '-'，总长不超过 64。"
       },
       "accessKeycloak": "Keycloak 令牌"
     }

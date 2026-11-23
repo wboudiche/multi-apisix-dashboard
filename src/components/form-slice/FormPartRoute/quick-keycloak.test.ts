@@ -24,6 +24,7 @@ import {
   failureMessageKey,
   failureReason,
   initialKeycloakChoice,
+  keycloakAccessState,
   keycloakChoiceAfterInstanceChange,
   keycloakChoiceAvailable,
   tokenClients,
@@ -87,6 +88,39 @@ describe('keycloakChoiceAfterInstanceChange', () => {
   });
 });
 
+describe('keycloakAccessState', () => {
+  it('keeps the token on another instance, the client to pick again', () => {
+    expect(keycloakAccessState({ offered: true, serviceHasAuth: false, instanceChanged: true })).toEqual({
+      access: 'openid-connect',
+      resetChoice: true,
+    });
+  });
+  it('never falls back to anyone when Keycloak is no longer offered: the save is blocked', () => {
+    expect(keycloakAccessState({ offered: false, serviceHasAuth: false, instanceChanged: false })).toEqual({
+      access: 'openid-connect',
+      resetChoice: false,
+      error: 'form.quickRoute.keycloak.notOffered',
+    });
+    expect(keycloakAccessState({ offered: false, serviceHasAuth: false, instanceChanged: true })).toEqual({
+      access: 'openid-connect',
+      resetChoice: true,
+      error: 'form.quickRoute.keycloak.notOffered',
+    });
+  });
+  it('goes back to anyone beside a service that authenticates, which protects the route', () => {
+    expect(keycloakAccessState({ offered: false, serviceHasAuth: true, instanceChanged: false })).toEqual({
+      access: 'anyone',
+      resetChoice: false,
+    });
+  });
+  it('changes nothing while it is offered on the same instance', () => {
+    expect(keycloakAccessState({ offered: true, serviceHasAuth: false, instanceChanged: false })).toEqual({
+      access: 'openid-connect',
+      resetChoice: false,
+    });
+  });
+});
+
 const failure = (over: Partial<KeycloakSaveFailure>): KeycloakSaveFailure => ({
   step: 'route',
   cause: {},
@@ -115,8 +149,13 @@ describe('failureMessageKey', () => {
     expect(failureMessageKey(failure({ step: 'client', route: 'kept-disabled' }))).toBe(
       'form.quickRoute.keycloak.failed.routeKeptDisabled'
     );
-    expect(failureMessageKey(failure({ step: 'attach', route: 'kept-disabled', client: 'left' }))).toBe(
+    expect(failureMessageKey(failure({ step: 'attach', route: 'kept-disabled', client: 'deleted' }))).toBe(
       'form.quickRoute.keycloak.failed.routeKeptDisabled'
+    );
+  });
+  it('route kept disabled and client left: both are said', () => {
+    expect(failureMessageKey(failure({ step: 'attach', route: 'kept-disabled', client: 'left' }))).toBe(
+      'form.quickRoute.keycloak.failed.routeKeptDisabledClientLeft'
     );
   });
   it('reuse failed', () => {

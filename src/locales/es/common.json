@@ -1114,7 +1114,8 @@
           "attachRouteDeleted": "No se pudo asignar el cliente {{clientId}} a la ruta {{name}}: se eliminaron los dos.",
           "attachClientLeft": "No se pudo asignar el cliente {{clientId}} a la ruta {{name}}: la ruta se eliminó, pero el cliente se conservó. Aparece en Configuraciones > Clientes OIDC como \"Sin ruta\", para que un administrador lo elimine.",
           "routeKeptDisabled": "La ruta {{name}} no se pudo completar ni eliminar: se conservó desactivada y no recibe tráfico. Elimínela o complétela desde su página.",
-          "reuse": "No se pudo usar el cliente: no se creó nada."
+          "reuse": "No se pudo usar el cliente: no se creó nada.",
+          "routeKeptDisabledClientLeft": "La ruta {{name}} no se pudo completar ni eliminar: se conservó desactivada y no recibe tráfico. Elimínela o complétela desde su página. El cliente {{clientId}} también se conservó: aparece en Configuraciones > Clientes OIDC."
         },
         "create": "Crear un cliente nuevo",
         "reuse": "Reutilizar un cliente",
@@ -1126,10 +1127,12 @@
         "client": "Cliente que reutilizar",
         "loginHint": "Un inicio de sesión en el navegador se configura en el formulario avanzado.",
         "secretTitle": "Cliente de Keycloak creado",
-        "secretOnce": "Copie el secreto ahora: solo se muestra esta vez. El panel no lo guarda y solo se puede volver a leer en Keycloak.",
+        "secretOnce": "Copie el secreto ahora: el panel no lo vuelve a mostrar. Queda en Keycloak y en la configuración del plugin de la ruta.",
         "tokenEndpoint": "Endpoint de token",
         "clientSecret": "Secreto del cliente",
-        "tokenEndpointHint": "La dirección con la que los gateways acceden a Keycloak. Un cliente fuera de su red puede necesitar la dirección pública de Keycloak."
+        "tokenEndpointHint": "La dirección con la que los gateways acceden a Keycloak. Un cliente fuera de su red puede necesitar la dirección pública de Keycloak.",
+        "notOffered": "Los tokens de Keycloak ya no están disponibles en esta instancia. Elija otro acceso.",
+        "clientIdInvalid": "Un id de cliente empieza por una letra o un dígito, seguido de letras, dígitos, '.', '_' o '-', 64 como máximo en total."
       },
       "accessKeycloak": "Token de Keycloak"
     }

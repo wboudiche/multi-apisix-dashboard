@@ -445,6 +445,12 @@ export type QuickRouteErrors = {
   other?: string[];
 };
 
+/**
+ * A client id suffix the backend takes (handlers/idp_clients.go): checked
+ * here, before a route is posted and deleted again for a refused client.
+ */
+const CLIENT_ID_SUFFIX = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
 const DESTINATION_MISSING = {
   upstream: 'form.validation.upstreamRequired',
   service: 'form.validation.serviceRequired',
@@ -487,6 +493,7 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
     if (k.kind === 'create') {
       if (!k.idpId) errors.access = 'form.quickRoute.keycloak.connectionRequired';
       else if (!k.suffix.trim()) errors.access = 'form.quickRoute.keycloak.clientIdRequired';
+      else if (!CLIENT_ID_SUFFIX.test(k.suffix)) errors.access = 'form.quickRoute.keycloak.clientIdInvalid';
     } else if (!k.uuid) {
       errors.access = 'form.quickRoute.keycloak.clientRequired';
     }

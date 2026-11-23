@@ -1112,7 +1112,8 @@
           "attachRouteDeleted": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: ikisi de silindi.",
           "attachClientLeft": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: rota silindi ancak istemci kaldı. Bir yöneticinin silmesi için Ayarlar > OIDC istemcileri altında \"Rota yok\" olarak listelenir.",
           "routeKeptDisabled": "{{name}} rotası tamamlanamadı ve silinemedi: devre dışı olarak tutuldu ve trafik almıyor. Sayfasından silin veya tamamlayın.",
-          "reuse": "İstemci kullanılamadı: hiçbir şey oluşturulmadı."
+          "reuse": "İstemci kullanılamadı: hiçbir şey oluşturulmadı.",
+          "routeKeptDisabledClientLeft": "{{name}} rotası tamamlanamadı ve silinemedi: devre dışı olarak tutuldu ve trafik almıyor. Sayfasından silin veya tamamlayın. {{clientId}} istemcisi de tutuldu: Ayarlar > OIDC istemcileri altında listelenir."
         },
         "create": "Yeni bir istemci oluştur",
         "reuse": "Bir istemciyi yeniden kullan",
@@ -1124,10 +1125,12 @@
         "client": "Yeniden kullanılacak istemci",
         "loginHint": "Tarayıcıda oturum açma gelişmiş formda ayarlanır.",
         "secretTitle": "Keycloak istemcisi oluşturuldu",
-        "secretOnce": "Gizli anahtarı şimdi kopyalayın: yalnızca bu kez gösterilir. Panel onu saklamaz ve yalnızca Keycloak'ta yeniden okunabilir.",
+        "secretOnce": "Gizli anahtarı şimdi kopyalayın: panel onu bir daha göstermez. Keycloak'ta ve rotanın eklenti ayarlarında kalır.",
         "tokenEndpoint": "Belirteç uç noktası",
         "clientSecret": "İstemci gizli anahtarı",
-        "tokenEndpointHint": "Ağ geçitlerinin Keycloak'a eriştiği adres. Ağlarının dışındaki bir istemci Keycloak'ın genel adresine ihtiyaç duyabilir."
+        "tokenEndpointHint": "Ağ geçitlerinin Keycloak'a eriştiği adres. Ağlarının dışındaki bir istemci Keycloak'ın genel adresine ihtiyaç duyabilir.",
+        "notOffered": "Keycloak belirteçleri bu örnekte artık kullanılamıyor. Başka bir erişim seçin.",
+        "clientIdInvalid": "Bir istemci kimliği bir harf veya rakamla başlar, ardından harfler, rakamlar, '.', '_' veya '-' gelir; toplamda en fazla 64."
       },
       "accessKeycloak": "Keycloak belirteci"
     }
