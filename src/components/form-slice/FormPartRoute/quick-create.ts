@@ -491,11 +491,11 @@ export const answerErrors = (q: QuickRoute): QuickRouteErrors => {
   if (a?.plugin === 'openid-connect') {
     const k = a.keycloak;
     if (k.kind === 'create') {
-      if (!k.idpId) errors.access = 'form.quickRoute.keycloak.connectionRequired';
-      else if (!k.suffix.trim()) errors.access = 'form.quickRoute.keycloak.clientIdRequired';
-      else if (!CLIENT_ID_SUFFIX.test(k.suffix)) errors.access = 'form.quickRoute.keycloak.clientIdInvalid';
+      if (!k.idpId) errors.access = 'form.validation.keycloakConnectionRequired';
+      else if (!k.suffix.trim()) errors.access = 'form.validation.keycloakClientIdRequired';
+      else if (!CLIENT_ID_SUFFIX.test(k.suffix)) errors.access = 'form.validation.keycloakClientIdInvalid';
     } else if (!k.uuid) {
-      errors.access = 'form.quickRoute.keycloak.clientRequired';
+      errors.access = 'form.validation.keycloakClientRequired';
     }
   } else if (a?.plugin && a.restriction.mode === 'only' && a.restriction.names.length === 0) {
     errors.access = 'form.plugins.clients.accessEmpty';

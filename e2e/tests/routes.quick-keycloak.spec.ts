@@ -371,7 +371,7 @@ test('keeps the Keycloak token when the instance changes, and asks for a client 
     await expect(form.getByText(i18n.t('form.quickRoute.keycloak.notOffered'))).toHaveCount(0);
 
     await form.getByRole('button', { name: i18n.t('form.quickRoute.create'), exact: true }).click();
-    await expect(section.getByText(i18n.t('form.quickRoute.keycloak.clientRequired'))).toBeVisible();
+    await expect(section.getByText(i18n.t('form.validation.keycloakClientRequired'))).toBeVisible();
     await expect(secretDialog(page)).toHaveCount(0);
     await expect(form).toBeVisible();
 

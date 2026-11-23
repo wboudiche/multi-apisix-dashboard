@@ -1051,7 +1051,11 @@
       "overrideHost": "Ein Hostname oder eine Adresse, bei Bedarf mit Port: ohne Schema, ohne Pfad.",
       "headerValueDollar": "Kein $ in einem Header-Wert: Das Gateway liest es als eine seiner Variablen und sendet den Wert verändert.",
       "headerTwice": "Jeder Header einmal: nicht zweimal in anderer Schreibweise gesetzt, nicht gesetzt und entfernt (hier oder durch den Service), und kein Host-Header neben einem Host Override.",
-      "idAsName": "Nur Buchstaben, Ziffern und - _ ., höchstens 64."
+      "idAsName": "Nur Buchstaben, Ziffern und - _ ., höchstens 64.",
+      "keycloakConnectionRequired": "Wählen Sie eine Keycloak-Verbindung.",
+      "keycloakClientIdRequired": "Geben Sie dem Client eine ID.",
+      "keycloakClientRequired": "Wählen Sie einen Client zur Wiederverwendung.",
+      "keycloakClientIdInvalid": "Eine Client-ID beginnt mit einem Buchstaben oder einer Ziffer, gefolgt von Buchstaben, Ziffern, '.', '_' oder '-', insgesamt höchstens 64."
     },
     "quickRoute": {
       "title": "Neue Route",
@@ -1104,9 +1108,6 @@
       },
       "override": "An das Backend gesendete Anfrage ändern",
       "keycloak": {
-        "connectionRequired": "Wählen Sie eine Keycloak-Verbindung.",
-        "clientIdRequired": "Geben Sie dem Client eine ID.",
-        "clientRequired": "Wählen Sie einen Client zur Wiederverwendung.",
         "failed": {
           "clientRouteDeleted": "Der Keycloak-Client konnte nicht angelegt werden, daher wurde die Route {{name}} gelöscht.",
           "attachRouteDeleted": "Der Client {{clientId}} konnte nicht in die Route {{name}} eingetragen werden: beide wurden gelöscht.",
@@ -1129,8 +1130,7 @@
         "tokenEndpoint": "Token-Endpunkt",
         "clientSecret": "Client-Geheimnis",
         "tokenEndpointHint": "Die Adresse, unter der die Gateways Keycloak erreichen. Ein Aufrufer außerhalb ihres Netzwerks braucht möglicherweise die öffentliche Adresse von Keycloak.",
-        "notOffered": "Keycloak-Tokens sind auf dieser Instanz nicht mehr verfügbar. Wählen Sie einen anderen Zugriff.",
-        "clientIdInvalid": "Eine Client-ID beginnt mit einem Buchstaben oder einer Ziffer, gefolgt von Buchstaben, Ziffern, '.', '_' oder '-', insgesamt höchstens 64."
+        "notOffered": "Keycloak-Tokens sind auf dieser Instanz nicht mehr verfügbar. Wählen Sie einen anderen Zugriff."
       },
       "accessKeycloak": "Keycloak-Token"
     }

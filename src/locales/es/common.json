@@ -1053,7 +1053,11 @@
       "overrideHost": "Un nombre de host o una dirección, con puerto si hace falta: sin esquema ni ruta.",
       "headerValueDollar": "Sin $ en el valor de un encabezado: la pasarela lo lee como una de sus variables y envía el valor cambiado.",
       "headerTwice": "Cada encabezado una vez: no definido dos veces con distinta capitalización, no definido y quitado (aquí o por el servicio), y sin encabezado Host junto a un Host Override.",
-      "idAsName": "Solo letras, cifras y - _ ., 64 como máximo."
+      "idAsName": "Solo letras, cifras y - _ ., 64 como máximo.",
+      "keycloakConnectionRequired": "Elija una conexión de Keycloak.",
+      "keycloakClientIdRequired": "Asigne un id al cliente.",
+      "keycloakClientRequired": "Elija un cliente para reutilizar.",
+      "keycloakClientIdInvalid": "Un id de cliente empieza por una letra o un dígito, seguido de letras, dígitos, '.', '_' o '-', 64 como máximo en total."
     },
     "quickRoute": {
       "title": "Nueva ruta",
@@ -1106,9 +1110,6 @@
       },
       "override": "Cambiar la solicitud enviada al backend",
       "keycloak": {
-        "connectionRequired": "Elija una conexión de Keycloak.",
-        "clientIdRequired": "Asigne un id al cliente.",
-        "clientRequired": "Elija un cliente para reutilizar.",
         "failed": {
           "clientRouteDeleted": "No se pudo crear el cliente de Keycloak, así que se eliminó la ruta {{name}}.",
           "attachRouteDeleted": "No se pudo asignar el cliente {{clientId}} a la ruta {{name}}: se eliminaron los dos.",
@@ -1131,8 +1132,7 @@
         "tokenEndpoint": "Endpoint de token",
         "clientSecret": "Secreto del cliente",
         "tokenEndpointHint": "La dirección con la que los gateways acceden a Keycloak. Un cliente fuera de su red puede necesitar la dirección pública de Keycloak.",
-        "notOffered": "Los tokens de Keycloak ya no están disponibles en esta instancia. Elija otro acceso.",
-        "clientIdInvalid": "Un id de cliente empieza por una letra o un dígito, seguido de letras, dígitos, '.', '_' o '-', 64 como máximo en total."
+        "notOffered": "Los tokens de Keycloak ya no están disponibles en esta instancia. Elija otro acceso."
       },
       "accessKeycloak": "Token de Keycloak"
     }

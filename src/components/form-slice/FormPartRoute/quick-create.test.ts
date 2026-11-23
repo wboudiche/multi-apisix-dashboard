@@ -626,16 +626,16 @@ describe('Keycloak token access', () => {
 
   it('refuses a create with no connection or no client id', () => {
     expect(answerErrors(withAccess({ ...create, idpId: '' })).access).toBe(
-      'form.quickRoute.keycloak.connectionRequired'
+      'form.validation.keycloakConnectionRequired'
     );
     expect(answerErrors(withAccess({ ...create, suffix: '  ' })).access).toBe(
-      'form.quickRoute.keycloak.clientIdRequired'
+      'form.validation.keycloakClientIdRequired'
     );
   });
 
   it('refuses a client id the backend would refuse, before anything is posted', () => {
     for (const suffix of ['-orders', '.x', 'a b', 'orders/v1', ' orders', 'a'.repeat(65), 'é']) {
-      expect(answerErrors(withAccess({ ...create, suffix })).access).toBe('form.quickRoute.keycloak.clientIdInvalid');
+      expect(answerErrors(withAccess({ ...create, suffix })).access).toBe('form.validation.keycloakClientIdInvalid');
     }
     for (const suffix of ['orders', 'Orders.v1_x-2', '0', 'a'.repeat(64)]) {
       expect(answerErrors(withAccess({ ...create, suffix })).access).toBeUndefined();
@@ -644,7 +644,7 @@ describe('Keycloak token access', () => {
 
   it('refuses a reuse with no client picked', () => {
     expect(answerErrors(withAccess({ kind: 'reuse', uuid: '' })).access).toBe(
-      'form.quickRoute.keycloak.clientRequired'
+      'form.validation.keycloakClientRequired'
     );
   });
 });

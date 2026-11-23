@@ -1051,7 +1051,11 @@
       "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok.",
       "headerValueDollar": "Başlık değerinde $ olmaz: ağ geçidi bunu kendi değişkenlerinden biri olarak okur ve değeri değiştirerek gönderir.",
       "headerTwice": "Her başlık bir kez: farklı harf büyüklüğüyle iki kez ayarlanmaz, hem ayarlanıp hem kaldırılmaz (burada veya serviste) ve Host Override yanında Host başlığı olmaz.",
-      "idAsName": "Yalnızca harf, rakam ve - _ ., en fazla 64."
+      "idAsName": "Yalnızca harf, rakam ve - _ ., en fazla 64.",
+      "keycloakConnectionRequired": "Bir Keycloak bağlantısı seçin.",
+      "keycloakClientIdRequired": "İstemciye bir kimlik verin.",
+      "keycloakClientRequired": "Yeniden kullanılacak bir istemci seçin.",
+      "keycloakClientIdInvalid": "Bir istemci kimliği bir harf veya rakamla başlar, ardından harfler, rakamlar, '.', '_' veya '-' gelir; toplamda en fazla 64."
     },
     "quickRoute": {
       "title": "Yeni rota",
@@ -1104,9 +1108,6 @@
       },
       "override": "Arka uca gönderilen isteği değiştir",
       "keycloak": {
-        "connectionRequired": "Bir Keycloak bağlantısı seçin.",
-        "clientIdRequired": "İstemciye bir kimlik verin.",
-        "clientRequired": "Yeniden kullanılacak bir istemci seçin.",
         "failed": {
           "clientRouteDeleted": "Keycloak istemcisi oluşturulamadı, bu yüzden {{name}} rotası silindi.",
           "attachRouteDeleted": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: ikisi de silindi.",
@@ -1129,8 +1130,7 @@
         "tokenEndpoint": "Belirteç uç noktası",
         "clientSecret": "İstemci gizli anahtarı",
         "tokenEndpointHint": "Ağ geçitlerinin Keycloak'a eriştiği adres. Ağlarının dışındaki bir istemci Keycloak'ın genel adresine ihtiyaç duyabilir.",
-        "notOffered": "Keycloak belirteçleri bu örnekte artık kullanılamıyor. Başka bir erişim seçin.",
-        "clientIdInvalid": "Bir istemci kimliği bir harf veya rakamla başlar, ardından harfler, rakamlar, '.', '_' veya '-' gelir; toplamda en fazla 64."
+        "notOffered": "Keycloak belirteçleri bu örnekte artık kullanılamıyor. Başka bir erişim seçin."
       },
       "accessKeycloak": "Keycloak belirteci"
     }
