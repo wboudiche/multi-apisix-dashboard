@@ -22,6 +22,7 @@ import {
   applyClientCredentials,
   proposeClientIdSuffix,
   proposeRedirectUri,
+  tokenEndpoint,
 } from './keycloak-client';
 
 const creds = (over: Partial<ClientCredentials>): ClientCredentials => ({
@@ -139,5 +140,13 @@ describe('applyClientCredentials', () => {
     expect(next).not.toHaveProperty('redirect_uri');
     expect(next).not.toHaveProperty('introspection_endpoint');
     expect(next).toMatchObject({ bearer_only: true, use_jwks: true });
+  });
+});
+
+describe('tokenEndpoint', () => {
+  it('is the token address of the realm the discovery document belongs to', () => {
+    expect(tokenEndpoint('http://kc/realms/apis/.well-known/openid-configuration')).toBe(
+      'http://kc/realms/apis/protocol/openid-connect/token'
+    );
   });
 });

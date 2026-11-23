@@ -97,3 +97,7 @@ export const applyClientCredentials = (
   }
   return next;
 };
+
+/** The realm's token address, derived from its discovery document's. */
+export const tokenEndpoint = (discovery: string): string =>
+  discovery.replace(/\/\.well-known\/openid-configuration$/, '/protocol/openid-connect/token');
