@@ -83,6 +83,7 @@ type idpResponse struct {
 	InstanceIDs         []string        `json:"instance_ids"`
 	DevelopersCanCreate bool            `json:"developers_can_create"`
 	RedirectDomains     []string        `json:"redirect_domains"`
+	GatewayBaseURL      string          `json:"gateway_base_url"`
 	CreatedAt           models.NullTime `json:"created_at"`
 	UpdatedAt           models.NullTime `json:"updated_at"`
 }
@@ -109,6 +110,7 @@ func publicIdP(p *models.IdentityProvider) idpResponse {
 		InstanceIDs:         ids,
 		DevelopersCanCreate: p.DevelopersCanCreate,
 		RedirectDomains:     domains,
+		GatewayBaseURL:      p.GatewayBaseURL,
 		CreatedAt:           p.CreatedAt,
 		UpdatedAt:           p.UpdatedAt,
 	}
@@ -168,6 +170,7 @@ type createIdPRequest struct {
 	InstanceIDs         []string `json:"instance_ids"`
 	DevelopersCanCreate bool     `json:"developers_can_create"`
 	RedirectDomains     []string `json:"redirect_domains"`
+	GatewayBaseURL      string   `json:"gateway_base_url"`
 }
 
 type updateIdPRequest struct {
@@ -180,6 +183,7 @@ type updateIdPRequest struct {
 	InstanceIDs         *[]string `json:"instance_ids"`
 	DevelopersCanCreate *bool     `json:"developers_can_create"`
 	RedirectDomains     *[]string `json:"redirect_domains"`
+	GatewayBaseURL      *string   `json:"gateway_base_url"`
 }
 
 func (h *IdPHandler) ListIdPs(c *gin.Context) {
@@ -218,6 +222,7 @@ func (h *IdPHandler) CreateIdP(c *gin.Context) {
 		InstanceIDs:         req.InstanceIDs,
 		DevelopersCanCreate: req.DevelopersCanCreate,
 		RedirectDomains:     req.RedirectDomains,
+		GatewayBaseURL:      req.GatewayBaseURL,
 	}
 	if err := h.idps.Create(c.Request.Context(), p); err != nil {
 		idpError(c, err)
@@ -257,6 +262,7 @@ func (h *IdPHandler) UpdateIdP(c *gin.Context) {
 		InstanceIDs:         req.InstanceIDs,
 		DevelopersCanCreate: req.DevelopersCanCreate,
 		RedirectDomains:     req.RedirectDomains,
+		GatewayBaseURL:      req.GatewayBaseURL,
 	})
 	if err != nil {
 		idpError(c, err)

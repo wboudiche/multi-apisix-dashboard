@@ -25,6 +25,7 @@ import { loginAdmin } from '@e2e/utils/seed-client';
 import {
   KEYCLOAK_ADMIN_CLIENT_ID,
   KEYCLOAK_ADMIN_CLIENT_SECRET,
+  KEYCLOAK_FROM_GATEWAY,
   KEYCLOAK_REALM,
   stack,
 } from '@e2e/utils/stack';
@@ -109,11 +110,17 @@ test('the secret is never shown again, and an edit without it keeps it', async (
   await expect(secret).toHaveValue('');
   await expect(secret).toHaveAttribute('placeholder', i18n.t('settings.idp.field.secretUnchanged'));
 
-  // A change that needs no secret: the name.
+  // Changes that need no secret: the name, and the address the gateways use.
   const renamed = `${NAME}-renamed`;
   await dialog.getByRole('textbox', { name: i18n.t('settings.idp.column.name') }).fill(renamed);
+  await dialog
+    .getByRole('textbox', { name: i18n.t('settings.idp.field.gatewayBaseUrl') })
+    .fill(KEYCLOAK_FROM_GATEWAY);
   await dialog.getByRole('button', { name: i18n.t('form.btn.save') }).click();
   await uiHasToastMsg(page, { hasText: i18n.t('settings.idp.updated') });
+  const edited = (await listIdps(await loginAdmin())).find((p) => p.name === renamed);
+  expect(edited?.gateway_base_url).toBe(KEYCLOAK_FROM_GATEWAY);
+  expect(edited?.base_url).toBe(stack.keycloak);
 
   // The stored secret still signs the service account in.
   await testConnection(page, renamed);

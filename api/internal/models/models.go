@@ -362,8 +362,12 @@ type IdentityProvider struct {
 	// to (the name itself or any subdomain). Set by a super admin: a developer
 	// writes the hosts of their own routes, so those cannot bound a redirect.
 	RedirectDomains []string `json:"redirect_domains"`
-	CreatedAt       NullTime `json:"created_at"`
-	UpdatedAt       NullTime `json:"updated_at"`
+	// GatewayBaseURL, when set, is the server root the gateways reach Keycloak
+	// at, written into the routes (discovery, introspection) in place of
+	// BaseURL, which stays the address the backend calls.
+	GatewayBaseURL string   `json:"gateway_base_url,omitempty"`
+	CreatedAt      NullTime `json:"created_at"`
+	UpdatedAt      NullTime `json:"updated_at"`
 }
 
 // LinkedTo reports whether the provider is linked to the given instance.

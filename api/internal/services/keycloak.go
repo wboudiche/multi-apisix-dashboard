@@ -94,14 +94,24 @@ func keycloakBase(p *models.IdentityProvider) string {
 	return strings.TrimRight(p.BaseURL, "/") + "/realms/" + url.PathEscape(p.Realm)
 }
 
-// DiscoveryURL is the realm's OpenID Connect discovery document.
-func DiscoveryURL(p *models.IdentityProvider) string {
-	return keycloakBase(p) + "/.well-known/openid-configuration"
+// gatewayBase is the realm as the gateways reach it: GatewayBaseURL when the
+// connection has one, the backend's BaseURL otherwise.
+func gatewayBase(p *models.IdentityProvider) string {
+	root := p.GatewayBaseURL
+	if root == "" {
+		root = p.BaseURL
+	}
+	return strings.TrimRight(root, "/") + "/realms/" + url.PathEscape(p.Realm)
 }
 
-// IntrospectionURL is the realm's token introspection endpoint.
+// DiscoveryURL is the realm's OpenID Connect discovery document, for a route.
+func DiscoveryURL(p *models.IdentityProvider) string {
+	return gatewayBase(p) + "/.well-known/openid-configuration"
+}
+
+// IntrospectionURL is the realm's token introspection endpoint, for a route.
 func IntrospectionURL(p *models.IdentityProvider) string {
-	return keycloakBase(p) + "/protocol/openid-connect/token/introspect"
+	return gatewayBase(p) + "/protocol/openid-connect/token/introspect"
 }
 
 // tokenFailureTTL is how long a failed token fetch is answered to every

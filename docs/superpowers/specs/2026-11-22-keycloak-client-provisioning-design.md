@@ -71,6 +71,13 @@ Admin REST API covers everything needed.
    `publicClient: false`. `use_pkce`, `use_jwks`, `bearer_only` and
    `introspection_endpoint` are in the plugin schema of APISIX 3.16 (checked on
    the e2e gateway).
+
+   The route's `discovery` and `introspection_endpoint` use the connection's
+   optional **gateway address** (`gateway_base_url`) when set, for gateways
+   that reach Keycloak at another address than the backend does; the
+   backend's own calls stay on `base_url`. Keycloak must give the same issuer
+   at both. Changing it does not rewrite saved routes; one address per
+   instance is #460.
 4. **Route deleted:** the client is not deleted in Keycloak. It shows in a
    "clients without a route" list, with an explicit delete.
 5. **Approach:** the backend creates the client on demand (below).

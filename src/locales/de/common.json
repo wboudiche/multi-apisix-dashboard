@@ -1280,7 +1280,9 @@
         "instances": "Instanzen, die sie nutzen dürfen",
         "developersCanCreate": "Entwickler dürfen Clients erstellen",
         "redirectDomains": "Weiterleitungsdomains",
-        "redirectDomainsHint": "Entwickler können Login-Clients nur für diese Domains erstellen. Ohne Eintrag können sie keine Login-Clients erstellen."
+        "redirectDomainsHint": "Entwickler können Login-Clients nur für diese Domains erstellen. Ohne Eintrag können sie keine Login-Clients erstellen.",
+        "gatewayBaseUrl": "Gateway-Adresse",
+        "gatewayBaseUrlHint": "Wo die Gateways Keycloak erreichen, falls nicht unter der Basis-URL. Sie wird in die Routen geschrieben, daher muss Keycloak unter beiden Adressen denselben Issuer angeben. Bereits gespeicherte Routen behalten ihre Adresse."
       },
       "test": {
         "button": "Verbindung testen",

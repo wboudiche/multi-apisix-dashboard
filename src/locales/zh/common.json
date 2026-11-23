@@ -1274,7 +1274,9 @@
         "instances": "可使用它的实例",
         "developersCanCreate": "开发者可以创建客户端",
         "redirectDomains": "重定向域名",
-        "redirectDomainsHint": "开发者只能为这些域名创建登录客户端。未设置时，他们无法创建登录客户端。"
+        "redirectDomainsHint": "开发者只能为这些域名创建登录客户端。未设置时，他们无法创建登录客户端。",
+        "gatewayBaseUrl": "网关访问地址",
+        "gatewayBaseUrlHint": "网关访问 Keycloak 的地址（若与基础 URL 不同）。该地址会写入路由，因此 Keycloak 在两个地址上必须给出相同的 issuer。已保存的路由保留原地址。"
       },
       "test": {
         "button": "测试连接",

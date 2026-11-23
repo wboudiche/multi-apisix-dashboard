@@ -27,6 +27,7 @@ export type IdpFormState = {
   instance_ids: string[];
   developers_can_create: boolean;
   redirect_domains: string[];
+  gateway_base_url: string;
 };
 
 export const emptyIdpForm = (): IdpFormState => ({
@@ -39,6 +40,7 @@ export const emptyIdpForm = (): IdpFormState => ({
   instance_ids: [],
   developers_can_create: false,
   redirect_domains: [],
+  gateway_base_url: '',
 });
 
 /** The form of a stored connection: its secret is never known, so it starts empty. */
@@ -52,6 +54,7 @@ export const formFromIdp = (p: IdentityProvider): IdpFormState => ({
   instance_ids: p.instance_ids,
   developers_can_create: p.developers_can_create,
   redirect_domains: p.redirect_domains ?? [],
+  gateway_base_url: p.gateway_base_url ?? '',
 });
 
 /**
@@ -73,5 +76,7 @@ export const inputFromForm = (form: IdpFormState): IdentityProviderInput => {
     instance_ids: form.instance_ids,
     developers_can_create: form.developers_can_create,
     redirect_domains: domains,
+    // Sent even when empty: that is how an address is cleared.
+    gateway_base_url: form.gateway_base_url.trim(),
   };
 };

@@ -1252,3 +1252,36 @@ func TestCreateClientOnWildcardRouteHost(t *testing.T) {
 		}
 	})
 }
+
+// Create and use hand the route the address the gateways reach Keycloak at,
+// when the connection has one; the backend's calls are not the route's concern.
+func TestCreateAndUseWriteTheGatewayAddress(t *testing.T) {
+	f := newCreateFixture(t, []string{"app.test"}, true)
+	gw := "http://keycloak:8080"
+	if _, err := f.h.idps.Update(context.Background(), f.idpID(t), services.IdPUpdate{GatewayBaseURL: &gw}); err != nil {
+		t.Fatal(err)
+	}
+	const discovery = "http://keycloak:8080/realms/r/.well-known/openid-configuration"
+	const introspection = "http://keycloak:8080/realms/r/protocol/openid-connect/token/introspect"
+
+	w := f.post(t, `{"route_id":"r1","client_id":"orders","mode":"token","options":{"validation":"introspection"}}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: status %d: %s", w.Code, w.Body)
+	}
+	var out map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	if out["discovery"] != discovery || out["introspection_endpoint"] != introspection {
+		t.Fatalf("create: body %v", out)
+	}
+
+	f.seedClient(t, "u1", "r1", "token")
+	w = f.do(t, http.MethodPost, "", "u1", f.h.UseClient)
+	if w.Code != http.StatusOK {
+		t.Fatalf("use: status %d: %s", w.Code, w.Body)
+	}
+	out = map[string]any{}
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	if out["discovery"] != discovery || out["introspection_endpoint"] != introspection {
+		t.Fatalf("use: body %v", out)
+	}
+}

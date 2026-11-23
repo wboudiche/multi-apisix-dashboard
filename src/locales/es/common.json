@@ -1282,7 +1282,9 @@
         "instances": "Instancias que pueden usarla",
         "developersCanCreate": "Los desarrolladores pueden crear clientes",
         "redirectDomains": "Dominios de redirección",
-        "redirectDomainsHint": "Los desarrolladores solo pueden crear clientes de inicio de sesión para estos dominios. Sin ninguno, no pueden crearlos."
+        "redirectDomainsHint": "Los desarrolladores solo pueden crear clientes de inicio de sesión para estos dominios. Sin ninguno, no pueden crearlos.",
+        "gatewayBaseUrl": "Dirección para las pasarelas",
+        "gatewayBaseUrlHint": "Dónde alcanzan las pasarelas a Keycloak, si no es en la URL base. Se escribe en las rutas, así que Keycloak debe dar el mismo emisor en ambas direcciones. Las rutas ya guardadas conservan su dirección."
       },
       "test": {
         "button": "Probar la conexión",

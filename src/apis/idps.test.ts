@@ -62,6 +62,7 @@ const input = {
   instance_ids: ['i1'],
   developers_can_create: false,
   redirect_domains: ['app.example.test'],
+  gateway_base_url: '',
 };
 
 describe('updating a connection', () => {

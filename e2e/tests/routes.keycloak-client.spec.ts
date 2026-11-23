@@ -287,6 +287,12 @@ test('a backend calls the route with a client credentials token, and only with o
   page,
   request,
 }) => {
+  // The gateway does not reach Keycloak at the address the backend does
+  // (inside its container, that is its own loopback): the connection says
+  // where it does, and the client's settings carry that address to the route.
+  const admin = await loginAdmin();
+  await updateIdp(admin, idp.id, { gateway_base_url: KEYCLOAK_FROM_GATEWAY });
+
   const { drawer, section, kc } = await openOidcOnRoute(page, ROUTES.backend.id);
   await section.getByRole('radio', { name: i18n.t('form.plugins.oidc.token') }).check();
   await kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.create') }).check();
@@ -298,26 +304,9 @@ test('a backend calls the route with a client credentials token, and only with o
   await saveRoute(page, drawer);
   expect((await findInKeycloak(made.backend))?.serviceAccountsEnabled).toBe(true);
 
-  // The route reads the discovery document at the address the dashboard
-  // reaches Keycloak at, which inside the gateway's container is its own
-  // loopback: point it at the one the gateway reaches, and change nothing else.
-  const admin = await loginAdmin();
-  const route = (await apiFetch(`${PROXY}/routes/${ROUTES.backend.id}`, admin, {
-    headers: onLocal(),
-  })) as { value: Record<string, unknown> & { plugins: Record<string, Record<string, unknown>> } };
-  const oidc = route.value.plugins['openid-connect'];
+  const oidc = (await savedOidc(ROUTES.backend.id)) ?? {};
   expect(oidc.client_id).toBe(made.backend);
-  await apiFetch(`${PROXY}/routes/${ROUTES.backend.id}`, admin, {
-    method: 'PUT',
-    headers: onLocal(fx().backendTeamId),
-    json: {
-      ...route.value,
-      plugins: {
-        ...route.value.plugins,
-        'openid-connect': { ...oidc, discovery: gatewayDiscoveryUrl() },
-      },
-    },
-  });
+  expect(oidc.discovery).toBe(gatewayDiscoveryUrl());
 
   // What the backend does: one call for a token, then the route with it.
   const token = await clientCredentialsToken(made.backend, String(oidc.client_secret));
@@ -344,6 +333,9 @@ test('a backend calls the route with a client credentials token, and only with o
     KEYCLOAK_ADMIN_CLIENT_SECRET
   );
   expect(await call(`Bearer ${other}`)).toBe(200);
+
+  // The tests after this one write the backend's address, as before.
+  await updateIdp(admin, idp.id, { gateway_base_url: '' });
 });
 
 test('an instance admin opens Settings on the OIDC clients alone', async ({ browser }) => {

@@ -1280,7 +1280,9 @@
         "instances": "Kullanabilecek örnekler",
         "developersCanCreate": "Geliştiriciler istemci oluşturabilir",
         "redirectDomains": "Yönlendirme alan adları",
-        "redirectDomainsHint": "Geliştiriciler oturum açma istemcilerini yalnızca bu alan adları için oluşturabilir. Hiçbiri yoksa oluşturamazlar."
+        "redirectDomainsHint": "Geliştiriciler oturum açma istemcilerini yalnızca bu alan adları için oluşturabilir. Hiçbiri yoksa oluşturamazlar.",
+        "gatewayBaseUrl": "Ağ geçidi adresi",
+        "gatewayBaseUrlHint": "Ağ geçitleri Keycloak'a temel URL'den farklı bir adresten ulaşıyorsa o adres. Rotalara yazılır; bu yüzden Keycloak iki adreste de aynı issuer değerini vermelidir. Kaydedilmiş rotalar adreslerini korur."
       },
       "test": {
         "button": "Bağlantıyı sına",

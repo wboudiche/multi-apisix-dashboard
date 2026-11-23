@@ -152,3 +152,14 @@ func TestPublicIdPCarriesRedirectDomains(t *testing.T) {
 		t.Fatalf("nil must show as []: %s", b)
 	}
 }
+
+func TestPublicIdPCarriesGatewayURL(t *testing.T) {
+	b, _ := json.Marshal(publicIdP(&models.IdentityProvider{GatewayBaseURL: "http://keycloak:8080"}))
+	if !strings.Contains(string(b), `"gateway_base_url":"http://keycloak:8080"`) {
+		t.Fatalf("body %s", b)
+	}
+	b, _ = json.Marshal(publicIdP(&models.IdentityProvider{}))
+	if !strings.Contains(string(b), `"gateway_base_url":""`) {
+		t.Fatalf("unset must show as empty: %s", b)
+	}
+}

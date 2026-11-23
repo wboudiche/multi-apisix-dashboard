@@ -44,6 +44,7 @@ export type Idp = {
   instance_ids: string[];
   developers_can_create: boolean;
   redirect_domains: string[];
+  gateway_base_url: string;
 };
 
 export type OidcClient = {
@@ -69,6 +70,7 @@ export const e2eConnection = (name: string, prefix: string) => ({
   instance_ids: [getFixtures().localInstanceId],
   developers_can_create: false,
   redirect_domains: [] as string[],
+  gateway_base_url: '',
 });
 
 export const discoveryUrl = () =>

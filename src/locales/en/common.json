@@ -1196,7 +1196,9 @@
         "instances": "Instances that may use it",
         "developersCanCreate": "Developers can create clients",
         "redirectDomains": "Redirect domains",
-        "redirectDomainsHint": "Developers can create login clients only for these domains. With none, they cannot create login clients."
+        "redirectDomainsHint": "Developers can create login clients only for these domains. With none, they cannot create login clients.",
+        "gatewayBaseUrl": "Gateway address",
+        "gatewayBaseUrlHint": "Where the gateways reach Keycloak, when not at the base URL. It is written into the routes, so Keycloak must give the same issuer at both addresses. Routes already saved keep their address."
       },
       "test": {
         "button": "Test connection",

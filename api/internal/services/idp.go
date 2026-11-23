@@ -68,6 +68,8 @@ type IdPUpdate struct {
 	InstanceIDs         *[]string
 	DevelopersCanCreate *bool
 	RedirectDomains     *[]string
+	// GatewayBaseURL: an empty string clears it.
+	GatewayBaseURL *string
 }
 
 // IdPService stores Keycloak connections and the registry of clients created
@@ -92,6 +94,17 @@ func validateIdP(p *models.IdentityProvider) error {
 	}
 	if strings.HasPrefix(strings.TrimRight(u.Path, "/"), "/realms") {
 		return invalid("base_url must be the server root, without /realms/<realm>")
+	}
+	if p.GatewayBaseURL != "" {
+		g, err := url.Parse(p.GatewayBaseURL)
+		switch {
+		case err != nil || (g.Scheme != "http" && g.Scheme != "https") || g.Host == "":
+			return invalid("gateway_base_url must be an absolute http(s) URL")
+		case g.User != nil || g.RawQuery != "" || g.Fragment != "" || strings.Contains(p.GatewayBaseURL, "#"):
+			return invalid("gateway_base_url cannot carry credentials, a query or a fragment")
+		case strings.HasPrefix(strings.TrimRight(g.Path, "/"), "/realms"):
+			return invalid("gateway_base_url must be the server root, without /realms/<realm>")
+		}
 	}
 	if strings.TrimSpace(p.Realm) == "" {
 		return invalid("realm is required")
@@ -214,6 +227,11 @@ func (s *IdPService) Update(ctx context.Context, id string, u IdPUpdate) (*model
 	}
 	if u.RedirectDomains != nil {
 		p.RedirectDomains = *u.RedirectDomains
+	}
+	// Neither a lock nor a reason to ask for the secret: the routes already
+	// written keep their address, and the secret is never sent there.
+	if u.GatewayBaseURL != nil {
+		p.GatewayBaseURL = *u.GatewayBaseURL
 	}
 	if err := validateIdP(p); err != nil {
 		return nil, err

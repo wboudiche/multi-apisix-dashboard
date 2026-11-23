@@ -244,6 +244,14 @@ export const IdentityProvidersTab = () => {
             required
           />
           <TextInput
+            label={t('settings.idp.field.gatewayBaseUrl')}
+            description={t('settings.idp.field.gatewayBaseUrlHint')}
+            // eslint-disable-next-line i18next/no-literal-string -- an example address
+            placeholder="http://keycloak:8080"
+            value={form.gateway_base_url}
+            onChange={(e) => patch({ gateway_base_url: e.currentTarget.value })}
+          />
+          <TextInput
             label={t('settings.idp.field.realm')}
             value={form.realm}
             onChange={(e) => patch({ realm: e.currentTarget.value })}

@@ -31,6 +31,8 @@ export type IdentityProvider = {
   developers_can_create: boolean;
   /** DNS names a developer's login client may redirect inside; admins are not bound by them. */
   redirect_domains: string[];
+  /** The server root the gateways reach Keycloak at, written into routes; empty = base_url. */
+  gateway_base_url: string;
 };
 
 export type IdentityProviderInput = Omit<IdentityProvider, 'id' | 'type' | 'has_secret'> & {

@@ -116,6 +116,15 @@ func TestValidateIdP(t *testing.T) {
 		{"redirect domain digits inside last label", func(p *models.IdentityProvider) { p.RedirectDomains = []string{"corp.1a"} }, true},
 		{"redirect domains 20", func(p *models.IdentityProvider) { p.RedirectDomains = manyDomains(20) }, true},
 		{"redirect domains 21", func(p *models.IdentityProvider) { p.RedirectDomains = manyDomains(21) }, false},
+		{"gateway url unset", func(p *models.IdentityProvider) { p.GatewayBaseURL = "" }, true},
+		{"gateway url valid", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://keycloak:8080" }, true},
+		{"gateway url with path", func(p *models.IdentityProvider) { p.GatewayBaseURL = "https://sso.internal/auth" }, true},
+		{"gateway url without scheme", func(p *models.IdentityProvider) { p.GatewayBaseURL = "keycloak:8080" }, false},
+		{"gateway url ftp", func(p *models.IdentityProvider) { p.GatewayBaseURL = "ftp://keycloak" }, false},
+		{"gateway url ends in realms", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://keycloak/realms/x" }, false},
+		{"gateway url with credentials", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://u:p@keycloak" }, false},
+		{"gateway url with query", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://keycloak?x=1" }, false},
+		{"gateway url with fragment", func(p *models.IdentityProvider) { p.GatewayBaseURL = "http://keycloak#x" }, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -530,5 +539,36 @@ func TestForgetInstance(t *testing.T) {
 	}
 	if n, err := s.ForgetInstance(ctx, "inst-a"); err != nil || n != 0 {
 		t.Fatalf("second forget: n=%d err=%v", n, err)
+	}
+}
+
+func TestUpdateGatewayURLNeitherLocksNorAsksForTheSecret(t *testing.T) {
+	ctx := context.Background()
+	s := NewIdPService(newFakeKV())
+	p := validIdP()
+	if err := s.Create(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordClient(ctx, &models.IdPClient{IdPID: p.ID, InstanceID: "inst-a", KeycloakUUID: "u1", ClientID: "apisix-x"}); err != nil {
+		t.Fatal(err)
+	}
+	// The routes already written keep their address; the secret never goes
+	// to the gateway address, so neither the clients nor the secret are at stake.
+	gw := "http://keycloak:8080"
+	got, err := s.Update(ctx, p.ID, IdPUpdate{GatewayBaseURL: &gw})
+	if err != nil {
+		t.Fatalf("set: %v", err)
+	}
+	if got.GatewayBaseURL != gw || got.AdminClientSecret != "s3cret-value" {
+		t.Fatalf("got %+v", got)
+	}
+	empty := ""
+	got, err = s.Update(ctx, p.ID, IdPUpdate{GatewayBaseURL: &empty})
+	if err != nil || got.GatewayBaseURL != "" {
+		t.Fatalf("clear: %v %+v", err, got)
+	}
+	bad := "keycloak"
+	if _, err := s.Update(ctx, p.ID, IdPUpdate{GatewayBaseURL: &bad}); !errors.Is(err, ErrIdPInvalid) {
+		t.Fatalf("want ErrIdPInvalid, got %v", err)
 	}
 }

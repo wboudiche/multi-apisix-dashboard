@@ -373,3 +373,21 @@ func TestKeycloakSecond401IsAuthError(t *testing.T) {
 		t.Fatalf("err=%v calls=%d", err, calls)
 	}
 }
+
+func TestRouteFacingURLsPreferTheGatewayAddress(t *testing.T) {
+	p := &models.IdentityProvider{BaseURL: "https://sso.example.com/", Realm: "corp"}
+	if got := DiscoveryURL(p); got != "https://sso.example.com/realms/corp/.well-known/openid-configuration" {
+		t.Fatalf("discovery without gateway url: %s", got)
+	}
+	p.GatewayBaseURL = "http://keycloak:8080/"
+	if got := DiscoveryURL(p); got != "http://keycloak:8080/realms/corp/.well-known/openid-configuration" {
+		t.Fatalf("discovery: %s", got)
+	}
+	if got := IntrospectionURL(p); got != "http://keycloak:8080/realms/corp/protocol/openid-connect/token/introspect" {
+		t.Fatalf("introspection: %s", got)
+	}
+	// The backend's own calls stay on the base URL.
+	if got := keycloakBase(p); got != "https://sso.example.com/realms/corp" {
+		t.Fatalf("backend base: %s", got)
+	}
+}
