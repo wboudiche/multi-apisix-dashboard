@@ -67,6 +67,12 @@ in one call. Reusing a client needs no route.
 - Not offered when duplicating a route: a copy keeps the original's plugins,
   as for the other authentications. Not offered either when the chosen
   service already sets an authentication plugin (the page's existing rule).
+- Once picked it is never dropped for anyone behind the user's back: on
+  another instance it stays picked with its client to pick again, and when
+  it stops being offered (connection unlinked, last client deleted) it stays
+  shown and the save is refused with a message to pick another access. Only
+  a service that sets an authentication takes it back to anyone, since the
+  service then protects the route.
 - Its section holds:
   - **Client**: *Create a new client* (default when the caller may create) or
     *Reuse a client* (a select of the instance's created clients).
@@ -107,9 +113,10 @@ posted once, with the plugin and the asked status.
 
 A dialog shows the client id, the secret and the token endpoint, each with a
 copy button (the endpoint is the gateways' address for Keycloak, and the dialog
-says so), and says the secret is shown once (it is not stored by the
-dashboard and can be read again only in Keycloak). Closing it goes where the
-page goes today after a creation. A reused client shows its id only.
+says so), and says the dashboard does not show the secret again (it stays in Keycloak and
+in the route's plugin settings). Closing it goes where the page goes today
+after a creation. A reused client shows no dialog: its secret was given when
+it was made, so the page goes straight back to the list.
 
 ### Secret handling
 
