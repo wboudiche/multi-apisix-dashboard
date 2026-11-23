@@ -56,7 +56,8 @@ import { customAlphabet } from 'nanoid';
  * connection's redirect domains. The OIDC clients tab then says which client
  * no route uses any more, and which is gone from Keycloak. A backend gets a
  * token for a created client by the client credentials grant, and the gateway
- * lets it through the route that client protects, and nothing else.
+ * lets it through the route that client protects; a token of another client
+ * of the realm is refused.
  *
  * Seeded through the API, asserted on screen. Keycloak is the e2e stack's
  * (realm `apis`); the clients are removed from it in afterAll.
@@ -302,11 +303,16 @@ test('a backend calls the route with a client credentials token, and only with o
 
   made.backend = await createClient(page, kc);
   await saveRoute(page, drawer);
-  expect((await findInKeycloak(made.backend))?.serviceAccountsEnabled).toBe(true);
+  const inKeycloak = (await findInKeycloak(made.backend)) as
+    | { serviceAccountsEnabled?: boolean; protocolMappers?: { protocolMapper: string }[] }
+    | undefined;
+  expect(inKeycloak?.serviceAccountsEnabled).toBe(true);
+  expect(inKeycloak?.protocolMappers?.map((m) => m.protocolMapper)).toContain('oidc-audience-mapper');
 
   const oidc = (await savedOidc(ROUTES.backend.id)) ?? {};
   expect(oidc.client_id).toBe(made.backend);
   expect(oidc.discovery).toBe(gatewayDiscoveryUrl());
+  expect(oidc.claim_validator).toEqual({ audience: { required: true, match_with_client_id: true } });
 
   // What the backend does: one call for a token, then the route with it.
   const token = await clientCredentialsToken(made.backend, String(oidc.client_secret));
@@ -321,18 +327,19 @@ test('a backend calls the route with a client credentials token, and only with o
       })
     ).status();
 
-  // The gateway picks the route change up within a moment.
-  await expect.poll(() => call(`Bearer ${token}`), { timeout: 15_000 }).toBe(200);
-  expect(await call()).toBe(401);
+  // The route answered 200 before the plugin was saved: wait for the gateway
+  // to refuse a request without a token, which only the plugin does.
+  await expect.poll(() => call(), { timeout: 15_000 }).toBe(401);
+  expect(await call(`Bearer ${token}`)).toBe(200);
   expect(await call('Bearer not.a.token')).toBe(401);
-  // A token Keycloak signed for another client of the realm is not one the
-  // route was set up for, but the signature check accepts it all the same:
-  // checking by signature trusts the realm, not the client.
+  // A token Keycloak signed for another client of the realm - as another
+  // team's created client would get - is not one for this route's client:
+  // a valid token, refused for its audience (403, not 401).
   const other = await clientCredentialsToken(
     KEYCLOAK_ADMIN_CLIENT_ID,
     KEYCLOAK_ADMIN_CLIENT_SECRET
   );
-  expect(await call(`Bearer ${other}`)).toBe(200);
+  expect(await call(`Bearer ${other}`)).toBe(403);
 
   // The tests after this one write the backend's address, as before.
   await updateIdp(admin, idp.id, { gateway_base_url: '' });

@@ -178,6 +178,15 @@ Created clients keep Keycloak's default `fullScopeAllowed: true` (R6): their
 tokens carry the user's realm roles, as a client made by hand in the console
 would. Narrowing roles and scopes is left to the roles/scopes follow-up.
 
+A route accepts only the tokens issued for its own client. Every created
+client gets an audience mapper (`oidc-audience-mapper`) that puts its own id in
+the `aud` of its access tokens and of what introspection answers, and the
+route's plugin config carries `claim_validator.audience: { required: true,
+match_with_client_id: true }`, in both modes (a login route also takes a
+bearer token). Without it, a route checked by signature or introspection
+accepts any token of the realm, another team's client included. A token of
+another client gets 403 from the gateway, a missing or forged one 401.
+
 The service account needs the `manage-clients` role of `realm-management` in
 that realm (documented in the Settings tab's help text). Recommended to the
 operator: a realm dedicated to the gateway's APIs.

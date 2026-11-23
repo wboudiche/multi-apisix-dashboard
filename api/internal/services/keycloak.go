@@ -58,16 +58,44 @@ type ClientRepresentation struct {
 	ServiceAccountsEnabled    bool              `json:"serviceAccountsEnabled"`
 	RedirectURIs              []string          `json:"redirectUris"`
 	Attributes                map[string]string `json:"attributes,omitempty"`
+	ProtocolMappers           []ProtocolMapper  `json:"protocolMappers,omitempty"`
+}
+
+// ProtocolMapper is the subset of Keycloak's ProtocolMapperRepresentation the dashboard writes.
+type ProtocolMapper struct {
+	Name           string            `json:"name"`
+	Protocol       string            `json:"protocol"`
+	ProtocolMapper string            `json:"protocolMapper"`
+	Config         map[string]string `json:"config"`
+}
+
+// ownAudience puts the client's own id in the aud claim of its access tokens
+// (and of what introspection answers). Keycloak does not by default, and the
+// route checks aud against its client id: without it, a route would accept a
+// token of any client of the realm, another team's included.
+func ownAudience(clientID string) ProtocolMapper {
+	return ProtocolMapper{
+		Name:           "dashboard-own-audience",
+		Protocol:       "openid-connect",
+		ProtocolMapper: "oidc-audience-mapper",
+		Config: map[string]string{
+			"included.client.audience":  clientID,
+			"access.token.claim":        "true",
+			"introspection.token.claim": "true",
+			"id.token.claim":            "false",
+		},
+	}
 }
 
 // BuildClientRepresentation turns a route mode and its options into the client Keycloak must create.
 // Clients are always confidential, with the implicit and direct-grant flows off.
 func BuildClientRepresentation(clientID, mode string, o models.IdPClientOptions, redirectURI string) ClientRepresentation {
 	rep := ClientRepresentation{
-		ClientID:     clientID,
-		Enabled:      true,
-		Protocol:     "openid-connect",
-		RedirectURIs: []string{},
+		ClientID:        clientID,
+		Enabled:         true,
+		Protocol:        "openid-connect",
+		RedirectURIs:    []string{},
+		ProtocolMappers: []ProtocolMapper{ownAudience(clientID)},
 	}
 	if mode == "login" {
 		rep.StandardFlowEnabled = true

@@ -68,6 +68,20 @@ describe('proposeClientIdSuffix', () => {
 });
 
 describe('applyClientCredentials', () => {
+  it('accepts only the tokens issued for the client, in either mode, keeping other claim checks', () => {
+    const audience = { required: true, match_with_client_id: true };
+    for (const mode of ['login', 'token'] as const) {
+      const next = applyClientCredentials(
+        { claim_validator: { issuer: { valid_issuers: ['https://sso'] }, audience: { claim: 'azp' } } },
+        creds({ mode, options: { pkce: true, validation: 'jwks', client_credentials: true } })
+      );
+      expect(next.claim_validator).toEqual({
+        issuer: { valid_issuers: ['https://sso'] },
+        audience,
+      });
+    }
+    expect(applyClientCredentials({}, creds({})).claim_validator).toEqual({ audience });
+  });
   it('fills a login with PKCE and drops bearer_only', () => {
     const next = applyClientCredentials(
       { bearer_only: true },

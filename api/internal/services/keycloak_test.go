@@ -391,3 +391,20 @@ func TestRouteFacingURLsPreferTheGatewayAddress(t *testing.T) {
 		t.Fatalf("backend base: %s", got)
 	}
 }
+
+// Every created client puts its own id in the audience of its tokens, so a
+// route can accept only the tokens issued for its client (claim_validator).
+func TestBuildClientRepresentationAddsOwnAudience(t *testing.T) {
+	for _, mode := range []string{"login", "token"} {
+		r := BuildClientRepresentation("p-1", mode, models.IdPClientOptions{ClientCredentials: true}, "https://gw/cb")
+		if len(r.ProtocolMappers) != 1 {
+			t.Fatalf("%s: mappers %+v", mode, r.ProtocolMappers)
+		}
+		m := r.ProtocolMappers[0]
+		if m.Protocol != "openid-connect" || m.ProtocolMapper != "oidc-audience-mapper" ||
+			m.Config["included.client.audience"] != "p-1" || m.Config["access.token.claim"] != "true" ||
+			m.Config["introspection.token.claim"] != "true" {
+			t.Fatalf("%s: mapper %+v", mode, m)
+		}
+	}
+}

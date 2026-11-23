@@ -58,11 +58,20 @@ export const applyClientCredentials = (
   config: Record<string, unknown>,
   c: ClientCredentials
 ): Record<string, unknown> => {
+  const claims = config.claim_validator;
   const next: Record<string, unknown> = {
     ...config,
     discovery: c.discovery,
     client_id: c.client_id,
     client_secret: c.client_secret,
+    // Only the tokens issued for this client: its own id is in their aud
+    // (the backend gives every created client that mapper). Without it any
+    // client of the realm, another team's too, gets through. A login route
+    // checks it as well, since it also takes a bearer token.
+    claim_validator: {
+      ...(claims && typeof claims === 'object' && !Array.isArray(claims) ? claims : {}),
+      audience: { required: true, match_with_client_id: true },
+    },
   };
   if (c.mode === 'login') {
     // What only a token check uses, and a redirect address of an earlier client.
