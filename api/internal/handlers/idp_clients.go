@@ -351,12 +351,14 @@ func mayListClient(scope teamScope, team string) bool {
 }
 
 // mayUseClient: an admin always; anyone else when the client's route belongs
-// to the team they act for - the team the route they are writing will belong
-// to. Writing to another of their teams is not enough: the secret would land
-// in a route of the acting team, readable by every member of it, viewers
-// included, and could mint tokens the other team's route accepts.
-func mayUseClient(scope teamScope, team string) bool {
-	return scope.isAdmin || (scope.acting != "" && team == scope.acting)
+// to target, the team of the route the secret is written into, and they write
+// to that team. target is the owner of the route named in the request, or the
+// acting team when none is named (a route not saved yet will belong to it).
+// Writing to the client's team is not enough: the secret would land in a
+// route of the target team, readable by every member of it, viewers included,
+// and could mint tokens the client's own route accepts (#462, #464).
+func mayUseClient(scope teamScope, team, target string) bool {
+	return scope.isAdmin || (scope.mayWrite(target) && team == target)
 }
 
 // managedEntry reports whether a registry entry is one the dashboard may read,
@@ -661,10 +663,13 @@ func (h *IdPHandler) UseClient(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 		return
 	}
-	// The secret goes into a route of the acting team, so there has to be
-	// one: a non-admin with several teams and none named is answered as a
-	// create would be, before anything about the client is looked at.
-	if !scope.isAdmin && scope.acting == "" {
+	// The route the secret goes into, when it is saved already: its owner is
+	// the team the client must belong to. Without one, the route will belong
+	// to the acting team, so there has to be one: a non-admin with several
+	// teams and none named is answered as a create would be, before anything
+	// about the client is looked at.
+	targetRoute := c.Query("route")
+	if !scope.isAdmin && targetRoute == "" && scope.acting == "" {
 		status, msg, code := createRefusal(scope)
 		refuse(c, status, msg, code)
 		return
@@ -717,7 +722,11 @@ func (h *IdPHandler) UseClient(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "The route's owner could not be read"})
 		return
 	}
-	if !mayUseClient(scope, team) {
+	target, ok := h.useTarget(c, scope, instanceID, targetRoute)
+	if !ok {
+		return
+	}
+	if !mayUseClient(scope, team, target) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 		return
 	}
@@ -747,6 +756,41 @@ func (h *IdPHandler) UseClient(c *gin.Context) {
 		out.IntrospectionEndpoint = services.IntrospectionURL(p)
 	}
 	c.JSON(http.StatusOK, out)
+}
+
+// useTarget answers the team of the route a used client's secret is written
+// into: the owner of the route named, or the acting team when none is. A named
+// route that does not exist answers an admin 404 and anyone else the 403 of a
+// route they may not write, as CreateClient does; false means an answer went.
+func (h *IdPHandler) useTarget(c *gin.Context, scope teamScope, instanceID, routeID string) (string, bool) {
+	if routeID == "" {
+		return scope.acting, true
+	}
+	ctx := c.Request.Context()
+	inst, err := h.getInstance(ctx, instanceID)
+	if err != nil || inst == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The instance could not be read"})
+		return "", false
+	}
+	route, err := h.readRoute(ctx, inst, routeID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Could not read the route from the gateway"})
+		return "", false
+	}
+	if !route.Found {
+		if scope.isAdmin {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		}
+		return "", false
+	}
+	owner, err := h.routeOwner(ctx, instanceID, routeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The route's owner could not be read"})
+		return "", false
+	}
+	return owner, true
 }
 
 // keycloakFailure maps an error of a Keycloak call to a response. Nothing of

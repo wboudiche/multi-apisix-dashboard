@@ -550,11 +550,97 @@ func TestMayUseClient(t *testing.T) {
 		{"two teams none named", two, "t1", false, true},
 	}
 	for _, tc := range cases {
-		if got := mayUseClient(tc.scope, tc.team); got != tc.use {
+		if got := mayUseClient(tc.scope, tc.team, tc.scope.acting); got != tc.use {
 			t.Errorf("%s: use got %v want %v", tc.name, got, tc.use)
 		}
 		if got := mayListClient(tc.scope, tc.team); got != tc.list {
 			t.Errorf("%s: list got %v want %v", tc.name, got, tc.list)
+		}
+	}
+}
+
+// With the route the secret goes into named, its owner decides, not the acting
+// team: the client has to belong to that route's team, which the caller writes.
+func TestMayUseClientForTarget(t *testing.T) {
+	two := teamScope{writable: []string{"t1", "t2"}, teams: []string{"t1", "t2", "t3"}, acting: "t2", chosen: "t2"}
+	cases := []struct {
+		name         string
+		scope        teamScope
+		team, target string
+		use          bool
+	}{
+		{"client of the route's team", two, "t1", "t1", true},
+		{"client of another writable team", two, "t2", "t1", false},
+		{"route of a team only viewed", two, "t3", "t3", false},
+		{"unowned route", two, "", "", false},
+		{"admin, any pair", teamScope{isAdmin: true}, "t2", "t1", true},
+	}
+	for _, tc := range cases {
+		if got := mayUseClient(tc.scope, tc.team, tc.target); got != tc.use {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.use)
+		}
+	}
+}
+
+// use?route=<id>: the client must belong to the team that owns the route the
+// secret is written into (#464), whichever team the caller acts as.
+func TestUseClientTargetRoute(t *testing.T) {
+	twoTeams := func(f *createFixture) {
+		f.role = models.RoleDeveloper
+		f.ui = &models.UserInstance{Role: models.RoleDeveloper, TeamIDs: []string{"t1", "t2", "t3"},
+			TeamRoles: map[string]string{"t1": models.RoleDeveloper, "t2": models.RoleDeveloper, "t3": models.RoleViewer}}
+	}
+	admin := func(*createFixture) {}
+	cases := []struct {
+		name   string
+		setup  func(f *createFixture)
+		team   string // X-Team-ID
+		route  string
+		uuid   string // u1 belongs to t1 (r1), u2 to t2 (other), u3 to t3 (r3)
+		status int
+	}{
+		{"t1 route, t1 client, acting t2", twoTeams, "t2", "r1", "u1", 200},
+		{"t1 route, t2 client, acting t2", twoTeams, "t2", "r1", "u2", 403},
+		{"t2 route, t2 client, acting t2", twoTeams, "t2", "other", "u2", 200},
+		{"t2 route, t1 client, acting t1", twoTeams, "t1", "other", "u1", 403},
+		{"t1 route, t1 client, no team named", twoTeams, "", "r1", "u1", 200},
+		{"route of a team only viewed", twoTeams, "t2", "r3", "u3", 403},
+		{"unowned route", twoTeams, "t2", "unowned", "u1", 403},
+		{"unknown route, developer", twoTeams, "t2", "nope", "u1", 403},
+		{"unknown route, admin", admin, "", "nope", "u1", 404},
+		{"admin, t1 route, t2 client", admin, "", "r1", "u2", 200},
+		{"naming a foreign team", twoTeams, "t9", "r1", "u1", 403},
+		{"no route, acting t2, t1 client", twoTeams, "t2", "", "u1", 403},
+		{"no route, acting t2, t2 client", twoTeams, "t2", "", "u2", 200},
+	}
+	var forbidden []string
+	for _, tc := range cases {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.owners["r3"] = "t3"
+		f.hosts["r3"] = []string{"app.test"}
+		f.seedClient(t, "u1", "r1", "login")
+		f.seedClient(t, "u2", "other", "login")
+		f.seedClient(t, "u3", "r3", "login")
+		tc.setup(f)
+		f.team = tc.team
+		query := ""
+		if tc.route != "" {
+			query = "route=" + tc.route
+		}
+		w := f.do(t, http.MethodPost, query, tc.uuid, f.h.UseClient)
+		if w.Code != tc.status {
+			t.Errorf("%s: status %d: %s", tc.name, w.Code, w.Body)
+		}
+		if tc.status != 200 && f.kc.calls != 0 {
+			t.Errorf("%s: keycloak got %d calls", tc.name, f.kc.calls)
+		}
+		if tc.status == 403 {
+			forbidden = append(forbidden, w.Body.String())
+		}
+	}
+	for _, b := range forbidden {
+		if b != forbidden[0] {
+			t.Errorf("403 bodies differ: %q vs %q", b, forbidden[0])
 		}
 	}
 }
