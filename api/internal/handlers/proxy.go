@@ -493,6 +493,10 @@ type ProxyHandler struct {
 	// getInstance is instanceService.GetInstance, a field so a test can serve
 	// an instance without etcd.
 	getInstance func(ctx context.Context, id string) (*models.Instance, error)
+	// getOwner and listOwners are ownershipService's GetOwner and
+	// ListOwnersByResourceType, fields for the same reason.
+	getOwner   func(ctx context.Context, instanceID, resourceType, resourceID string) (string, error)
+	listOwners func(ctx context.Context, instanceID, resourceType string) (map[string]string, error)
 	// Held per handler rather than per request: paging through an
 	// upstream-filtered list is several requests, and re-reading the whole
 	// service table on each was the cost this exists to remove.
@@ -510,6 +514,8 @@ type ProxyHandler struct {
 func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService, idpService *services.IdPService) *ProxyHandler {
 	return &ProxyHandler{
 		getInstance:        instanceService.GetInstance,
+		getOwner:           ownershipService.GetOwner,
+		listOwners:         ownershipService.ListOwnersByResourceType,
 		idpService:         idpService,
 		instanceService:    instanceService,
 		ownershipService:   ownershipService,
@@ -662,6 +668,17 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
+	// A caller who may read this type but not write it - a viewer, or a
+	// developer on a type only an admin writes - reads it with its credentials
+	// replaced (#463): reading a route must not be enough to act as its
+	// client. On the team-owned types, a non-admin who may write the type is
+	// still a viewer in some of their teams (#394), so their rows are decided
+	// one owner at a time below.
+	readsOnly := !isAdmin && resourceType != "" && !models.HasResourcePermission(effRole, resourceType, "write")
+	hidesCredentialsOf := func(ownerTeamID string) bool {
+		return !isAdmin && (readsOnly || !scope.mayWrite(ownerTeamID))
+	}
+
 	// Read before the checks below: a PUT addressed to a collection names its
 	// resource in the body rather than the path (see collectionPutID).
 	var bodyBytes []byte
@@ -737,7 +754,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 	if !isAdmin {
 		if ownershipChecked(c.Request.Method, resourceID) {
-			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
+			ownerTeamID, _ := h.getOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 
 			if ownerTeamID == "" {
 				// No ownership record. Either this creates something new - a
@@ -1035,7 +1052,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				}
 
 				// Batch fetch all ownerships for this resource type
-				ownerMap, _ := h.ownershipService.ListOwnersByResourceType(c.Request.Context(), instanceID, resourceType)
+				ownerMap, _ := h.listOwners(c.Request.Context(), instanceID, resourceType)
 
 				// A route reaches its upstream directly or through a service,
 				// so the upstream filter needs the service table to answer for
@@ -1215,6 +1232,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						if !matchesListFilters(val, filters) {
 							continue
 						}
+
+						if hidesCredentialsOf(ownerTeamID) {
+							redactRow(resourceType, r)
+						}
 					}
 					filtered = append(filtered, r)
 				}
@@ -1254,7 +1275,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				respBody, _ = json.Marshal(resources)
 			}
 		} else {
-			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
+			ownerTeamID, _ := h.getOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 			// Any of the caller's teams, whichever one they named: the team
 			// named narrows a list, not what they may open.
 			if !isAdmin && !scope.mayAccess(ownerTeamID) {
@@ -1270,10 +1291,25 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			// cannot name the current team — nor tell a route that is already
 			// unowned from one the operator is about to detach.
 			respBody = injectTeamID(respBody, ownerTeamID)
+			if hidesCredentialsOf(ownerTeamID) {
+				respBody = redactCredentials(resourceType, respBody)
+			}
 		}
 	}
 
+	// Every other answer of a type the caller may not write: the types no team
+	// owns (global rules, plugin metadata, secrets), and whatever the team
+	// filter above did not decode. Redacting twice changes nothing.
+	if c.Request.Method == http.MethodGet && resp.StatusCode < http.StatusMultipleChoices && readsOnly {
+		respBody = redactCredentials(resourceType, respBody)
+	}
+
 	for k, v := range resp.Header {
+		// The body above may not be the one APISIX sent: its length is
+		// counted again for the one sent here.
+		if http.CanonicalHeaderKey(k) == "Content-Length" {
+			continue
+		}
 		for _, vv := range v {
 			c.Header(k, vv)
 		}
