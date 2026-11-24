@@ -32,24 +32,29 @@ const redactedMarker = "***"
 // credentialField reports whether a field holds a credential by its name
 // alone, wherever it is: the plugin settings of a route, service, consumer,
 // credential, plugin config or global rule use these names, and so do the
-// headers a plugin sets (proxy-rewrite's Authorization). Case does not count:
-// a header is named in any case.
+// headers a plugin sets (proxy-rewrite's Authorization). Case and the dash of
+// a header name do not count: X-Auth-Token reads as x_auth_token.
 func credentialField(name string) bool {
-	n := strings.ToLower(name)
+	n := strings.ReplaceAll(strings.ToLower(name), "-", "_")
 	switch n {
 	case "secret", "client_secret", "password", "private_key", "client_key",
 		// hmac-auth's, an AWS secret manager's. Not every secret_*: tencent's
 		// secret_id is the identifier beside its secret_key.
 		"secret_key", "secret_access_key",
-		"token", "api_key", "apikey", "access_key",
-		"authorization", "proxy-authorization", "x-api-key", "api-key":
+		"token", "api_key", "apikey", "access_key", "x_api_key",
+		"authorization", "cookie",
+		// An upstream health check's headers, "Authorization: Bearer ..."
+		// strings: whole, as a header's name is in its value.
+		"req_headers":
 		return true
 	}
 	return strings.HasSuffix(n, "_secret") ||
 		strings.HasSuffix(n, "_private_key") ||
 		strings.HasSuffix(n, "_password") ||
 		strings.HasSuffix(n, "_token") ||
-		strings.HasSuffix(n, "_access_key")
+		strings.HasSuffix(n, "_access_key") ||
+		// proxy-authorization, openid-connect's http_proxy_authorization.
+		strings.HasSuffix(n, "_authorization")
 }
 
 // pluginCredentialPaths are where each plugin keeps its credentials, as paths
@@ -63,11 +68,12 @@ func credentialField(name string) bool {
 // apache/apisix:3.16.0 image). The second is credentials APISIX does not
 // encrypt.
 var pluginCredentialPaths = map[string][]string{
-	"key-auth":                     {"key"},
-	"basic-auth":                   {"password"},
-	"jwt-auth":                     {"secret", "private_key"},
-	"hmac-auth":                    {"secret_key"},
-	"openid-connect":               {"client_secret", "client_rsa_private_key", "session.secret"},
+	"key-auth":   {"key"},
+	"basic-auth": {"password"},
+	"jwt-auth":   {"secret", "private_key"},
+	"hmac-auth":  {"secret_key"},
+	"openid-connect": {"client_secret", "client_rsa_private_key", "session.secret",
+		"proxy_opts.http_proxy_authorization", "proxy_opts.https_proxy_authorization"},
 	"authz-keycloak":               {"client_secret"},
 	"authz-casdoor":                {"client_secret"},
 	"csrf":                         {"key"},
@@ -98,6 +104,16 @@ var pluginCredentialPaths = map[string][]string{
 
 // resourceCredentialFields are the fields that are a credential only at the
 // top of a resource of one type: an SSL's private keys, a vault's token.
+// redactedTypes are the resource types whose answers hold data a reader may
+// not act with. Not plugins: a plugin's schema names its credentials, as
+// properties a form is built from, and holds none.
+var redactedTypes = map[string]bool{
+	"routes": true, "services": true, "upstreams": true, "consumers": true,
+	"consumer_groups": true, "stream_routes": true, "plugin_configs": true,
+	"global_rules": true, "ssls": true, "secrets": true, "plugin_metadata": true,
+	"protos": true,
+}
+
 var resourceCredentialFields = map[string]map[string]bool{
 	"ssls":    {"key": true, "keys": true},
 	"secrets": {"token": true},

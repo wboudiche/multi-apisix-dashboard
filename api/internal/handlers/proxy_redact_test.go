@@ -72,7 +72,9 @@ func proxyReadFrom(t *testing.T, role string, ui *models.UserInstance, path stri
 	for k, v := range headers {
 		c.Request.Header.Set(k, v)
 	}
-	c.Params = gin.Params{{Key: "path", Value: path}}
+	// The route's *path is the path alone; the query stays on the URL.
+	param, _, _ := strings.Cut(path, "?")
+	c.Params = gin.Params{{Key: "path", Value: param}}
 	c.Set(middleware.InstanceIDKey, "i1")
 	c.Set(middleware.RoleKey, role)
 	if ui != nil {
@@ -203,5 +205,63 @@ func TestProxyReadAsksAPISIXForAnAnswerItCanRead(t *testing.T) {
 	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), "THE-SECRET") ||
 		!strings.Contains(w.Body.String(), `"***"`) {
 		t.Errorf("status %d, body %s (APISIX was asked for %q)", w.Code, w.Body.String(), asked)
+	}
+}
+
+// A plugin's schema says which fields are credentials; it holds none. Read by
+// every role that edits a plugin, it must come back as a schema.
+func TestProxyReadLeavesPluginSchemasWhole(t *testing.T) {
+	schema := `{"type":"object","properties":{"client_secret":{"type":"string"},"session":{"type":"object","properties":{"secret":{"type":"string"}}}},"consumer_schema":{"properties":{"password":{"type":"string"},"redis_password":{"type":"string"},"token":{"type":"string"}}}}`
+	for _, ui := range []*models.UserInstance{viewerIn("t1"), developerIn("t1")} {
+		for _, path := range []string{"/plugins/openid-connect", "/plugins?all=true"} {
+			w := proxyRead(t, ui.Role, ui, path, schema, nil)
+			if w.Code != http.StatusOK || canon(t, w.Body.String()) != canon(t, schema) {
+				t.Errorf("%s %s: status %d, body %s", ui.Role, path, w.Code, w.Body.String())
+			}
+		}
+	}
+}
+
+// A row that is not {key, value} is neither a team's nor readable as a
+// resource: a non-admin does not get it.
+func TestProxyReadDropsARowWithoutAValueForANonAdmin(t *testing.T) {
+	mixed := &models.UserInstance{
+		InstanceID: "i1", Role: models.RoleDeveloper, TeamIDs: []string{"t1"},
+		TeamRoles: map[string]string{"t1": models.RoleDeveloper},
+	}
+	list := `{"total":2,"list":[{"id":"x","plugins":{"key-auth":{"key":"THE-SECRET"}}},` + route("r1") + `]}`
+	for _, ui := range []*models.UserInstance{viewerIn("t1"), mixed} {
+		w := proxyRead(t, ui.Role, ui, "/routes", list, map[string]string{"r1": "t1"})
+		if w.Code != http.StatusOK || strings.Contains(w.Body.String(), `"id":"x"`) {
+			t.Errorf("%s: status %d, body %s", ui.Role, w.Code, w.Body.String())
+		}
+	}
+}
+
+// Every successful answer of a team-owned type goes through the team's rule,
+// not only a 200.
+func TestProxyReadRedactsEverySuccessfulAnswer(t *testing.T) {
+	mixed := &models.UserInstance{
+		InstanceID: "i1", Role: models.RoleDeveloper, TeamIDs: []string{"t1", "t2"},
+		TeamRoles: map[string]string{"t1": models.RoleDeveloper, "t2": models.RoleViewer},
+	}
+	upstream := func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNonAuthoritativeInfo)
+		_, _ = w.Write([]byte(route("r2")))
+	}
+	w := proxyReadFrom(t, models.RoleDeveloper, mixed, "/routes/r2", upstream, map[string]string{"r2": "t2"}, nil)
+	if strings.Contains(w.Body.String(), "THE-SECRET") {
+		t.Errorf("status %d, body %s", w.Code, w.Body.String())
+	}
+}
+
+// APISIX answers an empty collection with an object; a non-admin's list of
+// nothing is still a list.
+func TestProxyReadTakesAnEmptyTableForAnEmptyList(t *testing.T) {
+	for _, ui := range []*models.UserInstance{viewerIn("t1"), developerIn("t1")} {
+		w := proxyRead(t, ui.Role, ui, "/routes", `{"total":0,"list":{}}`, nil)
+		if w.Code != http.StatusOK {
+			t.Errorf("%s: status %d, body %s", ui.Role, w.Code, w.Body.String())
+		}
 	}
 }

@@ -674,9 +674,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// client. On the team-owned types, a non-admin who may write the type is
 	// still a viewer in some of their teams (#394), so their rows are decided
 	// one owner at a time below.
-	readsOnly := !isAdmin && resourceType != "" && !models.HasResourcePermission(effRole, resourceType, "write")
+	readsOnly := !isAdmin && redactedTypes[resourceType] && !models.HasResourcePermission(effRole, resourceType, "write")
 	hidesCredentialsOf := func(ownerTeamID string) bool {
-		return !isAdmin && (readsOnly || !scope.mayWrite(ownerTeamID))
+		return !isAdmin && redactedTypes[resourceType] && (readsOnly || !scope.mayWrite(ownerTeamID))
 	}
 
 	// Read before the checks below: a PUT addressed to a collection names its
@@ -1031,7 +1031,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// Applies to every team-owned resource type — not just routes/services/
 	// upstreams — so a non-admin cannot read another team's consumers,
 	// consumer_groups or stream_routes.
-	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK && teamScopedResources[resourceType] {
+	// Every success, not only a 200: the team filter and the credentials it
+	// hides are what this caller may read, whatever the status says.
+	if c.Request.Method == http.MethodGet && resp.StatusCode >= http.StatusOK &&
+		resp.StatusCode < http.StatusMultipleChoices && teamScopedResources[resourceType] {
 		if isListGET {
 			// __warning uses the same "__" prefix as __team_id: a field the
 			// dashboard injects, not something APISIX sent. It carries a caveat
@@ -1041,9 +1044,9 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			// pass for complete. During an incident that is the difference
 			// between "no route reaches this upstream" and "I could not check".
 			var resources struct {
-				List    []map[string]interface{} `json:"list"`
-				Total   int                      `json:"total"`
-				Warning string                   `json:"__warning,omitempty"`
+				List    rowList `json:"list"`
+				Total   int     `json:"total"`
+				Warning string  `json:"__warning,omitempty"`
 			}
 			err := json.Unmarshal(respBody, &resources)
 			// A list that cannot be read cannot be narrowed to a non-admin's
@@ -1199,6 +1202,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				filtered := make([]map[string]interface{}, 0, len(resources.List))
 				for _, r := range resources.List {
 					val, ok := r["value"].(map[string]interface{})
+					// A row that is not {key, value} names no team and is
+					// not read as a resource: a non-admin does not get it.
+					if !ok && !isAdmin {
+						continue
+					}
 					if ok {
 						// Consumers are keyed by username; everything else by id.
 						id, _ := val["id"].(string)
@@ -1334,6 +1342,19 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 	}
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
+}
+
+// rowList is a list's rows. APISIX answers an empty collection with an empty
+// object rather than an array (see parseServiceUpstreams), which is a list
+// of nothing, not an answer to refuse.
+type rowList []map[string]interface{}
+
+func (l *rowList) UnmarshalJSON(data []byte) error {
+	if t := bytes.TrimSpace(data); bytes.Equal(t, []byte("{}")) || bytes.Equal(t, []byte("null")) {
+		*l = rowList{}
+		return nil
+	}
+	return json.Unmarshal(data, (*[]map[string]interface{})(l))
 }
 
 // refuseUnreadable answers, in place of an answer of the gateway this proxy

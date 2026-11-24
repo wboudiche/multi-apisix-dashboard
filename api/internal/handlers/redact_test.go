@@ -128,6 +128,12 @@ func TestRedactCredentials(t *testing.T) {
 			want:         `{"total":1,"list":[{"key":"/apisix/secrets/aws/1","value":{"access_key_id":"a","secret_access_key":"***"}}]}`,
 		},
 		{
+			name:         "an upstream's health check headers, whole",
+			resourceType: "upstreams",
+			in:           `{"value":{"checks":{"active":{"http_path":"/h","req_headers":["Authorization: Bearer S"]}}}}`,
+			want:         `{"value":{"checks":{"active":{"http_path":"/h","req_headers":"***"}}}}`,
+		},
+		{
 			name:         "empty table as an object",
 			resourceType: "routes",
 			in:           `{"total":0,"list":{}}`,
@@ -214,7 +220,8 @@ func TestRedactCredentialsByPlugin(t *testing.T) {
 		{"azure-functions", `{"function_uri":"f","authorization":{"apikey":"S"}}`, `{"function_uri":"f","authorization":"***"}`},
 		{"openfunction", `{"function_uri":"f","authorization":{"service_token":"S"}}`, `{"function_uri":"f","authorization":"***"}`},
 		{"limit-count", `{"key":"remote_addr","redis_password":"S"}`, `{"key":"remote_addr","redis_password":"***"}`},
-		{"proxy-rewrite", `{"headers":{"set":{"Authorization":"S","X-Api-Key":"S","X-Trace":"t"}}}`, `{"headers":{"set":{"Authorization":"***","X-Api-Key":"***","X-Trace":"t"}}}`},
+		{"proxy-rewrite", `{"headers":{"set":{"Authorization":"S","X-Api-Key":"S","X-Auth-Token":"S","Private-Token":"S","Cookie":"S","X-Trace":"t"}}}`, `{"headers":{"set":{"Authorization":"***","X-Api-Key":"***","X-Auth-Token":"***","Private-Token":"***","Cookie":"***","X-Trace":"t"}}}`},
+		{"openid-connect", `{"client_id":"c","proxy_opts":{"http_proxy":"p","http_proxy_authorization":"S","https_proxy_authorization":"S"}}`, `{"client_id":"c","proxy_opts":{"http_proxy":"p","http_proxy_authorization":"***","https_proxy_authorization":"***"}}`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.plugin, func(t *testing.T) {
@@ -237,7 +244,8 @@ func TestRedactCredentialsByName(t *testing.T) {
 		"secret", "client_secret", "x_secret", "secret_key", "password", "redis_password",
 		"private_key", "tls_private_key", "client_key", "secret_access_key", "token",
 		"session_token", "api_key", "apikey", "access_key", "aws_access_key",
-		"Authorization", "proxy-authorization", "x-api-key", "api-key",
+		"Authorization", "proxy-authorization", "x-api-key", "api-key", "X-Auth-Token",
+		"Private-Token", "Cookie", "req_headers",
 	} {
 		in := `{"value":{"plugins":{"some-plugin":{"nested":{"` + name + `":"S"}}}}}`
 		got, err := redactCredentials("routes", []byte(in))
