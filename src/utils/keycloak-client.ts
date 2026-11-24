@@ -14,7 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { ClientCredentials } from '@/apis/idps';
+import type { ClientCredentials, OidcClientItem } from '@/apis/idps';
+import type { OwnTeams } from '@/stores/team';
 
 /** What the route form knows of the route a client is made for. */
 export type OidcRouteContext = {
@@ -96,4 +97,49 @@ export const applyClientCredentials = (
     else delete next.introspection_endpoint;
   }
   return next;
+};
+
+/** The realm's token address, derived from its discovery document's. */
+export const tokenEndpoint = (discovery: string): string =>
+  discovery.replace(/\/\.well-known\/openid-configuration$/, '/protocol/openid-connect/token');
+
+/**
+ * The team a non-admin uses a client for: the team their requests name when
+ * they are a developer in it, else their only developer team - the backend's
+ * acting team, the one the route being written belongs to. None when they
+ * name a team they only view, or have several and name none.
+ */
+export const actingTeam = (own: OwnTeams | undefined, sent: string): string => {
+  const writable = own ? own.ids.filter((id) => own.roles[id] === 'developer') : [];
+  if (sent) return writable.includes(sent) ? sent : '';
+  return writable.length === 1 ? writable[0] : '';
+};
+
+/**
+ * The clients a caller may put on a route: an admin any of them; anyone else
+ * only those of the team the route belongs to. A client of another of their
+ * teams would put its secret in a route every member of this one reads, and
+ * the backend refuses it.
+ */
+export const usableClients = <T extends Pick<OidcClientItem, 'team_id'>>(
+  clients: T[],
+  isAdmin: boolean,
+  team: string
+): T[] => {
+  if (isAdmin) return clients;
+  return team ? clients.filter((c) => c.team_id === team) : [];
+};
+
+/**
+ * A client as a picker lists it. An admin sees every team's, so each says
+ * whose it is: by `teamName`, the team's name when known, else its id.
+ */
+export const clientOptionLabel = (
+  c: Pick<OidcClientItem, 'client_id' | 'idp_name' | 'team_id'>,
+  isAdmin: boolean,
+  teamName?: (id: string) => string | undefined
+): string => {
+  const base = `${c.client_id} - ${c.idp_name}`;
+  if (!isAdmin || !c.team_id) return base;
+  return `${base} (${teamName?.(c.team_id) ?? c.team_id})`;
 };

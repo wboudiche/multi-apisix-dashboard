@@ -16,6 +16,7 @@
  */
 import {
   Alert,
+  Anchor,
   Box,
   Button,
   Chip,
@@ -34,12 +35,14 @@ import {
 } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { useAtomValue } from 'jotai';
 import { useMemo, useRef, useState } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { oidcClientApi } from '@/apis/idps';
 import { postRouteReq } from '@/apis/routes';
 import { AuthClientsSection } from '@/components/form-slice/FormItemPlugins/AuthClientsSection';
 import { getPluginCategory } from '@/components/form-slice/FormItemPlugins/pluginMetadata';
@@ -47,7 +50,9 @@ import { duplicateRouteBody, duplicateRouteErrors, keptPathRewrite, quickRouteFr
 import { FormSectionRequestOverride } from '@/components/form-slice/FormPartRoute/FormSectionRequestOverride';
 import {
   destinationUrlError,
+  type KeycloakChoice,
   proposeRouteName,
+  QUICK_AUTH_PLUGINS,
   type QuickAccess,
   type QuickAuthPlugin,
   type QuickDestination,
@@ -60,28 +65,51 @@ import {
   ROUTE_ADD_DEFAULTS,
   ROUTE_DRAFT_KEY,
 } from '@/components/form-slice/FormPartRoute/quick-create';
+import {
+  effectiveKeycloakChoice,
+  failureMessageKey,
+  failureReason,
+  initialKeycloakChoice,
+  keycloakAccessState,
+  keycloakChoiceAfterInstanceChange,
+  keycloakChoiceAvailable,
+  tokenClients,
+} from '@/components/form-slice/FormPartRoute/quick-keycloak';
+import { QuickKeycloakSection } from '@/components/form-slice/FormPartRoute/QuickKeycloakSection';
 import { produceRoute } from '@/components/form-slice/FormPartRoute/util';
 import { parseToNodes } from '@/components/form-slice/FormPartUpstream/node-rows';
 import { ConnectionTest } from '@/components/form-slice/FormPartUpstream/TestConnectionButton';
 import { API_ROUTES } from '@/config/constant';
-import { req } from '@/config/req';
+import { req, reqFor } from '@/config/req';
 import { useAllRoutes, useAllServices, useAllUpstreams } from '@/hooks/useAllUpstreams';
+import { usePermission } from '@/hooks/usePermission';
 import { currentInstanceIdAtom } from '@/stores/instance';
+import { ownTeamsAtom, selectedTeamId, sentTeamIdAtom } from '@/stores/team';
 import type { APISIXType } from '@/types/schema/apisix';
 import { readRestriction, type Restriction, RESTRICTION_PLUGIN } from '@/utils/auth-clients';
 import { errorText } from '@/utils/error-text';
+import { actingTeam, proposeClientIdSuffix, usableClients } from '@/utils/keycloak-client';
 import { upstreamFromServer } from '@/utils/openapi-import';
 import { type ComparableRoute, findRouteDuplicates } from '@/utils/route-duplicates';
 import { proxyFailureText } from '@/utils/team-refusal';
 import IconTune from '~icons/material-symbols/tune';
 import IconWarning from '~icons/material-symbols/warning-outline';
 
+import { ClientSecretDialog, type ShownClient } from './ClientSecretDialog';
+import { KeycloakSaveError, pinnedKeycloakDeps, saveWithKeycloak } from './quick-route-keycloak';
+
 // The methods a route is most often limited to; the wizard offers the rest.
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 type DestinationKind = QuickDestination['kind'];
 
-type AccessChoice = 'anyone' | QuickAuthPlugin;
+type AccessChoice = 'anyone' | QuickAuthPlugin | 'openid-connect';
+
+const isQuickAuthPlugin = (choice: AccessChoice): choice is QuickAuthPlugin =>
+  (QUICK_AUTH_PLUGINS as readonly string[]).includes(choice);
+
+/** What went wrong on a save: the sentence, the answer's reason, and a route left behind. */
+type SubmitError = { text: string; reason?: string; routeId?: string };
 
 /** A new authentication plugin's settings: its defaults, none of its own. */
 const NO_SETTINGS: Record<string, unknown> = {};
@@ -165,14 +193,48 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const rewrite = (useWatch({ control: rewriteForm.control, name: 'plugins' })?.['proxy-rewrite'] ??
     NO_SETTINGS) as Record<string, unknown>;
   const [showErrors, setShowErrors] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<SubmitError | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // The Keycloak token's choice: none until it is picked. Its client id
+  // follows the route's name until one is typed, as the name follows the path.
+  const [keycloak, setKeycloak] = useState<KeycloakChoice | null>(null);
+  const [suffixTyped, setSuffixTyped] = useState(false);
+  // The client just made, while its one-time secret is on screen: never in
+  // the answers, a draft or a query cache.
+  const [shownClient, setShownClient] = useState<ShownClient | null>(null);
+  const queryClient = useQueryClient();
+  const { isAdmin } = usePermission();
 
   const { data: upstreams } = useAllUpstreams(instanceId, kind === 'upstream');
   const { data: services } = useAllServices(instanceId, kind === 'service');
   // Pinned to the instance and keyed by the team, as every whole-instance
   // list is; shared with the label filter's cache.
   const { data: existing } = useAllRoutes(instanceId, true);
+  // The same queries as the advanced form's client picker, so the two share
+  // their cache.
+  const linked = useQuery({
+    queryKey: ['idps', 'linked', instanceId],
+    queryFn: () => oidcClientApi.linked(instanceId),
+    enabled: !!instanceId && !source,
+  });
+  const oidcClients = useQuery({
+    queryKey: ['oidc-clients', instanceId],
+    queryFn: () => oidcClientApi.list(instanceId),
+    enabled: !!instanceId && !source,
+    retry: false,
+  });
+  const creators = useMemo(
+    () => (linked.data ?? []).filter((p) => isAdmin || p.developers_can_create),
+    [linked.data, isAdmin]
+  );
+  // Only the clients of the team the route will belong to, for a non-admin.
+  const ownTeams = useAtomValue(ownTeamsAtom)[instanceId];
+  const sentTeam = useAtomValue(sentTeamIdAtom);
+  const team = actingTeam(ownTeams, sentTeam);
+  const reusable = useMemo(
+    () => tokenClients(usableClients(oidcClients.data ?? [], isAdmin, team)),
+    [oidcClients.data, isAdmin, team]
+  );
 
   const name = typedName ?? proposeRouteName(methods, path);
 
@@ -197,6 +259,9 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     const config = servicePlugins[plugin];
     return config && typeof config === 'object' ? (config as Record<string, unknown>) : NO_SETTINGS;
   };
+  const serviceHasAuth = Object.keys(servicePlugins).some(
+    (n) => getPluginCategory(n) === 'authentication'
+  );
   const otherAuthPlugins = (plugin: QuickAuthPlugin) =>
     Object.keys(servicePlugins).filter(
       (n) => n !== plugin && getPluginCategory(n) === 'authentication'
@@ -214,12 +279,35 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   // Another instance picked in the header: what was typed stays, and what
   // was picked from the last one's lists - an upstream, a service - goes.
   const [formInstance, setFormInstance] = useState(instanceId);
-  if (formInstance !== instanceId) {
+  const instanceChanged = formInstance !== instanceId;
+  if (instanceChanged) {
     setFormInstance(instanceId);
     setUpstreamId(null);
     setServiceId(null);
     setSeededFor(null);
   }
+  const keycloakOffered = keycloakChoiceAvailable({ duplicating, serviceHasAuth, creators, reusable });
+  // A Keycloak token picked stays the access: on another instance its client
+  // is picked again, and with no Keycloak left the save is refused rather
+  // than made open to all. Only beside a service that authenticates, which
+  // protects the route, does it go back to anyone. Not judged while the
+  // instance's connections and clients are still being read.
+  const keycloakState = keycloakAccessState({
+    offered: keycloakOffered || linked.isLoading || oidcClients.isLoading,
+    serviceHasAuth,
+    instanceChanged,
+  });
+  if (keycloakState.resetChoice) {
+    setKeycloak(keycloakChoiceAfterInstanceChange());
+    setSuffixTyped(false);
+  }
+  if (accessChoice === 'openid-connect' && keycloakState.access === 'anyone') setAccessChoice('anyone');
+  const keycloakError = accessChoice === 'openid-connect' ? keycloakState.error : undefined;
+  const proposedSuffix = proposeClientIdSuffix({ name: name.trim() || path.trim(), hosts: [], uris: [] });
+  const keycloakShown = effectiveKeycloakChoice(
+    keycloak?.kind === 'create' && !suffixTyped ? { ...keycloak, suffix: proposedSuffix } : keycloak,
+    reusable
+  );
   if (serviceRead && seededFor !== serviceId) {
     setSeededFor(serviceId);
     const start = inherited ?? { mode: 'any' as const };
@@ -228,22 +316,23 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
   const inheritedNames = inherited?.mode === 'only' ? inherited.names : NO_STORED_NAMES;
   const access: QuickAccess | undefined = duplicating
     ? undefined
-    : accessChoice === 'anyone'
-      ? { plugin: null }
-      : {
-          plugin: accessChoice,
-          restriction: restrictions[accessChoice],
-          config: serviceConfig(accessChoice),
-          inheritedRestriction,
-        };
+    : accessChoice === 'openid-connect'
+      ? { plugin: 'openid-connect', keycloak: keycloakShown }
+      : isQuickAuthPlugin(accessChoice)
+        ? {
+            plugin: accessChoice,
+            restriction: restrictions[accessChoice],
+            config: serviceConfig(accessChoice),
+            inheritedRestriction,
+          }
+        : { plugin: null };
   // The service's own limit, which a route's replaces rather than adds to.
   const serviceLimit = servicePlugins['limit-count'] as
     | { count?: unknown; time_window?: unknown }
     | undefined;
   // A client the service asks for is known on the route too: counted as such.
-  const byClient =
-    !!access?.plugin ||
-    Object.keys(servicePlugins).some((n) => getPluginCategory(n) === 'authentication');
+  // A Keycloak token makes no consumer, so its calls are counted by address.
+  const byClient = (!!access?.plugin && isQuickAuthPlugin(access.plugin)) || serviceHasAuth;
   // A copy keeps the original's plugins, a limit among them.
   const rateLimit =
     !duplicating && limitOn
@@ -308,7 +397,8 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     awaitingTarget && <ConnectionTest key="none" nodes={[]} scheme={undefined} />
   );
 
-  const errors = source ? duplicateRouteErrors(source, answers) : quickRouteErrors(answers);
+  const answerErrs = source ? duplicateRouteErrors(source, answers) : quickRouteErrors(answers);
+  const errors = keycloakError ? { ...answerErrs, access: keycloakError } : answerErrs;
   const valid = Object.keys(errors).length === 0;
   const shown = (key: string | undefined) => (showErrors ? errorText(key) : undefined);
 
@@ -334,11 +424,69 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
     onCancel();
   };
 
+  // The route and its Keycloak client, chained, or neither. Called here
+  // rather than through a mutation, whose cache would keep the secret.
+  const createWithKeycloak = async (status: 0 | 1, choice: KeycloakChoice) => {
+    const form = produceRoute(quickRouteToForm({ ...answers, status }));
+    // The instance and team of the click, for every step of the chain.
+    const pin = { instanceId, teamId: selectedTeamId(instanceId) };
+    const deps = pinnedKeycloakDeps(pin, isAdmin, { routesFor: reqFor, oidc: oidcClientApi });
+    try {
+      const { credentials, created } = await saveWithKeycloak(deps, form, status, choice);
+      notifications.show({
+        message: t('info.add.success', { name: t('routes.singular') }),
+        color: 'green',
+      });
+      if (created) {
+        // Only what the dialog shows; the page goes on once it is closed.
+        setShownClient({
+          client_id: credentials.client_id,
+          client_secret: credentials.client_secret,
+          discovery: credentials.discovery,
+        });
+      } else {
+        leavingRef.current = true;
+        onCreated();
+      }
+    } catch (err) {
+      if (err instanceof KeycloakSaveError) {
+        const f = err.failure;
+        setSubmitError({
+          // eslint-disable-next-line local/readable-key -- the keys are spelled in failureMessageKey (quick-keycloak.ts)
+          text: t(failureMessageKey(f), { name: form.name, clientId: f.clientId }),
+          reason: failureReason(f),
+          routeId: f.route === 'kept-disabled' ? f.routeId : undefined,
+        });
+      } else {
+        setSubmitError({ text: t('routes.createFailed') });
+      }
+    } finally {
+      // A client made, reused or deleted: the list of clients has changed.
+      void queryClient.invalidateQueries({ queryKey: ['oidc-clients', instanceId] });
+    }
+  };
+
+  const closeShownClient = () => {
+    setShownClient(null);
+    leavingRef.current = true;
+    onCreated();
+  };
+
   const create = async (status: 0 | 1) => {
     setShowErrors(true);
     setSubmitError(null);
     if (!valid) return;
     setSubmitting(true);
+    if (!source && access?.plugin === 'openid-connect') {
+      // Not free to leave while it is saved: the client's secret is shown
+      // only here, once, and leaving asks before it is lost.
+      try {
+        await createWithKeycloak(status, access.keycloak);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     // Free to leave while it is posted: what was typed is on its way, and
     // its answer is notified wherever the user went.
     leavingRef.current = true;
@@ -362,7 +510,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       leavingRef.current = false;
       // Shown here too: `req` already notifies a refusal, which is what
       // tells someone who left the page while it was being posted.
-      setSubmitError(proxyFailureText(err) || t('routes.createFailed'));
+      setSubmitError({ text: proxyFailureText(err) || t('routes.createFailed') });
     } finally {
       setSubmitting(false);
     }
@@ -434,6 +582,7 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
       radius="md"
       withBorder
     >
+      <ClientSecretDialog client={shownClient} onClose={closeShownClient} />
       <Modal
         opened={blocker.status === 'blocked'}
         onClose={() => blocker.reset?.()}
@@ -583,21 +732,28 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
               onChange={(v) => {
                 const choice = v as AccessChoice;
                 setAccessChoice(choice);
-                if (choice !== 'anyone' && !shownSections.includes(choice)) {
+                if (isQuickAuthPlugin(choice) && !shownSections.includes(choice)) {
                   setShownSections([...shownSections, choice]);
+                }
+                if (choice === 'openid-connect' && !keycloak) {
+                  setKeycloak(initialKeycloakChoice(creators, proposedSuffix));
                 }
               }}
               data={[
                 { value: 'anyone', label: t('form.quickRoute.accessAnyone') },
                 { value: 'key-auth', label: t('form.quickRoute.accessKey') },
                 { value: 'basic-auth', label: t('form.quickRoute.accessBasic') },
+                // Still shown while picked, so that what is picked is seen and changed.
+                ...(keycloakOffered || accessChoice === 'openid-connect'
+                  ? [{ value: 'openid-connect', label: t('form.quickRoute.accessKeycloak') }]
+                  : []),
               ]}
             />
             <Text size="xs" c="dimmed">{t('form.quickRoute.accessHint')}</Text>
             {accessChoice === 'basic-auth' && (
               <Text size="xs" c="orange">{t('form.quickRoute.accessBasicHint')}</Text>
             )}
-            {inherited && inherited.mode !== 'custom' && accessChoice !== 'anyone' && (
+            {inherited && inherited.mode !== 'custom' && isQuickAuthPlugin(accessChoice) && (
               <Text size="xs" c="orange">{t('form.quickRoute.accessService')}</Text>
             )}
             {shownSections.map((plugin) => (
@@ -613,6 +769,27 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
                 />
               </Box>
             ))}
+            {keycloakError && (
+              <Text size="xs" c="red" role="alert">
+                {t('form.quickRoute.keycloak.notOffered')}
+              </Text>
+            )}
+            {accessChoice === 'openid-connect' && !keycloakError && (
+              <QuickKeycloakSection
+                choice={keycloakShown}
+                onChange={(next) => {
+                  if (next.kind === 'create' && keycloakShown.kind === 'create' && next.suffix !== keycloakShown.suffix) {
+                    setSuffixTyped(true);
+                  }
+                  setKeycloak(next);
+                }}
+                creators={creators}
+                reusable={reusable}
+                proposedSuffix={proposedSuffix}
+                error={showErrors ? errors.access : undefined}
+                onAdvanced={openWizard}
+              />
+            )}
           </Stack>
         )}
 
@@ -724,7 +901,24 @@ export const QuickRouteForm = ({ onCreated, onCancel, source }: Props) => {
 
         {submitError && (
           <Alert color="red" variant="light">
-            {submitError}
+            <Stack gap={4}>
+              <Text size="sm">{submitError.text}</Text>
+              {submitError.reason && <Text size="sm">{submitError.reason}</Text>}
+              {submitError.routeId && (
+                <Anchor
+                  component="button"
+                  type="button"
+                  size="sm"
+                  w="fit-content"
+                  onClick={() => {
+                    leavingRef.current = true;
+                    void navigate({ to: '/routes/detail/$id', params: { id: submitError.routeId! } });
+                  }}
+                >
+                  {t('form.btn.view')}
+                </Anchor>
+              )}
+            </Stack>
           </Alert>
         )}
 

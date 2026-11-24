@@ -1045,7 +1045,11 @@
       "overrideHost": "主机名或地址，需要时带端口：不带协议，不带路径。",
       "headerValueDollar": "请求头的值中不能有 $：网关会把它当作变量读取，并发送修改后的值。",
       "headerTwice": "每个请求头只出现一次：不能以不同大小写重复设置，不能既设置又移除（此处或服务中），且设置了 Host Override 时不能再设置 Host 请求头。",
-      "idAsName": "仅限字母、数字和 - _ .，最多 64 个字符。"
+      "idAsName": "仅限字母、数字和 - _ .，最多 64 个字符。",
+      "keycloakConnectionRequired": "请选择一个 Keycloak 连接。",
+      "keycloakClientIdRequired": "请为客户端指定一个 ID。",
+      "keycloakClientRequired": "请选择要复用的客户端。",
+      "keycloakClientIdInvalid": "客户端 ID 以字母或数字开头，其后为字母、数字、'.'、'_' 或 '-'，总长不超过 64。"
     },
     "quickRoute": {
       "title": "新建路由",
@@ -1080,7 +1084,7 @@
       "accessAnyone": "任何人",
       "accessKey": "持有密钥的客户端",
       "accessBasic": "用户名和密码",
-      "accessHint": "其他认证方式（JWT、HMAC、OpenID Connect）请在高级表单中设置。",
+      "accessHint": "其他认证方式（JWT、HMAC、通过 OpenID Connect 在浏览器中登录）请在高级表单中设置。",
       "accessBasicHint": "密码会随每个请求发送：请仅通过 HTTPS 调用此路由。",
       "accessService": "该服务已限制可调用者：下面的选择以其为起点，并会替换该服务对此路由的限制。",
       "accessServiceCustom": "该服务以此列表无法显示的方式限制可调用者。此路由将保留该限制：请在服务上修改。",
@@ -1096,7 +1100,33 @@
         "hour": "小时",
         "day": "天"
       },
-      "override": "修改发送到后端的请求"
+      "override": "修改发送到后端的请求",
+      "keycloak": {
+        "failed": {
+          "clientRouteDeleted": "无法创建 Keycloak 客户端，因此已删除路由 {{name}}。",
+          "attachRouteDeleted": "无法将客户端 {{clientId}} 设置到路由 {{name}} 上：两者均已删除。",
+          "attachClientLeft": "无法将客户端 {{clientId}} 设置到路由 {{name}} 上：路由已删除，但客户端仍保留。它在“设置 > OIDC 客户端”中显示为“无路由”，需由管理员删除。",
+          "routeKeptDisabled": "路由 {{name}} 既无法完成也无法删除：它已以禁用状态保留，不接收任何流量。请在其页面中删除或完善它。",
+          "reuse": "无法使用该客户端：未创建任何内容。",
+          "routeKeptDisabledClientLeft": "路由 {{name}} 既无法完成也无法删除：它已以禁用状态保留，不接收任何流量。请在其页面中删除或完善它。客户端 {{clientId}} 也已保留：它显示在“设置 > OIDC 客户端”中。"
+        },
+        "create": "创建新客户端",
+        "reuse": "复用客户端",
+        "connection": "Keycloak 连接",
+        "clientId": "客户端 ID",
+        "validation": "如何校验令牌？",
+        "jwks": "校验其签名（JWKS）：每个请求无需调用 Keycloak",
+        "introspection": "向 Keycloak 查询（introspection）：已吊销的令牌会被立即拒绝",
+        "client": "要复用的客户端",
+        "loginHint": "浏览器登录请在高级表单中设置。",
+        "secretTitle": "Keycloak 客户端已创建",
+        "secretOnce": "请立即复制密钥：控制台不会再次显示它。它保存在 Keycloak 中以及该路由的插件设置中。",
+        "tokenEndpoint": "令牌端点",
+        "clientSecret": "客户端密钥",
+        "tokenEndpointHint": "网关访问 Keycloak 所用的地址。位于其网络之外的调用方可能需要 Keycloak 的公开地址。",
+        "notOffered": "此实例上已无法再使用 Keycloak 令牌。请选择其他访问方式。"
+      },
+      "accessKeycloak": "Keycloak 令牌"
     }
   },
   "globalRules": {

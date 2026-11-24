@@ -967,7 +967,11 @@
       "overrideHost": "A host name or address, with a port if needed: no scheme, no path.",
       "headerValueDollar": "No $ in a header value: the gateway reads it as one of its variables and sends the value changed.",
       "headerTwice": "Each header once: not set twice in different case, not both set and removed (here or by the service), and no Host header beside a Host Override.",
-      "idAsName": "Letters, digits and - _ . only, 64 at most."
+      "idAsName": "Letters, digits and - _ . only, 64 at most.",
+      "keycloakConnectionRequired": "Pick a Keycloak connection.",
+      "keycloakClientIdRequired": "Give the client an id.",
+      "keycloakClientRequired": "Pick a client to reuse.",
+      "keycloakClientIdInvalid": "A client id starts with a letter or a digit, then letters, digits, '.', '_' or '-', at most 64 in all."
     },
     "quickRoute": {
       "title": "New route",
@@ -1002,7 +1006,7 @@
       "accessAnyone": "Anyone",
       "accessKey": "Clients with a key",
       "accessBasic": "Username and password",
-      "accessHint": "Other authentications - JWT, HMAC, OpenID Connect - are in the advanced form.",
+      "accessHint": "Other authentications - JWT, HMAC, a login in the browser with OpenID Connect - are in the advanced form.",
       "accessBasicHint": "The password travels with every request: call this route over HTTPS only.",
       "accessService": "The service already limits who can call: the choice below starts from it, and replaces it for this route.",
       "accessServiceCustom": "The service limits who can call in a way this list cannot show. It is kept for this route: change it on the service.",
@@ -1018,7 +1022,33 @@
         "hour": "hour",
         "day": "day"
       },
-      "override": "Change the request sent to the backend"
+      "override": "Change the request sent to the backend",
+      "keycloak": {
+        "failed": {
+          "clientRouteDeleted": "The Keycloak client could not be created, so the route {{name}} was deleted.",
+          "attachRouteDeleted": "The client {{clientId}} could not be set on the route {{name}}: both were deleted.",
+          "attachClientLeft": "The client {{clientId}} could not be set on the route {{name}}: the route was deleted, but the client was kept. It is listed under Settings > OIDC clients as \"No route\", for an administrator to delete.",
+          "routeKeptDisabled": "The route {{name}} could not be finished nor deleted: it was kept, disabled, and takes no traffic. Delete it or complete it from its page.",
+          "reuse": "The client could not be used: nothing was created.",
+          "routeKeptDisabledClientLeft": "The route {{name}} could not be finished nor deleted: it was kept, disabled, and takes no traffic. Delete it or complete it from its page. The client {{clientId}} was kept too: it is listed under Settings > OIDC clients."
+        },
+        "create": "Create a new client",
+        "reuse": "Reuse a client",
+        "connection": "Keycloak connection",
+        "clientId": "Client ID",
+        "validation": "How is a token checked?",
+        "jwks": "Check its signature (JWKS): no call to Keycloak per request",
+        "introspection": "Ask Keycloak (introspection): a revoked token is refused at once",
+        "client": "Client to reuse",
+        "loginHint": "A login in the browser is set up in the advanced form.",
+        "secretTitle": "Keycloak client created",
+        "secretOnce": "Copy the secret now: the dashboard does not show it again. It stays in Keycloak and in the route's plugin settings.",
+        "tokenEndpoint": "Token endpoint",
+        "clientSecret": "Client secret",
+        "tokenEndpointHint": "The address the gateways reach Keycloak at. A caller outside their network may need Keycloak's public address.",
+        "notOffered": "Keycloak tokens are not available on this instance any more. Pick another access."
+      },
+      "accessKeycloak": "Keycloak token"
     }
   },
   "globalRules": {

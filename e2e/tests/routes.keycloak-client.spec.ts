@@ -271,7 +271,8 @@ test('the token client is reused on a second route', async ({ page }) => {
   await section.getByRole('radio', { name: i18n.t('form.plugins.oidc.token') }).check();
   await kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.reuse') }).check();
   await kc.getByRole('textbox', { name: i18n.t('form.plugins.oidc.kc.pick') }).click();
-  await page.getByRole('option', { name: `${token} - ${IDP_NAME}`, exact: true }).click();
+  // An admin's option also names the client's team, after its own name.
+  await page.getByRole('option', { name: new RegExp(`^${token} - ${IDP_NAME}( \\(.+\\))?$`) }).click();
   await kc.getByRole('button', { name: i18n.t('form.plugins.oidc.kc.useBtn') }).click();
   await expect(kc.getByText(i18n.t('form.plugins.oidc.kc.filled', { id: token }))).toBeVisible();
   await saveRoute(page, drawer);

@@ -19,9 +19,13 @@ import { describe, expect, it } from 'vitest';
 import type { ClientCredentials } from '@/apis/idps';
 
 import {
+  actingTeam,
   applyClientCredentials,
+  clientOptionLabel,
   proposeClientIdSuffix,
   proposeRedirectUri,
+  tokenEndpoint,
+  usableClients,
 } from './keycloak-client';
 
 const creds = (over: Partial<ClientCredentials>): ClientCredentials => ({
@@ -139,5 +143,57 @@ describe('applyClientCredentials', () => {
     expect(next).not.toHaveProperty('redirect_uri');
     expect(next).not.toHaveProperty('introspection_endpoint');
     expect(next).toMatchObject({ bearer_only: true, use_jwks: true });
+  });
+});
+
+describe('tokenEndpoint', () => {
+  it('is the token address of the realm the discovery document belongs to', () => {
+    expect(tokenEndpoint('http://kc/realms/apis/.well-known/openid-configuration')).toBe(
+      'http://kc/realms/apis/protocol/openid-connect/token'
+    );
+  });
+});
+
+describe('the clients a caller may put on a route', () => {
+  const own = (roles: Record<string, 'developer' | 'viewer'>) => ({
+    ids: Object.keys(roles),
+    roles,
+    teams: Object.keys(roles).map((id) => ({ id, name: id })),
+  });
+  const clients = [
+    { uuid: 'a', team_id: 't1' },
+    { uuid: 'b', team_id: 't2' },
+    { uuid: 'c', team_id: '' },
+  ];
+  const uuids = (list: { uuid: string }[]) => list.map((c) => c.uuid);
+
+  it('acts for the team named when the caller develops in it', () => {
+    expect(actingTeam(own({ t1: 'developer', t2: 'developer' }), 't2')).toBe('t2');
+    expect(actingTeam(own({ t1: 'developer', t2: 'viewer' }), 't2')).toBe('');
+  });
+
+  it('acts for the only developer team when none is named, for none of several', () => {
+    expect(actingTeam(own({ t1: 'developer', t2: 'viewer' }), '')).toBe('t1');
+    expect(actingTeam(own({ t1: 'developer', t2: 'developer' }), '')).toBe('');
+    expect(actingTeam(undefined, '')).toBe('');
+  });
+
+  it('offers a developer of two teams only the clients of the one they act for', () => {
+    expect(uuids(usableClients(clients, false, 't2'))).toEqual(['b']);
+    expect(uuids(usableClients(clients, false, 't1'))).toEqual(['a']);
+    expect(usableClients(clients, false, '')).toEqual([]);
+  });
+
+  it('offers an admin every client', () => {
+    expect(uuids(usableClients(clients, true, ''))).toEqual(['a', 'b', 'c']);
+  });
+
+  it('names the team of each client to an admin only, by name when known', () => {
+    const c = { client_id: 'apisix-x', idp_name: 'kc', team_id: 't1' };
+    const names = (id: string) => (id === 't1' ? 'Billing' : undefined);
+    expect(clientOptionLabel(c, false, names)).toBe('apisix-x - kc');
+    expect(clientOptionLabel(c, true, names)).toBe('apisix-x - kc (Billing)');
+    expect(clientOptionLabel({ ...c, team_id: 't9' }, true, names)).toBe('apisix-x - kc (t9)');
+    expect(clientOptionLabel({ ...c, team_id: '' }, true, names)).toBe('apisix-x - kc');
   });
 });

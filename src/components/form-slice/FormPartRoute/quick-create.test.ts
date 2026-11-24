@@ -19,7 +19,9 @@ import { describe, expect, it } from 'vitest';
 import type { Restriction as QuickRestriction } from '@/utils/auth-clients';
 
 import {
+  answerErrors,
   destinationUrlError,
+  type KeycloakChoice,
   proposeRouteName,
   type QuickRoute,
   quickRouteErrors,
@@ -162,6 +164,14 @@ describe('quickRouteToDraft', () => {
     const draft = quickRouteToDraft({ ...base, destination: { kind: 'url', url: '' } });
     expect(draft.upstream_id).toBe(ROUTE_ADD_DEFAULTS.upstream_id);
     expect(draft.upstream).toEqual(ROUTE_ADD_DEFAULTS.upstream);
+  });
+
+  it('hands a browser login over disabled: the wizard has yet to set its plugin', () => {
+    const keycloak = { kind: 'reuse' as const, uuid: '' };
+    const draft = quickRouteToDraft({ ...base, status: 1, access: { plugin: 'openid-connect', keycloak } });
+    expect(draft.status).toBe(0);
+    expect(draft.plugins?.['openid-connect']).toBeUndefined();
+    expect(quickRouteToDraft({ ...base, status: 1 }).status).toBe(1);
   });
 
   it('keeps every method when none is chosen, rather than the wizard\'s four', () => {
@@ -595,5 +605,54 @@ describe('the request sent to the backend', () => {
       'form.validation.headerTwice'
     );
     expect(headersError({ headers: { set: { 'X-Env': 'prod' } } })).toBeUndefined();
+  });
+});
+
+describe('Keycloak token access', () => {
+  const create = { kind: 'create', idpId: 'i', suffix: 's', validation: 'jwks' } as const;
+  const withAccess = (keycloak: KeycloakChoice): QuickRoute => ({
+    ...base,
+    access: { plugin: 'openid-connect', keycloak },
+  });
+
+  it('posts no openid-connect and no consumer-restriction', () => {
+    const { plugins } = quickRouteToForm(withAccess(create));
+    expect(plugins).not.toHaveProperty('openid-connect');
+    expect(plugins).not.toHaveProperty('consumer-restriction');
+  });
+
+  it('counts a limit by IP address', () => {
+    const q = { ...withAccess(create), rateLimit: { count: 5, per: 'minute' as const } };
+    expect(quickRouteToForm(q).plugins?.['limit-count']).toMatchObject({ key: 'remote_addr' });
+  });
+
+  it('hands nothing of it to the advanced form', () => {
+    const draft = quickRouteToDraft(withAccess(create));
+    expect(draft.plugins).not.toHaveProperty('openid-connect');
+    expect(JSON.stringify(draft)).not.toMatch(/keycloak|secret/);
+  });
+
+  it('refuses a create with no connection or no client id', () => {
+    expect(answerErrors(withAccess({ ...create, idpId: '' })).access).toBe(
+      'form.validation.keycloakConnectionRequired'
+    );
+    expect(answerErrors(withAccess({ ...create, suffix: '  ' })).access).toBe(
+      'form.validation.keycloakClientIdRequired'
+    );
+  });
+
+  it('refuses a client id the backend would refuse, before anything is posted', () => {
+    for (const suffix of ['-orders', '.x', 'a b', 'orders/v1', ' orders', 'a'.repeat(65), 'é']) {
+      expect(answerErrors(withAccess({ ...create, suffix })).access).toBe('form.validation.keycloakClientIdInvalid');
+    }
+    for (const suffix of ['orders', 'Orders.v1_x-2', '0', 'a'.repeat(64)]) {
+      expect(answerErrors(withAccess({ ...create, suffix })).access).toBeUndefined();
+    }
+  });
+
+  it('refuses a reuse with no client picked', () => {
+    expect(answerErrors(withAccess({ kind: 'reuse', uuid: '' })).access).toBe(
+      'form.validation.keycloakClientRequired'
+    );
   });
 });

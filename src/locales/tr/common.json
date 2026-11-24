@@ -1051,7 +1051,11 @@
       "overrideHost": "Bir ana makine adı veya adres, gerekirse bağlantı noktasıyla: şema yok, yol yok.",
       "headerValueDollar": "Başlık değerinde $ olmaz: ağ geçidi bunu kendi değişkenlerinden biri olarak okur ve değeri değiştirerek gönderir.",
       "headerTwice": "Her başlık bir kez: farklı harf büyüklüğüyle iki kez ayarlanmaz, hem ayarlanıp hem kaldırılmaz (burada veya serviste) ve Host Override yanında Host başlığı olmaz.",
-      "idAsName": "Yalnızca harf, rakam ve - _ ., en fazla 64."
+      "idAsName": "Yalnızca harf, rakam ve - _ ., en fazla 64.",
+      "keycloakConnectionRequired": "Bir Keycloak bağlantısı seçin.",
+      "keycloakClientIdRequired": "İstemciye bir kimlik verin.",
+      "keycloakClientRequired": "Yeniden kullanılacak bir istemci seçin.",
+      "keycloakClientIdInvalid": "Bir istemci kimliği bir harf veya rakamla başlar, ardından harfler, rakamlar, '.', '_' veya '-' gelir; toplamda en fazla 64."
     },
     "quickRoute": {
       "title": "Yeni rota",
@@ -1086,7 +1090,7 @@
       "accessAnyone": "Herkes",
       "accessKey": "Anahtarı olan istemciler",
       "accessBasic": "Kullanıcı adı ve parola",
-      "accessHint": "Diğer kimlik doğrulamaları - JWT, HMAC, OpenID Connect - gelişmiş formdadır.",
+      "accessHint": "Diğer kimlik doğrulamaları - JWT, HMAC, OpenID Connect ile tarayıcıda oturum açma - gelişmiş formdadır.",
       "accessBasicHint": "Parola her istekle gönderilir: bu rotayı yalnızca HTTPS üzerinden çağırın.",
       "accessService": "Servis kimin çağırabileceğini zaten sınırlıyor: aşağıdaki seçim buradan başlar ve bu rota için onun yerini alır.",
       "accessServiceCustom": "Servis kimin çağırabileceğini bu listenin gösteremeyeceği bir şekilde sınırlıyor. Bu rota için korunur: servis üzerinden değiştirin.",
@@ -1102,7 +1106,33 @@
         "hour": "saat",
         "day": "gün"
       },
-      "override": "Arka uca gönderilen isteği değiştir"
+      "override": "Arka uca gönderilen isteği değiştir",
+      "keycloak": {
+        "failed": {
+          "clientRouteDeleted": "Keycloak istemcisi oluşturulamadı, bu yüzden {{name}} rotası silindi.",
+          "attachRouteDeleted": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: ikisi de silindi.",
+          "attachClientLeft": "{{clientId}} istemcisi {{name}} rotasına eklenemedi: rota silindi ancak istemci kaldı. Bir yöneticinin silmesi için Ayarlar > OIDC istemcileri altında \"Rota yok\" olarak listelenir.",
+          "routeKeptDisabled": "{{name}} rotası tamamlanamadı ve silinemedi: devre dışı olarak tutuldu ve trafik almıyor. Sayfasından silin veya tamamlayın.",
+          "reuse": "İstemci kullanılamadı: hiçbir şey oluşturulmadı.",
+          "routeKeptDisabledClientLeft": "{{name}} rotası tamamlanamadı ve silinemedi: devre dışı olarak tutuldu ve trafik almıyor. Sayfasından silin veya tamamlayın. {{clientId}} istemcisi de tutuldu: Ayarlar > OIDC istemcileri altında listelenir."
+        },
+        "create": "Yeni bir istemci oluştur",
+        "reuse": "Bir istemciyi yeniden kullan",
+        "connection": "Keycloak bağlantısı",
+        "clientId": "İstemci kimliği",
+        "validation": "Bir belirteç nasıl doğrulanır?",
+        "jwks": "İmzasını denetle (JWKS): istek başına Keycloak'a çağrı yok",
+        "introspection": "Keycloak'a sor (introspection): iptal edilen bir belirteç hemen reddedilir",
+        "client": "Yeniden kullanılacak istemci",
+        "loginHint": "Tarayıcıda oturum açma gelişmiş formda ayarlanır.",
+        "secretTitle": "Keycloak istemcisi oluşturuldu",
+        "secretOnce": "Gizli anahtarı şimdi kopyalayın: panel onu bir daha göstermez. Keycloak'ta ve rotanın eklenti ayarlarında kalır.",
+        "tokenEndpoint": "Belirteç uç noktası",
+        "clientSecret": "İstemci gizli anahtarı",
+        "tokenEndpointHint": "Ağ geçitlerinin Keycloak'a eriştiği adres. Ağlarının dışındaki bir istemci Keycloak'ın genel adresine ihtiyaç duyabilir.",
+        "notOffered": "Keycloak belirteçleri bu örnekte artık kullanılamıyor. Başka bir erişim seçin."
+      },
+      "accessKeycloak": "Keycloak belirteci"
     }
   },
   "globalRules": {

@@ -136,30 +136,42 @@ export const idpApi = {
 // X-Instance-ID from the current instance, and the backend refuses a mismatch.
 const instancePath = (instanceId: string) => `/api/v1/instances/${instanceId}`;
 
+/**
+ * The instance and team a chain of requests was started for. Named on each
+ * request, it is answered for them even after a switch made while it runs.
+ */
+export type PinnedScope = { instanceId: string; teamId: string };
+
+const pinnedHeaders = (pin?: PinnedScope) =>
+  pin ? { headers: { 'X-Instance-ID': pin.instanceId, 'X-Team-ID': pin.teamId } } : undefined;
+
 export const oidcClientApi = {
   /** The connections linked to the instance, with what the route form needs. */
   linked: async (instanceId: string): Promise<LinkedIdp[]> => {
     const response = await apiClient.get<LinkedIdp[]>(`${instancePath(instanceId)}/idps`);
     return parseRecordList<LinkedIdp>(response.data, `${instancePath(instanceId)}/idps`);
   },
-  list: async (instanceId: string, withStatus = false): Promise<OidcClientItem[]> => {
+  list: async (instanceId: string, withStatus = false, pin?: PinnedScope): Promise<OidcClientItem[]> => {
     const path = `${instancePath(instanceId)}/oidc-clients`;
     const response = await apiClient.get<OidcClientItem[]>(path, {
       params: withStatus ? { status: true } : undefined,
+      ...pinnedHeaders(pin),
     });
     return parseRecordList<OidcClientItem>(response.data, path);
   },
-  create: async (idpId: string, body: Record<string, unknown>): Promise<ClientCredentials> => {
-    const response = await apiClient.post<ClientCredentials>(`${IDPS_PATH}/${idpId}/clients`, body);
+  create: async (idpId: string, body: Record<string, unknown>, pin?: PinnedScope): Promise<ClientCredentials> => {
+    const response = await apiClient.post<ClientCredentials>(`${IDPS_PATH}/${idpId}/clients`, body, pinnedHeaders(pin));
     return response.data;
   },
-  use: async (instanceId: string, uuid: string): Promise<ClientCredentials> => {
+  use: async (instanceId: string, uuid: string, pin?: PinnedScope): Promise<ClientCredentials> => {
     const response = await apiClient.post<ClientCredentials>(
-      `${instancePath(instanceId)}/oidc-clients/${uuid}/use`
+      `${instancePath(instanceId)}/oidc-clients/${uuid}/use`,
+      undefined,
+      pinnedHeaders(pin)
     );
     return response.data;
   },
-  remove: async (instanceId: string, uuid: string): Promise<void> => {
-    await apiClient.delete(`${instancePath(instanceId)}/oidc-clients/${uuid}`);
+  remove: async (instanceId: string, uuid: string, pin?: PinnedScope): Promise<void> => {
+    await apiClient.delete(`${instancePath(instanceId)}/oidc-clients/${uuid}`, pinnedHeaders(pin));
   },
 };

@@ -1051,7 +1051,11 @@
       "overrideHost": "Ein Hostname oder eine Adresse, bei Bedarf mit Port: ohne Schema, ohne Pfad.",
       "headerValueDollar": "Kein $ in einem Header-Wert: Das Gateway liest es als eine seiner Variablen und sendet den Wert verändert.",
       "headerTwice": "Jeder Header einmal: nicht zweimal in anderer Schreibweise gesetzt, nicht gesetzt und entfernt (hier oder durch den Service), und kein Host-Header neben einem Host Override.",
-      "idAsName": "Nur Buchstaben, Ziffern und - _ ., höchstens 64."
+      "idAsName": "Nur Buchstaben, Ziffern und - _ ., höchstens 64.",
+      "keycloakConnectionRequired": "Wählen Sie eine Keycloak-Verbindung.",
+      "keycloakClientIdRequired": "Geben Sie dem Client eine ID.",
+      "keycloakClientRequired": "Wählen Sie einen Client zur Wiederverwendung.",
+      "keycloakClientIdInvalid": "Eine Client-ID beginnt mit einem Buchstaben oder einer Ziffer, gefolgt von Buchstaben, Ziffern, '.', '_' oder '-', insgesamt höchstens 64."
     },
     "quickRoute": {
       "title": "Neue Route",
@@ -1086,7 +1090,7 @@
       "accessAnyone": "Alle",
       "accessKey": "Clients mit Schlüssel",
       "accessBasic": "Benutzername und Passwort",
-      "accessHint": "Weitere Authentifizierungen - JWT, HMAC, OpenID Connect - gibt es im erweiterten Formular.",
+      "accessHint": "Weitere Authentifizierungen - JWT, HMAC, eine Anmeldung im Browser mit OpenID Connect - gibt es im erweiterten Formular.",
       "accessBasicHint": "Das Passwort wird mit jeder Anfrage gesendet: Rufen Sie diese Route nur über HTTPS auf.",
       "accessService": "Der Dienst begrenzt bereits, wer aufrufen darf: Die Auswahl unten geht davon aus und ersetzt sie für diese Route.",
       "accessServiceCustom": "Der Dienst begrenzt, wer aufrufen darf, auf eine Weise, die diese Liste nicht zeigen kann. Sie bleibt für diese Route bestehen: Ändern Sie sie am Dienst.",
@@ -1102,7 +1106,33 @@
         "hour": "Stunde",
         "day": "Tag"
       },
-      "override": "An das Backend gesendete Anfrage ändern"
+      "override": "An das Backend gesendete Anfrage ändern",
+      "keycloak": {
+        "failed": {
+          "clientRouteDeleted": "Der Keycloak-Client konnte nicht angelegt werden, daher wurde die Route {{name}} gelöscht.",
+          "attachRouteDeleted": "Der Client {{clientId}} konnte nicht in die Route {{name}} eingetragen werden: beide wurden gelöscht.",
+          "attachClientLeft": "Der Client {{clientId}} konnte nicht in die Route {{name}} eingetragen werden: die Route wurde gelöscht, der Client aber behalten. Er steht unter Einstellungen > OIDC-Clients als \"Keine Route\", damit ein Administrator ihn löscht.",
+          "routeKeptDisabled": "Die Route {{name}} konnte weder fertiggestellt noch gelöscht werden: sie wurde deaktiviert behalten und nimmt keinen Verkehr an. Löschen oder vervollständigen Sie sie auf ihrer Seite.",
+          "reuse": "Der Client konnte nicht verwendet werden: es wurde nichts angelegt.",
+          "routeKeptDisabledClientLeft": "Die Route {{name}} konnte weder fertiggestellt noch gelöscht werden: sie wurde deaktiviert behalten und nimmt keinen Verkehr an. Löschen oder vervollständigen Sie sie auf ihrer Seite. Auch der Client {{clientId}} wurde behalten: er steht unter Einstellungen > OIDC-Clients."
+        },
+        "create": "Einen neuen Client anlegen",
+        "reuse": "Einen Client wiederverwenden",
+        "connection": "Keycloak-Verbindung",
+        "clientId": "Client-ID",
+        "validation": "Wie wird ein Token geprüft?",
+        "jwks": "Die Signatur prüfen (JWKS): kein Aufruf an Keycloak pro Anfrage",
+        "introspection": "Bei Keycloak nachfragen (Introspection): ein widerrufenes Token wird sofort abgelehnt",
+        "client": "Wiederzuverwendender Client",
+        "loginHint": "Eine Anmeldung im Browser wird im erweiterten Formular eingerichtet.",
+        "secretTitle": "Keycloak-Client angelegt",
+        "secretOnce": "Kopieren Sie das Geheimnis jetzt: das Dashboard zeigt es nicht noch einmal an. Es bleibt in Keycloak und in den Plugin-Einstellungen der Route.",
+        "tokenEndpoint": "Token-Endpunkt",
+        "clientSecret": "Client-Geheimnis",
+        "tokenEndpointHint": "Die Adresse, unter der die Gateways Keycloak erreichen. Ein Aufrufer außerhalb ihres Netzwerks braucht möglicherweise die öffentliche Adresse von Keycloak.",
+        "notOffered": "Keycloak-Tokens sind auf dieser Instanz nicht mehr verfügbar. Wählen Sie einen anderen Zugriff."
+      },
+      "accessKeycloak": "Keycloak-Token"
     }
   },
   "globalRules": {

@@ -343,10 +343,20 @@ func (h *IdPHandler) CreateClient(c *gin.Context) {
 	c.JSON(http.StatusCreated, out)
 }
 
-// mayUseClient: an admin always; anyone else when they write to the team that
-// currently owns the client's route.
-func mayUseClient(scope teamScope, team string) bool {
+// mayListClient: an admin always; anyone else when they write to the team that
+// currently owns the client's route. The list offers every client the caller
+// could use as one of their teams; using one is narrower, see mayUseClient.
+func mayListClient(scope teamScope, team string) bool {
 	return scope.isAdmin || scope.mayWrite(team)
+}
+
+// mayUseClient: an admin always; anyone else when the client's route belongs
+// to the team they act for - the team the route they are writing will belong
+// to. Writing to another of their teams is not enough: the secret would land
+// in a route of the acting team, readable by every member of it, viewers
+// included, and could mint tokens the other team's route accepts.
+func mayUseClient(scope teamScope, team string) bool {
+	return scope.isAdmin || (scope.acting != "" && team == scope.acting)
 }
 
 // managedEntry reports whether a registry entry is one the dashboard may read,
@@ -489,7 +499,7 @@ func (h *IdPHandler) ListClients(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "The route's owner could not be read"})
 			return
 		}
-		if !mayUseClient(scope, team) {
+		if !mayListClient(scope, team) {
 			continue
 		}
 		item := clientListItem{
@@ -649,6 +659,14 @@ func (h *IdPHandler) UseClient(c *gin.Context) {
 	scope := callerTeamScope(c)
 	if !scope.isAdmin && (scope.foreign || len(scope.writable) == 0) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+	// The secret goes into a route of the acting team, so there has to be
+	// one: a non-admin with several teams and none named is answered as a
+	// create would be, before anything about the client is looked at.
+	if !scope.isAdmin && scope.acting == "" {
+		status, msg, code := createRefusal(scope)
+		refuse(c, status, msg, code)
 		return
 	}
 	if !h.activeInstance(c, instanceID) {
