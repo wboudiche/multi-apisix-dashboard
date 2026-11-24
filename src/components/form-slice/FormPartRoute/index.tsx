@@ -256,14 +256,16 @@ export const FormSectionPlugins = () => {
   const { t } = useTranslation();
   const { control } = useFormContext<RoutePostType>();
   // The route as the form holds it, for the Keycloak client picker. The id is
-  // only there once the route has been saved (the schema leaves it out).
-  const [id, name, host, hosts, uri, uris] = useWatch({
+  // only there once the route has been saved (the schema leaves it out), and
+  // so is `__team_id`, which the proxy puts on the detail the form is reset to.
+  const [id, name, host, hosts, uri, uris, teamId] = useWatch({
     control: control as unknown as Control<FieldValues>,
-    name: ['id', 'name', 'host', 'hosts', 'uri', 'uris'],
-  }) as [string?, string?, string?, string[]?, string?, string[]?];
+    name: ['id', 'name', 'host', 'hosts', 'uri', 'uris', '__team_id'],
+  }) as [string?, string?, string?, string[]?, string?, string[]?, string?];
   const route: OidcRouteContext = {
     id: id || undefined,
     name,
+    teamId: teamId || undefined,
     hosts: [...(host ? [host] : []), ...(hosts ?? [])],
     uris: [...(uri ? [uri] : []), ...(uris ?? [])],
   };

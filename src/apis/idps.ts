@@ -163,11 +163,21 @@ export const oidcClientApi = {
     const response = await apiClient.post<ClientCredentials>(`${IDPS_PATH}/${idpId}/clients`, body, pinnedHeaders(pin));
     return response.data;
   },
-  use: async (instanceId: string, uuid: string, pin?: PinnedScope): Promise<ClientCredentials> => {
+  /**
+   * A client's credentials, to write into the route `routeId` when it is
+   * saved already: the backend then checks the client against that route's
+   * team, not the acting one.
+   */
+  use: async (
+    instanceId: string,
+    uuid: string,
+    pin?: PinnedScope,
+    routeId?: string
+  ): Promise<ClientCredentials> => {
     const response = await apiClient.post<ClientCredentials>(
       `${instancePath(instanceId)}/oidc-clients/${uuid}/use`,
       undefined,
-      pinnedHeaders(pin)
+      { ...pinnedHeaders(pin), params: routeId ? { route: routeId } : undefined }
     );
     return response.data;
   },

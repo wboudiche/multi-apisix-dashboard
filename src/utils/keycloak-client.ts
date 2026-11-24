@@ -21,6 +21,8 @@ import type { OwnTeams } from '@/stores/team';
 export type OidcRouteContext = {
   id?: string;
   name?: string;
+  /** The team that owns the route, once saved: `__team_id` of its detail. */
+  teamId?: string;
   hosts: string[];
   uris: string[];
 };
@@ -114,6 +116,15 @@ export const actingTeam = (own: OwnTeams | undefined, sent: string): string => {
   if (sent) return writable.includes(sent) ? sent : '';
   return writable.length === 1 ? writable[0] : '';
 };
+
+/**
+ * The team whose clients a non-admin may put on a route: the team that owns
+ * it once it is saved, whichever team they act for - the backend checks the
+ * client against that owner (#464) - else the acting team, which a route
+ * not saved yet will belong to. None for a saved route with no owner.
+ */
+export const routeTeam = (route: OidcRouteContext, own: OwnTeams | undefined, sent: string): string =>
+  route.id ? (route.teamId ?? '') : actingTeam(own, sent);
 
 /**
  * The clients a caller may put on a route: an admin any of them; anyone else

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { permission } from '@e2e/pom/permission';
+import { headerTeamSelect, permission } from '@e2e/pom/permission';
 import { settingsPom } from '@e2e/pom/settings';
 import { deleteUsersByPrefix } from '@e2e/utils/admin-api';
 import { getFixtures } from '@e2e/utils/fixtures';
@@ -46,6 +46,7 @@ import {
 import { test } from '@e2e/utils/test';
 import { uiHasToastMsg } from '@e2e/utils/ui';
 import { i18n } from '@e2e/utils/ui/i18n';
+import { roleText } from '@e2e/utils/ui/roles';
 import { expect, type Locator, type Page } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
@@ -88,6 +89,8 @@ const ROUTES = {
   backend: { id: `e2ekc-${RUN}-backend`, host: `${RUN}-backend.${DOMAIN}` },
 } as const;
 type RouteKey = keyof typeof ROUTES;
+/** A route of Frontend Team, the other team of the two-team developer below. */
+const FRONT_ROUTE = { id: `e2ekc-${RUN}-front`, host: `${RUN}-front.${DOMAIN}` };
 
 let idp: Idp;
 /** The client ids the tests made, by the route they were made on. */
@@ -139,11 +142,16 @@ test.beforeAll(async () => {
       },
     });
   }
+  await apiFetch(`${PROXY}/routes/${FRONT_ROUTE.id}`, token, {
+    method: 'PUT',
+    headers: onLocal(fx().frontendTeamId),
+    json: { name: `${RUN}-front`, uri: `/${FRONT_ROUTE.id}/*`, host: FRONT_ROUTE.host, ...upstreamOf('token') },
+  });
 });
 
 test.afterAll(async () => {
   const token = await loginAdmin();
-  for (const r of Object.values(ROUTES)) {
+  for (const r of [...Object.values(ROUTES), FRONT_ROUTE]) {
     await apiFetch(`${PROXY}/routes/${r.id}`, token, {
       method: 'DELETE',
       headers: onLocal(),
@@ -427,6 +435,64 @@ test('a developer creates a login client inside the redirect domains, not outsid
   const ids = (await listOidcClients(await loginAdmin())).map((c) => c.client_id);
   expect(ids).toContain(made.devIn);
   expect(ids.filter((id) => id.includes('devout'))).toEqual([]);
+});
+
+// A developer of two teams, acting for one, edits a route of the other: the
+// picker offers the clients of the route's team, and the backend refuses a
+// client of the acting team for that route (#464).
+test('a developer of two teams reuses only clients of the route\'s own team', async ({
+  page,
+}) => {
+  const backendClient = madeBy('token', TOKEN_TEST);
+  const admin = await loginAdmin();
+  const front = (await apiFetch(`/api/v1/idps/${idp.id}/clients`, admin, {
+    method: 'POST',
+    headers: onLocal(fx().frontendTeamId),
+    json: {
+      route_id: FRONT_ROUTE.id,
+      client_id: `front-${RUN}`,
+      mode: 'token',
+      options: { validation: 'jwks' },
+    },
+  })) as { client_id: string };
+  const frontUuid = (await listOidcClients(admin)).find((c) => c.client_id === front.client_id)?.uuid;
+  expect(frontUuid, 'the Frontend Team client is listed').toBeTruthy();
+
+  const username = `${NAME_PREFIX}-two`;
+  const user = await ensureUser(admin, { username, password: PASSWORD });
+  await ensureUserInstanceRole(admin, user.id, fx().localInstanceId, {
+    role: 'developer',
+    team_ids: [fx().backendTeamId, fx().frontendTeamId],
+  });
+
+  await test.step('the picker of a Backend Team route offers Backend Team clients', async () => {
+    await permission.loginAs(page, username, PASSWORD);
+    await permission.switchInstance(page, 'Local APISIX');
+    await expect(headerTeamSelect(page)).toBeVisible({ timeout: 30000 });
+    await headerTeamSelect(page).click();
+    await page
+      .getByRole('option', { name: `Frontend Team · ${roleText('developer')}`, exact: true })
+      .click();
+    const { section, kc } = await openOidcOnRoute(page, ROUTES.devOut.id);
+    await section.getByRole('radio', { name: i18n.t('form.plugins.oidc.token') }).check();
+    await kc.getByRole('radio', { name: i18n.t('form.plugins.oidc.kc.reuse') }).check();
+    await kc.getByRole('textbox', { name: i18n.t('form.plugins.oidc.kc.pick') }).click();
+    await expect(page.getByRole('option', { name: `${front.client_id} - ${IDP_NAME}` })).toHaveCount(0);
+    await page.getByRole('option', { name: `${backendClient} - ${IDP_NAME}`, exact: true }).click();
+    await kc.getByRole('button', { name: i18n.t('form.plugins.oidc.kc.useBtn') }).click();
+    await expect(kc.getByText(i18n.t('form.plugins.oidc.kc.filled', { id: backendClient }))).toBeVisible();
+  });
+
+  await test.step('the backend refuses the acting team\'s client for that route', async () => {
+    const dev = await loginAdmin(username, PASSWORD);
+    const use = (route: string) =>
+      apiFetch(`/api/v1/instances/${fx().localInstanceId}/oidc-clients/${frontUuid}/use?route=${route}`, dev, {
+        method: 'POST',
+        headers: onLocal(fx().frontendTeamId),
+      });
+    await expect(use(ROUTES.devOut.id)).rejects.toMatchObject({ status: 403 });
+    await expect(use(FRONT_ROUTE.id)).resolves.toMatchObject({ client_id: front.client_id });
+  });
 });
 
 test('a client no route uses any more reads "No route"', async ({ page }) => {
