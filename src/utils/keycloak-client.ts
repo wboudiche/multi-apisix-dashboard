@@ -27,6 +27,34 @@ export type OidcRouteContext = {
   uris: string[];
 };
 
+/** What the route form holds that the Keycloak client picker reads. */
+export type OidcRouteValues = {
+  id?: string;
+  name?: string;
+  host?: string;
+  hosts?: string[];
+  uri?: string;
+  uris?: string[];
+  teamId?: string;
+};
+
+/**
+ * The route the openid-connect form offers a Keycloak client for, or none
+ * off a route form: the backend ties a client to a route, so a service or a
+ * stream route gets the plugin's own fields only. The id and the team are
+ * only there once the route has been saved.
+ */
+export const oidcRouteContext = (isRoute: boolean, v: OidcRouteValues): OidcRouteContext | undefined =>
+  isRoute
+    ? {
+        id: v.id || undefined,
+        name: v.name,
+        teamId: v.teamId || undefined,
+        hosts: [...(v.host ? [v.host] : []), ...(v.hosts ?? [])],
+        uris: [...(v.uri ? [v.uri] : []), ...(v.uris ?? [])],
+      }
+    : undefined;
+
 /**
  * The address the plugin itself would use for a login (the request URI plus
  * .apisix/redirect), when the route has one host and one URI ending in /*;

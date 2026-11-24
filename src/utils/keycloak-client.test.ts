@@ -22,6 +22,7 @@ import {
   actingTeam,
   applyClientCredentials,
   clientOptionLabel,
+  oidcRouteContext,
   proposeClientIdSuffix,
   proposeRedirectUri,
   routeTeam,
@@ -212,5 +213,33 @@ describe('the clients a caller may put on a route', () => {
     expect(clientOptionLabel(c, true, names)).toBe('apisix-x - kc (Billing)');
     expect(clientOptionLabel({ ...c, team_id: 't9' }, true, names)).toBe('apisix-x - kc (t9)');
     expect(clientOptionLabel({ ...c, team_id: '' }, true, names)).toBe('apisix-x - kc');
+  });
+});
+
+describe('oidcRouteContext', () => {
+  const values = { id: 'r1', name: 'billing', host: 'a.test', hosts: ['b.test'], uri: '/x', uris: ['/y'], teamId: 't1' };
+
+  it('is the route as the form holds it, on a route form', () => {
+    expect(oidcRouteContext(true, values)).toEqual({
+      id: 'r1',
+      name: 'billing',
+      teamId: 't1',
+      hosts: ['a.test', 'b.test'],
+      uris: ['/x', '/y'],
+    });
+  });
+
+  it('has no id nor team before the route is saved', () => {
+    expect(oidcRouteContext(true, { name: 'n', id: '', teamId: '' })).toEqual({
+      id: undefined,
+      name: 'n',
+      teamId: undefined,
+      hosts: [],
+      uris: [],
+    });
+  });
+
+  it('is none on a service or a stream route: a client belongs to a route', () => {
+    expect(oidcRouteContext(false, values)).toBeUndefined();
   });
 });

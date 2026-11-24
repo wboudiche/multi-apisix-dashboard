@@ -228,7 +228,7 @@ const RouteAddFormBody = (props: Props & { onDraftDiscarded: () => void }) => {
       content: (
         <>
           <FormSectionRequestOverride />
-          <FormSectionPlugins />
+          <FormSectionPlugins keycloakClients />
         </>
       ),
       fields: ['plugins', 'plugin_config_id'],
