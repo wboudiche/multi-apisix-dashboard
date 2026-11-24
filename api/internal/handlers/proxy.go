@@ -184,21 +184,40 @@ func stripsRouteTimestampsFor(method, resourceType, path string) bool {
 }
 
 // pluginClientTypes are the types whose plugins act on a route's traffic: the
-// route's own, its service's, its plugin config's, and its consumer's group's.
+// route's own, its service's, its plugin config's, its consumer's and its
+// consumer's group's. Not stream_routes: they run no HTTP-layer plugin such as
+// openid-connect or authz-keycloak.
 var pluginClientTypes = map[string]bool{
-	"routes": true, "services": true, "plugin_configs": true, "consumer_groups": true,
+	"routes": true, "services": true, "plugin_configs": true, "consumer_groups": true, "consumers": true,
 }
 
 // checksPluginClients reports whether a write is one whose body is checked
 // for the clients its plugins name: a POST or PUT of one of the
-// pluginClientTypes, not of something beneath one.
+// pluginClientTypes, or of a consumer's credential, which carries plugins of
+// its own and belongs to the consumer's team. Nothing else beneath a resource.
 func checksPluginClients(method, resourceType, path string) bool {
-	return (method == http.MethodPost || method == http.MethodPut) &&
-		pluginClientTypes[resourceType] && !beneathResource(path)
+	if method != http.MethodPost && method != http.MethodPut || !pluginClientTypes[resourceType] {
+		return false
+	}
+	if !beneathResource(path) {
+		return true
+	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	return parts[0] == "consumers" && len(parts) >= 3 && parts[2] == "credentials"
+}
+
+// pluginClientAliases are the other names a plugin's schema takes its client
+// id under. authz-keycloak's audience was a deprecated alias of client_id;
+// APISIX 3.16's schema no longer lists it (and nothing reads it), but a
+// gateway that still honours it would act on it, so it is read too. No other
+// plugin of 3.16 names its client id otherwise.
+var pluginClientAliases = map[string][]string{
+	"authz-keycloak": {"audience"},
 }
 
 // pluginClientIDs reads the client_id of every plugin a resource's body
-// configures (openid-connect, authz-keycloak, any other), each once. Keys are
+// configures (openid-connect, authz-keycloak, any other), and its aliases
+// (pluginClientAliases), each once. Keys are
 // matched exactly, as APISIX does: given a body canonicalObject re-marshalled,
 // it reads what the gateway will.
 func pluginClientIDs(body []byte) []string {
@@ -211,13 +230,15 @@ func pluginClientIDs(body []byte) []string {
 		return nil
 	}
 	var ids []string
-	for _, raw := range plugins {
+	for name, raw := range plugins {
 		var conf map[string]any
 		if json.Unmarshal(raw, &conf) != nil {
 			continue
 		}
-		if id, ok := conf["client_id"].(string); ok && id != "" && !slices.Contains(ids, id) {
-			ids = append(ids, id)
+		for _, field := range append([]string{"client_id"}, pluginClientAliases[name]...) {
+			if id, ok := conf[field].(string); ok && id != "" && !slices.Contains(ids, id) {
+				ids = append(ids, id)
+			}
 		}
 	}
 	return ids

@@ -53,6 +53,7 @@ func newOIDCProxyFixture(t *testing.T) *oidcProxyFixture {
 		"routes/r1": `{"id":"r1"}`, "routes/r2": `{"id":"r2"}`, "routes/boom": `{"id":"boom"}`,
 		"services/s1": `{"id":"s1"}`, "services/s2": `{"id":"s2"}`,
 		"consumer_groups/g1": `{"id":"g1"}`, "plugin_configs/pc1": `{"id":"pc1"}`,
+		"consumers/u1": `{"username":"u1"}`,
 	}}
 	f.owners = services.NewOwnershipService(f.store)
 	f.idps = services.NewIdPService(f.store)
@@ -68,7 +69,7 @@ func newOIDCProxyFixture(t *testing.T) *oidcProxyFixture {
 	f.idpID = p.ID
 	for key, team := range map[string]string{
 		"routes/r1": "t1", "routes/r2": "t2", "routes/boom": "t1", "services/s1": "t1", "services/s2": "t2",
-		"consumer_groups/g1": "t1", "plugin_configs/pc1": "t1",
+		"consumer_groups/g1": "t1", "plugin_configs/pc1": "t1", "consumers/u1": "t1",
 	} {
 		typ, id, _ := strings.Cut(key, "/")
 		if err := f.owners.SetOwner(ctx, &models.Ownership{InstanceID: "i1", ResourceType: typ, ResourceID: id, TeamID: team}); err != nil {
@@ -278,7 +279,10 @@ func TestChecksPluginClients(t *testing.T) {
 		{http.MethodDelete, "routes", "/routes/r1", false},
 		{http.MethodGet, "routes", "/routes/r1", false},
 		{http.MethodPut, "upstreams", "/upstreams/u1", false},
-		{http.MethodPut, "consumers", "/consumers/c/credentials/k", false},
+		{http.MethodPut, "consumers", "/consumers/c", true},
+		{http.MethodPut, "consumers", "/consumers/c/credentials/k", true},
+		{http.MethodPost, "consumers", "/consumers/c/credentials", true},
+		{http.MethodPut, "stream_routes", "/stream_routes/s", false},
 	}
 	for _, tc := range cases {
 		if got := checksPluginClients(tc.method, tc.typ, tc.path); got != tc.want {
@@ -314,6 +318,11 @@ func TestProxyRefusesAnotherTeamsClientOnPluginTypes(t *testing.T) {
 		{"new service by POST, acting t1, t1 client", none, acting("t1"), http.MethodPost, "/services", withClient("mad-c1"), 201},
 		{"t1 consumer group, t2 client", none, acting("t2"), http.MethodPut, "/consumer_groups/g1", pluginBody("openid-connect", "mad-c2"), 403},
 		{"t1 consumer group, t1 client", none, acting("t2"), http.MethodPut, "/consumer_groups/g1", pluginBody("openid-connect", "mad-c1"), 200},
+		{"t1 consumer, t2 client", none, acting("t2"), http.MethodPut, "/consumers/u1", `{"username":"u1","plugins":{"openid-connect":{"client_id":"mad-c2"}}}`, 403},
+		{"t1 consumer, t1 client", none, acting("t2"), http.MethodPut, "/consumers/u1", `{"username":"u1","plugins":{"openid-connect":{"client_id":"mad-c1"}}}`, 200},
+		{"t1 consumer's credential, t2 client", none, acting("t2"), http.MethodPut, "/consumers/u1/credentials/k1", pluginBody("openid-connect", "mad-c2"), 403},
+		{"t1 consumer's credential, t1 client", none, acting("t2"), http.MethodPut, "/consumers/u1/credentials/k1", pluginBody("openid-connect", "mad-c1"), 200},
+		{"t1 route, t2 client as authz-keycloak's audience", none, acting("t1"), http.MethodPut, "/routes/r1", `{"plugins":{"authz-keycloak":{"audience":"mad-c2"}}}`, 403},
 		{"t1 route, t2 client in authz-keycloak", none, acting("t1"), http.MethodPut, "/routes/r1", pluginBody("authz-keycloak", "mad-c2"), 403},
 		{"t1 route, t2 client in another plugin next to t1's", none, acting("t1"), http.MethodPut, "/routes/r1",
 			`{"plugins":{"openid-connect":{"client_id":"mad-c1"},"authz-keycloak":{"client_id":"mad-c2"}}}`, 403},
