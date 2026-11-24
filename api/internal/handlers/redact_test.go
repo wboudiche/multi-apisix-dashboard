@@ -112,8 +112,8 @@ func TestRedactCredentials(t *testing.T) {
 		{
 			name:         "a key at the top of a route is not a credential",
 			resourceType: "routes",
-			in:           `{"key":"/apisix/routes/1","value":{"key":"x","token":"t"}}`,
-			want:         `{"key":"/apisix/routes/1","value":{"key":"x","token":"t"}}`,
+			in:           `{"key":"/apisix/routes/1","value":{"key":"x","keys":["y"]}}`,
+			want:         `{"key":"/apisix/routes/1","value":{"key":"x","keys":["y"]}}`,
 		},
 		{
 			name:         "vault secret: token",
@@ -142,7 +142,10 @@ func TestRedactCredentials(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := redactCredentials(tt.resourceType, []byte(tt.in))
+			got, err := redactCredentials(tt.resourceType, []byte(tt.in))
+			if err != nil {
+				t.Fatalf("refused: %v", err)
+			}
 			if canon(t, string(got)) != canon(t, tt.want) {
 				t.Errorf("got  %s\nwant %s", got, canon(t, tt.want))
 			}
@@ -150,17 +153,103 @@ func TestRedactCredentials(t *testing.T) {
 	}
 }
 
-func TestRedactCredentialsPassesThroughWhatItCannotRead(t *testing.T) {
-	for _, in := range []string{``, `not json`, `{"a":1} {}`, `"x"`} {
-		if got := redactCredentials("routes", []byte(in)); string(got) != in {
+func TestRedactCredentialsRefusesWhatItCannotRead(t *testing.T) {
+	// Not one JSON value: what it holds cannot be told, so none of it is
+	// answered to a caller who must not read a credential.
+	for _, in := range []string{`not json`, `{"a":1} {}`, `{"a":1} x`, "\x1f\x8b\x08\x00garbage", `{"a":`} {
+		if got, err := redactCredentials("routes", []byte(in)); err == nil {
 			t.Errorf("%q came back as %q", in, got)
+		}
+	}
+}
+
+func TestRedactCredentialsAnswersAnEmptyBodyAsItIs(t *testing.T) {
+	for _, in := range []string{``, "  \n"} {
+		if got, err := redactCredentials("routes", []byte(in)); err != nil || string(got) != in {
+			t.Errorf("%q: %q, %v", in, got, err)
 		}
 	}
 }
 
 func TestRedactCredentialsLeavesAnAnswerWithNothingToHideAsItWas(t *testing.T) {
 	in := `{"value": {"uri":"/x",  "id":"1"}}`
-	if got := redactCredentials("routes", []byte(in)); string(got) != in {
-		t.Errorf("rewritten: %s", got)
+	if got, err := redactCredentials("routes", []byte(in)); err != nil || string(got) != in {
+		t.Errorf("rewritten: %s, %v", got, err)
+	}
+}
+
+// Every field APISIX 3.16 declares in a plugin's encrypt_fields, and the
+// plugins whose credentials it does not encrypt, each where the plugin keeps
+// it. Each config also holds a field of the same plugin that must stay.
+func TestRedactCredentialsByPlugin(t *testing.T) {
+	tests := []struct{ plugin, in, want string }{
+		{"key-auth", `{"key":"S","hide_credentials":true}`, `{"key":"***","hide_credentials":true}`},
+		{"basic-auth", `{"username":"u","password":"S"}`, `{"username":"u","password":"***"}`},
+		{"jwt-auth", `{"key":"k","secret":"S","private_key":"S","public_key":"P"}`, `{"key":"k","secret":"***","private_key":"***","public_key":"P"}`},
+		{"hmac-auth", `{"key_id":"k","secret_key":"S"}`, `{"key_id":"k","secret_key":"***"}`},
+		{"openid-connect", `{"client_id":"c","client_secret":"S","client_rsa_private_key":"S","session":{"secret":"S"}}`, `{"client_id":"c","client_secret":"***","client_rsa_private_key":"***","session":{"secret":"***"}}`},
+		{"authz-keycloak", `{"client_id":"c","client_secret":"S"}`, `{"client_id":"c","client_secret":"***"}`},
+		{"authz-casdoor", `{"client_id":"c","client_secret":"S"}`, `{"client_id":"c","client_secret":"***"}`},
+		{"csrf", `{"key":"S","expires":7200}`, `{"key":"***","expires":7200}`},
+		{"jwe-decrypt", `{"key":"S","secret":"S","header":"h"}`, `{"key":"***","secret":"***","header":"h"}`},
+		{"elasticsearch-logger", `{"field":{"index":"i"},"auth":{"username":"u","password":"S"}}`, `{"field":{"index":"i"},"auth":{"username":"u","password":"***"}}`},
+		{"clickhouse-logger", `{"user":"u","password":"S"}`, `{"user":"u","password":"***"}`},
+		{"kafka-proxy", `{"sasl":{"username":"u","password":"S"}}`, `{"sasl":{"username":"u","password":"***"}}`},
+		{"kafka-logger", `{"brokers":[{"host":"h","sasl_config":{"user":"u","password":"S"}}]}`, `{"brokers":[{"host":"h","sasl_config":{"user":"u","password":"***"}}]}`},
+		{"lago", `{"endpoint_addrs":["a"],"token":"S"}`, `{"endpoint_addrs":["a"],"token":"***"}`},
+		{"openwhisk", `{"namespace":"n","service_token":"S"}`, `{"namespace":"n","service_token":"***"}`},
+		{"rocketmq-logger", `{"topic":"t","access_key":"S","secret_key":"S"}`, `{"topic":"t","access_key":"***","secret_key":"***"}`},
+		{"google-cloud-logging", `{"auth_config":{"client_email":"e","private_key":"S"}}`, `{"auth_config":{"client_email":"e","private_key":"***"}}`},
+		{"ai-aliyun-content-moderation", `{"access_key_id":"i","access_key_secret":"S"}`, `{"access_key_id":"i","access_key_secret":"***"}`},
+		{"sls-logger", `{"access_key_id":"i","access_key_secret":"S"}`, `{"access_key_id":"i","access_key_secret":"***"}`},
+		{"tencent-cloud-cls", `{"secret_id":"i","secret_key":"S"}`, `{"secret_id":"i","secret_key":"***"}`},
+		{"error-log-logger", `{"clickhouse":{"user":"u","password":"S"}}`, `{"clickhouse":{"user":"u","password":"***"}}`},
+		{"http-logger", `{"uri":"http://l","auth_header":"S"}`, `{"uri":"http://l","auth_header":"***"}`},
+		{"loggly", `{"customer_token":"S","severity":"INFO"}`, `{"customer_token":"***","severity":"INFO"}`},
+		{"splunk-hec-logging", `{"endpoint":{"uri":"u","token":"S"}}`, `{"endpoint":{"uri":"u","token":"***"}}`},
+		{"ai-proxy", `{"provider":"openai","auth":{"header":{"X-Custom":"S"}}}`, `{"provider":"openai","auth":"***"}`},
+		{"ai-proxy-multi", `{"instances":[{"name":"a","auth":{"query":{"k":"S"}}}]}`, `{"instances":[{"name":"a","auth":"***"}]}`},
+		{"ai-request-rewrite", `{"prompt":"p","auth":{"header":{"X-Custom":"S"}}}`, `{"prompt":"p","auth":"***"}`},
+		{"aws-lambda", `{"function_uri":"f","authorization":{"iam":{"accesskey":"S","secretkey":"S"}}}`, `{"function_uri":"f","authorization":"***"}`},
+		{"azure-functions", `{"function_uri":"f","authorization":{"apikey":"S"}}`, `{"function_uri":"f","authorization":"***"}`},
+		{"openfunction", `{"function_uri":"f","authorization":{"service_token":"S"}}`, `{"function_uri":"f","authorization":"***"}`},
+		{"limit-count", `{"key":"remote_addr","redis_password":"S"}`, `{"key":"remote_addr","redis_password":"***"}`},
+		{"proxy-rewrite", `{"headers":{"set":{"Authorization":"S","X-Api-Key":"S","X-Trace":"t"}}}`, `{"headers":{"set":{"Authorization":"***","X-Api-Key":"***","X-Trace":"t"}}}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.plugin, func(t *testing.T) {
+			in := `{"value":{"plugins":{"` + tt.plugin + `":` + tt.in + `}}}`
+			want := `{"value":{"plugins":{"` + tt.plugin + `":` + tt.want + `}}}`
+			got, err := redactCredentials("routes", []byte(in))
+			if err != nil {
+				t.Fatalf("refused: %v", err)
+			}
+			if canon(t, string(got)) != canon(t, want) {
+				t.Errorf("got  %s\nwant %s", got, canon(t, want))
+			}
+		})
+	}
+}
+
+// The generic names, wherever they are and whatever the plugin.
+func TestRedactCredentialsByName(t *testing.T) {
+	for _, name := range []string{
+		"secret", "client_secret", "x_secret", "secret_key", "password", "redis_password",
+		"private_key", "tls_private_key", "client_key", "secret_access_key", "token",
+		"session_token", "api_key", "apikey", "access_key", "aws_access_key",
+		"Authorization", "proxy-authorization", "x-api-key", "api-key",
+	} {
+		in := `{"value":{"plugins":{"some-plugin":{"nested":{"` + name + `":"S"}}}}}`
+		got, err := redactCredentials("routes", []byte(in))
+		if err != nil || bytes.Contains(got, []byte(`"S"`)) {
+			t.Errorf("%s kept: %s %v", name, got, err)
+		}
+	}
+	for _, name := range []string{"key", "keys", "key_id", "access_key_id", "secret_id", "public_key", "token_endpoint", "username"} {
+		in := `{"value":{"plugins":{"some-plugin":{"` + name + `":"S"}}}}`
+		got, err := redactCredentials("routes", []byte(in))
+		if err != nil || string(got) != in {
+			t.Errorf("%s redacted: %s %v", name, got, err)
+		}
 	}
 }

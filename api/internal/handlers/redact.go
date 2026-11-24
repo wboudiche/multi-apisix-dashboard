@@ -18,6 +18,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 )
@@ -30,24 +31,69 @@ const redactedMarker = "***"
 
 // credentialField reports whether a field holds a credential by its name
 // alone, wherever it is: the plugin settings of a route, service, consumer,
-// credential, plugin config or global rule all use these names.
+// credential, plugin config or global rule use these names, and so do the
+// headers a plugin sets (proxy-rewrite's Authorization). Case does not count:
+// a header is named in any case.
 func credentialField(name string) bool {
-	switch name {
-	case "secret", "client_secret", "password", "private_key", "client_key", "secret_access_key":
+	n := strings.ToLower(name)
+	switch n {
+	case "secret", "client_secret", "password", "private_key", "client_key",
+		// hmac-auth's, an AWS secret manager's. Not every secret_*: tencent's
+		// secret_id is the identifier beside its secret_key.
+		"secret_key", "secret_access_key",
+		"token", "api_key", "apikey", "access_key",
+		"authorization", "proxy-authorization", "x-api-key", "api-key":
 		return true
 	}
-	return strings.HasSuffix(name, "_secret") ||
-		strings.HasSuffix(name, "_private_key") ||
-		strings.HasSuffix(name, "_password") ||
-		// hmac-auth's secret_key, an AWS secret manager's secret_access_key.
-		strings.HasPrefix(name, "secret_")
+	return strings.HasSuffix(n, "_secret") ||
+		strings.HasSuffix(n, "_private_key") ||
+		strings.HasSuffix(n, "_password") ||
+		strings.HasSuffix(n, "_token") ||
+		strings.HasSuffix(n, "_access_key")
 }
 
-// pluginCredentialFields are the fields that are a credential only inside one
-// plugin: a bare "key" is limit-count's "remote_addr" as often as a key-auth
-// key.
-var pluginCredentialFields = map[string]map[string]bool{
-	"key-auth": {"key": true},
+// pluginCredentialPaths are where each plugin keeps its credentials, as paths
+// inside the plugin's own object; an array on the way means each of its
+// elements. A path names a credential the field names above may not: a bare
+// "key" is limit-count's "remote_addr" as often as a key-auth key, and
+// ai-proxy's "auth" holds headers of any name.
+//
+// The first group is APISIX 3.16's encrypt_fields, the fields it declares as
+// secrets to encrypt at rest (read from apisix/plugins/*.lua of the
+// apache/apisix:3.16.0 image). The second is credentials APISIX does not
+// encrypt.
+var pluginCredentialPaths = map[string][]string{
+	"key-auth":                     {"key"},
+	"basic-auth":                   {"password"},
+	"jwt-auth":                     {"secret", "private_key"},
+	"hmac-auth":                    {"secret_key"},
+	"openid-connect":               {"client_secret", "client_rsa_private_key", "session.secret"},
+	"authz-keycloak":               {"client_secret"},
+	"authz-casdoor":                {"client_secret"},
+	"csrf":                         {"key"},
+	"jwe-decrypt":                  {"key", "secret"},
+	"elasticsearch-logger":         {"auth.password"},
+	"clickhouse-logger":            {"password"},
+	"kafka-proxy":                  {"sasl.password"},
+	"lago":                         {"token"},
+	"openwhisk":                    {"service_token"},
+	"rocketmq-logger":              {"secret_key"},
+	"google-cloud-logging":         {"auth_config.private_key"},
+	"ai-aliyun-content-moderation": {"access_key_secret"},
+	"sls-logger":                   {"access_key_secret"},
+	"tencent-cloud-cls":            {"secret_key"},
+	"error-log-logger":             {"clickhouse.password"},
+
+	"kafka-logger":       {"brokers.sasl_config.password"},
+	"http-logger":        {"auth_header"},
+	"loggly":             {"customer_token"},
+	"splunk-hec-logging": {"endpoint.token"},
+	"ai-proxy":           {"auth"},
+	"ai-proxy-multi":     {"instances.auth"},
+	"ai-request-rewrite": {"auth"},
+	"aws-lambda":         {"authorization"},
+	"azure-functions":    {"authorization"},
+	"openfunction":       {"authorization"},
 }
 
 // resourceCredentialFields are the fields that are a credential only at the
@@ -55,6 +101,30 @@ var pluginCredentialFields = map[string]map[string]bool{
 var resourceCredentialFields = map[string]map[string]bool{
 	"ssls":    {"key": true, "keys": true},
 	"secrets": {"token": true},
+}
+
+// redactPath replaces the credential at path inside node, through every
+// element of an array on the way.
+func redactPath(node any, path []string) bool {
+	switch n := node.(type) {
+	case []any:
+		changed := false
+		for _, el := range n {
+			if redactPath(el, path) {
+				changed = true
+			}
+		}
+		return changed
+	case map[string]any:
+		if len(path) > 1 {
+			return redactPath(n[path[0]], path[1:])
+		}
+		if filled(n[path[0]]) {
+			n[path[0]] = redactedMarker
+			return true
+		}
+	}
+	return false
 }
 
 // filled reports whether v holds something to hide: a null or an empty value
@@ -74,10 +144,12 @@ func filled(v any) bool {
 }
 
 // redactTree replaces, in place and at any depth, the value of every
-// credential field by redactedMarker. here are the fields that are a credential
-// in this object only (see pluginCredentialFields). A field matched whole is
-// replaced whole, whatever its type. It reports whether anything changed.
-func redactTree(v any, here map[string]bool) bool {
+// credential field by redactedMarker. here are the fields that are a
+// credential in this object only (see resourceCredentialFields); plugins says
+// the object is a plugins map, each field of which is a plugin's settings
+// (see pluginCredentialPaths). A field matched whole is replaced whole,
+// whatever its type. It reports whether anything changed.
+func redactTree(v any, here map[string]bool, plugins bool) bool {
 	changed := false
 	switch t := v.(type) {
 	case map[string]any:
@@ -87,13 +159,20 @@ func redactTree(v any, here map[string]bool) bool {
 				changed = true
 				continue
 			}
-			if redactTree(child, pluginCredentialFields[k]) {
+			if plugins {
+				for _, path := range pluginCredentialPaths[k] {
+					if redactPath(child, strings.Split(path, ".")) {
+						changed = true
+					}
+				}
+			}
+			if redactTree(child, nil, k == "plugins") {
 				changed = true
 			}
 		}
 	case []any:
 		for _, child := range t {
-			if redactTree(child, nil) {
+			if redactTree(child, nil, false) {
 				changed = true
 			}
 		}
@@ -109,18 +188,18 @@ func redactTree(v any, here map[string]bool) bool {
 func redactRow(resourceType string, row any) bool {
 	m, ok := row.(map[string]any)
 	if !ok {
-		return redactTree(row, nil)
+		return redactTree(row, nil, false)
 	}
 	if value, ok := m["value"].(map[string]any); ok {
-		changed := redactTree(value, resourceCredentialFields[resourceType])
+		changed := redactTree(value, resourceCredentialFields[resourceType], false)
 		for k, child := range m {
-			if k != "value" && redactTree(child, nil) {
+			if k != "value" && redactTree(child, nil, false) {
 				changed = true
 			}
 		}
 		return changed
 	}
-	return redactTree(m, resourceCredentialFields[resourceType])
+	return redactTree(m, resourceCredentialFields[resourceType], false)
 }
 
 // redactValue redacts a decoded Admin API answer: a list {total, list} or a
@@ -128,7 +207,7 @@ func redactRow(resourceType string, row any) bool {
 func redactValue(resourceType string, v any) bool {
 	m, ok := v.(map[string]any)
 	if !ok {
-		return redactTree(v, nil)
+		return redactTree(v, nil, false)
 	}
 	list, ok := m["list"].([]any)
 	if !ok {
@@ -143,29 +222,36 @@ func redactValue(resourceType string, v any) bool {
 	return changed
 }
 
+// errUnreadable is an answer redactCredentials cannot read, and so cannot
+// tell free of credentials.
+var errUnreadable = errors.New("the gateway's answer could not be read")
+
 // redactCredentials answers body with every credential replaced by
 // redactedMarker, for a caller who may read the resource but not write it.
-// A body that is not one JSON value is passed through, as is one with
-// nothing to hide - byte for byte, so the answer only changes when a
-// credential had to go.
-func redactCredentials(resourceType string, body []byte) []byte {
+// One with nothing to hide, or nothing at all, comes back byte for byte. One
+// that is not one JSON value is refused with errUnreadable rather than passed
+// through: what it holds cannot be told, so it is not for this caller.
+func redactCredentials(resourceType string, body []byte) ([]byte, error) {
+	if len(bytes.TrimSpace(body)) == 0 {
+		return body, nil
+	}
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	// Numbers as written: a float64 would turn an id beyond 2^53 into its
 	// neighbour (see injectTeamID).
 	decoder.UseNumber()
 	var v any
 	if err := decoder.Decode(&v); err != nil {
-		return body
+		return nil, errUnreadable
 	}
 	if _, err := decoder.Token(); err != io.EOF {
-		return body
+		return nil, errUnreadable
 	}
 	if !redactValue(resourceType, v) {
-		return body
+		return body, nil
 	}
 	out, err := json.Marshal(v)
 	if err != nil {
-		return body
+		return nil, errUnreadable
 	}
-	return out
+	return out, nil
 }

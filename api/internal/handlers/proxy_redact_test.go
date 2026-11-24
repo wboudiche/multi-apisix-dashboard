@@ -44,10 +44,18 @@ func route(id string) string {
 // upstream; owners are the ownership records of the type read.
 func proxyRead(t *testing.T, role string, ui *models.UserInstance, path, upstream string, owners map[string]string) *httptest.ResponseRecorder {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	return proxyReadFrom(t, role, ui, path, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(upstream))
-	}))
+	}, owners, nil)
+}
+
+// proxyReadFrom is proxyRead against an Admin API of the test's own, with
+// headers added to the browser's request.
+func proxyReadFrom(t *testing.T, role string, ui *models.UserInstance, path string,
+	upstream http.HandlerFunc, owners map[string]string, headers map[string]string) *httptest.ResponseRecorder {
+	t.Helper()
+	srv := httptest.NewServer(upstream)
 	t.Cleanup(srv.Close)
 
 	h := NewProxyHandler(nil, nil, nil)
@@ -61,6 +69,9 @@ func proxyRead(t *testing.T, role string, ui *models.UserInstance, path, upstrea
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/apisix/admin"+path, nil)
+	for k, v := range headers {
+		c.Request.Header.Set(k, v)
+	}
 	c.Params = gin.Params{{Key: "path", Value: path}}
 	c.Set(middleware.InstanceIDKey, "i1")
 	c.Set(middleware.RoleKey, role)
@@ -129,5 +140,68 @@ func TestProxyReadRedactsCredentials(t *testing.T) {
 				t.Errorf("Content-Length %s for a body of %d bytes", cl, len(body))
 			}
 		})
+	}
+}
+
+// An answer the proxy cannot read cannot be told free of credentials: a
+// caller whose answer is redacted gets an error in its place, never the
+// answer (fail closed). A writer, whose answer is not redacted, gets it as
+// APISIX sent it.
+func TestProxyReadFailsClosedOnAnAnswerItCannotRead(t *testing.T) {
+	owners := map[string]string{"r1": "t1"}
+	answers := map[string]http.HandlerFunc{
+		"not JSON": func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`client_secret=THE-SECRET`))
+		},
+		"trailing garbage": func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(route("r1") + ` THE-SECRET`))
+		},
+		"an encoding nobody asked for": func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Encoding", "br")
+			_, _ = w.Write([]byte("\x8b\x00THE-SECRET\x03"))
+		},
+	}
+	for name, upstream := range answers {
+		for _, path := range []string{"/routes/r1", "/routes", "/global_rules/1"} {
+			t.Run(name+" "+path, func(t *testing.T) {
+				w := proxyReadFrom(t, models.RoleViewer, viewerIn("t1"), path, upstream, owners, nil)
+				if w.Code != http.StatusBadGateway {
+					t.Errorf("status %d, want 502", w.Code)
+				}
+				if strings.Contains(w.Body.String(), "THE-SECRET") {
+					t.Errorf("answered the body: %s", w.Body.String())
+				}
+				if w.Header().Get("Content-Encoding") != "" {
+					t.Errorf("Content-Encoding %q on the error", w.Header().Get("Content-Encoding"))
+				}
+			})
+		}
+		t.Run(name+" for a writer", func(t *testing.T) {
+			w := proxyReadFrom(t, models.RoleDeveloper, developerIn("t1"), "/routes/r1", upstream, owners, nil)
+			if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "THE-SECRET") {
+				t.Errorf("status %d, body %q", w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+// The browser's Accept-Encoding is not the proxy's: APISIX answers the proxy
+// in an encoding it can read and redact, and the browser gets it decoded.
+func TestProxyReadAsksAPISIXForAnAnswerItCanRead(t *testing.T) {
+	var asked []string
+	upstream := func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.Header.Get("Accept-Encoding"))
+		if strings.Contains(r.Header.Get("Accept-Encoding"), "br") {
+			w.Header().Set("Content-Encoding", "br")
+			_, _ = w.Write([]byte("\x8b\x00\x03"))
+			return
+		}
+		_, _ = w.Write([]byte(route("r1")))
+	}
+	w := proxyReadFrom(t, models.RoleViewer, viewerIn("t1"), "/routes/r1", upstream,
+		map[string]string{"r1": "t1"}, map[string]string{"Accept-Encoding": "br, gzip"})
+	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), "THE-SECRET") ||
+		!strings.Contains(w.Body.String(), `"***"`) {
+		t.Errorf("status %d, body %s (APISIX was asked for %q)", w.Code, w.Body.String(), asked)
 	}
 }

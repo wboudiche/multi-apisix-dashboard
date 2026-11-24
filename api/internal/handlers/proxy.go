@@ -872,7 +872,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	for key, values := range c.Request.Header {
 		// If-None-Match is a contract between the dashboard and this proxy
 		// (see createOnlyRequested); APISIX has no business acting on it.
-		if key != "Host" && key != "Authorization" && key != "If-None-Match" {
+		// Accept-Encoding is the browser's: the answer is read here - filtered,
+		// redacted - so it is asked for in an encoding this proxy reads, which
+		// the transport negotiates and decodes on its own.
+		if key != "Host" && key != "Authorization" && key != "If-None-Match" && key != "Accept-Encoding" {
 			for _, v := range values {
 				proxyReq.Header.Add(key, v)
 			}
@@ -1042,7 +1045,14 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				Total   int                      `json:"total"`
 				Warning string                   `json:"__warning,omitempty"`
 			}
-			if err := json.Unmarshal(respBody, &resources); err == nil {
+			err := json.Unmarshal(respBody, &resources)
+			// A list that cannot be read cannot be narrowed to a non-admin's
+			// teams, nor their credentials taken out: not for them.
+			if err != nil && !isAdmin {
+				refuseUnreadable(c, instanceID, resourceType)
+				return
+			}
+			if err == nil {
 				if len(resources.List) > maxListRows {
 					// The whole list is fetched so filtering can precede
 					// pagination. Say so rather than quietly working through an
@@ -1290,10 +1300,16 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			// only this response to go on, and without it the reassign dialog
 			// cannot name the current team — nor tell a route that is already
 			// unowned from one the operator is about to detach.
-			respBody = injectTeamID(respBody, ownerTeamID)
+			// Redacted first: injectTeamID reads the first JSON value and
+			// drops whatever follows it, which is no answer to pass on to this
+			// caller either.
 			if hidesCredentialsOf(ownerTeamID) {
-				respBody = redactCredentials(resourceType, respBody)
+				if respBody, err = redactCredentials(resourceType, respBody); err != nil {
+					refuseUnreadable(c, instanceID, resourceType)
+					return
+				}
 			}
+			respBody = injectTeamID(respBody, ownerTeamID)
 		}
 	}
 
@@ -1301,7 +1317,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// owns (global rules, plugin metadata, secrets), and whatever the team
 	// filter above did not decode. Redacting twice changes nothing.
 	if c.Request.Method == http.MethodGet && resp.StatusCode < http.StatusMultipleChoices && readsOnly {
-		respBody = redactCredentials(resourceType, respBody)
+		if respBody, err = redactCredentials(resourceType, respBody); err != nil {
+			refuseUnreadable(c, instanceID, resourceType)
+			return
+		}
 	}
 
 	for k, v := range resp.Header {
@@ -1315,6 +1334,14 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		}
 	}
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
+}
+
+// refuseUnreadable answers, in place of an answer of the gateway this proxy
+// could not read, an error that carries nothing of it: for a caller who may
+// not read every credential it might hold, a failure is closed (#463).
+func refuseUnreadable(c *gin.Context, instanceID, resourceType string) {
+	log.Printf("[instance %s] a %s answer could not be read, and was not passed on", instanceID, resourceType)
+	c.JSON(http.StatusBadGateway, gin.H{"error": "The gateway's answer could not be read"})
 }
 
 func (h *ProxyHandler) ListRoutes(c *gin.Context)    { h.ProxyRequest(c) }
