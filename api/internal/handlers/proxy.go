@@ -169,6 +169,59 @@ func stripsRouteTimestampsFor(method, resourceType, path string) bool {
 	return false
 }
 
+// routeOIDCClientID reads plugins.openid-connect.client_id from a route body,
+// or "" when it has none or the body is not the shape APISIX takes. Keys are
+// matched exactly, as APISIX does: given the body stripRouteTimestamps
+// re-marshalled, it reads what the gateway will.
+func routeOIDCClientID(body []byte) string {
+	var route map[string]json.RawMessage
+	if json.Unmarshal(body, &route) != nil {
+		return ""
+	}
+	var plugins map[string]json.RawMessage
+	if json.Unmarshal(route["plugins"], &plugins) != nil {
+		return ""
+	}
+	var oidc map[string]any
+	if json.Unmarshal(plugins["openid-connect"], &oidc) != nil {
+		return ""
+	}
+	id, _ := oidc["client_id"].(string)
+	return id
+}
+
+// oidcClientRefused reports whether a non-admin's route write, into a route
+// of routeTeam, names a client the dashboard created for another team: the
+// client's secret would land in a route every member of routeTeam reads, and
+// mint tokens the client's own route accepts (#464). A client's team is the
+// live owner of the route it was made for, on the instance it was made on;
+// one detached from its deleted route has none, and is an admin's to place. A
+// client id the registry does not hold (typed by hand) is not checked.
+func (h *ProxyHandler) oidcClientRefused(ctx context.Context, clientID, routeTeam string) (bool, error) {
+	if h.idpService == nil || clientID == "" {
+		return false, nil
+	}
+	entries, err := h.idpService.ListClients(ctx, "")
+	if err != nil {
+		return false, err
+	}
+	for _, e := range entries {
+		if e.ClientID != clientID {
+			continue
+		}
+		team := ""
+		if e.RouteID != "" && e.RouteCreateTime != 0 {
+			if team, err = h.ownershipService.GetOwner(ctx, e.InstanceID, "routes", e.RouteID); err != nil {
+				return false, err
+			}
+		}
+		if team == "" || team != routeTeam {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // detachesRoute reports whether a finished request deleted a route, so the
 // clients made for it must be detached from it.
 func detachesRoute(method, resourceType, resourceID, path string, status int) bool {
@@ -233,6 +286,10 @@ const teamNotAssignedCode = "team_not_assigned"
 // team that owns the resource, or in the team they named for a create
 // (#394).
 const teamReadOnlyCode = "team_read_only"
+
+// oidcClientOtherTeamCode marks a route write refused because the
+// openid-connect client it names was made for another team's route (#464).
+const oidcClientOtherTeamCode = "oidc_client_other_team"
 
 // maxListRows is the point past which a full list fetch is worth a log line.
 // Nothing is truncated - dropping rows would hide resources - but an operator
@@ -433,14 +490,15 @@ func deepWriteRefused(method, path string) bool {
 
 // Messages for the proxy's authorization refusals.
 const (
-	unassignedResourceMsg = "This resource is not assigned to a team. Ask an admin to assign it before editing."
-	alreadyExistsMsg      = "A resource with this name or ID already exists. Choose a different one, or edit the existing resource."
-	couldNotVerifyMsg     = "Could not verify the resource before writing to it"
-	otherTeamMsg          = "Resource owned by another team"
-	accessDeniedMsg       = "Access denied to this resource"
-	teamRequiredMsg       = "Choose which of your teams this is for before creating it."
-	teamNotAssignedMsg    = "You are not assigned to this team on this instance"
-	teamReadOnlyMsg       = "You are a viewer in that team on this instance: you can read its resources, not change them or create one in it."
+	unassignedResourceMsg  = "This resource is not assigned to a team. Ask an admin to assign it before editing."
+	alreadyExistsMsg       = "A resource with this name or ID already exists. Choose a different one, or edit the existing resource."
+	couldNotVerifyMsg      = "Could not verify the resource before writing to it"
+	otherTeamMsg           = "Resource owned by another team"
+	accessDeniedMsg        = "Access denied to this resource"
+	teamRequiredMsg        = "Choose which of your teams this is for before creating it."
+	teamNotAssignedMsg     = "You are not assigned to this team on this instance"
+	oidcClientOtherTeamMsg = "The openid-connect client of this route belongs to another team. Use a client of the route's own team."
+	teamReadOnlyMsg        = "You are a viewer in that team on this instance: you can read its resources, not change them or create one in it."
 )
 
 // refuse answers a request the team rules turn down. error_msg as well as
@@ -752,9 +810,15 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
+	// The team the resource written belongs to, or will once written: its
+	// recorded owner, else the team the ownership step below records.
+	writeTeam := effectiveTeamID
 	if !isAdmin {
 		if ownershipChecked(c.Request.Method, resourceID) {
 			ownerTeamID, _ := h.getOwner(c.Request.Context(), instanceID, resourceType, resourceID)
+			if ownerTeamID != "" {
+				writeTeam = ownerTeamID
+			}
 
 			if ownerTeamID == "" {
 				// No ownership record. Either this creates something new - a
@@ -865,6 +929,18 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		if bodyBytes, err = stripRouteTimestamps(bodyBytes); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
 			return
+		}
+		// Read from the body as re-marshalled, which is what APISIX gets.
+		if !isAdmin {
+			refused, err := h.oidcClientRefused(c.Request.Context(), routeOIDCClientID(bodyBytes), writeTeam)
+			if err != nil {
+				c.JSON(http.StatusBadGateway, gin.H{"error": couldNotVerifyMsg, "error_msg": couldNotVerifyMsg})
+				return
+			}
+			if refused {
+				refuse(c, http.StatusForbidden, oidcClientOtherTeamMsg, oidcClientOtherTeamCode)
+				return
+			}
 		}
 	}
 

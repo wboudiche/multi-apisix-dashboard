@@ -760,10 +760,15 @@ func (h *IdPHandler) UseClient(c *gin.Context) {
 
 // useTarget answers the team of the route a used client's secret is written
 // into: the owner of the route named, or the acting team when none is. A named
-// route that does not exist answers an admin 404 and anyone else the 403 of a
-// route they may not write, as CreateClient does; false means an answer went.
+// route that does not exist answers the 403 of a route the caller may not
+// write; false means an answer went. An admin may use any client, so nothing
+// is read for one: a gateway that cannot answer does not stop them.
+//
+// The route is what the caller says, and the secret could still be written by
+// hand into another: what holds is the proxy's check on route writes
+// (oidcClientRefused). This answers the picker early, with the same rule.
 func (h *IdPHandler) useTarget(c *gin.Context, scope teamScope, instanceID, routeID string) (string, bool) {
-	if routeID == "" {
+	if routeID == "" || scope.isAdmin {
 		return scope.acting, true
 	}
 	ctx := c.Request.Context()
@@ -778,11 +783,7 @@ func (h *IdPHandler) useTarget(c *gin.Context, scope teamScope, instanceID, rout
 		return "", false
 	}
 	if !route.Found {
-		if scope.isAdmin {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
-		} else {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
-		}
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 		return "", false
 	}
 	owner, err := h.routeOwner(ctx, instanceID, routeID)

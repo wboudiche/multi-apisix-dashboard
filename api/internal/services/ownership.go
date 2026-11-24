@@ -22,11 +22,19 @@ import (
 	"github.com/wboudiche/multi-apisix-dashboard/api/internal/models"
 )
 
-type OwnershipService struct {
-	etcd *EtcdClient
+// ownershipStore is the slice of EtcdClient the ownership records use, so a
+// test can stand in for etcd.
+type ownershipStore interface {
+	kvStore
+	Get(ctx context.Context, key string) ([]byte, error)
+	PutJSONIfAbsent(ctx context.Context, key string, value interface{}) (bool, error)
 }
 
-func NewOwnershipService(etcd *EtcdClient) *OwnershipService {
+type OwnershipService struct {
+	etcd ownershipStore
+}
+
+func NewOwnershipService(etcd ownershipStore) *OwnershipService {
 	return &OwnershipService{
 		etcd: etcd,
 	}

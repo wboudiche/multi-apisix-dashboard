@@ -167,6 +167,20 @@ func (m *memStore) PutJSON(_ context.Context, key string, v interface{}) error {
 	m.data[key] = b
 	return nil
 }
+func (m *memStore) Get(_ context.Context, key string) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.data[key], nil
+}
+func (m *memStore) PutJSONIfAbsent(ctx context.Context, key string, v interface{}) (bool, error) {
+	m.mu.Lock()
+	_, ok := m.data[key]
+	m.mu.Unlock()
+	if ok {
+		return false, nil
+	}
+	return true, m.PutJSON(ctx, key, v)
+}
 func (m *memStore) Delete(_ context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -607,7 +621,10 @@ func TestUseClientTargetRoute(t *testing.T) {
 		{"route of a team only viewed", twoTeams, "t2", "r3", "u3", 403},
 		{"unowned route", twoTeams, "t2", "unowned", "u1", 403},
 		{"unknown route, developer", twoTeams, "t2", "nope", "u1", 403},
-		{"unknown route, admin", admin, "", "nope", "u1", 404},
+		{"unknown route, admin", admin, "", "nope", "u1", 200},
+		// A named route gives the team: one the caller only views, named in
+		// the header, does not stand in the way.
+		{"t1 route, t1 client, viewed team named", twoTeams, "t3", "r1", "u1", 200},
 		{"admin, t1 route, t2 client", admin, "", "r1", "u2", 200},
 		{"naming a foreign team", twoTeams, "t9", "r1", "u1", 403},
 		{"no route, acting t2, t1 client", twoTeams, "t2", "", "u1", 403},
@@ -641,6 +658,32 @@ func TestUseClientTargetRoute(t *testing.T) {
 	for _, b := range forbidden {
 		if b != forbidden[0] {
 			t.Errorf("403 bodies differ: %q vs %q", b, forbidden[0])
+		}
+	}
+}
+
+// An admin may use any client: a gateway that cannot answer for the route
+// named does not stop them, while it does a developer.
+func TestUseClientTargetRouteGatewayDown(t *testing.T) {
+	for _, dev := range []bool{false, true} {
+		f := newCreateFixture(t, []string{"app.test"}, true)
+		f.seedClient(t, "u1", "r1", "login")
+		if dev {
+			f.asDeveloper()
+		}
+		f.h.readRoute = func(_ context.Context, _ *models.Instance, id string) (routeFacts, error) {
+			if id == "r1" {
+				return routeFacts{Found: true, CreateTime: 100}, nil
+			}
+			return routeFacts{}, errors.New("gateway down")
+		}
+		w := f.do(t, http.MethodPost, "route=other", "u1", f.h.UseClient)
+		want := http.StatusOK
+		if dev {
+			want = http.StatusBadGateway
+		}
+		if w.Code != want {
+			t.Errorf("developer %v: status %d: %s", dev, w.Code, w.Body)
 		}
 	}
 }

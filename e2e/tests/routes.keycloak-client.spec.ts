@@ -493,6 +493,32 @@ test('a developer of two teams reuses only clients of the route\'s own team', as
     await expect(use(ROUTES.devOut.id)).rejects.toMatchObject({ status: 403 });
     await expect(use(FRONT_ROUTE.id)).resolves.toMatchObject({ client_id: front.client_id });
   });
+
+  await test.step('nor can that secret be written into the route by hand', async () => {
+    const dev = await loginAdmin(username, PASSWORD);
+    // Read for the acting team with no route named, as the quick page does.
+    const creds = (await apiFetch(
+      `/api/v1/instances/${fx().localInstanceId}/oidc-clients/${frontUuid}/use`,
+      dev,
+      { method: 'POST', headers: onLocal(fx().frontendTeamId) }
+    )) as { client_id: string; client_secret: string; discovery: string };
+    const put = (oidc: Record<string, unknown>) =>
+      apiFetch(`${PROXY}/routes/${ROUTES.devOut.id}`, dev, {
+        method: 'PUT',
+        headers: onLocal(fx().frontendTeamId),
+        json: {
+          name: `${RUN}-devOut`,
+          uri: `/${ROUTES.devOut.id}/*`,
+          host: ROUTES.devOut.host,
+          ...upstreamOf('devOut'),
+          plugins: { 'openid-connect': { ...oidc, bearer_only: true } },
+        },
+      });
+    await expect(
+      put({ client_id: creds.client_id, client_secret: creds.client_secret, discovery: creds.discovery })
+    ).rejects.toMatchObject({ status: 403 });
+    expect((await savedOidc(ROUTES.devOut.id))?.client_id).toBeUndefined();
+  });
 });
 
 test('a client no route uses any more reads "No route"', async ({ page }) => {
