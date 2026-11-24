@@ -493,6 +493,10 @@ type ProxyHandler struct {
 	// getInstance is instanceService.GetInstance, a field so a test can serve
 	// an instance without etcd.
 	getInstance func(ctx context.Context, id string) (*models.Instance, error)
+	// getOwner and listOwners are ownershipService's GetOwner and
+	// ListOwnersByResourceType, fields for the same reason.
+	getOwner   func(ctx context.Context, instanceID, resourceType, resourceID string) (string, error)
+	listOwners func(ctx context.Context, instanceID, resourceType string) (map[string]string, error)
 	// Held per handler rather than per request: paging through an
 	// upstream-filtered list is several requests, and re-reading the whole
 	// service table on each was the cost this exists to remove.
@@ -510,6 +514,8 @@ type ProxyHandler struct {
 func NewProxyHandler(instanceService *services.InstanceService, ownershipService *services.OwnershipService, idpService *services.IdPService) *ProxyHandler {
 	return &ProxyHandler{
 		getInstance:        instanceService.GetInstance,
+		getOwner:           ownershipService.GetOwner,
+		listOwners:         ownershipService.ListOwnersByResourceType,
 		idpService:         idpService,
 		instanceService:    instanceService,
 		ownershipService:   ownershipService,
@@ -662,6 +668,17 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 		return
 	}
 
+	// A caller who may read this type but not write it - a viewer, or a
+	// developer on a type only an admin writes - reads it with its credentials
+	// replaced (#463): reading a route must not be enough to act as its
+	// client. On the team-owned types, a non-admin who may write the type is
+	// still a viewer in some of their teams (#394), so their rows are decided
+	// one owner at a time below.
+	readsOnly := !isAdmin && redactedTypes[resourceType] && !models.HasResourcePermission(effRole, resourceType, "write")
+	hidesCredentialsOf := func(ownerTeamID string) bool {
+		return !isAdmin && redactedTypes[resourceType] && (readsOnly || !scope.mayWrite(ownerTeamID))
+	}
+
 	// Read before the checks below: a PUT addressed to a collection names its
 	// resource in the body rather than the path (see collectionPutID).
 	var bodyBytes []byte
@@ -737,7 +754,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 
 	if !isAdmin {
 		if ownershipChecked(c.Request.Method, resourceID) {
-			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
+			ownerTeamID, _ := h.getOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 
 			if ownerTeamID == "" {
 				// No ownership record. Either this creates something new - a
@@ -855,7 +872,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	for key, values := range c.Request.Header {
 		// If-None-Match is a contract between the dashboard and this proxy
 		// (see createOnlyRequested); APISIX has no business acting on it.
-		if key != "Host" && key != "Authorization" && key != "If-None-Match" {
+		// Accept-Encoding is the browser's: the answer is read here - filtered,
+		// redacted - so it is asked for in an encoding this proxy reads, which
+		// the transport negotiates and decodes on its own.
+		if key != "Host" && key != "Authorization" && key != "If-None-Match" && key != "Accept-Encoding" {
 			for _, v := range values {
 				proxyReq.Header.Add(key, v)
 			}
@@ -1011,7 +1031,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 	// Applies to every team-owned resource type — not just routes/services/
 	// upstreams — so a non-admin cannot read another team's consumers,
 	// consumer_groups or stream_routes.
-	if c.Request.Method == http.MethodGet && resp.StatusCode == http.StatusOK && teamScopedResources[resourceType] {
+	// Every success, not only a 200: the team filter and the credentials it
+	// hides are what this caller may read, whatever the status says.
+	if c.Request.Method == http.MethodGet && resp.StatusCode >= http.StatusOK &&
+		resp.StatusCode < http.StatusMultipleChoices && teamScopedResources[resourceType] {
 		if isListGET {
 			// __warning uses the same "__" prefix as __team_id: a field the
 			// dashboard injects, not something APISIX sent. It carries a caveat
@@ -1021,11 +1044,18 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			// pass for complete. During an incident that is the difference
 			// between "no route reaches this upstream" and "I could not check".
 			var resources struct {
-				List    []map[string]interface{} `json:"list"`
-				Total   int                      `json:"total"`
-				Warning string                   `json:"__warning,omitempty"`
+				List    rowList `json:"list"`
+				Total   int     `json:"total"`
+				Warning string  `json:"__warning,omitempty"`
 			}
-			if err := json.Unmarshal(respBody, &resources); err == nil {
+			err := json.Unmarshal(respBody, &resources)
+			// A list that cannot be read cannot be narrowed to a non-admin's
+			// teams, nor their credentials taken out: not for them.
+			if err != nil && !isAdmin {
+				refuseUnreadable(c, instanceID, resourceType)
+				return
+			}
+			if err == nil {
 				if len(resources.List) > maxListRows {
 					// The whole list is fetched so filtering can precede
 					// pagination. Say so rather than quietly working through an
@@ -1035,7 +1065,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				}
 
 				// Batch fetch all ownerships for this resource type
-				ownerMap, _ := h.ownershipService.ListOwnersByResourceType(c.Request.Context(), instanceID, resourceType)
+				ownerMap, _ := h.listOwners(c.Request.Context(), instanceID, resourceType)
 
 				// A route reaches its upstream directly or through a service,
 				// so the upstream filter needs the service table to answer for
@@ -1172,6 +1202,11 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				filtered := make([]map[string]interface{}, 0, len(resources.List))
 				for _, r := range resources.List {
 					val, ok := r["value"].(map[string]interface{})
+					// A row that is not {key, value} names no team and is
+					// not read as a resource: a non-admin does not get it.
+					if !ok && !isAdmin {
+						continue
+					}
 					if ok {
 						// Consumers are keyed by username; everything else by id.
 						id, _ := val["id"].(string)
@@ -1215,6 +1250,10 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 						if !matchesListFilters(val, filters) {
 							continue
 						}
+
+						if hidesCredentialsOf(ownerTeamID) {
+							redactRow(resourceType, r)
+						}
 					}
 					filtered = append(filtered, r)
 				}
@@ -1254,7 +1293,7 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 				respBody, _ = json.Marshal(resources)
 			}
 		} else {
-			ownerTeamID, _ := h.ownershipService.GetOwner(c.Request.Context(), instanceID, resourceType, resourceID)
+			ownerTeamID, _ := h.getOwner(c.Request.Context(), instanceID, resourceType, resourceID)
 			// Any of the caller's teams, whichever one they named: the team
 			// named narrows a list, not what they may open.
 			if !isAdmin && !scope.mayAccess(ownerTeamID) {
@@ -1269,16 +1308,61 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			// only this response to go on, and without it the reassign dialog
 			// cannot name the current team — nor tell a route that is already
 			// unowned from one the operator is about to detach.
+			// Redacted first: injectTeamID reads the first JSON value and
+			// drops whatever follows it, which is no answer to pass on to this
+			// caller either.
+			if hidesCredentialsOf(ownerTeamID) {
+				if respBody, err = redactCredentials(resourceType, respBody); err != nil {
+					refuseUnreadable(c, instanceID, resourceType)
+					return
+				}
+			}
 			respBody = injectTeamID(respBody, ownerTeamID)
 		}
 	}
 
+	// Every other answer of a type the caller may not write: the types no team
+	// owns (global rules, plugin metadata, secrets), and whatever the team
+	// filter above did not decode. Redacting twice changes nothing.
+	if c.Request.Method == http.MethodGet && resp.StatusCode < http.StatusMultipleChoices && readsOnly {
+		if respBody, err = redactCredentials(resourceType, respBody); err != nil {
+			refuseUnreadable(c, instanceID, resourceType)
+			return
+		}
+	}
+
 	for k, v := range resp.Header {
+		// The body above may not be the one APISIX sent: its length is
+		// counted again for the one sent here.
+		if http.CanonicalHeaderKey(k) == "Content-Length" {
+			continue
+		}
 		for _, vv := range v {
 			c.Header(k, vv)
 		}
 	}
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
+}
+
+// rowList is a list's rows. APISIX answers an empty collection with an empty
+// object rather than an array (see parseServiceUpstreams), which is a list
+// of nothing, not an answer to refuse.
+type rowList []map[string]interface{}
+
+func (l *rowList) UnmarshalJSON(data []byte) error {
+	if t := bytes.TrimSpace(data); bytes.Equal(t, []byte("{}")) || bytes.Equal(t, []byte("null")) {
+		*l = rowList{}
+		return nil
+	}
+	return json.Unmarshal(data, (*[]map[string]interface{})(l))
+}
+
+// refuseUnreadable answers, in place of an answer of the gateway this proxy
+// could not read, an error that carries nothing of it: for a caller who may
+// not read every credential it might hold, a failure is closed (#463).
+func refuseUnreadable(c *gin.Context, instanceID, resourceType string) {
+	log.Printf("[instance %s] a %s answer could not be read, and was not passed on", instanceID, resourceType)
+	c.JSON(http.StatusBadGateway, gin.H{"error": "The gateway's answer could not be read"})
 }
 
 func (h *ProxyHandler) ListRoutes(c *gin.Context)    { h.ProxyRequest(c) }
