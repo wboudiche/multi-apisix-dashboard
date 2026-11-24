@@ -102,8 +102,6 @@ var pluginCredentialPaths = map[string][]string{
 	"openfunction":       {"authorization"},
 }
 
-// resourceCredentialFields are the fields that are a credential only at the
-// top of a resource of one type: an SSL's private keys, a vault's token.
 // redactedTypes are the resource types whose answers hold data a reader may
 // not act with. Not plugins: a plugin's schema names its credentials, as
 // properties a form is built from, and holds none.
@@ -114,6 +112,8 @@ var redactedTypes = map[string]bool{
 	"protos": true,
 }
 
+// resourceCredentialFields are the fields that are a credential only at the
+// top of a resource of one type: an SSL's private keys, a vault's token.
 var resourceCredentialFields = map[string]map[string]bool{
 	"ssls":    {"key": true, "keys": true},
 	"secrets": {"token": true},
