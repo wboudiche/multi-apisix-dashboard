@@ -24,6 +24,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -134,25 +135,38 @@ func stripDashboardFields(body []byte) []byte {
 // something this one did not check. Numbers stay exact. An empty body is
 // returned as it is, for APISIX to answer.
 func stripRouteTimestamps(body []byte) ([]byte, error) {
+	return canonicalObject(body, func(route map[string]any) {
+		delete(route, "create_time")
+		delete(route, "update_time")
+	})
+}
+
+// canonicalObject reads a non-empty body as exactly one JSON object, with
+// nothing after it, lets edit change it, and returns it re-marshalled: never
+// the caller's bytes, so APISIX's parser cannot read something this one did
+// not check. Numbers stay exact. An empty body is returned as it is, for
+// APISIX to answer.
+func canonicalObject(body []byte, edit func(map[string]any)) ([]byte, error) {
 	if len(bytes.TrimSpace(body)) == 0 {
 		return body, nil
 	}
 	invalid := errors.New("invalid JSON body")
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
-	var route map[string]any
-	if err := decoder.Decode(&route); err != nil || route == nil {
+	var obj map[string]any
+	if err := decoder.Decode(&obj); err != nil || obj == nil {
 		return nil, invalid
 	}
 	if _, err := decoder.Token(); err != io.EOF {
 		return nil, invalid
 	}
-	delete(route, "create_time")
-	delete(route, "update_time")
+	if edit != nil {
+		edit(obj)
+	}
 	var out bytes.Buffer
 	enc := json.NewEncoder(&out)
 	enc.SetEscapeHTML(false)
-	if err := enc.Encode(route); err != nil {
+	if err := enc.Encode(obj); err != nil {
 		return nil, invalid
 	}
 	return bytes.TrimSpace(out.Bytes()), nil
@@ -169,36 +183,83 @@ func stripsRouteTimestampsFor(method, resourceType, path string) bool {
 	return false
 }
 
-// routeOIDCClientID reads plugins.openid-connect.client_id from a route body,
-// or "" when it has none or the body is not the shape APISIX takes. Keys are
-// matched exactly, as APISIX does: given the body stripRouteTimestamps
-// re-marshalled, it reads what the gateway will.
-func routeOIDCClientID(body []byte) string {
-	var route map[string]json.RawMessage
-	if json.Unmarshal(body, &route) != nil {
-		return ""
-	}
-	var plugins map[string]json.RawMessage
-	if json.Unmarshal(route["plugins"], &plugins) != nil {
-		return ""
-	}
-	var oidc map[string]any
-	if json.Unmarshal(plugins["openid-connect"], &oidc) != nil {
-		return ""
-	}
-	id, _ := oidc["client_id"].(string)
-	return id
+// pluginClientTypes are the types whose plugins act on a route's traffic: the
+// route's own, its service's, its plugin config's, and its consumer's group's.
+var pluginClientTypes = map[string]bool{
+	"routes": true, "services": true, "plugin_configs": true, "consumer_groups": true,
 }
 
-// oidcClientRefused reports whether a non-admin's route write, into a route
-// of routeTeam, names a client the dashboard created for another team: the
-// client's secret would land in a route every member of routeTeam reads, and
+// checksPluginClients reports whether a write is one whose body is checked
+// for the clients its plugins name: a POST or PUT of one of the
+// pluginClientTypes, not of something beneath one.
+func checksPluginClients(method, resourceType, path string) bool {
+	return (method == http.MethodPost || method == http.MethodPut) &&
+		pluginClientTypes[resourceType] && !beneathResource(path)
+}
+
+// pluginClientIDs reads the client_id of every plugin a resource's body
+// configures (openid-connect, authz-keycloak, any other), each once. Keys are
+// matched exactly, as APISIX does: given a body canonicalObject re-marshalled,
+// it reads what the gateway will.
+func pluginClientIDs(body []byte) []string {
+	var resource map[string]json.RawMessage
+	if json.Unmarshal(body, &resource) != nil {
+		return nil
+	}
+	var plugins map[string]json.RawMessage
+	if json.Unmarshal(resource["plugins"], &plugins) != nil {
+		return nil
+	}
+	var ids []string
+	for _, raw := range plugins {
+		var conf map[string]any
+		if json.Unmarshal(raw, &conf) != nil {
+			continue
+		}
+		if id, ok := conf["client_id"].(string); ok && id != "" && !slices.Contains(ids, id) {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// storedClientIDs reads the resource at path from the gateway and answers the
+// client ids its plugins name: none when it does not exist. An answer it
+// cannot read is an error: the caller fails closed.
+func (h *ProxyHandler) storedClientIDs(ctx context.Context, instance *models.Instance, path string) ([]string, error) {
+	req, err := newAdminRequest(ctx, instance, path)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("admin API returned status %d", resp.StatusCode)
+	}
+	var stored struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&stored); err != nil {
+		return nil, err
+	}
+	return pluginClientIDs(stored.Value), nil
+}
+
+// oidcClientRefused reports whether a non-admin's write, into a resource of
+// ownerTeam, attaches a client the dashboard created for another team: the
+// client's secret would sit in a resource every member of ownerTeam reads, and
 // mint tokens the client's own route accepts (#464). A client's team is the
 // live owner of the route it was made for, on the instance it was made on;
 // one detached from its deleted route has none, and is an admin's to place. A
 // client id the registry does not hold (typed by hand) is not checked.
-func (h *ProxyHandler) oidcClientRefused(ctx context.Context, clientID, routeTeam string) (bool, error) {
-	if h.idpService == nil || clientID == "" {
+func (h *ProxyHandler) oidcClientRefused(ctx context.Context, clientIDs []string, ownerTeam string) (bool, error) {
+	if h.idpService == nil || len(clientIDs) == 0 {
 		return false, nil
 	}
 	entries, err := h.idpService.ListClients(ctx, "")
@@ -206,7 +267,7 @@ func (h *ProxyHandler) oidcClientRefused(ctx context.Context, clientID, routeTea
 		return false, err
 	}
 	for _, e := range entries {
-		if e.ClientID != clientID {
+		if !slices.Contains(clientIDs, e.ClientID) {
 			continue
 		}
 		team := ""
@@ -215,11 +276,27 @@ func (h *ProxyHandler) oidcClientRefused(ctx context.Context, clientID, routeTea
 				return false, err
 			}
 		}
-		if team == "" || team != routeTeam {
+		if team == "" || team != ownerTeam {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+// newClientIDs answers the client ids a non-admin's write attaches: those its
+// body names that the resource it replaces did not. A client already there
+// stays whatever became of it since - detached, or its route reassigned - so
+// that the resource can still be edited.
+func (h *ProxyHandler) newClientIDs(ctx context.Context, instance *models.Instance, method, resourceID, path string, body []byte) ([]string, error) {
+	ids := pluginClientIDs(body)
+	if len(ids) == 0 || method != http.MethodPut || resourceID == "" {
+		return ids, nil
+	}
+	stored, err := h.storedClientIDs(ctx, instance, path)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(ids, func(id string) bool { return slices.Contains(stored, id) }), nil
 }
 
 // detachesRoute reports whether a finished request deleted a route, so the
@@ -497,7 +574,7 @@ const (
 	accessDeniedMsg        = "Access denied to this resource"
 	teamRequiredMsg        = "Choose which of your teams this is for before creating it."
 	teamNotAssignedMsg     = "You are not assigned to this team on this instance"
-	oidcClientOtherTeamMsg = "The openid-connect client of this route belongs to another team. Use a client of the route's own team."
+	oidcClientOtherTeamMsg = "A client this resource's plugins name belongs to another team. Use a client of the resource's own team."
 	teamReadOnlyMsg        = "You are a viewer in that team on this instance: you can read its resources, not change them or create one in it."
 )
 
@@ -930,17 +1007,28 @@ func (h *ProxyHandler) ProxyRequest(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
 			return
 		}
-		// Read from the body as re-marshalled, which is what APISIX gets.
-		if !isAdmin {
-			refused, err := h.oidcClientRefused(c.Request.Context(), routeOIDCClientID(bodyBytes), writeTeam)
-			if err != nil {
-				c.JSON(http.StatusBadGateway, gin.H{"error": couldNotVerifyMsg, "error_msg": couldNotVerifyMsg})
-				return
-			}
-			if refused {
-				refuse(c, http.StatusForbidden, oidcClientOtherTeamMsg, oidcClientOtherTeamCode)
-				return
-			}
+	}
+	// The clients a non-admin's write attaches must be of the team the
+	// resource belongs to. Read from the body as re-marshalled, which is what
+	// APISIX gets.
+	if !isAdmin && checksPluginClients(c.Request.Method, resourceType, path) {
+		var err error
+		if bodyBytes, err = canonicalObject(bodyBytes, nil); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body", "error_msg": "invalid JSON body"})
+			return
+		}
+		ids, err := h.newClientIDs(c.Request.Context(), instance, c.Request.Method, resourceID, checkPath, bodyBytes)
+		refused := false
+		if err == nil {
+			refused, err = h.oidcClientRefused(c.Request.Context(), ids, writeTeam)
+		}
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": couldNotVerifyMsg, "error_msg": couldNotVerifyMsg})
+			return
+		}
+		if refused {
+			refuse(c, http.StatusForbidden, oidcClientOtherTeamMsg, oidcClientOtherTeamCode)
+			return
 		}
 	}
 

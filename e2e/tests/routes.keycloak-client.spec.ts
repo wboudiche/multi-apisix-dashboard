@@ -91,6 +91,8 @@ const ROUTES = {
 type RouteKey = keyof typeof ROUTES;
 /** A route of Frontend Team, the other team of the two-team developer below. */
 const FRONT_ROUTE = { id: `e2ekc-${RUN}-front`, host: `${RUN}-front.${DOMAIN}` };
+/** A service of Backend Team: its plugins act on every route bound to it. */
+const BACKEND_SERVICE = `e2ekc-${RUN}-svc`;
 
 let idp: Idp;
 /** The client ids the tests made, by the route they were made on. */
@@ -147,6 +149,11 @@ test.beforeAll(async () => {
     headers: onLocal(fx().frontendTeamId),
     json: { name: `${RUN}-front`, uri: `/${FRONT_ROUTE.id}/*`, host: FRONT_ROUTE.host, ...upstreamOf('token') },
   });
+  await apiFetch(`${PROXY}/services/${BACKEND_SERVICE}`, token, {
+    method: 'PUT',
+    headers: onLocal(fx().backendTeamId),
+    json: { name: `${RUN}-svc`, upstream: upstreamOf('token').upstream },
+  });
 });
 
 test.afterAll(async () => {
@@ -157,6 +164,10 @@ test.afterAll(async () => {
       headers: onLocal(),
     }).catch(() => undefined);
   }
+  await apiFetch(`${PROXY}/services/${BACKEND_SERVICE}`, token, {
+    method: 'DELETE',
+    headers: onLocal(),
+  }).catch(() => undefined);
   await cleanUpKeycloak(NAME_PREFIX, CLIENT_PREFIX);
   await deleteUsersByPrefix(NAME_PREFIX);
 });
@@ -518,6 +529,26 @@ test('a developer of two teams reuses only clients of the route\'s own team', as
       put({ client_id: creds.client_id, client_secret: creds.client_secret, discovery: creds.discovery })
     ).rejects.toMatchObject({ status: 403 });
     expect((await savedOidc(ROUTES.devOut.id))?.client_id).toBeUndefined();
+
+    // Nor into a service of Backend Team, whose plugins its routes run.
+    await expect(
+      apiFetch(`${PROXY}/services/${BACKEND_SERVICE}`, dev, {
+        method: 'PUT',
+        headers: onLocal(fx().frontendTeamId),
+        json: {
+          name: `${RUN}-svc`,
+          upstream: upstreamOf('token').upstream,
+          plugins: {
+            'openid-connect': {
+              client_id: creds.client_id,
+              client_secret: creds.client_secret,
+              discovery: creds.discovery,
+              bearer_only: true,
+            },
+          },
+        },
+      })
+    ).rejects.toMatchObject({ status: 403 });
   });
 });
 

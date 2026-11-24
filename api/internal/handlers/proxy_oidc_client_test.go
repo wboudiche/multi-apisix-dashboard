@@ -17,8 +17,11 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -39,13 +42,18 @@ type oidcProxyFixture struct {
 	idps      *services.IdPService
 	idpID     string
 	mu        sync.Mutex
-	existing  map[string]bool
-	forwarded []string // writes that reached the gateway
+	stored    map[string]string // what the gateway holds, by "<type>/<id>"
+	getFails  map[string]bool   // reads of these answer 500
+	forwarded []string          // writes that reached the gateway
 }
 
 func newOIDCProxyFixture(t *testing.T) *oidcProxyFixture {
 	t.Helper()
-	f := &oidcProxyFixture{store: &memStore{}, existing: map[string]bool{"r1": true, "r2": true}}
+	f := &oidcProxyFixture{store: &memStore{}, getFails: map[string]bool{}, stored: map[string]string{
+		"routes/r1": `{"id":"r1"}`, "routes/r2": `{"id":"r2"}`, "routes/boom": `{"id":"boom"}`,
+		"services/s1": `{"id":"s1"}`, "services/s2": `{"id":"s2"}`,
+		"consumer_groups/g1": `{"id":"g1"}`, "plugin_configs/pc1": `{"id":"pc1"}`,
+	}}
 	f.owners = services.NewOwnershipService(f.store)
 	f.idps = services.NewIdPService(f.store)
 	ctx := context.Background()
@@ -58,8 +66,12 @@ func newOIDCProxyFixture(t *testing.T) *oidcProxyFixture {
 		t.Fatal(err)
 	}
 	f.idpID = p.ID
-	for route, team := range map[string]string{"r1": "t1", "r2": "t2"} {
-		if err := f.owners.SetOwner(ctx, &models.Ownership{InstanceID: "i1", ResourceType: "routes", ResourceID: route, TeamID: team}); err != nil {
+	for key, team := range map[string]string{
+		"routes/r1": "t1", "routes/r2": "t2", "routes/boom": "t1", "services/s1": "t1", "services/s2": "t2",
+		"consumer_groups/g1": "t1", "plugin_configs/pc1": "t1",
+	} {
+		typ, id, _ := strings.Cut(key, "/")
+		if err := f.owners.SetOwner(ctx, &models.Ownership{InstanceID: "i1", ResourceType: typ, ResourceID: id, TeamID: team}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -77,26 +89,42 @@ func newOIDCProxyFixture(t *testing.T) *oidcProxyFixture {
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := strings.TrimPrefix(r.URL.Path, "/apisix/admin/routes/")
+		key := strings.TrimPrefix(r.URL.Path, "/apisix/admin/")
+		typ, _, _ := strings.Cut(key, "/")
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		switch r.Method {
 		case http.MethodGet:
-			if !f.existing[id] {
+			if f.getFails[key] {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			v, ok := f.stored[key]
+			if !ok {
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write([]byte(`{"message":"Key not found"}`))
 				return
 			}
-			_, _ = w.Write([]byte(`{"key":"/apisix/routes/` + id + `","value":{"id":"` + id + `"}}`))
+			_, _ = w.Write([]byte(`{"key":"/apisix/` + key + `","value":` + v + `}`))
 		case http.MethodPost:
-			f.forwarded = append(f.forwarded, "POST")
-			f.existing["q1"] = true
+			f.forwarded = append(f.forwarded, "POST "+key)
+			b, _ := io.ReadAll(r.Body)
+			f.stored[typ+"/q1"] = string(b)
 			w.WriteHeader(http.StatusCreated)
-			_, _ = w.Write([]byte(`{"key":"/apisix/routes/q1","value":{"id":"q1"}}`))
+			_, _ = w.Write([]byte(`{"key":"/apisix/` + typ + `/q1","value":{"id":"q1"}}`))
 		default:
-			f.forwarded = append(f.forwarded, r.Method+" "+id)
-			f.existing[id] = true
-			_, _ = w.Write([]byte(`{"key":"/apisix/routes/` + id + `","value":{"id":"` + id + `"}}`))
+			f.forwarded = append(f.forwarded, r.Method+" "+key)
+			b, _ := io.ReadAll(r.Body)
+			id := strings.TrimPrefix(key, typ+"/")
+			if id == "" || id == typ {
+				var v struct {
+					ID string `json:"id"`
+				}
+				_ = json.Unmarshal(b, &v)
+				id = v.ID
+			}
+			f.stored[typ+"/"+id] = string(b)
+			_, _ = w.Write([]byte(`{"key":"/apisix/` + typ + `/` + id + `","value":{"id":"` + id + `"}}`))
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -216,18 +244,97 @@ func TestProxyQuickRouteChainKeepsItsClient(t *testing.T) {
 	}
 }
 
-func TestRouteOIDCClientID(t *testing.T) {
-	cases := map[string]string{
-		withClient("mad-c1"): "mad-c1",
-		`{"uri":"/x"}`:       "",
-		`{"plugins":{"openid-connect":{"client_id":7}}}`: "",
-		`{"plugins":{"openid-connect":"x"}}`:             "",
-		`{"plugins":[]}`:                                 "",
-		``:                                               "",
+func TestPluginClientIDs(t *testing.T) {
+	cases := map[string][]string{
+		withClient("mad-c1"): {"mad-c1"},
+		`{"uri":"/x"}`:       nil,
+		`{"plugins":{"openid-connect":{"client_id":7}}}`: nil,
+		`{"plugins":{"openid-connect":"x"}}`:             nil,
+		`{"plugins":[]}`:                                 nil,
+		``:                                               nil,
+		`{"plugins":{"openid-connect":{"client_id":"a"},"authz-keycloak":{"client_id":"b"},"limit-count":{"count":1}}}`: {"a", "b"},
+		`{"plugins":{"x":{"client_id":"a"},"y":{"client_id":"a"}}}`:                                                     {"a"},
 	}
 	for body, want := range cases {
-		if got := routeOIDCClientID([]byte(body)); got != want {
+		got := pluginClientIDs([]byte(body))
+		slices.Sort(got)
+		if !slices.Equal(got, want) {
 			t.Errorf("%s: got %q want %q", body, got, want)
+		}
+	}
+}
+
+func TestChecksPluginClients(t *testing.T) {
+	cases := []struct {
+		method, typ, path string
+		want              bool
+	}{
+		{http.MethodPut, "routes", "/routes/r1", true},
+		{http.MethodPost, "routes", "/routes", true},
+		{http.MethodPut, "services", "/services/s1", true},
+		{http.MethodPost, "consumer_groups", "/consumer_groups", true},
+		{http.MethodPut, "plugin_configs", "/plugin_configs/p", true},
+		{http.MethodPatch, "routes", "/routes/r1", false},
+		{http.MethodDelete, "routes", "/routes/r1", false},
+		{http.MethodGet, "routes", "/routes/r1", false},
+		{http.MethodPut, "upstreams", "/upstreams/u1", false},
+		{http.MethodPut, "consumers", "/consumers/c/credentials/k", false},
+	}
+	for _, tc := range cases {
+		if got := checksPluginClients(tc.method, tc.typ, tc.path); got != tc.want {
+			t.Errorf("%s %s: got %v", tc.method, tc.path, got)
+		}
+	}
+}
+
+func pluginBody(plugin, clientID string) string {
+	return `{"plugins":{"` + plugin + `":{"client_id":"` + clientID + `"}}}`
+}
+
+// The same rule for every type whose plugins reach a route's traffic, for
+// any plugin's client_id, and only for a client newly attached (#464).
+func TestProxyRefusesAnotherTeamsClientOnPluginTypes(t *testing.T) {
+	acting := func(team string) proxyCaller { c := devT1T2; c.team = team; return c }
+	admin := proxyCaller{role: models.RoleSuperAdmin, team: "t2"}
+	detachedOnR1 := func(f *oidcProxyFixture) {
+		f.stored["routes/r1"] = `{"id":"r1","plugins":{"openid-connect":{"client_id":"mad-c3"}}}`
+	}
+	none := func(*oidcProxyFixture) {}
+	cases := []struct {
+		name         string
+		setup        func(f *oidcProxyFixture)
+		who          proxyCaller
+		method, path string
+		body         string
+		status       int
+	}{
+		{"t1 service, t2 client", none, acting("t2"), http.MethodPut, "/services/s1", withClient("mad-c2"), 403},
+		{"t1 service, t1 client", none, acting("t2"), http.MethodPut, "/services/s1", withClient("mad-c1"), 200},
+		{"new service by POST, acting t1, t2 client", none, acting("t1"), http.MethodPost, "/services", withClient("mad-c2"), 403},
+		{"new service by POST, acting t1, t1 client", none, acting("t1"), http.MethodPost, "/services", withClient("mad-c1"), 201},
+		{"t1 consumer group, t2 client", none, acting("t2"), http.MethodPut, "/consumer_groups/g1", pluginBody("openid-connect", "mad-c2"), 403},
+		{"t1 consumer group, t1 client", none, acting("t2"), http.MethodPut, "/consumer_groups/g1", pluginBody("openid-connect", "mad-c1"), 200},
+		{"t1 route, t2 client in authz-keycloak", none, acting("t1"), http.MethodPut, "/routes/r1", pluginBody("authz-keycloak", "mad-c2"), 403},
+		{"t1 route, t2 client in another plugin next to t1's", none, acting("t1"), http.MethodPut, "/routes/r1",
+			`{"plugins":{"openid-connect":{"client_id":"mad-c1"},"authz-keycloak":{"client_id":"mad-c2"}}}`, 403},
+		{"detached client kept on an edit", detachedOnR1, acting("t1"), http.MethodPut, "/routes/r1", withClient("mad-c3"), 200},
+		{"detached client kept, t2 client added", detachedOnR1, acting("t1"), http.MethodPut, "/routes/r1",
+			`{"plugins":{"openid-connect":{"client_id":"mad-c3"},"authz-keycloak":{"client_id":"mad-c2"}}}`, 403},
+		{"detached client newly added", none, acting("t1"), http.MethodPut, "/routes/r1", withClient("mad-c3"), 403},
+		{"stored resource unreadable", func(f *oidcProxyFixture) { f.getFails["routes/boom"] = true }, acting("t1"), http.MethodPut, "/routes/boom", withClient("mad-c1"), 502},
+		{"service body not one object", none, acting("t1"), http.MethodPut, "/services/s1", `{"plugins":{}} {}`, 400},
+		{"admin, t1 service, t2 client", none, admin, http.MethodPut, "/services/s1", withClient("mad-c2"), 200},
+		{"admin, t1 plugin config, t2 client", none, admin, http.MethodPut, "/plugin_configs/pc1", pluginBody("openid-connect", "mad-c2"), 200},
+	}
+	for _, tc := range cases {
+		f := newOIDCProxyFixture(t)
+		tc.setup(f)
+		w := f.send(t, tc.who, tc.method, tc.path, tc.body)
+		if w.Code != tc.status {
+			t.Errorf("%s: status %d: %s", tc.name, w.Code, w.Body)
+		}
+		if tc.status >= 400 && len(f.forwarded) != 0 {
+			t.Errorf("%s: the write reached the gateway: %v", tc.name, f.forwarded)
 		}
 	}
 }
