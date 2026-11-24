@@ -22,8 +22,10 @@ import {
   actingTeam,
   applyClientCredentials,
   clientOptionLabel,
+  oidcRouteContext,
   proposeClientIdSuffix,
   proposeRedirectUri,
+  routeTeam,
   tokenEndpoint,
   usableClients,
 } from './keycloak-client';
@@ -184,6 +186,22 @@ describe('the clients a caller may put on a route', () => {
     expect(usableClients(clients, false, '')).toEqual([]);
   });
 
+  it('takes the team of a saved route, whichever team the caller acts for', () => {
+    const both = own({ t1: 'developer', t2: 'developer' });
+    expect(routeTeam({ id: 'r1', teamId: 't1', hosts: [], uris: [] }, both, 't2')).toBe('t1');
+    expect(uuids(usableClients(clients, false, routeTeam({ id: 'r1', teamId: 't1', hosts: [], uris: [] }, both, 't2')))).toEqual(['a']);
+  });
+
+  it('takes no team for a saved route without one', () => {
+    expect(routeTeam({ id: 'r1', hosts: [], uris: [] }, own({ t1: 'developer' }), 't1')).toBe('');
+  });
+
+  it('takes the acting team for a route not saved yet', () => {
+    const both = own({ t1: 'developer', t2: 'developer' });
+    expect(routeTeam({ teamId: 't1', hosts: [], uris: [] }, both, 't2')).toBe('t2');
+    expect(routeTeam({ hosts: [], uris: [] }, both, '')).toBe('');
+  });
+
   it('offers an admin every client', () => {
     expect(uuids(usableClients(clients, true, ''))).toEqual(['a', 'b', 'c']);
   });
@@ -195,5 +213,33 @@ describe('the clients a caller may put on a route', () => {
     expect(clientOptionLabel(c, true, names)).toBe('apisix-x - kc (Billing)');
     expect(clientOptionLabel({ ...c, team_id: 't9' }, true, names)).toBe('apisix-x - kc (t9)');
     expect(clientOptionLabel({ ...c, team_id: '' }, true, names)).toBe('apisix-x - kc');
+  });
+});
+
+describe('oidcRouteContext', () => {
+  const values = { id: 'r1', name: 'billing', host: 'a.test', hosts: ['b.test'], uri: '/x', uris: ['/y'], teamId: 't1' };
+
+  it('is the route as the form holds it, on a route form', () => {
+    expect(oidcRouteContext(true, values)).toEqual({
+      id: 'r1',
+      name: 'billing',
+      teamId: 't1',
+      hosts: ['a.test', 'b.test'],
+      uris: ['/x', '/y'],
+    });
+  });
+
+  it('has no id nor team before the route is saved', () => {
+    expect(oidcRouteContext(true, { name: 'n', id: '', teamId: '' })).toEqual({
+      id: undefined,
+      name: 'n',
+      teamId: undefined,
+      hosts: [],
+      uris: [],
+    });
+  });
+
+  it('is none on a service or a stream route: a client belongs to a route', () => {
+    expect(oidcRouteContext(false, values)).toBeUndefined();
   });
 });

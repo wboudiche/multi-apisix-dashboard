@@ -21,9 +21,39 @@ import type { OwnTeams } from '@/stores/team';
 export type OidcRouteContext = {
   id?: string;
   name?: string;
+  /** The team that owns the route, once saved: `__team_id` of its detail. */
+  teamId?: string;
   hosts: string[];
   uris: string[];
 };
+
+/** What the route form holds that the Keycloak client picker reads. */
+export type OidcRouteValues = {
+  id?: string;
+  name?: string;
+  host?: string;
+  hosts?: string[];
+  uri?: string;
+  uris?: string[];
+  teamId?: string;
+};
+
+/**
+ * The route the openid-connect form offers a Keycloak client for, or none
+ * off a route form: the backend ties a client to a route, so a service or a
+ * stream route gets the plugin's own fields only. The id and the team are
+ * only there once the route has been saved.
+ */
+export const oidcRouteContext = (isRoute: boolean, v: OidcRouteValues): OidcRouteContext | undefined =>
+  isRoute
+    ? {
+        id: v.id || undefined,
+        name: v.name,
+        teamId: v.teamId || undefined,
+        hosts: [...(v.host ? [v.host] : []), ...(v.hosts ?? [])],
+        uris: [...(v.uri ? [v.uri] : []), ...(v.uris ?? [])],
+      }
+    : undefined;
 
 /**
  * The address the plugin itself would use for a login (the request URI plus
@@ -114,6 +144,15 @@ export const actingTeam = (own: OwnTeams | undefined, sent: string): string => {
   if (sent) return writable.includes(sent) ? sent : '';
   return writable.length === 1 ? writable[0] : '';
 };
+
+/**
+ * The team whose clients a non-admin may put on a route: the team that owns
+ * it once it is saved, whichever team they act for - the backend checks the
+ * client against that owner (#464) - else the acting team, which a route
+ * not saved yet will belong to. None for a saved route with no owner.
+ */
+export const routeTeam = (route: OidcRouteContext, own: OwnTeams | undefined, sent: string): string =>
+  route.id ? (route.teamId ?? '') : actingTeam(own, sent);
 
 /**
  * The clients a caller may put on a route: an admin any of them; anyone else

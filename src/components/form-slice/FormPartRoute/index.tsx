@@ -36,7 +36,7 @@ import { FormItemTextarea } from '@/components/form/Textarea';
 import { FormItemTextInput } from '@/components/form/TextInput';
 import { usePermission } from '@/hooks/usePermission';
 import { APISIX } from '@/types/schema/apisix';
-import type { OidcRouteContext } from '@/utils/keycloak-client';
+import { oidcRouteContext } from '@/utils/keycloak-client';
 import { NamePrefixProvider } from '@/utils/useNamePrefix';
 import { zGetDefault } from '@/utils/zod';
 
@@ -252,21 +252,26 @@ export const FormSectionUpstream = (
   );
 };
 
-export const FormSectionPlugins = () => {
+export type FormSectionPluginsProps = {
+  /**
+   * On a route's form: offers to make or reuse a Keycloak client for it in
+   * the openid-connect form. Off elsewhere (services, stream routes), where
+   * the backend has no route to tie a client to.
+   */
+  keycloakClients?: boolean;
+};
+
+export const FormSectionPlugins = ({ keycloakClients = false }: FormSectionPluginsProps) => {
   const { t } = useTranslation();
   const { control } = useFormContext<RoutePostType>();
   // The route as the form holds it, for the Keycloak client picker. The id is
-  // only there once the route has been saved (the schema leaves it out).
-  const [id, name, host, hosts, uri, uris] = useWatch({
+  // only there once the route has been saved (the schema leaves it out), and
+  // so is `__team_id`, which the proxy puts on the detail the form is reset to.
+  const [id, name, host, hosts, uri, uris, teamId] = useWatch({
     control: control as unknown as Control<FieldValues>,
-    name: ['id', 'name', 'host', 'hosts', 'uri', 'uris'],
-  }) as [string?, string?, string?, string[]?, string?, string[]?];
-  const route: OidcRouteContext = {
-    id: id || undefined,
-    name,
-    hosts: [...(host ? [host] : []), ...(hosts ?? [])],
-    uris: [...(uri ? [uri] : []), ...(uris ?? [])],
-  };
+    name: ['id', 'name', 'host', 'hosts', 'uri', 'uris', '__team_id'],
+  }) as [string?, string?, string?, string[]?, string?, string[]?, string?];
+  const route = oidcRouteContext(keycloakClients, { id, name, host, hosts, uri, uris, teamId });
 
   // Whether this role may list plugin configs at all. The page permissions
   // mirror RolePermissions in api/internal/models/models.go, where a developer
@@ -391,7 +396,7 @@ export const FormPartRoute = ({ showGeneral }: { showGeneral?: boolean }) => {
       <FormSectionService />
       <FormSectionTimeout />
       <FormSectionUpstream />
-      <FormSectionPlugins />
+      <FormSectionPlugins keycloakClients />
     </>
   );
 };

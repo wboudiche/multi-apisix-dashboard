@@ -28,12 +28,12 @@ import { currentInstanceIdAtom } from '@/stores/instance';
 import { ownTeamsAtom, sentTeamIdAtom } from '@/stores/team';
 import { describeError } from '@/utils/api-error';
 import {
-  actingTeam,
   applyClientCredentials,
   clientOptionLabel,
   type OidcRouteContext,
   proposeClientIdSuffix,
   proposeRedirectUri,
+  routeTeam,
   usableClients,
 } from '@/utils/keycloak-client';
 import { oidcMode } from '@/utils/oidc';
@@ -88,8 +88,9 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
   const creators = (linked.data ?? []).filter((p) => isAdmin || p.developers_can_create);
   // The connection picked, else the first one the caller may create with.
   const idpId = creators.find((p) => p.id === picked)?.id ?? creators[0]?.id ?? '';
-  // Only the clients of the team the route belongs to, for a non-admin.
-  const reusable = usableClients(clients.data ?? [], isAdmin, actingTeam(ownTeams, sentTeam));
+  // Only the clients of the team the route belongs to, for a non-admin: its
+  // owner once saved, not the team the header names.
+  const reusable = usableClients(clients.data ?? [], isAdmin, routeTeam(route, ownTeams, sentTeam));
 
   const done = (c: ClientCredentials) => {
     onChange(applyClientCredentials(config, c));
@@ -120,7 +121,7 @@ export const KeycloakClientPicker = ({ config, onChange, route }: KeycloakClient
     onError: (e) => setProblem(describeError(e, t('form.plugins.oidc.kc.createFailed'))),
   });
   const use = useMutation({
-    mutationFn: () => oidcClientApi.use(instanceId, uuid),
+    mutationFn: () => oidcClientApi.use(instanceId, uuid, undefined, route.id),
     onSuccess: done,
     onError: (e) => {
       if (axios.isAxiosError(e) && e.response?.status === 410) {

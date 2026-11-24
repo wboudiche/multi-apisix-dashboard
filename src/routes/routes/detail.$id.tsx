@@ -148,7 +148,7 @@ const RouteDetailForm = (props: Props) => {
       content: (
         <>
           <FormSectionRequestOverride />
-          <FormSectionPlugins />
+          <FormSectionPlugins keycloakClients />
         </>
       ),
       fields: ['plugins', 'plugin_config_id'],
