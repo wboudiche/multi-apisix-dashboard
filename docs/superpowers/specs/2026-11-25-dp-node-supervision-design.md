@@ -29,8 +29,10 @@ hand, and makes the existing screens say what they measure.
 
 ## Goals
 
-- A super admin declares the DP nodes of an instance: a name, the node's
-  Control API address, optionally its traffic address.
+- A super admin gives the DP nodes of an instance, in one of two ways:
+  declared one by one (a name, the node's Control API address, optionally its
+  traffic address), or found through a DNS name that resolves to every DP, as
+  a Kubernetes headless Service does.
 - Everyone with a role on the instance sees, for its current instance, the
   state of each node and of the cluster: reachable or not, serving traffic or
   not, configuration in sync with the CP or not.
@@ -42,7 +44,9 @@ hand, and makes the existing screens say what they measure.
 
 ## Non-goals
 
-- Discovering nodes (from etcd, Kubernetes, DNS). Nodes are declared.
+- Discovering nodes through the Kubernetes API, etcd or a service registry.
+  DNS is the only discovery: it covers Kubernetes without giving the dashboard
+  a ServiceAccount or cluster rights.
 - Acting on a node: restart, reload, drain, configuration push. Read-only.
 - `config_provider: yaml` (standalone) data planes: they hold no etcd revision
   to compare, and the dashboard cannot write their configuration. Only the etcd
@@ -109,11 +113,63 @@ etcd: `/apisix-dashboard/nodes/<instanceID>/<nodeID>`.
   kept as a prefix (same rule as `fetchUpstreamHealth`). At most 50 nodes per
   instance.
 
+### Node source
+
+An instance has a `node_source`:
+
+- `none` (default): no node, the traditional mode.
+- `static`: the nodes above, declared one by one.
+- `dns`: the instance holds `node_dns` (`host:port`, e.g.
+  `apisix-dp-control.apisix.svc.cluster.local:9090`), `node_dns_scheme`
+  (`http` default) and an optional `node_dns_gateway_port` (e.g. `9080`). At
+  each poll the backend resolves the name (A and AAAA) and each address is a
+  node for that poll: its Control API is `<scheme>://<ip>:<port>`, its traffic
+  address `http://<ip>:<gateway port>` when the port is set.
+
+Nodes found by DNS are not stored: their id is the address, their name the
+address (or the PTR name when one resolves), they have no enable/disable and no
+reminder. A pod that goes away leaves the list; it is not an unreachable node.
+A resolution that fails or returns nothing makes the cluster `critical` with the
+code `dns_empty` or `dns_failed`, and the previous list is not kept.
+
+`static` and `dns` exclude each other, and switching drops the static nodes
+after a confirmation.
+
+## Kubernetes deployment
+
+One CP pod and N DP pods (a Deployment, scaled by hand or by an HPA):
+
+| Field | Value |
+|---|---|
+| `admin_api_url` | the CP's Service, `http://apisix-cp.<ns>.svc:9180` |
+| `gateway_url` | the DP's Service (or its Ingress/LoadBalancer) |
+| `node_source` | `dns` |
+| `node_dns` | a headless Service (`clusterIP: None`) selecting the DP pods on port 9090 |
+
+What the cluster needs:
+
+- The DP's Control API listening beyond loopback: `apisix.enable_control: true`
+  and `apisix.control.ip: 0.0.0.0` in the DP's configuration.
+- The headless Service with `publishNotReadyAddresses: true`, so a pod that is
+  not ready is shown as such rather than missing.
+- A NetworkPolicy letting only the dashboard's pod reach port 9090: the Control
+  API has no authentication.
+- The dashboard running in the cluster, or anywhere pod addresses are routable.
+
+A ClusterIP Service on 9090 does not work: it sends each request to any pod,
+and the dashboard would read a different DP each time while believing it read
+one. The instance form says so next to `node_dns`.
+
+Kubernetes already restarts a dead pod and keeps it out of the Service while it
+is not ready. On Kubernetes the value of this design is less "is the pod up"
+than what Kubernetes does not see: each pod's configuration against the CP, the
+upstream health each pod measures, and a route test against one pod.
+
 ## Permissions
 
 | Action | Who | Endpoint |
 |---|---|---|
-| Create, update, enable/disable, delete a node | `super_admin` (same rule as `UpdateInstance`, `handlers/instance.go:343`) | `POST/PUT/DELETE /api/v1/instances/:id/nodes[/:nodeId]` |
+| Set the node source; create, update, enable/disable, delete a node | `super_admin` (same rule as `UpdateInstance`, `handlers/instance.go:343`) | `POST/PUT/DELETE /api/v1/instances/:id/nodes[/:nodeId]` |
 | Read nodes and their state | any role on the instance (`viewer`+), through the RBAC middleware | `GET /api/v1/instances/:id/nodes` |
 
 A node's addresses are shown to the super admin only. Everyone else reads the
@@ -245,7 +301,8 @@ instead of `control_api_url`:
 `POST /api/v1/route-test` takes an optional `node_id`:
 
 - absent: unchanged, the instance's `gateway_url`;
-- a node of another instance or no node: `404 node_not_found`;
+- a node of another instance, no node, or (DNS) an address not in the last
+  resolution: `404 node_not_found`;
 - a disabled node: `409 node_disabled`;
 - a node without `gateway_url`: `422 node_has_no_gateway`.
 
@@ -273,12 +330,15 @@ not `in_sync`, the result says the change may not have reached the node yet.
 Node addresses are entered by a super admin, who can already point an instance
 anywhere, admin key included. They get the same treatment as `admin_api_url`
 and `control_api_url`: syntax validation, no redirect followed, bodies capped,
-errors shown to the super admin only. No IP-level filter is added here.
-Loopback stays allowed, which the e2e stack needs (`127.0.0.1:${E2E_CONTROL_PORT}`).
+errors shown to the super admin only.
 
-A filter for every super-admin-entered address (instances, nodes, Keycloak
-connections) is a separate decision, tracked in its own issue, so that the
-first filtering dialer in the code covers all of them, not nodes alone.
+They must not go through the internal-address filter of the upstream "Test
+connection" (`isBlockedAddr`, `handlers/upstream.go`). That filter is there
+because any developer types an upstream node; it refuses private ranges and
+loopback, which is exactly where DP live (pod addresses, the e2e stack's
+`127.0.0.1:${E2E_CONTROL_PORT}`). A filter for every super-admin-entered
+address (instances, nodes, Keycloak connections) is a separate decision, not
+taken here.
 
 ## UI
 
@@ -310,7 +370,8 @@ first filtering dialer in the code covers all of them, not nodes alone.
 
 ## Phases
 
-0. **Spike** (no product code): decoupled compose; confirm the CP's
+0. **Spike** (no product code): decoupled compose, and a kind/k3d cluster with
+   a headless Service; confirm the CP's
    `modifiedIndex` equals the DP's for routes, services and upstreams, and
    which of `modifiedIndex`/`orig_modifiedIndex` to use for routes; measure
    propagation delay; check `/v1/healthcheck` and the `/v1/<type>` listings on
@@ -319,7 +380,8 @@ first filtering dialer in the code covers all of them, not nodes alone.
    per cluster, etcd provider only), `gateway_url` help text, "Admin API" label,
    the decoupled e2e stack and a spec proving CRUD and route test through it,
    a `deploy/` variant.
-2. **Nodes**: model, CRUD, permissions, drawer tab.
+2. **Nodes**: model, node source (`static`, `dns`), CRUD, permissions, drawer
+   tab.
 3. **Health**: poller, node and cluster states, `/nodes`, overview, header.
 4. **Upstream health from nodes**.
 5. **Configuration sync**: CP reference, drift, `too_large`.
@@ -344,7 +406,7 @@ other.
 |---|---|---|
 | 1 | `gateway_url`, `control_api_url` ignored | Existing fields |
 | 2 | Write right is `super_admin`; viewer cannot see `/instances` | Permissions, UI |
-| 3 | No IP-level guard exists | Outbound addresses |
+| 3 | IP-level guard | Outbound addresses (the upstream test's filter exists and must not apply to nodes) |
 | 4 | Status enum is `Connected/Disconnected/Unknown` | Existing fields, Cluster (`cluster_state`) |
 | 5 | `critical` contradicted `degraded` | Cluster |
 | 6 | Configuration state per node vs per type | Configuration sync |
